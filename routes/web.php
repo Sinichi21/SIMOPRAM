@@ -23,22 +23,6 @@ Route::get('/', function () {
 
 /*
 |--------------------------------------------------------------------------
-| Dashboard
-|--------------------------------------------------------------------------
-*/
-
-Route::view(
-    '/dashboard',
-    'dashboard'
-)
-    ->middleware([
-        'auth',
-        'school',
-    ])
-    ->name('dashboard');
-
-/*
-|--------------------------------------------------------------------------
 | Authenticated
 |--------------------------------------------------------------------------
 */
@@ -57,6 +41,40 @@ Route::middleware([
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Dashboard
+    |--------------------------------------------------------------------------
+    */
+
+    Route::view(
+        '/dashboard',
+        'dashboard'
+    )
+        ->name(
+            'dashboard'
+        );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Switch Sekolah / Global
+    |--------------------------------------------------------------------------
+    */
+
+    Route::post(
+        '/school/switch',
+        SchoolSwitchController::class
+    )
+        ->name(
+            'school.switch'
+        );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Administrasi sekolah
+    |--------------------------------------------------------------------------
+    */
+
     Route::view(
         '/admin/sekolah',
         'admin.schools'
@@ -67,19 +85,6 @@ Route::middleware([
         ->name(
             'schools.index'
         );
-
-    /*
-    |--------------------------------------------------------------------------
-    | Switch Sekolah
-    |--------------------------------------------------------------------------
-    */
-
-    Route::post(
-        '/school/switch',
-        SchoolSwitchController::class
-    )->name(
-        'school.switch'
-    );
 
     /*
     |--------------------------------------------------------------------------
@@ -232,7 +237,7 @@ Route::middleware([
             ->name(
                 'attendances.self'
             );
-            
+
         /*
         |--------------------------------------------------------------------------
         | Jurnal Kegiatan
@@ -249,7 +254,6 @@ Route::middleware([
             ->name(
                 'journals.index'
             );
-
 
         Route::get(
             '/kegiatan/{activityId}/jurnal',
@@ -284,15 +288,13 @@ Route::middleware([
                 'announcements.index'
             );
 
-
         Route::get(
             '/pengumuman/buat',
             function () {
                 return view(
                     'announcements.manage',
                     [
-                        'announcementId' =>
-                            null,
+                        'announcementId' => null,
                     ]
                 );
             }
@@ -303,7 +305,6 @@ Route::middleware([
             ->name(
                 'announcements.create'
             );
-
 
         Route::get(
             '/pengumuman/{announcementId}/edit',
@@ -322,7 +323,6 @@ Route::middleware([
             ->name(
                 'announcements.edit'
             );
-
 
         /*
         |--------------------------------------------------------------------------
@@ -378,6 +378,34 @@ Route::middleware([
             )
             ->name(
                 'assessments.scores'
+            );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Laporan
+        |--------------------------------------------------------------------------
+        */
+
+        Route::view(
+            '/laporan/nilai',
+            'reports.grades'
+        )
+            ->middleware(
+                'can:reports.grades.view'
+            )
+            ->name(
+                'reports.grades'
+            );
+
+        Route::view(
+            '/laporan/absensi',
+            'reports.attendance'
+        )
+            ->middleware(
+                'can:reports.attendance.view'
+            )
+            ->name(
+                'reports.attendance'
             );
     });
 });

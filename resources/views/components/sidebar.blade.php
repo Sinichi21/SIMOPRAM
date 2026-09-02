@@ -101,84 +101,88 @@
         ================================================== --}}
 
         @php
-            $availableSchools =
-                $availableSchools ?? collect();
+            $currentSchoolId =
+                app(
+                    \App\Support\SchoolContext::class
+                )->id();
 
-            $activeSchool =
-                $availableSchools->firstWhere(
-                    'id',
-                    (int) session('active_school_id')
-                );
+            $currentUser =
+                auth()->user();
         @endphp
 
 
-        <div class="px-3 py-3">
+        <form
+            method="POST"
+            action="{{ route('school.switch') }}"
+            class="px-2"
+        >
 
-            <div
-                class="mb-2 text-xs font-semibold
-                       uppercase tracking-wide
-                       text-zinc-500
-                       dark:text-zinc-400"
+            @csrf
+
+
+            <label
+                class="mb-1 block
+                    text-xs font-medium
+                    text-zinc-500"
             >
                 Sekolah Aktif
-            </div>
+            </label>
 
 
-            <form
-                method="POST"
-                action="{{ route('school.switch') }}"
+            <select
+                name="school_id"
+                onchange="this.form.submit()"
+                class="w-full rounded-lg
+                    border border-zinc-300
+                    bg-white px-3 py-2
+                    text-sm
+                    dark:border-zinc-700
+                    dark:bg-zinc-900"
             >
-                @csrf
 
-                <select
-                    name="school_id"
-                    onchange="
-                        if (this.value) {
-                            this.form.submit();
-                        }
-                    "
-                    class="w-full rounded-lg
-                           border border-zinc-300
-                           bg-white px-3 py-2
-                           text-sm text-zinc-900
-                           outline-none
-                           transition
-                           focus:border-zinc-500
-                           focus:ring-2
-                           focus:ring-zinc-200
-                           dark:border-zinc-700
-                           dark:bg-zinc-800
-                           dark:text-white
-                           dark:focus:ring-zinc-700"
-                >
+                {{-- ===============================================
+                GLOBAL MODE - SUPER ADMIN ONLY
+                ================================================ --}}
 
-                    <option value="">
-                        -- Pilih Sekolah --
+                @if (
+                    $currentUser
+                    &&
+                    $currentUser->isSuperAdmin()
+                )
+
+                    <option
+                        value="global"
+                        @selected(
+                            $currentSchoolId === null
+                        )
+                    >
+                        🌐 Semua Sekolah / Global
                     </option>
 
-                    @foreach (
-                        $availableSchools as $school
-                    )
+                @endif
 
-                        <option
-                            value="{{ $school->id }}"
-                            @selected(
-                                (int)
-                                session(
-                                    'active_school_id'
-                                )
-                                ===
-                                (int) $school->id
-                            )
-                        >
-                            {{ $school->name }}
-                        </option>
 
-                    @endforeach
+                {{-- ===============================================
+                SEKOLAH
+                ================================================ --}}
 
-                </select>
+                @foreach ($schools as $school)
 
-            </form>
+                    <option
+                        value="{{ $school->id }}"
+                        @selected(
+                            $currentSchoolId ===
+                            $school->id
+                        )
+                    >
+                        {{ $school->name }}
+                    </option>
+
+                @endforeach
+
+            </select>
+
+        </form>
 
 
             @if ($activeSchool)
@@ -338,6 +342,97 @@
             <flux:sidebar.nav>
 
                 <flux:sidebar.group
+                    heading="Penilaian"
+                    class="grid"
+                >
+
+                    @can('assessments.view')
+
+                        <flux:sidebar.item
+                            icon="clipboard-document-check"
+                            :href="route(
+                                'assessments.settings'
+                            )"
+                            :current="
+                                request()->routeIs(
+                                    'assessments.settings'
+                                )
+                            "
+                            wire:navigate
+                        >
+                            Pengaturan Penilaian
+                        </flux:sidebar.item>
+
+                    @endcan
+
+                    @can('assessments.scores.view')
+
+                        <flux:sidebar.item
+                            icon="pencil-square"
+                            :href="route(
+                                'assessments.scores'
+                            )"
+                            :current="
+                                request()->routeIs(
+                                    'assessments.scores'
+                                )
+                            "
+                            wire:navigate
+                        >
+                            Input Nilai
+                        </flux:sidebar.item>
+
+                    @endcan
+
+                </flux:sidebar.group>
+
+                <flux:sidebar.group
+                    heading="Laporan"
+                    class="grid"
+                >
+
+                    @can('reports.grades.view')
+
+                        <flux:sidebar.item
+                            icon="academic-cap"
+                            :href="route('reports.grades')"
+                            :current="
+                                request()->routeIs(
+                                    'reports.grades'
+                                )
+                            "
+                            wire:navigate
+                        >
+                            Rekap Nilai
+                        </flux:sidebar.item>
+
+                    @endcan
+
+
+                    @can('reports.attendance.view')
+
+                        <flux:sidebar.item
+                            icon="clipboard-document-list"
+                            :href="route('reports.attendance')"
+                            :current="
+                                request()->routeIs(
+                                    'reports.attendance'
+                                )
+                            "
+                            wire:navigate
+                        >
+                            Rekap Absensi
+                        </flux:sidebar.item>
+
+                    @endcan
+
+                </flux:sidebar.group>
+
+            </flux:sidebar.nav>
+            
+            <flux:sidebar.nav>
+
+                <flux:sidebar.group
                     heading="Kegiatan"
                     class="grid"
                 >
@@ -455,55 +550,6 @@
                     >
                         Pengaturan Notifikasi
                     </flux:sidebar.item>
-
-                </flux:sidebar.group>
-
-            </flux:sidebar.nav>
-
-            <flux:sidebar.nav>
-
-                <flux:sidebar.group
-                    heading="Penilaian"
-                    class="grid"
-                >
-
-                    @can('assessments.view')
-
-                        <flux:sidebar.item
-                            icon="clipboard-document-check"
-                            :href="route(
-                                'assessments.settings'
-                            )"
-                            :current="
-                                request()->routeIs(
-                                    'assessments.settings'
-                                )
-                            "
-                            wire:navigate
-                        >
-                            Pengaturan Penilaian
-                        </flux:sidebar.item>
-
-                    @endcan
-
-                    @can('assessments.scores.view')
-
-                        <flux:sidebar.item
-                            icon="pencil-square"
-                            :href="route(
-                                'assessments.scores'
-                            )"
-                            :current="
-                                request()->routeIs(
-                                    'assessments.scores'
-                                )
-                            "
-                            wire:navigate
-                        >
-                            Input Nilai
-                        </flux:sidebar.item>
-
-                    @endcan
 
                 </flux:sidebar.group>
 

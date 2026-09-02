@@ -48,7 +48,7 @@ class RolePermissionSeeder extends Seeder
             'attendance.update',
             'attendances.self',
             'attendance_sessions.view',
-            'attendance_sessions.manage',   
+            'attendance_sessions.manage',
 
             'journals.view',
             'journals.create',
@@ -81,6 +81,9 @@ class RolePermissionSeeder extends Seeder
             'reports.attendance',
             'reports.grades',
             'reports.activities',
+            'reports.grades.view',
+            'reports.attendance.view',
+            'reports.export',
 
             'notifications.telegram',
             'notifications.whatsapp',
@@ -196,6 +199,9 @@ class RolePermissionSeeder extends Seeder
             'reports.attendance',
             'reports.grades',
             'reports.activities',
+            'reports.grades.view',
+            'reports.attendance.view',
+            'reports.export',
 
             'academic_years.view',
             'semesters.view',
@@ -221,7 +227,7 @@ class RolePermissionSeeder extends Seeder
             'assessments.view',
             'attendance_sessions.view',
             'attendances.self',
-            'announcements.my'
+            'announcements.my',
         ]);
 
         app(PermissionRegistrar::class)

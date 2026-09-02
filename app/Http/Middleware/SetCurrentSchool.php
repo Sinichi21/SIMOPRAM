@@ -12,8 +12,7 @@ class SetCurrentSchool
 {
     public function __construct(
         protected SchoolContext $schoolContext
-    ) {
-    }
+    ) {}
 
     public function handle(
         Request $request,
@@ -25,103 +24,288 @@ class SetCurrentSchool
             return $next($request);
         }
 
-        $schoolId = session('active_school_id');
+        $activeSchoolId =
+            session('active_school_id');
 
         /*
         |--------------------------------------------------------------------------
-        | System Admin
+        | SUPER ADMIN
         |--------------------------------------------------------------------------
         |
-        | Super Admin dan Admin Pramuka boleh tidak memilih sekolah.
+        | Tidak ada active_school_id berarti GLOBAL MODE.
         |
         */
 
-        if ($user->isSystemAdmin()) {
-            if ($schoolId) {
-                $school = School::query()
-                    ->where('is_active', true)
-                    ->find($schoolId);
+        if ($user->isSuperAdmin()) {
 
-                if ($school) {
-                    $this->schoolContext->set($school);
-                } else {
-                    session()->forget('active_school_id');
-                    $schoolId = null;
-                }
+            if (! $activeSchoolId) {
+                $this->useGlobalContext(
+                    $user
+                );
+
+                return $next($request);
             }
 
-            setPermissionsTeamId($schoolId);
+            $school =
+                School::query()
+                    ->whereKey(
+                        $activeSchoolId
+                    )
+                    ->where(
+                        'is_active',
+                        true
+                    )
+                    ->first();
 
-            $user->unsetRelation('roles');
-            $user->unsetRelation('permissions');
+            /*
+            |--------------------------------------------------------------------------
+            | Sekolah sudah tidak tersedia.
+            | Kembalikan Super Admin ke Global Mode.
+            |--------------------------------------------------------------------------
+            */
+
+            if (! $school) {
+                session()->forget(
+                    'active_school_id'
+                );
+
+                $this->useGlobalContext(
+                    $user
+                );
+
+                return $next($request);
+            }
+
+            $this->useSchoolContext(
+                $user,
+                $school
+            );
 
             return $next($request);
         }
 
         /*
         |--------------------------------------------------------------------------
-        | User Sekolah
+        | SCOUT ADMIN
         |--------------------------------------------------------------------------
+        |
+        | Scout admin boleh memilih sekolah,
+        | tetapi tidak mendapat Global Dashboard.
+        |
         */
 
-        $membershipQuery = $user
-            ->schoolMemberships()
-            ->where('is_active', true);
+        if ($user->isScoutAdmin()) {
 
-        if ($schoolId) {
-            $hasMembership = (clone $membershipQuery)
-                ->where('school_id', $schoolId)
-                ->exists();
+            if ($activeSchoolId) {
+                $school =
+                    School::query()
+                        ->whereKey(
+                            $activeSchoolId
+                        )
+                        ->where(
+                            'is_active',
+                            true
+                        )
+                        ->first();
 
-            if (! $hasMembership) {
-                $schoolId = null;
+                if ($school) {
+                    $this->useSchoolContext(
+                        $user,
+                        $school
+                    );
+
+                    return $next($request);
+                }
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Default ke sekolah aktif pertama
+            |--------------------------------------------------------------------------
+            */
+
+            $school =
+                School::query()
+                    ->where(
+                        'is_active',
+                        true
+                    )
+                    ->orderBy('name')
+                    ->first();
+
+            if ($school) {
+                session([
+                    'active_school_id' => $school->id,
+                ]);
+
+                $this->useSchoolContext(
+                    $user,
+                    $school
+                );
+            }
+
+            return $next($request);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | USER SEKOLAH
+        |--------------------------------------------------------------------------
+        |
+        | school_admin / coach / student hanya boleh memilih
+        | sekolah yang memiliki membership aktif.
+        |
+        */
+
+        if ($activeSchoolId) {
+
+            $membership =
+                $user
+                    ->schoolMemberships()
+                    ->where(
+                        'school_id',
+                        $activeSchoolId
+                    )
+                    ->where(
+                        'is_active',
+                        true
+                    )
+                    ->whereNull(
+                        'left_at'
+                    )
+                    ->first();
+
+            if ($membership) {
+
+                $school =
+                    School::query()
+                        ->whereKey(
+                            $activeSchoolId
+                        )
+                        ->where(
+                            'is_active',
+                            true
+                        )
+                        ->first();
+
+                if ($school) {
+                    $this->useSchoolContext(
+                        $user,
+                        $school
+                    );
+
+                    return $next($request);
+                }
             }
         }
 
         /*
         |--------------------------------------------------------------------------
-        | Tentukan Sekolah Default
+        | Cari membership pertama sebagai default
         |--------------------------------------------------------------------------
         */
 
-        if (! $schoolId) {
-            $schoolId = (clone $membershipQuery)
-                ->value('school_id');
+        $membership =
+            $user
+                ->schoolMemberships()
+                ->where(
+                    'is_active',
+                    true
+                )
+                ->whereNull(
+                    'left_at'
+                )
+                ->with('school')
+                ->get()
+                ->first(
+                    fn ($membership) => $membership->school
+                        &&
+                        $membership
+                            ->school
+                            ->is_active
+                );
 
-            abort_if(
-                ! $schoolId,
-                403,
-                'User tidak terhubung dengan sekolah aktif.'
-            );
+        if ($membership?->school) {
+
+            $school =
+                $membership->school;
 
             session([
-                'active_school_id' => $schoolId,
+                'active_school_id' => $school->id,
             ]);
+
+            $this->useSchoolContext(
+                $user,
+                $school
+            );
+
+            return $next($request);
         }
 
-        $school = School::query()
-            ->where('is_active', true)
-            ->findOrFail($schoolId);
-
-        $this->schoolContext->set($school);
-
         /*
         |--------------------------------------------------------------------------
-        | Aktifkan Spatie Team
+        | User tidak mempunyai sekolah
         |--------------------------------------------------------------------------
         */
 
-        setPermissionsTeamId($school->id);
+        session()->forget(
+            'active_school_id'
+        );
 
-        /*
-        |--------------------------------------------------------------------------
-        | Hindari cache role sekolah sebelumnya
-        |--------------------------------------------------------------------------
-        */
+        $this->schoolContext
+            ->clear();
 
-        $user->unsetRelation('roles');
-        $user->unsetRelation('permissions');
+        setPermissionsTeamId(
+            null
+        );
+
+        $this->clearPermissionRelations(
+            $user
+        );
 
         return $next($request);
+    }
+
+    protected function useGlobalContext(
+        $user
+    ): void {
+        $this->schoolContext
+            ->clear();
+
+        setPermissionsTeamId(
+            null
+        );
+
+        $this->clearPermissionRelations(
+            $user
+        );
+    }
+
+    protected function useSchoolContext(
+        $user,
+        School $school
+    ): void {
+        $this->schoolContext
+            ->set($school);
+
+        setPermissionsTeamId(
+            $school->id
+        );
+
+        $this->clearPermissionRelations(
+            $user
+        );
+    }
+
+    protected function clearPermissionRelations(
+        $user
+    ): void {
+        $user->unsetRelation(
+            'roles'
+        );
+
+        $user->unsetRelation(
+            'permissions'
+        );
     }
 }

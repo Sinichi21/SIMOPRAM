@@ -8,6 +8,7 @@ use App\Models\School;
 use App\Models\User;
 use App\Support\SchoolContext;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -85,81 +86,75 @@ class AppServiceProvider extends ServiceProvider
             'components.sidebar',
             function ($view): void {
 
-                /*
-                |--------------------------------------------------------------------------
-                | Default
-                |--------------------------------------------------------------------------
-                |
-                | Selalu sediakan variable ini agar sidebar tidak error,
-                | termasuk ketika belum login.
-                |
-                */
+                $user =
+                    Auth::user();
 
-                $availableSchools = collect();
+                if (! $user) {
+                    $view->with([
+                        'schools' => collect(),
+                        'activeSchool' => null,
+                    ]);
 
-                if (auth()->check()) {
-
-                    $user = auth()->user();
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | System Admin
-                    |--------------------------------------------------------------------------
-                    |
-                    | Super Admin dan Scout Admin dapat melihat seluruh sekolah aktif.
-                    |
-                    */
-
-                    if ($user->isSystemAdmin()) {
-
-                        $availableSchools = School::query()
-                            ->where('is_active', true)
-                            ->orderBy('name')
-                            ->get();
-
-                    } else {
-
-                        /*
-                        |--------------------------------------------------------------------------
-                        | User Sekolah
-                        |--------------------------------------------------------------------------
-                        |
-                        | Hanya sekolah tempat user memiliki membership aktif.
-                        |
-                        */
-
-                        $availableSchools = School::query()
-                            ->whereHas(
-                                'memberships',
-                                function ($query) use ($user) {
-
-                                    $query
-                                        ->where(
-                                            'user_id',
-                                            $user->id
-                                        )
-                                        ->where(
-                                            'is_active',
-                                            true
-                                        );
-                                }
-                            )
-                            ->where('is_active', true)
-                            ->orderBy('name')
-                            ->get();
-                    }
+                    return;
                 }
 
                 /*
                 |--------------------------------------------------------------------------
-                | Kirim ke Sidebar
+                | System Admin
                 |--------------------------------------------------------------------------
                 */
 
-                $view->with(
-                    'availableSchools',
-                    $availableSchools
-                );
+                if (
+                    $user->isSystemAdmin()
+                ) {
+                    $schools =
+                        School::query()
+                            ->where(
+                                'is_active',
+                                true
+                            )
+                            ->orderBy('name')
+                            ->get();
+                } else {
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | User biasa
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $schoolIds =
+                        $user
+                            ->schoolMemberships()
+                            ->where(
+                                'is_active',
+                                true
+                            )
+                            ->whereNull(
+                                'left_at'
+                            )
+                            ->pluck(
+                                'school_id'
+                            );
+
+                    $schools =
+                        School::query()
+                            ->whereIn(
+                                'id',
+                                $schoolIds
+                            )
+                            ->where(
+                                'is_active',
+                                true
+                            )
+                            ->orderBy('name')
+                            ->get();
+                }
+
+                $view->with([
+                    'schools' => $schools,
+                    'activeSchool' => app(SchoolContext::class)->school(),
+                ]);
             }
         );
     }
