@@ -85,4 +85,18 @@ class Student extends Model
             AttendanceSessionParticipant::class
         );
     }
+
+    public function scores(): HasMany
+    {
+        return $this->hasMany(
+            StudentScore::class
+        );
+    }
+
+    public function finalGrades(): HasMany
+    {
+        return $this->hasMany(
+            FinalGrade::class
+        );
+    }
 }

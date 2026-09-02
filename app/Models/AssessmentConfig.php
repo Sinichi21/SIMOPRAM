@@ -47,4 +47,18 @@ class AssessmentConfig extends Model
             AssessmentConfigItem::class
         )->orderBy('sort_order');
     }
+
+    public function scores(): HasMany
+    {
+        return $this->hasMany(
+            StudentScore::class
+        );
+    }
+
+    public function finalGrades(): HasMany
+    {
+        return $this->hasMany(
+            FinalGrade::class
+        );
+    }
 }

@@ -486,6 +486,25 @@
 
                     @endcan
 
+                    @can('assessments.scores.view')
+
+                        <flux:sidebar.item
+                            icon="pencil-square"
+                            :href="route(
+                                'assessments.scores'
+                            )"
+                            :current="
+                                request()->routeIs(
+                                    'assessments.scores'
+                                )
+                            "
+                            wire:navigate
+                        >
+                            Input Nilai
+                        </flux:sidebar.item>
+
+                    @endcan
+
                 </flux:sidebar.group>
 
             </flux:sidebar.nav>

@@ -34,6 +34,8 @@ class Settings extends Component
 
     public bool $factor_is_active = true;
 
+    public string $factor_source_type = 'manual';
+
 
     /*
     |--------------------------------------------------------------------------

@@ -368,6 +368,17 @@ Route::middleware([
             ->name(
                 'assessments.settings'
             );
+
+        Route::view(
+            '/penilaian/input',
+            'assessments.scores'
+        )
+            ->middleware(
+                'can:assessments.scores.view'
+            )
+            ->name(
+                'assessments.scores'
+            );
     });
 });
 

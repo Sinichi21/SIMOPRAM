@@ -74,6 +74,9 @@ class RolePermissionSeeder extends Seeder
             'assessments.manage',
             'assessment_factors.view',
             'assessment_factors.manage',
+            'assessments.scores.view',
+            'assessments.scores.manage',
+            'assessments.calculate',
 
             'reports.attendance',
             'reports.grades',
@@ -205,6 +208,9 @@ class RolePermissionSeeder extends Seeder
 
             'assessments.view',
             'assessment_factors.view',
+            'assessments.scores.view',
+            'assessments.scores.manage',
+            'assessments.calculate',
         ]);
 
         $student->syncPermissions([
