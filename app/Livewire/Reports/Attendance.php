@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Reports;
 
+use App\Exports\ReportViewExport;
 use App\Models\AcademicYear;
 use App\Models\Attendance as AttendanceModel;
 use App\Models\AttendanceSession;
@@ -9,7 +10,10 @@ use App\Models\AttendanceSessionParticipant;
 use App\Models\Classroom;
 use App\Models\Semester;
 use App\Models\Student;
+use App\Support\SchoolContext;
+use Illuminate\Support\Str;
 use Livewire\Component;
+use Maatwebsite\Excel\Facades\Excel;
 
 class Attendance extends Component
 {
@@ -487,6 +491,102 @@ class Attendance extends Component
                 ),
                 $data
             )
+        );
+    }
+
+    protected function exportViewData(): array
+    {
+        $data =
+            $this->getReportData();
+
+        $school =
+            app(
+                SchoolContext::class
+            )->school();
+
+        abort_unless(
+            $school,
+            409,
+            'Pilih sekolah aktif terlebih dahulu.'
+        );
+
+        return array_merge(
+            $data,
+            [
+                'school' => $school,
+
+                'academicYear' => $this->academicYearId
+                        ? AcademicYear::query()
+                            ->find(
+                                $this->academicYearId
+                            )
+                        : null,
+
+                'semester' => $this->semesterId
+                        ? Semester::query()
+                            ->find(
+                                $this->semesterId
+                            )
+                        : null,
+
+                'classroom' => $this->classroomId
+                        ? Classroom::query()
+                            ->find(
+                                $this->classroomId
+                            )
+                        : null,
+            ]
+        );
+    }
+
+    protected function exportFilename(
+        string $prefix
+    ): string {
+        $school =
+            app(
+                SchoolContext::class
+            )->school();
+
+        return implode(
+            '-',
+            array_filter([
+                $prefix,
+
+                Str::slug(
+                    $school?->name
+                    ?? 'sekolah'
+                ),
+
+                now()->format(
+                    'Ymd-His'
+                ),
+            ])
+        );
+    }
+
+    public function exportExcel()
+    {
+        abort_unless(
+            auth()->user()->can(
+                'reports.export'
+            ),
+            403
+        );
+
+        $data =
+            $this->exportViewData();
+
+        return Excel::download(
+            new ReportViewExport(
+                viewName: 'exports.reports.attendance',
+
+                viewData: $data,
+
+                sheetTitle: 'Rekap Absensi'
+            ),
+            $this->exportFilename(
+                'rekap-absensi'
+            ).'.xlsx'
         );
     }
 }

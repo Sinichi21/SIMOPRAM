@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ReportPdfController;
 use App\Http\Controllers\SchoolSwitchController;
 use Illuminate\Support\Facades\Route;
 
@@ -397,6 +398,20 @@ Route::middleware([
                 'reports.grades'
             );
 
+        Route::get(
+            '/laporan/nilai/pdf',
+            [
+                ReportPdfController::class,
+                'grades',
+            ]
+        )
+            ->middleware(
+                'can:reports.export'
+            )
+            ->name(
+                'reports.grades.pdf'
+            );
+
         Route::view(
             '/laporan/absensi',
             'reports.attendance'
@@ -406,6 +421,64 @@ Route::middleware([
             )
             ->name(
                 'reports.attendance'
+            );
+
+        Route::get(
+            '/laporan/absensi/pdf',
+            [
+                ReportPdfController::class,
+                'attendance',
+            ]
+        )
+            ->middleware(
+                'can:reports.export'
+            )
+            ->name(
+                'reports.attendance.pdf'
+            );
+
+        Route::view(
+            '/pengaturan/dokumen-sekolah',
+            'settings.school-documents'
+        )
+            ->middleware(
+                'can:school_documents.view'
+            )
+            ->name(
+                'settings.school-documents'
+            );
+
+        Route::view(
+            '/pengaturan/bobot-kehadiran',
+            'settings.attendance-scoring'
+        )
+            ->middleware(
+                'can:attendance_score_settings.view'
+            )
+            ->name(
+                'settings.attendance-scoring'
+            );
+
+        Route::view(
+            '/penilaian/kegiatan',
+            'assessments.activity-index'
+        )
+            ->middleware(
+                'can:activity_assessments.view'
+            )
+            ->name(
+                'activity-assessments.index'
+            );
+
+        Route::view(
+            '/penilaian/kegiatan/{assessment}',
+            'assessments.activity-edit'
+        )
+            ->middleware(
+                'can:activity_assessments.view'
+            )
+            ->name(
+                'activity-assessments.edit'
             );
     });
 });

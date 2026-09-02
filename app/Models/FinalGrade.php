@@ -16,6 +16,7 @@ class FinalGrade extends Model
         'final_score',
         'letter_grade',
         'description',
+        'attendance_source_version',
         'calculated_at',
         'calculated_by',
     ];
@@ -23,7 +24,8 @@ class FinalGrade extends Model
     protected function casts(): array
     {
         return [
-            'final_score' => 'decimal:2',
+            'final_score' => 'float',
+            'attendance_source_version' => 'integer',
             'calculated_at' => 'datetime',
         ];
     }
@@ -40,6 +42,14 @@ class FinalGrade extends Model
     {
         return $this->belongsTo(
             Student::class
+        );
+    }
+
+    public function calculatedBy(): BelongsTo
+    {
+        return $this->belongsTo(
+            User::class,
+            'calculated_by'
         );
     }
 }

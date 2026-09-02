@@ -119,7 +119,7 @@
                         class="mb-1 block
                                text-sm font-medium"
                     >
-                        NIP / NIK
+                        NIP / NTA
                     </label>
 
                     <input

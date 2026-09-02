@@ -38,10 +38,11 @@ test('authenticated users can see the active school in the sidebar', function ()
         ->assertSee('Sekolah Aktif Pengujian');
 });
 
-test('users without an active school cannot visit the dashboard', function () {
+test('users without an active school can visit the dashboard', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
         ->get(route('dashboard'))
-        ->assertForbidden();
+        ->assertOk()
+        ->assertSee('Pilih sekolah aktif terlebih dahulu.');
 });

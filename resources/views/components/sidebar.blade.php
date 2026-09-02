@@ -13,6 +13,12 @@
     class="min-h-screen bg-white dark:bg-zinc-800"
 >
 
+    @php
+        $currentSchoolId = app(\App\Support\SchoolContext::class)->id();
+        $currentUser = auth()->user();
+        $hasActiveSchool = $currentSchoolId !== null;
+    @endphp
+
     {{-- =====================================================
     SIDEBAR
     ====================================================== --}}
@@ -20,6 +26,18 @@
     <flux:sidebar
         sticky
         collapsible="mobile"
+        x-data="{ hasActiveSchool: @js($hasActiveSchool) }"
+        x-on:click.capture="
+            if (! hasActiveSchool && $event.target.closest('[data-school-menu]')) {
+                $event.preventDefault();
+                $event.stopPropagation();
+                $flux.toast({
+                    variant: 'warning',
+                    heading: 'Sekolah belum dipilih',
+                    text: 'Pilih sekolah aktif terlebih dahulu.'
+                });
+            }
+        "
         class="border-e border-zinc-200
                bg-zinc-50
                dark:border-zinc-700
@@ -73,10 +91,17 @@
 
         @can('schools.view')
 
-            <flux:sidebar.nav>
+            <flux:sidebar.nav
+                data-school-menu
+                @class([
+                    'opacity-60 [&_*]:cursor-not-allowed' => ! $hasActiveSchool,
+                ])
+            >
 
                 <flux:sidebar.group
                     heading="Administrasi"
+                    expandable
+                    :expanded="request()->routeIs('schools.*')"
                     class="grid"
                 >
 
@@ -99,17 +124,6 @@
         {{-- =================================================
         SEKOLAH AKTIF
         ================================================== --}}
-
-        @php
-            $currentSchoolId =
-                app(
-                    \App\Support\SchoolContext::class
-                )->id();
-
-            $currentUser =
-                auth()->user();
-        @endphp
-
 
         <form
             method="POST"
@@ -217,17 +231,29 @@
 
             @endif
 
-        </div>
-
-
         {{-- =================================================
         MASTER DATA
         ================================================== --}}
 
-        <flux:sidebar.nav>
+        <flux:sidebar.nav
+            data-school-menu
+            @class([
+                'opacity-60 [&_*]:cursor-not-allowed' => ! $hasActiveSchool,
+            ])
+        >
 
             <flux:sidebar.group
                 heading="Master Data"
+                expandable
+                :expanded="request()->routeIs(
+                    'academic-years.*',
+                    'semesters.*',
+                    'classrooms.*',
+                    'scout-groups.*',
+                    'coaches.*',
+                    'students.*',
+                    'scout-units.*'
+                )"
                 class="grid"
             >
 
@@ -339,10 +365,17 @@
 
         @canany(['activities.view', 'attendance_sessions.view', 'journals.view', 'announcements.view', 'attendances.self'])
 
-            <flux:sidebar.nav>
+            <flux:sidebar.nav
+                data-school-menu
+                @class([
+                    'opacity-60 [&_*]:cursor-not-allowed' => ! $hasActiveSchool,
+                ])
+            >
 
                 <flux:sidebar.group
                     heading="Penilaian"
+                    expandable
+                    :expanded="request()->routeIs('assessments.*')"
                     class="grid"
                 >
 
@@ -384,10 +417,29 @@
 
                     @endcan
 
+                    @can('activity_assessments.view')
+
+                        <flux:sidebar.item
+                            icon="clipboard-document-check"
+                            :href="route(
+                                'activity-assessments.index'
+                            )"
+                            :current="request()->routeIs(
+                                'activity-assessments.*'
+                            )"
+                            wire:navigate
+                        >
+                            Penilaian Kegiatan
+                        </flux:sidebar.item>
+
+                    @endcan
+
                 </flux:sidebar.group>
 
                 <flux:sidebar.group
                     heading="Laporan"
+                    expandable
+                    :expanded="request()->routeIs('reports.*')"
                     class="grid"
                 >
 
@@ -407,7 +459,6 @@
                         </flux:sidebar.item>
 
                     @endcan
-
 
                     @can('reports.attendance.view')
 
@@ -430,10 +481,24 @@
 
             </flux:sidebar.nav>
             
-            <flux:sidebar.nav>
+            <flux:sidebar.nav
+                data-school-menu
+                @class([
+                    'opacity-60 [&_*]:cursor-not-allowed' => ! $hasActiveSchool,
+                ])
+            >
 
                 <flux:sidebar.group
                     heading="Kegiatan"
+                    expandable
+                    :expanded="request()->routeIs(
+                        'activities.*',
+                        'attendances.index',
+                        'journals.*',
+                        'announcements.index',
+                        'announcements.create',
+                        'announcements.edit'
+                    )"
                     class="grid"
                 >
 
@@ -449,7 +514,6 @@
                         </flux:sidebar.item>
 
                     @endcan
-
 
                     @can('attendance_sessions.view')
 
@@ -508,8 +572,17 @@
 
                 </flux:sidebar.group>
 
+                {{-- =================================================
+                INFORMASI SAYA
+                ================================================== --}}
+
                 <flux:sidebar.group
                     heading="Informasi Saya"
+                    expandable
+                    :expanded="request()->routeIs(
+                        'attendances.self',
+                        'announcements.my'
+                    )"
                     class="grid"
                 >
 
@@ -536,6 +609,22 @@
                         Pengumuman Saya
                     </flux:sidebar.item>
 
+                </flux:sidebar.group>
+
+                {{-- =================================================
+                PENGATURAN
+                ================================================== --}}
+
+                <flux:sidebar.group
+                    heading="Pengaturan"
+                    expandable
+                    :expanded="request()->routeIs(
+                        'notification-settings.*',
+                        'settings.*'
+                    )"
+                    class="grid"
+                >
+
                     <flux:sidebar.item
                         icon="cog-6-tooth"
                         :href="route(
@@ -550,6 +639,40 @@
                     >
                         Pengaturan Notifikasi
                     </flux:sidebar.item>
+
+                    @can('school_documents.view')
+
+                        <flux:sidebar.item
+                            icon="document-text"
+                            :href="route(
+                                'settings.school-documents'
+                            )"
+                            :current="request()->routeIs(
+                                'settings.school-documents'
+                            )"
+                            wire:navigate
+                        >
+                            Dokumen Sekolah
+                        </flux:sidebar.item>
+
+                    @endcan
+
+                    @can('attendance_score_settings.view')
+
+                        <flux:sidebar.item
+                            icon="adjustments-horizontal"
+                            :href="route(
+                                'settings.attendance-scoring'
+                            )"
+                            :current="request()->routeIs(
+                                'settings.attendance-scoring'
+                            )"
+                            wire:navigate
+                        >
+                            Bobot Kehadiran
+                        </flux:sidebar.item>
+
+                    @endcan
 
                 </flux:sidebar.group>
 

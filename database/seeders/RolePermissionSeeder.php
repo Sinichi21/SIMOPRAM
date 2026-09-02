@@ -39,6 +39,13 @@ class RolePermissionSeeder extends Seeder
             'activities.publish',
             'activities.cancel',
 
+            'activity_assessments.view',
+            'activity_assessments.create',
+            'activity_assessments.update',
+            'activity_assessments.score',
+            'activity_assessments.publish',
+            'activity_assessments.delete',
+
             'attendance.view',
             'attendance.open',
             'attendance.close',
@@ -122,6 +129,12 @@ class RolePermissionSeeder extends Seeder
 
             'student_accounts.manage',
             'attendances.self',
+
+            'school_documents.view',
+            'school_documents.manage',
+
+            'attendance_score_settings.view',
+            'attendance_score_settings.manage',
         ];
 
         foreach ($permissions as $permission) {
@@ -174,6 +187,11 @@ class RolePermissionSeeder extends Seeder
             'activities.create',
             'activities.update',
 
+            'activity_assessments.view',
+            'activity_assessments.score',
+            'activity_assessments.create',
+            'activity_assessments.update',
+
             'attendance.view',
             'attendance.open',
             'attendance.close',
@@ -217,6 +235,8 @@ class RolePermissionSeeder extends Seeder
             'assessments.scores.view',
             'assessments.scores.manage',
             'assessments.calculate',
+
+            'attendance_score_settings.view',
         ]);
 
         $student->syncPermissions([

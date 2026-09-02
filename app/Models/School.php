@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class School extends Model
 {
-    use SoftDeletes;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'npsn',
@@ -93,6 +95,20 @@ class School extends Model
     {
         return $this->hasMany(
             ScoutUnit::class
+        );
+    }
+
+    public function documentSetting(): HasOne
+    {
+        return $this->hasOne(
+            SchoolDocumentSetting::class
+        );
+    }
+
+    public function attendanceScoreSetting(): HasOne
+    {
+        return $this->hasOne(
+            AttendanceScoreSetting::class
         );
     }
 }

@@ -21,17 +21,96 @@
 
         @can('reports.export')
 
-            <button
-                wire:click="exportCsv"
-                type="button"
-                class="rounded-lg border
-                       border-zinc-300
-                       px-4 py-2
-                       text-sm font-medium
-                       dark:border-zinc-700"
-            >
-                Export CSV
-            </button>
+            <div class="flex flex-wrap gap-2">
+
+                <button
+                    type="button"
+                    wire:click="exportCsv"
+                    wire:loading.attr="disabled"
+                    wire:target="exportCsv"
+                    class="rounded-lg border
+                        border-zinc-300
+                        px-4 py-2
+                        text-sm font-medium
+                        hover:bg-zinc-50
+                        disabled:opacity-50
+                        dark:border-zinc-700
+                        dark:hover:bg-zinc-800"
+                >
+                    <span
+                        wire:loading.remove
+                        wire:target="exportCsv"
+                    >
+                        Export CSV
+                    </span>
+
+                    <span
+                        wire:loading
+                        wire:target="exportCsv"
+                    >
+                        Memproses...
+                    </span>
+                </button>
+
+
+                <button
+                    type="button"
+                    wire:click="exportExcel"
+                    wire:loading.attr="disabled"
+                    wire:target="exportExcel"
+                    class="rounded-lg border
+                        border-zinc-300
+                        px-4 py-2
+                        text-sm font-medium
+                        hover:bg-zinc-50
+                        disabled:opacity-50
+                        dark:border-zinc-700
+                        dark:hover:bg-zinc-800"
+                >
+                    <span
+                        wire:loading.remove
+                        wire:target="exportExcel"
+                    >
+                        Export Excel
+                    </span>
+
+                    <span
+                        wire:loading
+                        wire:target="exportExcel"
+                    >
+                        Memproses...
+                    </span>
+                </button>
+
+                <a
+                    href="{{ route(
+                        'reports.attendance.pdf',
+                        array_filter([
+                            'academic_year_id' =>
+                                $academicYearId,
+
+                            'semester_id' =>
+                                $semesterId,
+
+                            'classroom_id' =>
+                                $classroomId,
+                        ])
+                    ) }}"
+                    target="_blank"
+                    class="inline-flex items-center
+                        rounded-lg
+                        bg-zinc-900
+                        px-4 py-2
+                        text-sm font-medium
+                        text-white
+                        hover:bg-zinc-800
+                        dark:bg-white
+                        dark:text-zinc-900"
+                >
+                    Export PDF
+                </a>
+
+            </div>
 
         @endcan
 

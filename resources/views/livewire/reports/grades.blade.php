@@ -18,20 +18,113 @@
         </div>
 
         @can('reports.export')
-            @if ($selectedConfig)
+
+            <div
+                class="flex flex-wrap gap-2"
+            >
+
                 <button
-                    wire:click="exportCsv"
                     type="button"
+                    wire:click="exportCsv"
+                    wire:loading.attr="disabled"
+                    wire:target="exportCsv"
                     class="rounded-lg border
-                           border-zinc-300
-                           px-4 py-2
-                           text-sm font-medium
-                           dark:border-zinc-700"
+                        border-zinc-300
+                        px-4 py-2
+                        text-sm font-medium
+                        hover:bg-zinc-50
+                        disabled:opacity-50
+                        dark:border-zinc-700
+                        dark:hover:bg-zinc-800"
                 >
-                    Export CSV
+                    <span
+                        wire:loading.remove
+                        wire:target="exportCsv"
+                    >
+                        Export CSV
+                    </span>
+
+                    <span
+                        wire:loading
+                        wire:target="exportCsv"
+                    >
+                        Memproses...
+                    </span>
                 </button>
-            @endif
+
+
+                <button
+                    type="button"
+                    wire:click="exportExcel"
+                    wire:loading.attr="disabled"
+                    wire:target="exportExcel"
+                    class="rounded-lg border
+                        border-zinc-300
+                        px-4 py-2
+                        text-sm font-medium
+                        hover:bg-zinc-50
+                        disabled:opacity-50
+                        dark:border-zinc-700
+                        dark:hover:bg-zinc-800"
+                >
+                    <span
+                        wire:loading.remove
+                        wire:target="exportExcel"
+                    >
+                        Export Excel
+                    </span>
+
+                    <span
+                        wire:loading
+                        wire:target="exportExcel"
+                    >
+                        Memproses...
+                    </span>
+                </button>
+
+                <a
+                    href="{{ route(
+                        'reports.grades.pdf',
+                        array_filter([
+                            'academic_year_id' =>
+                                $academicYearId,
+
+                            'semester_id' =>
+                                $semesterId,
+
+                            'classroom_id' =>
+                                $classroomId,
+                        ])
+                    ) }}"
+                    target="_blank"
+                    class="inline-flex items-center
+                        rounded-lg
+                        bg-zinc-900
+                        px-4 py-2
+                        text-sm font-medium
+                        text-white
+                        hover:bg-zinc-800
+                        dark:bg-white
+                        dark:text-zinc-900"
+                >
+                    Export PDF
+                </a>
+
+            </div>
+
         @endcan
+
+
+        @error('export')
+
+            <div
+                class="mt-2 text-sm
+                    text-red-600"
+            >
+                {{ $message }}
+            </div>
+
+        @enderror
     </div>
 
 
@@ -179,6 +272,99 @@
                    dark:border-zinc-800
                    dark:bg-zinc-900"
         >
+
+            @if (
+                $syncStatus
+                &&
+                (
+                    $syncStatus['attendance']['is_stale']
+                    ||
+                    $syncStatus['final']['is_stale']
+                )
+            )
+
+                <div
+                    class="rounded-xl border
+                        border-amber-300
+                        bg-amber-50
+                        px-4 py-3
+                        text-sm
+                        text-amber-800
+                        dark:border-amber-900
+                        dark:bg-amber-950/40
+                        dark:text-amber-300"
+                >
+
+                    <div class="font-semibold">
+                        Data nilai belum sinkron
+                    </div>
+
+                    <p class="mt-1">
+                        Sebagian nilai belum menggunakan
+                        konfigurasi penilaian terbaru.
+                        Lakukan sinkronisasi sebelum
+                        mencetak atau mengekspor laporan.
+                    </p>
+
+
+                    <div
+                        class="mt-3 flex flex-wrap gap-4
+                            text-xs"
+                    >
+
+                        <span>
+                            Nilai Kehadiran:
+                            <strong>
+                                {{ number_format(
+                                    $syncStatus[
+                                        'attendance'
+                                    ][
+                                        'stale_count'
+                                    ]
+                                ) }}
+                            </strong>
+                            belum sinkron
+                        </span>
+
+
+                        <span>
+                            Nilai Akhir:
+                            <strong>
+                                {{ number_format(
+                                    $syncStatus[
+                                        'final'
+                                    ][
+                                        'stale_count'
+                                    ]
+                                ) }}
+                            </strong>
+                            belum sinkron
+                        </span>
+
+                    </div>
+
+                </div>
+
+            @endif
+
+
+            @error('export')
+
+                <div
+                    class="rounded-lg border
+                        border-red-200
+                        bg-red-50
+                        px-4 py-3
+                        text-sm
+                        text-red-700
+                        dark:border-red-900
+                        dark:bg-red-950/40
+                        dark:text-red-300"
+                >
+                    {{ $message }}
+                </div>
+
+            @enderror
 
             <table class="w-full text-left text-sm">
 

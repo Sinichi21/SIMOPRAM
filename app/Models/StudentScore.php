@@ -16,6 +16,8 @@ class StudentScore extends Model
         'assessment_factor_id',
         'score',
         'source',
+        'source_version',
+        'source_synced_at',
         'entered_by',
         'notes',
     ];
@@ -23,7 +25,9 @@ class StudentScore extends Model
     protected function casts(): array
     {
         return [
-            'score' => 'decimal:2',
+            'score' => 'float',
+            'source_version' => 'integer',
+            'source_synced_at' => 'datetime',
         ];
     }
 
