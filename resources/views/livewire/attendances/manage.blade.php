@@ -1,0 +1,563 @@
+<div class="space-y-6">
+
+    @if (session('success'))
+        <div
+            class="rounded-lg border border-green-200
+                   bg-green-50 p-4 text-sm text-green-700
+                   dark:border-green-900
+                   dark:bg-green-950
+                   dark:text-green-300"
+        >
+            {{ session('success') }}
+        </div>
+    @endif
+
+
+    <div>
+        <h1 class="text-2xl font-semibold">
+            Absensi
+        </h1>
+
+        <p class="mt-1 text-sm text-zinc-500">
+            {{ $activity->title }}
+        </p>
+    </div>
+
+
+    {{-- FORM SESI --}}
+    @can('attendance_sessions.manage')
+
+        <form
+            wire:submit="saveSession"
+            class="rounded-xl border border-zinc-200
+                   bg-white p-6 shadow-sm
+                   dark:border-zinc-800 dark:bg-zinc-900"
+        >
+
+            <h2 class="mb-5 text-lg font-semibold">
+                {{ $editingSessionId
+                    ? 'Edit Sesi Absensi'
+                    : 'Buat Sesi Absensi'
+                }}
+            </h2>
+
+            <div class="grid gap-4 md:grid-cols-2">
+
+                <div>
+                    <label class="mb-1 block text-sm font-medium">
+                        Nama Sesi
+                    </label>
+
+                    <input
+                        type="text"
+                        wire:model="name"
+                        class="w-full rounded-lg border
+                               border-zinc-300 px-3 py-2
+                               dark:border-zinc-700
+                               dark:bg-zinc-800"
+                    >
+                </div>
+
+
+                <div>
+                    <label class="mb-1 block text-sm font-medium">
+                        Peserta
+                    </label>
+
+                    <select
+                        wire:model.live="participant_scope"
+                        class="w-full rounded-lg border
+                               border-zinc-300 px-3 py-2
+                               dark:border-zinc-700
+                               dark:bg-zinc-800"
+                    >
+                        <option value="all">
+                            Semua Siswa Aktif
+                        </option>
+
+                        <option value="classroom">
+                            Berdasarkan Kelas
+                        </option>
+
+                        <option value="scout_unit">
+                            Berdasarkan Regu / Barung
+                        </option>
+                    </select>
+                </div>
+
+
+                @if ($participant_scope === 'classroom')
+
+                    <div>
+                        <label class="mb-1 block text-sm font-medium">
+                            Kelas
+                        </label>
+
+                        <select
+                            wire:model="participant_scope_id"
+                            class="w-full rounded-lg border
+                                   border-zinc-300 px-3 py-2"
+                        >
+                            <option value="">
+                                -- Pilih Kelas --
+                            </option>
+
+                            @foreach ($classrooms as $classroom)
+                                <option value="{{ $classroom->id }}">
+                                    {{ $classroom->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                @elseif ($participant_scope === 'scout_unit')
+
+                    <div>
+                        <label class="mb-1 block text-sm font-medium">
+                            Regu / Barung
+                        </label>
+
+                        <select
+                            wire:model="participant_scope_id"
+                            class="w-full rounded-lg border
+                                   border-zinc-300 px-3 py-2"
+                        >
+                            <option value="">
+                                -- Pilih --
+                            </option>
+
+                            @foreach ($scoutUnits as $unit)
+                                <option value="{{ $unit->id }}">
+                                    {{ $unit->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                @endif
+
+
+                <div>
+                    <label class="mb-1 block text-sm font-medium">
+                        Dibuka
+                    </label>
+
+                    <input
+                        type="datetime-local"
+                        wire:model="open_at"
+                        class="w-full rounded-lg border
+                               border-zinc-300 px-3 py-2"
+                    >
+                </div>
+
+
+                <div>
+                    <label class="mb-1 block text-sm font-medium">
+                        Batas Terlambat
+                    </label>
+
+                    <input
+                        type="datetime-local"
+                        wire:model="late_after"
+                        class="w-full rounded-lg border
+                               border-zinc-300 px-3 py-2"
+                    >
+                </div>
+
+
+                <div>
+                    <label class="mb-1 block text-sm font-medium">
+                        Ditutup
+                    </label>
+
+                    <input
+                        type="datetime-local"
+                        wire:model="close_at"
+                        class="w-full rounded-lg border
+                               border-zinc-300 px-3 py-2"
+                    >
+                </div>
+
+            </div>
+
+
+            <div class="mt-5 flex flex-wrap gap-5">
+
+                <label class="flex items-center gap-2">
+                    <input
+                        type="checkbox"
+                        wire:model="allow_manual"
+                    >
+
+                    <span class="text-sm">
+                        Absensi Manual
+                    </span>
+                </label>
+
+                <label class="flex items-center gap-2">
+                    <input
+                        type="checkbox"
+                        wire:model.live="allow_self_checkin"
+                    >
+
+                    <span class="text-sm">
+                        Absensi Mandiri GPS
+                    </span>
+                </label>
+
+                <label class="flex items-center gap-2">
+                    <input
+                        type="checkbox"
+                        wire:model="is_active"
+                    >
+
+                    <span class="text-sm">
+                        Sesi Aktif
+                    </span>
+                </label>
+
+            </div>
+
+
+            @if ($allow_self_checkin)
+
+                <div
+                    class="mt-6 grid gap-4
+                           border-t border-zinc-200
+                           pt-6 md:grid-cols-4"
+                >
+
+                    <div>
+                        <label class="mb-1 block text-sm">
+                            Latitude
+                        </label>
+
+                        <input
+                            wire:model="latitude"
+                            type="number"
+                            step="0.0000001"
+                            class="w-full rounded-lg border
+                                   border-zinc-300 px-3 py-2"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="mb-1 block text-sm">
+                            Longitude
+                        </label>
+
+                        <input
+                            wire:model="longitude"
+                            type="number"
+                            step="0.0000001"
+                            class="w-full rounded-lg border
+                                   border-zinc-300 px-3 py-2"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="mb-1 block text-sm">
+                            Radius (meter)
+                        </label>
+
+                        <input
+                            wire:model="radius_m"
+                            type="number"
+                            class="w-full rounded-lg border
+                                   border-zinc-300 px-3 py-2"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="mb-1 block text-sm">
+                            Akurasi Maks. GPS
+                        </label>
+
+                        <input
+                            wire:model="max_accuracy_m"
+                            type="number"
+                            class="w-full rounded-lg border
+                                   border-zinc-300 px-3 py-2"
+                        >
+                    </div>
+
+                </div>
+
+            @endif
+
+
+            <div class="mt-6 flex gap-2">
+
+                <button
+                    type="submit"
+                    class="rounded-lg bg-zinc-900
+                           px-4 py-2 text-sm font-medium
+                           text-white dark:bg-white
+                           dark:text-zinc-900"
+                >
+                    {{ $editingSessionId
+                        ? 'Simpan Perubahan'
+                        : 'Buat Sesi'
+                    }}
+                </button>
+
+                @if ($editingSessionId)
+
+                    <button
+                        type="button"
+                        wire:click="cancelEdit"
+                        class="rounded-lg border
+                               border-zinc-300 px-4 py-2"
+                    >
+                        Batal
+                    </button>
+
+                @endif
+
+            </div>
+
+        </form>
+
+    @endcan
+
+
+    {{-- SESI --}}
+    <div
+        class="rounded-xl border border-zinc-200
+               bg-white p-6 shadow-sm
+               dark:border-zinc-800 dark:bg-zinc-900"
+    >
+
+        <h2 class="mb-4 text-lg font-semibold">
+            Sesi Absensi
+        </h2>
+
+        <div class="space-y-3">
+
+            @forelse ($sessions as $session)
+
+                <div
+                    class="flex flex-col gap-3
+                           rounded-lg border border-zinc-200
+                           p-4 md:flex-row
+                           md:items-center md:justify-between"
+                >
+
+                    <div>
+                        <div class="font-semibold">
+                            {{ $session->name }}
+                        </div>
+
+                        <div class="mt-1 text-sm text-zinc-500">
+                            {{ $session->open_at->format('d-m-Y H:i') }}
+                            -
+                            {{ $session->close_at->format('H:i') }}
+
+                            ·
+
+                            {{ $session->participants_count }}
+                            peserta
+                        </div>
+                    </div>
+
+
+                    <div class="flex gap-2">
+
+                        <button
+                            type="button"
+                            wire:click="selectSession({{ $session->id }})"
+                            class="rounded-lg bg-zinc-900
+                                   px-3 py-2 text-sm text-white"
+                        >
+                            Kelola Kehadiran
+                        </button>
+
+                        @can('attendance_sessions.manage')
+
+                            <button
+                                type="button"
+                                wire:click="editSession({{ $session->id }})"
+                                class="rounded-lg border
+                                       border-zinc-300 px-3 py-2 text-sm"
+                            >
+                                Edit
+                            </button>
+
+                        @endcan
+
+                    </div>
+
+                </div>
+
+            @empty
+
+                <p class="text-sm text-zinc-500">
+                    Belum ada sesi absensi.
+                </p>
+
+            @endforelse
+
+        </div>
+
+    </div>
+
+
+    {{-- ABSENSI MANUAL --}}
+    @if ($selectedSession)
+
+        <div
+            class="rounded-xl border border-zinc-200
+                   bg-white p-6 shadow-sm
+                   dark:border-zinc-800 dark:bg-zinc-900"
+        >
+
+            <div class="mb-5">
+                <h2 class="text-lg font-semibold">
+                    Kehadiran:
+                    {{ $selectedSession->name }}
+                </h2>
+
+                <p class="mt-1 text-sm text-zinc-500">
+                    Klik status untuk mencatat
+                    atau memperbarui kehadiran.
+                </p>
+            </div>
+
+
+            <input
+                type="search"
+                wire:model.live.debounce.300ms="participantSearch"
+                placeholder="Cari siswa..."
+                class="mb-4 rounded-lg border
+                       border-zinc-300 px-3 py-2"
+            >
+
+
+            <div class="overflow-x-auto">
+
+                <table class="w-full text-left text-sm">
+
+                    <thead>
+                        <tr class="border-b text-zinc-500">
+                            <th class="p-3">Siswa</th>
+                            <th class="p-3">Status</th>
+                            <th class="p-3">Waktu</th>
+                            <th class="p-3">Aksi</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        @foreach ($participants as $participant)
+
+                            @php
+                                $attendance =
+                                    $attendanceByStudent->get(
+                                        $participant->student_id
+                                    );
+                            @endphp
+
+                            <tr class="border-b">
+
+                                <td class="p-3">
+                                    <div class="font-medium">
+                                        {{ $participant->student->name }}
+                                    </div>
+
+                                    <div class="text-xs text-zinc-500">
+                                        NIS:
+                                        {{ $participant->student->nis }}
+                                    </div>
+                                </td>
+
+
+                                <td class="p-3">
+                                    {{ $attendance?->status ?? '-' }}
+                                </td>
+
+
+                                <td class="p-3">
+                                    {{ $attendance?->checked_in_at
+                                        ?->format('H:i:s')
+                                        ?? '-'
+                                    }}
+                                </td>
+
+
+                                <td class="p-3">
+
+                                    @can('attendances.manual')
+
+                                        <div class="flex flex-wrap gap-1">
+
+                                            <button
+                                                wire:click="mark(
+                                                    {{ $participant->student_id }},
+                                                    'present'
+                                                )"
+                                                class="rounded border px-2 py-1"
+                                            >
+                                                Hadir
+                                            </button>
+
+                                            <button
+                                                wire:click="mark(
+                                                    {{ $participant->student_id }},
+                                                    'late'
+                                                )"
+                                                class="rounded border px-2 py-1"
+                                            >
+                                                Terlambat
+                                            </button>
+
+                                            <button
+                                                wire:click="mark(
+                                                    {{ $participant->student_id }},
+                                                    'sick'
+                                                )"
+                                                class="rounded border px-2 py-1"
+                                            >
+                                                Sakit
+                                            </button>
+
+                                            <button
+                                                wire:click="mark(
+                                                    {{ $participant->student_id }},
+                                                    'excused'
+                                                )"
+                                                class="rounded border px-2 py-1"
+                                            >
+                                                Izin
+                                            </button>
+
+                                            <button
+                                                wire:click="mark(
+                                                    {{ $participant->student_id }},
+                                                    'absent'
+                                                )"
+                                                class="rounded border px-2 py-1"
+                                            >
+                                                Alpa
+                                            </button>
+
+                                        </div>
+
+                                    @endcan
+
+                                </td>
+
+                            </tr>
+
+                        @endforeach
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    @endif
+
+</div>
