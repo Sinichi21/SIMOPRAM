@@ -451,6 +451,40 @@
 
                     @endcan
 
+                    @can('assessment_audit.view')
+
+                        <flux:sidebar.item
+                            icon="document-magnifying-glass"
+                            :href="route(
+                                'assessment-audit.index'
+                            )"
+                            :current="request()->routeIs(
+                                'assessment-audit.*'
+                            )"
+                            wire:navigate
+                        >
+                            Audit Penilaian
+                        </flux:sidebar.item>
+
+                    @endcan
+
+                    @can('semester_closures.view')
+
+                        <flux:sidebar.item
+                            icon="lock-closed"
+                            :href="route(
+                                'semester-closures.index'
+                            )"
+                            :current="request()->routeIs(
+                                'semester-closures.*'
+                            )"
+                            wire:navigate
+                        >
+                            Kunci Semester
+                        </flux:sidebar.item>
+
+                    @endcan
+
                 </flux:sidebar.group>
 
                 <flux:sidebar.group

@@ -111,6 +111,10 @@ class ActivityAssessmentService
     public function prepareTargets(
         ActivityAssessment $assessment
     ): int {
+        $this->assertPeriodOpen(
+            $assessment
+        );
+
         $assessment->loadMissing(
             'activity'
         );
@@ -488,6 +492,10 @@ class ActivityAssessmentService
     public function publish(
         ActivityAssessment $assessment
     ): void {
+        $this->assertPeriodOpen(
+            $assessment
+        );
+
         DB::transaction(
             function () use (
                 $assessment
@@ -510,6 +518,43 @@ class ActivityAssessmentService
             }
         );
 
+        app(
+            AssessmentAuditService::class
+        )
+            ->record(
+                action: 'activity_assessment.published',
+
+                subject: $assessment,
+
+                description: "Form penilaian {$assessment->title} dipublikasikan.",
+
+                oldValues: [
+                    'status' => 'draft',
+                ],
+
+                newValues: [
+                    'status' => 'published',
+
+                    'published_at' => $assessment
+                        ->fresh()
+                        ->published_at
+                        ?->toISOString(),
+                ],
+
+                metadata: [
+                    'activity_id' => $assessment
+                        ->activity_id,
+
+                    'assessment_factor_id' => $assessment
+                        ->assessment_factor_id,
+
+                    'mode' => $assessment
+                        ->mode,
+                ],
+
+                module: 'activity_assessment'
+            );
+
         $this->syncToStudentScores(
             $assessment->fresh()
         );
@@ -524,6 +569,11 @@ class ActivityAssessmentService
     public function reopen(
         ActivityAssessment $assessment
     ): void {
+
+        $this->assertPeriodOpen(
+                $assessment
+            );
+
         $assessment->update([
             'status' => 'draft',
 
@@ -535,6 +585,43 @@ class ActivityAssessmentService
         $this->syncToStudentScores(
             $assessment->fresh()
         );
+
+        app(
+            AssessmentAuditService::class
+        )
+            ->record(
+                action: 'activity_assessment.reopened',
+
+                subject: $assessment,
+
+                description: "Form penilaian {$assessment->title} dibuka kembali.",
+
+                oldValues: [
+                    'status' => 'published',
+
+                    'published_at' => $assessment
+                        ->fresh()
+                        ->published_at
+                        ?->toISOString(),
+                ],
+
+                newValues: [
+                    'status' => 'draft',
+                ],
+
+                metadata: [
+                    'activity_id' => $assessment
+                        ->activity_id,
+
+                    'assessment_factor_id' => $assessment
+                        ->assessment_factor_id,
+
+                    'mode' => $assessment
+                        ->mode,
+                ],
+
+                module: 'activity_assessment'
+            );
     }
 
     /*
@@ -552,6 +639,32 @@ class ActivityAssessmentService
             'assessment.criteria',
         ]);
 
+        $target->loadMissing(
+            'scores'
+        );
+
+        $oldTargetValues = [
+            'total_score' => (float) $target
+                ->total_score,
+
+            'normalized_score' => (float) $target
+                ->normalized_score,
+
+            'notes' => $target
+                ->notes,
+
+            'scores' => $target
+                ->scores
+                ->mapWithKeys(
+                    fn ($score): array => [
+                        $score
+                            ->activity_assessment_criterion_id => (float) $score
+                            ->score,
+                    ]
+                )
+                ->all(),
+        ];
+
         $assessment =
             $target->assessment;
 
@@ -560,6 +673,10 @@ class ActivityAssessmentService
                 'scores' => 'Form penilaian tidak ditemukan.',
             ]);
         }
+
+        $this->assertPeriodOpen(
+            $assessment
+        );
 
         if (
             ! $assessment->isPublished()
@@ -721,10 +838,89 @@ class ActivityAssessmentService
             );
         }
 
-        return $target->fresh([
-            'scores',
-            'members.student',
-        ]);
+        $freshTarget =
+            $target->fresh([
+                'scores',
+                'student',
+                'scoutUnit',
+                'members.student',
+            ]);
+
+        $newTargetValues = [
+            'total_score' => (float) $freshTarget
+                ->total_score,
+
+            'normalized_score' => (float) $freshTarget
+                ->normalized_score,
+
+            'notes' => $freshTarget
+                ->notes,
+
+            'scores' => $freshTarget
+                ->scores
+                ->mapWithKeys(
+                    fn ($score): array => [
+                        $score
+                            ->activity_assessment_criterion_id => (float) $score
+                            ->score,
+                    ]
+                )
+                ->all(),
+        ];
+
+        $targetName =
+            $assessment->mode
+                === 'individual'
+                    ? (
+                        $freshTarget
+                            ->student
+                            ?->name
+                        ?? 'Siswa'
+                    )
+                    : (
+                        $freshTarget
+                            ->scoutUnit
+                            ?->name
+                        ?? 'Regu'
+                    );
+
+        app(
+            AssessmentAuditService::class
+        )
+            ->record(
+                action: 'activity_score.updated',
+
+                subject: $freshTarget,
+
+                description: "Nilai {$targetName} pada {$assessment->title} diperbarui.",
+
+                oldValues: $oldTargetValues,
+
+                newValues: $newTargetValues,
+
+                metadata: [
+                    'activity_assessment_id' => $assessment->id,
+
+                    'activity_id' => $assessment
+                        ->activity_id,
+
+                    'assessment_factor_id' => $assessment
+                        ->assessment_factor_id,
+
+                    'mode' => $assessment
+                        ->mode,
+
+                    'student_id' => $freshTarget
+                        ->student_id,
+
+                    'scout_unit_id' => $freshTarget
+                        ->scout_unit_id,
+                ],
+
+                module: 'activity_score'
+            );
+
+        return $freshTarget;
     }
 
     /*
@@ -1084,5 +1280,46 @@ class ActivityAssessmentService
         );
 
         return $updated;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Pastikan Periode Belum Dikunci
+    |--------------------------------------------------------------------------
+    */
+
+    protected function assertPeriodOpen(
+        ActivityAssessment $assessment
+    ): void {
+        $assessment->loadMissing(
+            'activity'
+        );
+
+
+        $activity =
+            $assessment->activity;
+
+
+        if (
+            ! $activity
+            ||
+            ! $activity->academic_year_id
+            ||
+            ! $activity->semester_id
+        ) {
+            return;
+        }
+
+
+        app(
+            SemesterClosureService::class
+        )
+            ->assertOpen(
+                (int) $activity
+                    ->academic_year_id,
+
+                (int) $activity
+                    ->semester_id
+            );
     }
 }

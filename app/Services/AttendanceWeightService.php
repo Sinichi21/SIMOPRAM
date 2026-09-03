@@ -12,7 +12,6 @@ class AttendanceWeightService
             ->first();
     }
 
-
     /*
     |--------------------------------------------------------------------------
     | Versi konfigurasi
@@ -31,7 +30,6 @@ class AttendanceWeightService
         );
     }
 
-
     public function percentages(): array
     {
         $setting =
@@ -44,7 +42,6 @@ class AttendanceWeightService
         return $setting->percentages();
     }
 
-
     public function factors(): array
     {
         return collect(
@@ -53,12 +50,10 @@ class AttendanceWeightService
             ->map(
                 fn (
                     float $percentage
-                ): float =>
-                    $percentage / 100
+                ): float => $percentage / 100
             )
             ->all();
     }
-
 
     public function factorForStatus(
         string $status
@@ -69,7 +64,6 @@ class AttendanceWeightService
             ] ?? 0
         );
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -89,11 +83,15 @@ class AttendanceWeightService
                 $percentages
             );
 
+        $oldPercentages =
+            $this->percentages();
+
+        $oldVersion =
+            $this->version();
 
         $setting =
             AttendanceScoreSetting::query()
                 ->first();
-
 
         /*
         |--------------------------------------------------------------------------
@@ -111,9 +109,8 @@ class AttendanceWeightService
                     $percentages
                 );
 
-
             $setting =
-                new AttendanceScoreSetting();
+                new AttendanceScoreSetting;
 
             /*
             |--------------------------------------------------------------------------
@@ -139,7 +136,6 @@ class AttendanceWeightService
                     $percentages
                 );
 
-
             if ($changed) {
                 $setting->version =
                     max(
@@ -149,41 +145,68 @@ class AttendanceWeightService
             }
         }
 
-
         $setting->fill([
-            'present_weight' =>
-                $percentages['present'],
+            'present_weight' => $percentages['present'],
 
-            'late_weight' =>
-                $percentages['late'],
+            'late_weight' => $percentages['late'],
 
-            'sick_weight' =>
-                $percentages['sick'],
+            'sick_weight' => $percentages['sick'],
 
-            'excused_weight' =>
-                $percentages['excused'],
+            'excused_weight' => $percentages['excused'],
 
-            'absent_weight' =>
-                $percentages['absent'],
+            'absent_weight' => $percentages['absent'],
 
-            'updated_by' =>
-                $updatedBy,
+            'updated_by' => $updatedBy,
         ]);
-
 
         $setting->save();
 
+        $newPercentages =
+            $setting->percentages();
+
+        $newVersion =
+            (int) $setting->version;
+
+        if (
+            $oldPercentages
+            !== $newPercentages
+            ||
+            $oldVersion !== $newVersion
+        ) {
+            app(
+                AssessmentAuditService::class
+            )
+                ->record(
+                    action: 'attendance_weight.updated',
+
+                    subject: $setting,
+
+                    description: 'Bobot kehadiran diperbarui.',
+
+                    oldValues: [
+                        'weights' => $oldPercentages,
+
+                        'version' => $oldVersion,
+                    ],
+
+                    newValues: [
+                        'weights' => $newPercentages,
+
+                        'version' => $newVersion,
+                    ],
+
+                    module: 'attendance'
+                );
+        }
 
         return $setting;
     }
-
 
     protected function normalize(
         array $weights
     ): array {
         $defaults =
             AttendanceScoreSetting::defaultWeights();
-
 
         return collect(
             array_keys($defaults)
@@ -201,7 +224,6 @@ class AttendanceWeightService
                             ?? $defaults[$status]
                         );
 
-
                     $value =
                         min(
                             100,
@@ -211,27 +233,23 @@ class AttendanceWeightService
                             )
                         );
 
-
                     return [
-                        $status =>
-                            round(
-                                $value,
-                                2
-                            ),
+                        $status => round(
+                            $value,
+                            2
+                        ),
                     ];
                 }
             )
             ->all();
     }
 
-
     protected function weightsAreDifferent(
         array $oldWeights,
         array $newWeights
     ): bool {
         foreach (
-            AttendanceScoreSetting::defaultWeights()
-            as $status => $default
+            AttendanceScoreSetting::defaultWeights() as $status => $default
         ) {
             $old =
                 (float) (
@@ -245,7 +263,6 @@ class AttendanceWeightService
                     ?? $default
                 );
 
-
             if (
                 abs(
                     $old - $new
@@ -254,7 +271,6 @@ class AttendanceWeightService
                 return true;
             }
         }
-
 
         return false;
     }

@@ -331,6 +331,11 @@ class AssessmentService
                             AttendanceWeightService::class
                         )->version(),
 
+                        'assessment_config_signature' =>
+                            $this->configurationSignature(
+                                $config
+                            ),
+
                         'calculated_at' => now(),
 
                         'calculated_by' => auth()->id(),
@@ -631,6 +636,11 @@ class AssessmentService
             'items.factor',
         ]);
 
+        $currentConfigSignature =
+            $this->configurationSignature(
+                $config
+            );
+
         /*
         |--------------------------------------------------------------------------
         | Siswa yang termasuk periode konfigurasi
@@ -693,6 +703,12 @@ class AssessmentService
                 'attendance_version_stale_count' => 0,
 
                 'score_changed_count' => 0,
+
+                'configuration_signature' =>
+                    $currentConfigSignature,
+
+                'configuration_changed_count' =>
+                    0,
 
                 'is_stale' => false,
             ];
@@ -769,6 +785,8 @@ class AssessmentService
 
         $scoreChangedCount = 0;
 
+        $configurationChangedCount = 0;
+
         foreach (
             $studentIds as $studentId
         ) {
@@ -793,6 +811,28 @@ class AssessmentService
 
             $studentIsStale =
                 false;
+
+            /*
+            |--------------------------------------------------------------------------
+            | Konfigurasi Penilaian Berubah
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                ! $finalGrade
+                    ->assessment_config_signature
+                ||
+                ! hash_equals(
+                    $currentConfigSignature,
+                    (string) $finalGrade
+                        ->assessment_config_signature
+                )
+            ) {
+                $studentIsStale =
+                    true;
+
+                $configurationChangedCount++;
+            }
 
             /*
             |--------------------------------------------------------------------------
@@ -898,6 +938,12 @@ class AssessmentService
 
             'score_changed_count' => $scoreChangedCount,
 
+            'configuration_changed_count' =>
+                $configurationChangedCount,
+
+            'configuration_signature' =>
+                $currentConfigSignature,
+
             'is_stale' => $staleCount > 0,
         ];
     }
@@ -945,40 +991,112 @@ class AssessmentService
     public function syncAllScores(
         AssessmentConfig $config
     ): array {
-        return DB::transaction(
-            function () use (
+
+        app(
+            SemesterClosureService::class
+        )
+            ->assertOpen(
+                $config->academic_year_id,
+                $config->semester_id
+            );
+
+        $beforeAttendance =
+            $this->attendanceSyncStatus(
                 $config
-            ): array {
+            );
 
-                /*
-                |--------------------------------------------------------------------------
-                | 1. Sinkronkan nilai kehadiran
-                |--------------------------------------------------------------------------
-                */
+        $beforeFinal =
+            $this->finalGradeSyncStatus(
+                $config
+            );
 
-                $attendanceUpdated =
-                    $this->syncAttendanceScores(
-                        $config
-                    );
+        $result =
+            DB::transaction(
+                function () use (
+                    $config
+                ): array {
+                    $attendanceUpdated =
+                        $this->syncAttendanceScores(
+                            $config
+                        );
 
-                /*
-                |--------------------------------------------------------------------------
-                | 2. Hitung ulang nilai akhir
-                |--------------------------------------------------------------------------
-                */
+                    $finalGradesUpdated =
+                        $this->syncFinalGrades(
+                            $config
+                        );
 
-                $finalGradesUpdated =
-                    $this->syncFinalGrades(
-                        $config
-                    );
+                    return [
+                        'attendance_scores' => $attendanceUpdated,
 
-                return [
-                    'attendance_scores' => $attendanceUpdated,
+                        'final_grades' => $finalGradesUpdated,
+                    ];
+                }
+            );
 
-                    'final_grades' => $finalGradesUpdated,
-                ];
-            }
-        );
+        $afterAttendance =
+            $this->attendanceSyncStatus(
+                $config
+            );
+
+        $afterFinal =
+            $this->finalGradeSyncStatus(
+                $config
+            );
+
+        app(
+            AssessmentAuditService::class
+        )
+            ->record(
+                action: 'assessment.synchronized',
+
+                subject: $config,
+
+                description: 'Data penilaian disinkronkan.',
+
+                oldValues: [
+                    'attendance_stale' => $beforeAttendance[
+                            'stale_count'
+                        ]
+                        ?? 0,
+
+                    'final_stale' => $beforeFinal[
+                            'stale_count'
+                        ]
+                        ?? 0,
+                ],
+
+                newValues: [
+                    'attendance_stale' => $afterAttendance[
+                            'stale_count'
+                        ]
+                        ?? 0,
+
+                    'final_stale' => $afterFinal[
+                            'stale_count'
+                        ]
+                        ?? 0,
+                ],
+
+                metadata: [
+                    'attendance_scores_updated' => $result[
+                            'attendance_scores'
+                        ],
+
+                    'final_grades_updated' => $result[
+                            'final_grades'
+                        ],
+
+                    'academic_year_id' => $config
+                        ->academic_year_id,
+
+                    'semester_id' => $config
+                        ->semester_id,
+                ],
+
+                module: 'synchronization'
+            );
+
+        return $result;
     }
 
     public function invalidateFinalGrades(
@@ -1025,5 +1143,112 @@ class AssessmentService
 
             'calculated_by' => null,
         ]);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Assessment Configuration Signature
+    |--------------------------------------------------------------------------
+    |
+    | Signature digunakan untuk mendeteksi perubahan struktur konfigurasi
+    | penilaian tanpa bergantung pada version counter manual.
+    |
+    */
+
+    public function configurationSignature(
+        AssessmentConfig $config
+    ): string {
+        $config->loadMissing([
+            'items.factor',
+        ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Urutkan berdasarkan assessment_factor_id agar signature deterministik.
+        |--------------------------------------------------------------------------
+        */
+
+        $items =
+            $config
+                ->items
+                ->sortBy(
+                    fn ($item): int =>
+                        (int) $item
+                            ->assessment_factor_id
+                )
+                ->values()
+                ->map(
+                    function ($item): array {
+                        return [
+                            'assessment_factor_id' =>
+                                (int) $item
+                                    ->assessment_factor_id,
+
+                            /*
+                            |--------------------------------------------------------------------------
+                            | Normalisasi menjadi string agar:
+                            |
+                            | 20
+                            | 20.0
+                            | 20.00
+                            |
+                            | menghasilkan representasi yang konsisten.
+                            |--------------------------------------------------------------------------
+                            */
+
+                            'weight' =>
+                                number_format(
+                                    (float) $item
+                                        ->weight,
+                                    4,
+                                    '.',
+                                    ''
+                                ),
+
+                            'source_type' =>
+                                $item
+                                    ->factor
+                                    ?->source_type,
+                        ];
+                    }
+                )
+                ->all();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Hanya field yang berpengaruh terhadap perhitungan.
+        |--------------------------------------------------------------------------
+        */
+
+        $payload = [
+            'assessment_config_id' =>
+                (int) $config->id,
+
+            'academic_year_id' =>
+                (int) $config
+                    ->academic_year_id,
+
+            'semester_id' =>
+                (int) $config
+                    ->semester_id,
+
+            'items' =>
+                $items,
+        ];
+
+
+        return hash(
+            'sha256',
+            json_encode(
+                $payload,
+                JSON_UNESCAPED_UNICODE
+                |
+                JSON_UNESCAPED_SLASHES
+                |
+                JSON_PRESERVE_ZERO_FRACTION
+            )
+        );
     }
 }

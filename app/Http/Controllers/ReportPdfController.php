@@ -3,22 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\AcademicYear;
-use App\Models\AssessmentConfig;
 use App\Models\Attendance as AttendanceModel;
 use App\Models\AttendanceSession;
 use App\Models\AttendanceSessionParticipant;
 use App\Models\Classroom;
-use App\Models\FinalGrade;
 use App\Models\SchoolDocumentSetting;
 use App\Models\Semester;
 use App\Models\Student;
-use App\Models\StudentScore;
+use App\Services\GradeReportService;
+use App\Services\ReportVerificationService;
 use App\Support\SchoolContext;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
-use App\Services\AssessmentService;
 
 class ReportPdfController extends Controller
 {
@@ -30,10 +28,14 @@ class ReportPdfController extends Controller
 
     public function grades(
         Request $request,
-        SchoolContext $schoolContext
+        SchoolContext $schoolContext,
+        GradeReportService $gradeReportService,
+        ReportVerificationService $reportVerificationService
     ): Response {
         abort_unless(
-            $request->user()?->can('reports.export'),
+            $request->user()?->can(
+                'reports.export'
+            ),
             403
         );
 
@@ -42,6 +44,63 @@ class ReportPdfController extends Controller
             409,
             'Pilih sekolah aktif terlebih dahulu.'
         );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validasi Query Parameter
+        |--------------------------------------------------------------------------
+        |
+        | Controller mendukung dua bentuk nama parameter agar tetap kompatibel
+        | dengan link laporan lama maupun link baru:
+        |
+        | academic_year_id / academic_year
+        | semester_id      / semester
+        | classroom_id     / classroom
+        | closure_id       / closure
+        |
+        */
+
+        $request->validate([
+            'academic_year_id' => [
+                'nullable',
+                'integer',
+            ],
+
+            'academic_year' => [
+                'nullable',
+                'integer',
+            ],
+
+            'semester_id' => [
+                'nullable',
+                'integer',
+            ],
+
+            'semester' => [
+                'nullable',
+                'integer',
+            ],
+
+            'classroom_id' => [
+                'nullable',
+                'integer',
+            ],
+
+            'classroom' => [
+                'nullable',
+                'integer',
+            ],
+
+            'closure_id' => [
+                'nullable',
+                'integer',
+            ],
+
+            'closure' => [
+                'nullable',
+                'integer',
+            ],
+        ]);
 
         $school =
             $schoolContext->school();
@@ -69,182 +128,78 @@ class ReportPdfController extends Controller
                 $academicYear
             );
 
+        abort_unless(
+            $semester,
+            422,
+            'Semester belum dipilih.'
+        );
+
         $classroom =
             $this->resolveClassroom(
                 $request
             );
 
-        /*
-        |--------------------------------------------------------------------------
-        | Konfigurasi Penilaian
-        |--------------------------------------------------------------------------
-        */
-
-        $selectedConfig =
-            AssessmentConfig::query()
-                ->with([
-                    'items' => function ($query): void {
-                        $query->orderBy(
-                            'sort_order'
-                        );
-                    },
-
-                    'items.factor',
-                ])
-                ->where(
-                    'academic_year_id',
-                    $academicYear->id
-                )
-                ->when(
-                    $semester,
-                    fn ($query) => $query->where(
-                        'semester_id',
-                        $semester->id
-                    ),
-                    fn ($query) => $query->whereNull(
-                        'semester_id'
-                    )
-                )
-                ->where(
-                    'is_active',
-                    true
-                )
-                ->first();
-
-        abort_unless(
-            $selectedConfig,
-            422,
-            'Belum ada konfigurasi penilaian aktif untuk periode yang dipilih.'
-        );
-
-        $assessmentService =
-            app(
-                AssessmentService::class
+        $closureId =
+            $this->resolveNullableIntegerInput(
+                $request,
+                'closure_id',
+                'closure'
             );
 
-
-        $attendanceSync =
-            $assessmentService
-                ->attendanceSyncStatus(
-                    $selectedConfig
-                );
-
-
-        $finalSync =
-            $assessmentService
-                ->finalGradeSyncStatus(
-                    $selectedConfig
-                );
-
-
-        abort_if(
-            $attendanceSync['is_stale']
-            ||
-            $finalSync['is_stale'],
-            409,
-            'Nilai belum sinkron. Hitung ulang nilai sebelum mencetak laporan.'
-        );
-
         /*
         |--------------------------------------------------------------------------
-        | Siswa
+        | Sumber Data Rekap Nilai
         |--------------------------------------------------------------------------
+        |
+        | Semester terbuka:
+        |   StudentScore + FinalGrade
+        |
+        | Semester terkunci / closure dipilih:
+        |   SemesterGradeSnapshot
+        |
+        | Seluruh pemilihan sumber dilakukan oleh GradeReportService.
+        |
         */
 
-        $students =
-            Student::query()
-                ->where(
-                    'status',
-                    'active'
-                )
-                ->whereHas(
-                    'enrollments',
-                    function ($query) use (
-                        $academicYear,
+        $data =
+            $gradeReportService
+                ->getData(
+                    academicYearId:
+                        (int) $academicYear->id,
+
+                    semesterId:
+                        (int) $semester->id,
+
+                    classroomId:
                         $classroom
-                    ): void {
-                        $query->where(
-                            'academic_year_id',
-                            $academicYear->id
-                        );
+                            ? (int) $classroom->id
+                            : null,
 
-                        if ($classroom) {
-                            $query->where(
-                                'classroom_id',
-                                $classroom->id
-                            );
-                        }
-                    }
-                )
-                ->with([
-                    'enrollments' => function ($query) use (
-                        $academicYear
-                    ): void {
-                        $query
-                            ->where(
-                                'academic_year_id',
-                                $academicYear->id
-                            )
-                            ->with(
-                                'classroom'
-                            );
-                    },
-                ])
-                ->orderBy(
-                    'name'
-                )
-                ->get();
+                    search:
+                        '',
 
-        $studentIds =
-            $students->pluck(
-                'id'
+                    closureId:
+                        $closureId
+                );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Proteksi Export
+        |--------------------------------------------------------------------------
+        |
+        | Data live hanya dapat diekspor ketika sudah sinkron.
+        | Snapshot resmi dapat diekspor tanpa pemeriksaan stale.
+        |
+        */
+
+        $gradeReportService
+            ->assertExportable(
+                $data
             );
 
         /*
         |--------------------------------------------------------------------------
-        | Nilai Faktor
-        |--------------------------------------------------------------------------
-        */
-
-        $scores =
-            StudentScore::query()
-                ->where(
-                    'assessment_config_id',
-                    $selectedConfig->id
-                )
-                ->whereIn(
-                    'student_id',
-                    $studentIds
-                )
-                ->get()
-                ->groupBy(
-                    'student_id'
-                );
-
-        /*
-        |--------------------------------------------------------------------------
-        | Nilai Akhir
-        |--------------------------------------------------------------------------
-        */
-
-        $finalGrades =
-            FinalGrade::query()
-                ->where(
-                    'assessment_config_id',
-                    $selectedConfig->id
-                )
-                ->whereIn(
-                    'student_id',
-                    $studentIds
-                )
-                ->get()
-                ->keyBy(
-                    'student_id'
-                );
-
-        /*
-        |--------------------------------------------------------------------------
-        | Generate PDF
+        | Dokumen Sekolah
         |--------------------------------------------------------------------------
         */
 
@@ -255,44 +210,162 @@ class ReportPdfController extends Controller
                 )
                 ->first();
 
+        /*
+        |--------------------------------------------------------------------------
+        | Metadata Laporan
+        |--------------------------------------------------------------------------
+        */
+
+        $reportSource =
+            $data[
+                'reportSource'
+            ]
+            ?? 'live';
+
+        $selectedClosure =
+            $data[
+                'selectedClosure'
+            ]
+            ?? null;
+
+        /*
+        |--------------------------------------------------------------------------
+        | QR Verifikasi Dokumen
+        |--------------------------------------------------------------------------
+        |
+        | Hanya snapshot resmi yang memperoleh kode verifikasi publik.
+        | Setiap download PDF menghasilkan satu kode dokumen yang berbeda.
+        |
+        */
+
+        $verification =
+            null;
+
+        $verificationUrl =
+            null;
+
+        $verificationQrDataUri =
+            null;
+
+        if (
+            $reportSource
+                === 'snapshot'
+            &&
+            $selectedClosure
+        ) {
+            $verification =
+                $reportVerificationService
+                    ->issue(
+                        closure:
+                            $selectedClosure,
+
+                        documentType:
+                            'grades',
+
+                        issuedBy:
+                            $request
+                                ->user()
+                                ?->id
+                    );
+
+            $verificationUrl =
+                $reportVerificationService
+                    ->publicUrl(
+                        $verification
+                    );
+
+            $verificationQrDataUri =
+                $reportVerificationService
+                    ->qrDataUri(
+                        $verification
+                    );
+        }
+
+        $pdfData =
+            array_merge(
+                $data,
+                [
+                    'school' =>
+                        $school,
+
+                    'academicYear' =>
+                        $academicYear,
+
+                    'semester' =>
+                        $semester,
+
+                    'classroom' =>
+                        $classroom,
+
+                    'documentSetting' =>
+                        $documentSetting,
+
+                    'reportGeneratedAt' =>
+                        now(),
+
+                    'reportSourceLabel' =>
+                        $reportSource
+                            === 'snapshot'
+                                ? 'Snapshot Resmi'
+                                : 'Data Berjalan',
+
+                    'verification' =>
+                        $verification,
+
+                    'verificationUrl' =>
+                        $verificationUrl,
+
+                    'verificationQrDataUri' =>
+                        $verificationQrDataUri,
+                ]
+            );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Generate PDF
+        |--------------------------------------------------------------------------
+        |
+        | Tetap menggunakan regular controller response agar binary PDF tidak
+        | dikembalikan melalui Livewire.
+        |
+        */
+
         $pdf =
             Pdf::loadView(
                 'reports.pdf.grades',
-                [
-                    'school' => $school,
-
-                    'academicYear' => $academicYear,
-
-                    'semester' => $semester,
-
-                    'classroom' => $classroom,
-
-                    'selectedConfig' => $selectedConfig,
-
-                    'students' => $students,
-
-                    'scores' => $scores,
-
-                    'finalGrades' => $finalGrades,
-
-                    'documentSetting' => $documentSetting,
-                ]
+                $pdfData
             )
                 ->setPaper(
                     'a4',
                     'landscape'
                 );
 
+        /*
+        |--------------------------------------------------------------------------
+        | Nama File
+        |--------------------------------------------------------------------------
+        */
+
+        $versionSuffix =
+            $reportSource
+                === 'snapshot'
+            &&
+            $selectedClosure
+                ? '-v'
+                    . $selectedClosure->version
+                : '';
+
         $filename =
             'rekap-nilai-'
-            .Str::slug(
+            . Str::slug(
                 $school->name
             )
-            .'-'
-            .now()->format(
+            . $versionSuffix
+            . '-'
+            . now()->format(
                 'Ymd-His'
             )
-            .'.pdf';
+            . '.pdf';
 
         return $pdf->download(
             $filename
@@ -677,16 +750,17 @@ class ReportPdfController extends Controller
     protected function resolveAcademicYear(
         Request $request
     ): ?AcademicYear {
-        if (
-            $request->filled(
-                'academic_year_id'
-            )
-        ) {
+        $academicYearId =
+            $this->resolveNullableIntegerInput(
+                $request,
+                'academic_year_id',
+                'academic_year'
+            );
+
+        if ($academicYearId) {
             return AcademicYear::query()
                 ->findOrFail(
-                    (int) $request->input(
-                        'academic_year_id'
-                    )
+                    $academicYearId
                 );
         }
 
@@ -708,20 +782,21 @@ class ReportPdfController extends Controller
         Request $request,
         AcademicYear $academicYear
     ): ?Semester {
-        if (
-            $request->filled(
-                'semester_id'
-            )
-        ) {
+        $semesterId =
+            $this->resolveNullableIntegerInput(
+                $request,
+                'semester_id',
+                'semester'
+            );
+
+        if ($semesterId) {
             return Semester::query()
                 ->where(
                     'academic_year_id',
                     $academicYear->id
                 )
                 ->findOrFail(
-                    (int) $request->input(
-                        'semester_id'
-                    )
+                    $semesterId
                 );
         }
 
@@ -746,19 +821,57 @@ class ReportPdfController extends Controller
     protected function resolveClassroom(
         Request $request
     ): ?Classroom {
-        if (
-            ! $request->filled(
-                'classroom_id'
-            )
-        ) {
+        $classroomId =
+            $this->resolveNullableIntegerInput(
+                $request,
+                'classroom_id',
+                'classroom'
+            );
+
+        if (! $classroomId) {
             return null;
         }
 
         return Classroom::query()
             ->findOrFail(
-                (int) $request->input(
-                    'classroom_id'
-                )
+                $classroomId
             );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Resolve Integer dari Dua Nama Parameter
+    |--------------------------------------------------------------------------
+    |
+    | Digunakan untuk menjaga kompatibilitas parameter query lama dan baru.
+    |
+    */
+
+    protected function resolveNullableIntegerInput(
+        Request $request,
+        string $primaryKey,
+        string $fallbackKey
+    ): ?int {
+        if (
+            $request->filled(
+                $primaryKey
+            )
+        ) {
+            return (int) $request->input(
+                $primaryKey
+            );
+        }
+
+        if (
+            $request->filled(
+                $fallbackKey
+            )
+        ) {
+            return (int) $request->input(
+                $fallbackKey
+            );
+        }
+
+        return null;
     }
 }

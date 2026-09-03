@@ -3,14 +3,14 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToSchool;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ActivityAssessment extends Model
 {
-    use BelongsToSchool;
-
+    use BelongsToSchool, HasFactory;
 
     protected $fillable = [
         'activity_id',
@@ -24,15 +24,12 @@ class ActivityAssessment extends Model
         'published_at',
     ];
 
-
     protected function casts(): array
     {
         return [
-            'published_at' =>
-                'datetime',
+            'published_at' => 'datetime',
         ];
     }
-
 
     public function activity(): BelongsTo
     {
@@ -41,7 +38,6 @@ class ActivityAssessment extends Model
         );
     }
 
-
     public function factor(): BelongsTo
     {
         return $this->belongsTo(
@@ -49,7 +45,6 @@ class ActivityAssessment extends Model
             'assessment_factor_id'
         );
     }
-
 
     public function criteria(): HasMany
     {
@@ -62,14 +57,12 @@ class ActivityAssessment extends Model
             );
     }
 
-
     public function targets(): HasMany
     {
         return $this->hasMany(
             ActivityAssessmentTarget::class
         );
     }
-
 
     public function creator(): BelongsTo
     {
@@ -79,7 +72,6 @@ class ActivityAssessment extends Model
         );
     }
 
-
     public function publisher(): BelongsTo
     {
         return $this->belongsTo(
@@ -88,18 +80,15 @@ class ActivityAssessment extends Model
         );
     }
 
-
     public function isIndividual(): bool
     {
         return $this->mode === 'individual';
     }
 
-
     public function isTeam(): bool
     {
         return $this->mode === 'team';
     }
-
 
     public function isPublished(): bool
     {

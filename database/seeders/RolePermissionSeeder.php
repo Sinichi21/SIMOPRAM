@@ -86,6 +86,7 @@ class RolePermissionSeeder extends Seeder
             'assessments.calculate',
             'assessment_sync.view',
             'assessment_sync.manage',
+            'assessment_audit.view',
 
             'reports.attendance',
             'reports.grades',
@@ -137,6 +138,9 @@ class RolePermissionSeeder extends Seeder
 
             'attendance_score_settings.view',
             'attendance_score_settings.manage',
+
+            'semester_closures.view',
+            'semester_closures.manage',
         ];
 
         foreach ($permissions as $permission) {
@@ -157,6 +161,12 @@ class RolePermissionSeeder extends Seeder
 
         setPermissionsTeamId(null);
 
+        $scoutAdmin = Role::firstOrCreate([
+            'name' => 'scout_admin',
+            'guard_name' => 'web',
+            'school_id' => null,
+        ]);
+
         $schoolAdmin = Role::firstOrCreate([
             'name' => 'school_admin',
             'guard_name' => 'web',
@@ -174,6 +184,10 @@ class RolePermissionSeeder extends Seeder
             'guard_name' => 'web',
             'school_id' => null,
         ]);
+
+        $scoutAdmin->syncPermissions(
+            Permission::all()
+        );
 
         $schoolAdmin->syncPermissions(
             Permission::all()
@@ -237,8 +251,10 @@ class RolePermissionSeeder extends Seeder
             'assessments.input',
             'assessment_sync.view',
             'assessment_sync.manage',
+            'assessment_audit.view',
 
             'attendance_score_settings.view',
+            'semester_closures.view',
         ]);
 
         $student->syncPermissions([

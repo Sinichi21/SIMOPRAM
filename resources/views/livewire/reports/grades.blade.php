@@ -94,6 +94,9 @@
 
                             'classroom_id' =>
                                 $classroomId,
+
+                            'closure' =>
+                                $closureId,
                         ])
                     ) }}"
                     target="_blank"
@@ -214,6 +217,55 @@
             </select>
         </div>
 
+        <div>
+            <label
+                class="mb-1 block text-sm font-medium"
+            >
+                Sumber Laporan
+            </label>
+
+            <select
+                wire:model.live="closureId"
+                class="w-full rounded-lg
+                    border border-zinc-300
+                    bg-white px-3 py-2
+                    text-sm
+                    dark:border-zinc-700
+                    dark:bg-zinc-950"
+            >
+
+                <option value="">
+                    Data Berjalan
+                </option>
+
+
+                @foreach (
+                    $closures
+                    as $closure
+                )
+
+                    <option
+                        value="{{ $closure->id }}"
+                    >
+                        Versi {{ $closure->version }}
+                        —
+                        {{ $closure
+                            ->locked_at
+                            ?->format(
+                                'd/m/Y H:i'
+                            ) }}
+
+                        @if ($closure->isLocked())
+                            — Terkunci
+                        @else
+                            — Dibuka Kembali
+                        @endif
+                    </option>
+
+                @endforeach
+
+            </select>
+        </div>
 
         <div>
             <label class="mb-1 block text-sm font-medium">
@@ -365,6 +417,33 @@
                             belum sinkron
                         </span>
 
+                        @if (
+                            (
+                                $syncStatus[
+                                    'final'
+                                ][
+                                    'configuration_changed_count'
+                                ]
+                                ?? 0
+                            ) > 0
+                        )
+
+                            <span>
+                                Konfigurasi berubah:
+                                <strong>
+                                    {{ number_format(
+                                        $syncStatus[
+                                            'final'
+                                        ][
+                                            'configuration_changed_count'
+                                        ]
+                                    ) }}
+                                </strong>
+                                siswa
+                            </span>
+
+                        @endif
+
                     </div>
 
                 </div>
@@ -389,6 +468,108 @@
                 </div>
 
             @enderror
+
+            @if (
+                $reportSource
+                === 'snapshot'
+                &&
+                $selectedClosure
+            )
+
+                <div
+                    class="rounded-xl border
+                        border-green-200
+                        bg-green-50
+                        px-4 py-4
+                        text-sm
+                        text-green-800
+                        dark:border-green-900
+                        dark:bg-green-950/40
+                        dark:text-green-300"
+                >
+
+                    <div
+                        class="flex flex-col gap-3
+                            lg:flex-row
+                            lg:items-center
+                            lg:justify-between"
+                    >
+
+                        <div>
+
+                            <div class="font-semibold">
+                                Snapshot Nilai Resmi
+                            </div>
+
+                            <p class="mt-1">
+                                Laporan menggunakan snapshot
+                                semester versi
+                                <strong>
+                                    {{ $selectedClosure->version }}
+                                </strong>
+                                yang dibuat pada
+                                {{ $selectedClosure
+                                    ->locked_at
+                                    ?->format(
+                                        'd/m/Y H:i'
+                                    ) }}.
+                            </p>
+
+                        </div>
+
+
+                        <div
+                            class="rounded-lg
+                                bg-white/70
+                                px-3 py-2
+                                font-mono
+                                text-xs
+                                dark:bg-zinc-900/60"
+                            title="{{ $selectedClosure->snapshot_checksum }}"
+                        >
+                            Checksum:
+                            {{
+                                $selectedClosure
+                                    ->snapshot_checksum
+                                    ? substr(
+                                        $selectedClosure
+                                            ->snapshot_checksum,
+                                        0,
+                                        16
+                                    )
+                                        . '...'
+                                    : '-'
+                            }}
+                        </div>
+
+                    </div>
+
+                </div>
+
+            @else
+
+                <div
+                    class="rounded-xl border
+                        border-blue-200
+                        bg-blue-50
+                        px-4 py-3
+                        text-sm
+                        text-blue-700
+                        dark:border-blue-900
+                        dark:bg-blue-950/40
+                        dark:text-blue-300"
+                >
+                    <strong>
+                        Data Berjalan
+                    </strong>
+
+                    <span class="ml-1">
+                        Laporan menggunakan nilai terkini
+                        dari StudentScore dan FinalGrade.
+                    </span>
+                </div>
+
+            @endif
 
             <table class="w-full text-left text-sm">
 

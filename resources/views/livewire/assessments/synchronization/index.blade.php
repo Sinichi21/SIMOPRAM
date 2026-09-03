@@ -643,6 +643,7 @@
                         </div>
 
 
+
                         {{-- FINAL --}}
 
                         <div
@@ -734,6 +735,35 @@
                                 {{ number_format(
                                     $final[
                                         'score_changed_count'
+                                    ]
+                                    ?? 0
+                                ) }}
+                            </div>
+
+                        </div>
+
+                        <div
+                            class="rounded-lg
+                                bg-zinc-50
+                                p-4
+                                dark:bg-zinc-950"
+                        >
+
+                            <div
+                                class="text-xs
+                                    text-zinc-500"
+                            >
+                                Konfigurasi Berubah
+                            </div>
+
+
+                            <div
+                                class="mt-1 text-xl
+                                    font-semibold"
+                            >
+                                {{ number_format(
+                                    $final[
+                                        'configuration_changed_count'
                                     ]
                                     ?? 0
                                 ) }}

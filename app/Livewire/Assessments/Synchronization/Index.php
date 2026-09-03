@@ -244,6 +244,26 @@ class Index extends Component
                 .'perubahan nilai faktor.';
         }
 
+        $configurationChanged =
+            (int) (
+                $final[
+                    'configuration_changed_count'
+                ]
+                ?? 0
+            );
+
+
+        if (
+            $configurationChanged > 0
+        ) {
+            $reasons[] =
+                number_format(
+                    $configurationChanged
+                )
+                . ' nilai akhir masih menggunakan '
+                . 'konfigurasi bobot faktor lama.';
+        }
+
         if (
             $isStale
             &&

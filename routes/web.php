@@ -3,6 +3,7 @@
 use App\Http\Controllers\ReportPdfController;
 use App\Http\Controllers\SchoolSwitchController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ReportVerificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -21,6 +22,33 @@ Route::get('/', function () {
         ->route('login');
 
 })->name('home');
+
+/*
+|--------------------------------------------------------------------------
+| PUBLIC REPORT VERIFICATION
+|--------------------------------------------------------------------------
+|
+|
+*/
+
+Route::get(
+    '/verify/report/{code}',
+    [
+        ReportVerificationController::class,
+        'show',
+    ]
+)
+    ->where(
+        'code',
+        '[a-f0-9]{48}'
+    )
+    ->middleware(
+        'throttle:60,1'
+    )
+    ->name(
+        'reports.verify'
+    );
+
 
 /*
 |--------------------------------------------------------------------------
@@ -507,6 +535,28 @@ Route::middleware([
             )
             ->name(
                 'assessment-sync.index'
+            );
+
+        Route::view(
+            '/penilaian/audit',
+            'assessments.audit'
+        )
+            ->middleware(
+                'can:assessment_audit.view'
+            )
+            ->name(
+                'assessment-audit.index'
+            );
+
+        Route::view(
+            '/penilaian/kunci-semester',
+            'assessments.semester-closures'
+        )
+            ->middleware(
+                'can:semester_closures.view'
+            )
+            ->name(
+                'semester-closures.index'
             );
     });
 });

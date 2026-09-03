@@ -17,6 +17,7 @@ class FinalGrade extends Model
         'letter_grade',
         'description',
         'attendance_source_version',
+        'assessment_config_signature',
         'calculated_at',
         'calculated_by',
     ];

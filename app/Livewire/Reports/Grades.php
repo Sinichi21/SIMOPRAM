@@ -16,6 +16,8 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Models\SemesterClosure;
+use App\Services\GradeReportService;
 
 class Grades extends Component
 {
@@ -26,6 +28,8 @@ class Grades extends Component
     public ?int $classroomId = null;
 
     public string $search = '';
+
+    public ?int $closureId = null;
 
 
     /*
@@ -69,6 +73,8 @@ class Grades extends Component
 
         $this->semesterId =
             $semester?->id;
+
+        $this->selectDefaultReportSource();
     }
 
 
@@ -80,9 +86,14 @@ class Grades extends Component
 
     public function updatedAcademicYearId(): void
     {
-        $this->semesterId = null;
+        $this->semesterId =
+            null;
 
-        $this->classroomId = null;
+        $this->classroomId =
+            null;
+
+        $this->closureId =
+            null;
 
 
         if (! $this->academicYearId) {
@@ -105,8 +116,10 @@ class Grades extends Component
 
         $this->semesterId =
             $semester?->id;
-    }
 
+
+        $this->selectDefaultReportSource();
+    }
 
     /*
     |--------------------------------------------------------------------------
@@ -116,221 +129,24 @@ class Grades extends Component
 
     protected function getReportData(): array
     {
-        $selectedConfig = null;
+        return app(
+            GradeReportService::class
+        )->getData(
+            academicYearId:
+                $this->academicYearId,
 
+            semesterId:
+                $this->semesterId,
 
-        /*
-        |--------------------------------------------------------------------------
-        | Konfigurasi Penilaian
-        |--------------------------------------------------------------------------
-        */
+            classroomId:
+                $this->classroomId,
 
-        if (
-            $this->academicYearId
-            &&
-            $this->semesterId
-        ) {
-            $selectedConfig =
-                AssessmentConfig::query()
-                    ->with([
-                        'items.factor',
-                        'academicYear',
-                        'semester',
-                    ])
-                    ->where(
-                        'academic_year_id',
-                        $this->academicYearId
-                    )
-                    ->where(
-                        'semester_id',
-                        $this->semesterId
-                    )
-                    ->where(
-                        'is_active',
-                        true
-                    )
-                    ->first();
-        }
+            search:
+                $this->search,
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Tidak Ada Konfigurasi
-        |--------------------------------------------------------------------------
-        */
-
-        if (! $selectedConfig) {
-            return [
-                'selectedConfig' =>
-                    null,
-
-                'students' =>
-                    collect(),
-
-                'scores' =>
-                    collect(),
-
-                'finalGrades' =>
-                    collect(),
-            ];
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Siswa
-        |--------------------------------------------------------------------------
-        */
-
-        $students =
-            Student::query()
-                ->with([
-                    'enrollments' =>
-                        function ($query) use (
-                            $selectedConfig
-                        ): void {
-                            $query
-                                ->where(
-                                    'academic_year_id',
-                                    $selectedConfig
-                                        ->academic_year_id
-                                )
-                                ->with(
-                                    'classroom'
-                                );
-                        },
-                ])
-                ->where(
-                    'status',
-                    'active'
-                )
-                ->whereHas(
-                    'enrollments',
-                    function ($query) use (
-                        $selectedConfig
-                    ): void {
-                        $query->where(
-                            'academic_year_id',
-                            $selectedConfig
-                                ->academic_year_id
-                        );
-
-
-                        if ($this->classroomId) {
-                            $query->where(
-                                'classroom_id',
-                                $this->classroomId
-                            );
-                        }
-                    }
-                )
-                ->when(
-                    trim(
-                        $this->search
-                    ) !== '',
-                    function ($query): void {
-                        $search =
-                            '%'
-                            . trim(
-                                $this->search
-                            )
-                            . '%';
-
-
-                        $query->where(
-                            function ($query) use (
-                                $search
-                            ): void {
-                                $query
-                                    ->where(
-                                        'name',
-                                        'like',
-                                        $search
-                                    )
-                                    ->orWhere(
-                                        'nis',
-                                        'like',
-                                        $search
-                                    );
-                            }
-                        );
-                    }
-                )
-                ->orderBy(
-                    'name'
-                )
-                ->get();
-
-
-        $studentIds =
-            $students->pluck(
-                'id'
-            );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Nilai Faktor
-        |--------------------------------------------------------------------------
-        */
-
-        $scores =
-            StudentScore::query()
-                ->where(
-                    'assessment_config_id',
-                    $selectedConfig->id
-                )
-                ->whereIn(
-                    'student_id',
-                    $studentIds
-                )
-                ->get()
-                ->groupBy(
-                    'student_id'
-                )
-                ->map(
-                    fn ($items) =>
-                        $items->keyBy(
-                            'assessment_factor_id'
-                        )
-                );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Nilai Akhir
-        |--------------------------------------------------------------------------
-        */
-
-        $finalGrades =
-            FinalGrade::query()
-                ->where(
-                    'assessment_config_id',
-                    $selectedConfig->id
-                )
-                ->whereIn(
-                    'student_id',
-                    $studentIds
-                )
-                ->get()
-                ->keyBy(
-                    'student_id'
-                );
-
-
-        return [
-            'selectedConfig' =>
-                $selectedConfig,
-
-            'students' =>
-                $students,
-
-            'scores' =>
-                $scores,
-
-            'finalGrades' =>
-                $finalGrades,
-        ];
+            closureId:
+                $this->closureId
+        );
     }
 
 
@@ -413,20 +229,14 @@ class Grades extends Component
     */
 
     protected function ensureReportCanBeExported(
-        AssessmentConfig $selectedConfig
+        array $data
     ): void {
-        if (
-            ! $this->reportIsSynchronized(
-                $selectedConfig
-            )
-        ) {
-            throw ValidationException::withMessages([
-                'export' =>
-                    'Nilai belum sinkron. '
-                    . 'Sinkronkan nilai kehadiran dan nilai akhir '
-                    . 'sebelum melakukan export laporan.',
-            ]);
-        }
+        app(
+            GradeReportService::class
+        )
+            ->assertExportable(
+                $data
+            );
     }
 
 
@@ -473,7 +283,7 @@ class Grades extends Component
         */
 
         $this->ensureReportCanBeExported(
-            $config
+            $data
         );
 
 
@@ -509,6 +319,84 @@ class Grades extends Component
                 fwrite(
                     $handle,
                     "\xEF\xBB\xBF"
+                );
+
+                fputcsv(
+                    $handle,
+                    [
+                        'Sumber Data',
+                        (
+                            $data[
+                                'reportSource'
+                            ]
+                            ?? 'live'
+                        ) === 'snapshot'
+                            ? 'Snapshot Resmi'
+                            : 'Data Berjalan',
+                    ],
+                    ';'
+                );
+
+
+                if (
+                    (
+                        $data[
+                            'reportSource'
+                        ]
+                        ?? 'live'
+                    ) === 'snapshot'
+                    &&
+                    $data[
+                        'selectedClosure'
+                    ]
+                ) {
+                    $closure =
+                        $data[
+                            'selectedClosure'
+                        ];
+
+
+                    fputcsv(
+                        $handle,
+                        [
+                            'Versi Snapshot',
+                            'v'
+                            . $closure->version,
+                        ],
+                        ';'
+                    );
+
+
+                    fputcsv(
+                        $handle,
+                        [
+                            'Dikunci Pada',
+                            $closure
+                                ->locked_at
+                                ?->format(
+                                    'd/m/Y H:i:s'
+                                ),
+                        ],
+                        ';'
+                    );
+
+
+                    fputcsv(
+                        $handle,
+                        [
+                            'Snapshot Checksum',
+                            $closure
+                                ->snapshot_checksum,
+                        ],
+                        ';'
+                    );
+                }
+
+
+                fputcsv(
+                    $handle,
+                    [],
+                    ';'
                 );
 
 
@@ -711,9 +599,7 @@ class Grades extends Component
         */
 
         $this->ensureReportCanBeExported(
-            $data[
-                'selectedConfig'
-            ]
+            $data
         );
 
 
@@ -765,6 +651,19 @@ class Grades extends Component
                                 $this->classroomId
                             )
                         : null,
+
+                'reportGeneratedAt' =>
+                    now(),
+
+                'reportSourceLabel' =>
+                    (
+                        $data[
+                            'reportSource'
+                        ]
+                        ?? 'live'
+                    ) === 'snapshot'
+                        ? 'Snapshot Resmi'
+                        : 'Data Berjalan',
             ]
         );
     }
@@ -951,11 +850,18 @@ class Grades extends Component
         */
 
         $syncStatus =
-            $this->getSyncStatus(
+            (
                 $data[
-                    'selectedConfig'
+                    'reportSource'
                 ]
-            );
+                ?? 'live'
+            ) === 'live'
+                ? $this->getSyncStatus(
+                    $data[
+                        'selectedConfig'
+                    ]
+                )
+                : null;
 
 
         /*
@@ -963,6 +869,15 @@ class Grades extends Component
         | View
         |--------------------------------------------------------------------------
         */
+
+        $closures =
+            app(
+                GradeReportService::class
+            )
+                ->closures(
+                    $this->academicYearId,
+                    $this->semesterId
+                );
 
         return view(
             'livewire.reports.grades',
@@ -977,11 +892,53 @@ class Grades extends Component
                     'classrooms' =>
                         $classrooms,
 
+                    'closures' =>
+                        $closures,
+
                     'syncStatus' =>
                         $syncStatus,
                 ],
                 $data
             )
         );
+    }
+
+    public function updatedSemesterId(): void
+    {
+        $this->classroomId =
+            null;
+
+        $this->closureId =
+            null;
+
+        $this->selectDefaultReportSource();
+    }
+
+    protected function selectDefaultReportSource(): void
+    {
+        if (
+            ! $this->academicYearId
+            ||
+            ! $this->semesterId
+        ) {
+            $this->closureId =
+                null;
+
+            return;
+        }
+
+
+        $closure =
+            app(
+                GradeReportService::class
+            )
+                ->defaultClosure(
+                    $this->academicYearId,
+                    $this->semesterId
+                );
+
+
+        $this->closureId =
+            $closure?->id;
     }
 }
