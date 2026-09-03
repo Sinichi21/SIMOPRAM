@@ -775,42 +775,25 @@
 
                     @can('assessments.calculate')
 
-                        <button
-                            type="button"
-                            wire:click="synchronizeScores"
-                            wire:confirm="Hitung ulang nilai kehadiran dan nilai akhir menggunakan konfigurasi terbaru?"
-                            wire:loading.attr="disabled"
-                            wire:target="synchronizeScores"
-                            class="inline-flex shrink-0
-                                   items-center
-                                   justify-center
-                                   rounded-lg
-                                   bg-amber-700
-                                   px-5 py-2.5
-                                   text-sm font-medium
-                                   text-white
-                                   transition
-                                   hover:bg-amber-800
-                                   disabled:cursor-not-allowed
-                                   disabled:opacity-50"
+                        <a
+                            href="{{ route(
+                                'assessment-sync.index'
+                            ) }}"
+                            wire:navigate
+                            class="inline-flex
+                                shrink-0
+                                items-center
+                                justify-center
+                                rounded-lg
+                                bg-amber-700
+                                px-5 py-2.5
+                                text-sm font-medium
+                                text-white
+                                transition
+                                hover:bg-amber-800"
                         >
-
-                            <span
-                                wire:loading.remove
-                                wire:target="synchronizeScores"
-                            >
-                                Sinkronkan Semua Nilai
-                            </span>
-
-
-                            <span
-                                wire:loading
-                                wire:target="synchronizeScores"
-                            >
-                                Menyinkronkan...
-                            </span>
-
-                        </button>
+                            Buka Sinkronisasi Penilaian
+                        </a>
 
                     @endcan
 

@@ -377,20 +377,53 @@
                             </td>
 
                             <td class="px-4 py-3 text-right">
-
-                                <a
-                                    href="{{ route(
-                                        'activity-assessments.edit',
-                                        $assessment
-                                    ) }}"
-                                    wire:navigate
-                                    class="font-medium
-                                           text-zinc-700
-                                           hover:underline
-                                           dark:text-zinc-200"
+                                <div
+                                    class="flex justify-end gap-3"
                                 >
-                                    Kelola
-                                </a>
+
+                                    <a
+                                        href="{{ route(
+                                            'activity-assessments.edit',
+                                            $assessment->id
+                                        ) }}"
+                                        wire:navigate
+                                        class="text-sm
+                                            font-medium
+                                            hover:underline"
+                                    >
+                                        Kelola
+                                    </a>
+
+
+                                    @if (
+                                        $assessment->status
+                                        === 'published'
+                                    )
+
+                                        @can(
+                                            'activity_assessments.score'
+                                        )
+
+                                            <a
+                                                href="{{ route(
+                                                    'activity-assessments.score',
+                                                    $assessment->id
+                                                ) }}"
+                                                wire:navigate
+                                                class="text-sm
+                                                    font-medium
+                                                    text-green-700
+                                                    hover:underline
+                                                    dark:text-green-400"
+                                            >
+                                                Input Nilai
+                                            </a>
+
+                                        @endcan
+
+                                    @endif
+
+                                </div>
 
                             </td>
                         </tr>

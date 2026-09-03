@@ -37,7 +37,6 @@ class AttendanceScoring extends Component
         $this->refreshSyncStatus();
     }
 
-
     protected function loadCurrentWeights(): void
     {
         $weightService =
@@ -45,11 +44,9 @@ class AttendanceScoring extends Component
                 AttendanceWeightService::class
             );
 
-
         $weights =
             $weightService
                 ->percentages();
-
 
         $this->presentWeight =
             (float) $weights[
@@ -76,12 +73,10 @@ class AttendanceScoring extends Component
                 'absent'
             ];
 
-
         $this->currentVersion =
             $weightService
                 ->version();
     }
-
 
     public function save(
         AttendanceWeightService $weightService
@@ -92,7 +87,6 @@ class AttendanceScoring extends Component
             ),
             403
         );
-
 
         $validated =
             $this->validate([
@@ -132,52 +126,42 @@ class AttendanceScoring extends Component
                 ],
             ]);
 
-
         $previousVersion =
             $weightService
                 ->version();
-
 
         $setting =
             $weightService
                 ->savePercentages(
                     [
-                        'present' =>
-                            $validated[
+                        'present' => $validated[
                                 'presentWeight'
                             ],
 
-                        'late' =>
-                            $validated[
+                        'late' => $validated[
                                 'lateWeight'
                             ],
 
-                        'sick' =>
-                            $validated[
+                        'sick' => $validated[
                                 'sickWeight'
                             ],
 
-                        'excused' =>
-                            $validated[
+                        'excused' => $validated[
                                 'excusedWeight'
                             ],
 
-                        'absent' =>
-                            $validated[
+                        'absent' => $validated[
                                 'absentWeight'
                             ],
                     ],
                     auth()->id()
                 );
 
-
         $this->currentVersion =
             (int) $setting
                 ->version;
 
-
         $this->refreshSyncStatus();
-
 
         if (
             $this->currentVersion
@@ -191,13 +175,11 @@ class AttendanceScoring extends Component
             return;
         }
 
-
         session()->flash(
             'status',
             'Pengaturan bobot kehadiran berhasil disimpan.'
         );
     }
-
 
     public function resetDefaults(): void
     {
@@ -208,10 +190,8 @@ class AttendanceScoring extends Component
             403
         );
 
-
         $defaults =
             AttendanceScoreSetting::defaultWeights();
-
 
         $this->presentWeight =
             $defaults['present'];
@@ -228,85 +208,17 @@ class AttendanceScoring extends Component
         $this->absentWeight =
             $defaults['absent'];
 
-
         session()->flash(
             'status',
             'Nilai default telah dimuat. Klik Simpan Pengaturan untuk menerapkannya.'
         );
     }
 
-
     /*
     |--------------------------------------------------------------------------
     | Hitung ulang nilai kehadiran
     |--------------------------------------------------------------------------
     */
-
-    public function synchronizeScores(
-        AssessmentService $assessmentService
-    ): void {
-        abort_unless(
-            auth()->user()->can(
-                'assessments.calculate'
-            ),
-            403
-        );
-
-
-        $configs =
-            AssessmentConfig::query()
-                ->where(
-                    'is_active',
-                    true
-                )
-                ->with([
-                    'items.factor',
-                ])
-                ->get();
-
-
-        $attendanceUpdated =
-            0;
-
-        $finalGradesUpdated =
-            0;
-
-
-        foreach (
-            $configs
-            as $config
-        ) {
-
-            $result =
-                $assessmentService
-                    ->syncAllScores(
-                        $config
-                    );
-
-
-            $attendanceUpdated +=
-                $result[
-                    'attendance_scores'
-                ];
-
-
-            $finalGradesUpdated +=
-                $result[
-                    'final_grades'
-                ];
-        }
-
-
-        $this->refreshSyncStatus();
-
-
-        session()->flash(
-            'status',
-            "Sinkronisasi selesai. "
-            . "{$attendanceUpdated} nilai kehadiran dan "
-            . "{$finalGradesUpdated} nilai akhir diperbarui."
-        );
-    }
 
     protected function refreshSyncStatus(): void
     {
@@ -315,7 +227,6 @@ class AttendanceScoring extends Component
                 AssessmentService::class
             );
 
-
         $configs =
             AssessmentConfig::query()
                 ->where(
@@ -327,17 +238,14 @@ class AttendanceScoring extends Component
                 ])
                 ->get();
 
-
         $staleAttendance =
             0;
 
         $staleFinalGrades =
             0;
 
-
         foreach (
-            $configs
-            as $config
+            $configs as $config
         ) {
 
             $attendanceStatus =
@@ -346,19 +254,16 @@ class AttendanceScoring extends Component
                         $config
                     );
 
-
             $finalGradeStatus =
                 $assessmentService
                     ->finalGradeSyncStatus(
                         $config
                     );
 
-
             $staleAttendance +=
                 $attendanceStatus[
                     'stale_count'
                 ];
-
 
             $staleFinalGrades +=
                 $finalGradeStatus[
@@ -366,20 +271,17 @@ class AttendanceScoring extends Component
                 ];
         }
 
-
         $this->staleScoreCount =
             $staleAttendance;
 
         $this->hasStaleScores =
             $staleAttendance > 0;
 
-
         $this->staleFinalGradeCount =
             $staleFinalGrades;
 
         $this->hasStaleFinalGrades =
             $staleFinalGrades > 0;
-
 
         $this->currentVersion =
             app(

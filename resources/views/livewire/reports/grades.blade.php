@@ -297,6 +297,30 @@
 
                     <div class="font-semibold">
                         Data nilai belum sinkron
+
+                        @can('assessment_sync.view')
+
+                            <div class="mt-3">
+
+                                <a
+                                    href="{{ route(
+                                        'assessment-sync.index'
+                                    ) }}"
+                                    wire:navigate
+                                    class="inline-flex
+                                        rounded-lg
+                                        bg-amber-700
+                                        px-4 py-2
+                                        text-xs font-medium
+                                        text-white
+                                        hover:bg-amber-800"
+                                >
+                                    Buka Sinkronisasi Penilaian
+                                </a>
+
+                            </div>
+
+                        @endcan
                     </div>
 
                     <p class="mt-1">

@@ -434,6 +434,23 @@
 
                     @endcan
 
+                    @can('assessment_sync.view')
+
+                        <flux:sidebar.item
+                            icon="arrow-path"
+                            :href="route(
+                                'assessment-sync.index'
+                            )"
+                            :current="request()->routeIs(
+                                'assessment-sync.*'
+                            )"
+                            wire:navigate
+                        >
+                            Sinkronisasi Penilaian
+                        </flux:sidebar.item>
+
+                    @endcan
+
                 </flux:sidebar.group>
 
                 <flux:sidebar.group

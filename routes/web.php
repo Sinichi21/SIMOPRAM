@@ -471,14 +471,42 @@ Route::middleware([
             );
 
         Route::view(
-            '/penilaian/kegiatan/{assessment}',
+            '/penilaian/kegiatan/{assessment}/kelola',
             'assessments.activity-edit'
         )
             ->middleware(
                 'can:activity_assessments.view'
             )
+            ->whereNumber(
+                'assessment'
+            )
             ->name(
                 'activity-assessments.edit'
+            );
+
+        Route::view(
+            '/penilaian/kegiatan/{assessment}/nilai',
+            'assessments.activity-score'
+        )
+            ->middleware(
+                'can:activity_assessments.score'
+            )
+            ->whereNumber(
+                'assessment'
+            )
+            ->name(
+                'activity-assessments.score'
+            );
+
+        Route::view(
+            '/penilaian/sinkronisasi',
+            'assessments.synchronization'
+        )
+            ->middleware(
+                'can:assessment_sync.view'
+            )
+            ->name(
+                'assessment-sync.index'
             );
     });
 });

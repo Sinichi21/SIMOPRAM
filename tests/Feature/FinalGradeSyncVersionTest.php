@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\AcademicYear;
 use App\Models\AssessmentConfig;
+use App\Models\AssessmentConfigItem;
+use App\Models\AssessmentFactor;
 use App\Models\Classroom;
 use App\Models\FinalGrade;
 use App\Models\School;
@@ -61,6 +63,18 @@ class FinalGradeSyncVersionTest extends TestCase
             'academic_year_id' => $academicYear->id,
             'name' => 'Nilai Akhir',
             'is_active' => true,
+        ]);
+        $attendanceFactor = AssessmentFactor::query()->create([
+            'name' => 'Kehadiran',
+            'code' => 'ATTENDANCE',
+            'source_type' => 'attendance',
+            'is_active' => true,
+        ]);
+        AssessmentConfigItem::query()->create([
+            'assessment_config_id' => $config->id,
+            'assessment_factor_id' => $attendanceFactor->id,
+            'weight' => 100,
+            'sort_order' => 1,
         ]);
         DB::table('attendance_score_settings')->insert([
             'school_id' => $school->id,

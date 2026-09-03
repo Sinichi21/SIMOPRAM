@@ -8,6 +8,7 @@ use App\Models\GradeScaleConfig;
 use App\Models\Student;
 use App\Models\StudentScore;
 use App\Support\SchoolContext;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -326,10 +327,9 @@ class AssessmentService
                                 'description'
                             ] ?? null,
 
-                        'attendance_source_version' =>
-                            app(
-                                AttendanceWeightService::class
-                            )->version(),
+                        'attendance_source_version' => app(
+                            AttendanceWeightService::class
+                        )->version(),
 
                         'calculated_at' => now(),
 
@@ -394,7 +394,6 @@ class AssessmentService
             'items.factor',
         ]);
 
-
         /*
         |--------------------------------------------------------------------------
         | Cari faktor yang bersumber dari absensi
@@ -405,14 +404,12 @@ class AssessmentService
             $config
                 ->items
                 ->filter(
-                    fn ($item): bool =>
-                        $item->factor
+                    fn ($item): bool => $item->factor
                         &&
                         $item->factor
                             ->source_type
                         === 'attendance'
                 );
-
 
         if (
             $attendanceItems
@@ -420,7 +417,6 @@ class AssessmentService
         ) {
             return 0;
         }
-
 
         /*
         |--------------------------------------------------------------------------
@@ -436,25 +432,21 @@ class AssessmentService
                 )
                 ->whereHas(
                     'enrollments',
-                    fn ($query) =>
-                        $query->where(
-                            'academic_year_id',
-                            $config
-                                ->academic_year_id
-                        )
+                    fn ($query) => $query->where(
+                        'academic_year_id',
+                        $config
+                            ->academic_year_id
+                    )
                 )
                 ->get();
-
 
         $version =
             app(
                 AttendanceWeightService::class
             )->version();
 
-
         $updated =
             0;
-
 
         DB::transaction(
             function () use (
@@ -466,8 +458,7 @@ class AssessmentService
             ): void {
 
                 foreach (
-                    $students
-                    as $student
+                    $students as $student
                 ) {
 
                     $attendanceScore =
@@ -476,53 +467,40 @@ class AssessmentService
                             $student
                         );
 
-
                     foreach (
-                        $attendanceItems
-                        as $item
+                        $attendanceItems as $item
                     ) {
 
                         StudentScore::query()
                             ->updateOrCreate(
                                 [
-                                    'assessment_config_id' =>
-                                        $config->id,
+                                    'assessment_config_id' => $config->id,
 
-                                    'student_id' =>
-                                        $student->id,
+                                    'student_id' => $student->id,
 
-                                    'assessment_factor_id' =>
-                                        $item
-                                            ->assessment_factor_id,
+                                    'assessment_factor_id' => $item
+                                        ->assessment_factor_id,
                                 ],
                                 [
-                                    'score' =>
-                                        $attendanceScore,
+                                    'score' => $attendanceScore,
 
-                                    'source' =>
-                                        'attendance',
+                                    'source' => 'attendance',
 
-                                    'source_version' =>
-                                        $version,
+                                    'source_version' => $version,
 
-                                    'source_synced_at' =>
-                                        now(),
+                                    'source_synced_at' => now(),
 
-                                    'entered_by' =>
-                                        auth()->id(),
+                                    'entered_by' => auth()->id(),
 
-                                    'notes' =>
-                                        'Nilai otomatis dari rekap kehadiran.',
+                                    'notes' => 'Nilai otomatis dari rekap kehadiran.',
                                 ]
                             );
-
 
                         $updated++;
                     }
                 }
             }
         );
-
 
         return $updated;
     }
@@ -534,13 +512,11 @@ class AssessmentService
             'items.factor',
         ]);
 
-
         $factorIds =
             $config
                 ->items
                 ->filter(
-                    fn ($item): bool =>
-                        $item->factor
+                    fn ($item): bool => $item->factor
                         &&
                         $item->factor
                             ->source_type
@@ -551,31 +527,24 @@ class AssessmentService
                 )
                 ->values();
 
-
         if (
             $factorIds
                 ->isEmpty()
         ) {
             return [
-                'version' =>
-                    app(
-                        AttendanceWeightService::class
-                    )->version(),
+                'version' => app(
+                    AttendanceWeightService::class
+                )->version(),
 
-                'expected_count' =>
-                    0,
+                'expected_count' => 0,
 
-                'current_count' =>
-                    0,
+                'current_count' => 0,
 
-                'stale_count' =>
-                    0,
+                'stale_count' => 0,
 
-                'is_stale' =>
-                    false,
+                'is_stale' => false,
             ];
         }
-
 
         $studentIds =
             Student::query()
@@ -585,29 +554,25 @@ class AssessmentService
                 )
                 ->whereHas(
                     'enrollments',
-                    fn ($query) =>
-                        $query->where(
-                            'academic_year_id',
-                            $config
-                                ->academic_year_id
-                        )
+                    fn ($query) => $query->where(
+                        'academic_year_id',
+                        $config
+                            ->academic_year_id
+                    )
                 )
                 ->pluck(
                     'id'
                 );
-
 
         $version =
             app(
                 AttendanceWeightService::class
             )->version();
 
-
         $expectedCount =
             $studentIds->count()
             *
             $factorIds->count();
-
 
         /*
         |--------------------------------------------------------------------------
@@ -639,7 +604,6 @@ class AssessmentService
                 )
                 ->count();
 
-
         $staleCount =
             max(
                 0,
@@ -647,33 +611,31 @@ class AssessmentService
                 - $currentCount
             );
 
-
         return [
-            'version' =>
-                $version,
+            'version' => $version,
 
-            'expected_count' =>
-                $expectedCount,
+            'expected_count' => $expectedCount,
 
-            'current_count' =>
-                $currentCount,
+            'current_count' => $currentCount,
 
-            'stale_count' =>
-                $staleCount,
+            'stale_count' => $staleCount,
 
-            'is_stale' =>
-                $staleCount > 0,
+            'is_stale' => $staleCount > 0,
         ];
     }
 
     public function finalGradeSyncStatus(
         AssessmentConfig $config
     ): array {
-        $version =
-            app(
-                AttendanceWeightService::class
-            )->version();
+        $config->loadMissing([
+            'items.factor',
+        ]);
 
+        /*
+        |--------------------------------------------------------------------------
+        | Siswa yang termasuk periode konfigurasi
+        |--------------------------------------------------------------------------
+        */
 
         $studentIds =
             Student::query()
@@ -683,40 +645,66 @@ class AssessmentService
                 )
                 ->whereHas(
                     'enrollments',
-                    fn ($query) =>
-                        $query->where(
-                            'academic_year_id',
-                            $config->academic_year_id
-                        )
+                    fn ($query) => $query->where(
+                        'academic_year_id',
+                        $config->academic_year_id
+                    )
                 )
                 ->pluck('id');
-
 
         $expectedCount =
             $studentIds->count();
 
+        /*
+        |--------------------------------------------------------------------------
+        | Apakah konfigurasi menggunakan faktor absensi?
+        |--------------------------------------------------------------------------
+        */
+
+        $usesAttendance =
+            $config
+                ->items
+                ->contains(
+                    fn ($item): bool => $item->factor
+                        &&
+                        $item->factor->source_type
+                            === 'attendance'
+                );
+
+        $attendanceVersion =
+            app(
+                AttendanceWeightService::class
+            )->version();
 
         if ($expectedCount === 0) {
             return [
-                'version' =>
-                    $version,
+                'version' => $attendanceVersion,
 
-                'expected_count' =>
-                    0,
+                'uses_attendance' => $usesAttendance,
 
-                'current_count' =>
-                    0,
+                'expected_count' => 0,
 
-                'stale_count' =>
-                    0,
+                'current_count' => 0,
 
-                'is_stale' =>
-                    false,
+                'stale_count' => 0,
+
+                'missing_final_count' => 0,
+
+                'attendance_version_stale_count' => 0,
+
+                'score_changed_count' => 0,
+
+                'is_stale' => false,
             ];
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | Final Grade
+        |--------------------------------------------------------------------------
+        */
 
-        $currentCount =
+        $finalGrades =
             FinalGrade::query()
                 ->where(
                     'assessment_config_id',
@@ -726,37 +714,232 @@ class AssessmentService
                     'student_id',
                     $studentIds
                 )
+                ->get()
+                ->keyBy(
+                    'student_id'
+                );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Perubahan terakhir StudentScore per siswa
+        |--------------------------------------------------------------------------
+        |
+        | Ini membuat perubahan dari sumber mana pun terdeteksi:
+        |
+        | - attendance
+        | - manual
+        | - system
+        | - activity assessment
+        |
+        |--------------------------------------------------------------------------
+        */
+
+        $latestScoreUpdates =
+            StudentScore::query()
                 ->where(
-                    'attendance_source_version',
-                    $version
+                    'assessment_config_id',
+                    $config->id
                 )
-                ->count();
+                ->whereIn(
+                    'student_id',
+                    $studentIds
+                )
+                ->selectRaw(
+                    'student_id, MAX(updated_at) AS latest_score_at'
+                )
+                ->groupBy(
+                    'student_id'
+                )
+                ->pluck(
+                    'latest_score_at',
+                    'student_id'
+                );
 
+        /*
+        |--------------------------------------------------------------------------
+        | Hitung status
+        |--------------------------------------------------------------------------
+        */
 
-        $staleCount =
-            max(
-                0,
-                $expectedCount
-                - $currentCount
-            );
+        $staleCount = 0;
 
+        $missingFinalCount = 0;
+
+        $attendanceVersionStaleCount = 0;
+
+        $scoreChangedCount = 0;
+
+        foreach (
+            $studentIds as $studentId
+        ) {
+            $finalGrade =
+                $finalGrades->get(
+                    $studentId
+                );
+
+            /*
+            |--------------------------------------------------------------------------
+            | Belum punya FinalGrade
+            |--------------------------------------------------------------------------
+            */
+
+            if (! $finalGrade) {
+                $staleCount++;
+
+                $missingFinalCount++;
+
+                continue;
+            }
+
+            $studentIsStale =
+                false;
+
+            /*
+            |--------------------------------------------------------------------------
+            | Versi absensi berubah
+            |--------------------------------------------------------------------------
+            |
+            | Hanya diperiksa jika konfigurasi memang mempunyai faktor attendance.
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                $usesAttendance
+                &&
+                (
+                    $finalGrade
+                        ->attendance_source_version
+                    === null
+                    ||
+                    (int) $finalGrade
+                        ->attendance_source_version
+                        !== $attendanceVersion
+                )
+            ) {
+                $studentIsStale =
+                    true;
+
+                $attendanceVersionStaleCount++;
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | StudentScore berubah setelah FinalGrade dihitung
+            |--------------------------------------------------------------------------
+            */
+
+            $latestScoreAt =
+                $latestScoreUpdates->get(
+                    $studentId
+                );
+
+            if ($latestScoreAt) {
+                $scoreChanged =
+                    ! $finalGrade
+                        ->calculated_at
+                    ||
+                    $finalGrade
+                        ->calculated_at
+                        ->lt(
+                            Carbon::parse(
+                                $latestScoreAt
+                            )
+                        );
+
+                if ($scoreChanged) {
+                    $studentIsStale =
+                        true;
+
+                    $scoreChangedCount++;
+                }
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | FinalGrade legacy tanpa calculated_at
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                ! $latestScoreAt
+                &&
+                ! $finalGrade
+                    ->calculated_at
+            ) {
+                $studentIsStale =
+                    true;
+
+                $scoreChangedCount++;
+            }
+
+            if ($studentIsStale) {
+                $staleCount++;
+            }
+        }
 
         return [
-            'version' =>
-                $version,
+            'version' => $attendanceVersion,
 
-            'expected_count' =>
-                $expectedCount,
+            'uses_attendance' => $usesAttendance,
 
-            'current_count' =>
-                $currentCount,
+            'expected_count' => $expectedCount,
 
-            'stale_count' =>
-                $staleCount,
+            'current_count' => max(
+                0,
+                $expectedCount
+                - $staleCount
+            ),
 
-            'is_stale' =>
-                $staleCount > 0,
+            'stale_count' => $staleCount,
+
+            'missing_final_count' => $missingFinalCount,
+
+            'attendance_version_stale_count' => $attendanceVersionStaleCount,
+
+            'score_changed_count' => $scoreChangedCount,
+
+            'is_stale' => $staleCount > 0,
         ];
+    }
+
+    public function syncFinalGrades(
+        AssessmentConfig $config
+    ): int {
+        $students =
+            Student::query()
+                ->where(
+                    'status',
+                    'active'
+                )
+                ->whereHas(
+                    'enrollments',
+                    fn ($query) => $query->where(
+                        'academic_year_id',
+                        $config->academic_year_id
+                    )
+                )
+                ->get();
+
+        $updated = 0;
+
+        foreach ($students as $student) {
+            try {
+                $this->calculateFinalGrade(
+                    $config,
+                    $student
+                );
+
+                $updated++;
+            } catch (ValidationException) {
+                /*
+                |--------------------------------------------------------------------------
+                | Nilai faktor yang belum lengkap tetap ditandai belum sinkron.
+                |--------------------------------------------------------------------------
+                */
+            }
+        }
+
+        return $updated;
     }
 
     public function syncAllScores(
@@ -778,7 +961,6 @@ class AssessmentService
                         $config
                     );
 
-
                 /*
                 |--------------------------------------------------------------------------
                 | 2. Hitung ulang nilai akhir
@@ -790,15 +972,58 @@ class AssessmentService
                         $config
                     );
 
-
                 return [
-                    'attendance_scores' =>
-                        $attendanceUpdated,
+                    'attendance_scores' => $attendanceUpdated,
 
-                    'final_grades' =>
-                        $finalGradesUpdated,
+                    'final_grades' => $finalGradesUpdated,
                 ];
             }
         );
+    }
+
+    public function invalidateFinalGrades(
+        AssessmentConfig $config,
+        ?iterable $studentIds = null
+    ): int {
+        $query =
+            FinalGrade::query()
+                ->where(
+                    'assessment_config_id',
+                    $config->id
+                );
+
+        if ($studentIds !== null) {
+            $ids =
+                collect(
+                    $studentIds
+                )
+                    ->map(
+                        fn ($id): int => (int) $id
+                    )
+                    ->filter()
+                    ->unique()
+                    ->values();
+
+            if ($ids->isEmpty()) {
+                return 0;
+            }
+
+            $query->whereIn(
+                'student_id',
+                $ids
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | calculated_at = null berarti nilai akhir wajib dihitung ulang.
+        |--------------------------------------------------------------------------
+        */
+
+        return $query->update([
+            'calculated_at' => null,
+
+            'calculated_by' => null,
+        ]);
     }
 }

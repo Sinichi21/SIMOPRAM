@@ -84,6 +84,8 @@ class RolePermissionSeeder extends Seeder
             'assessments.scores.view',
             'assessments.scores.manage',
             'assessments.calculate',
+            'assessment_sync.view',
+            'assessment_sync.manage',
 
             'reports.attendance',
             'reports.grades',
@@ -211,9 +213,6 @@ class RolePermissionSeeder extends Seeder
             'announcements.update',
             'announcements.my',
 
-            'assessments.view',
-            'assessments.input',
-
             'reports.attendance',
             'reports.grades',
             'reports.activities',
@@ -235,6 +234,9 @@ class RolePermissionSeeder extends Seeder
             'assessments.scores.view',
             'assessments.scores.manage',
             'assessments.calculate',
+            'assessments.input',
+            'assessment_sync.view',
+            'assessment_sync.manage',
 
             'attendance_score_settings.view',
         ]);

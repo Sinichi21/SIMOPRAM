@@ -22,7 +22,6 @@ class Index extends Component
 
     public string $search = '';
 
-
     public function create(): void
     {
         abort_unless(
@@ -33,7 +32,6 @@ class Index extends Component
                 ),
             403
         );
-
 
         $validated =
             $this->validate([
@@ -68,7 +66,6 @@ class Index extends Component
                 ],
             ]);
 
-
         /*
         |--------------------------------------------------------------------------
         | Tenant validation
@@ -82,54 +79,49 @@ class Index extends Component
                 ]
             );
 
-
         AssessmentFactor::query()
+            ->where(
+                'source_type',
+                '!=',
+                'attendance'
+            )
             ->findOrFail(
                 $validated[
                     'assessmentFactorId'
                 ]
             );
 
-
         $assessment =
             ActivityAssessment::query()
                 ->create([
-                    'activity_id' =>
-                        $validated[
+                    'activity_id' => $validated[
                             'activityId'
                         ],
 
-                    'assessment_factor_id' =>
-                        $validated[
+                    'assessment_factor_id' => $validated[
                             'assessmentFactorId'
                         ],
 
-                    'title' =>
-                        trim(
-                            $validated[
-                                'title'
-                            ]
-                        ),
-
-                    'mode' =>
+                    'title' => trim(
                         $validated[
+                            'title'
+                        ]
+                    ),
+
+                    'mode' => $validated[
                             'mode'
                         ],
 
-                    'status' =>
-                        'draft',
+                    'status' => 'draft',
 
-                    'description' =>
-                        trim(
-                            $validated[
-                                'description'
-                            ] ?? ''
-                        ) ?: null,
+                    'description' => trim(
+                        $validated[
+                            'description'
+                        ] ?? ''
+                    ) ?: null,
 
-                    'created_by' =>
-                        auth()->id(),
+                    'created_by' => auth()->id(),
                 ]);
-
 
         $this->reset([
             'activityId',
@@ -138,27 +130,22 @@ class Index extends Component
             'description',
         ]);
 
-
         $this->mode =
             'individual';
-
 
         session()->flash(
             'status',
             'Form penilaian kegiatan berhasil dibuat.'
         );
 
-
         $this->redirectRoute(
             'activity-assessments.edit',
             [
-                'assessment' =>
-                    $assessment->id,
+                'assessment' => $assessment->id,
             ],
             navigate: true
         );
     }
-
 
     public function render()
     {
@@ -173,14 +160,17 @@ class Index extends Component
                     'start_at',
                 ]);
 
-
         $factors =
             AssessmentFactor::query()
+                ->where(
+                    'source_type',
+                    '!=',
+                    'attendance'
+                )
                 ->orderBy(
                     'name'
                 )
                 ->get();
-
 
         $assessments =
             ActivityAssessment::query()
@@ -195,11 +185,10 @@ class Index extends Component
                     function ($query): void {
                         $search =
                             '%'
-                            . trim(
+                            .trim(
                                 $this->search
                             )
-                            . '%';
-
+                            .'%';
 
                         $query->where(
                             function ($query) use (
@@ -213,12 +202,11 @@ class Index extends Component
                                     )
                                     ->orWhereHas(
                                         'activity',
-                                        fn ($query) =>
-                                            $query->where(
-                                                'title',
-                                                'like',
-                                                $search
-                                            )
+                                        fn ($query) => $query->where(
+                                            'title',
+                                            'like',
+                                            $search
+                                        )
                                     );
                             }
                         );
@@ -227,18 +215,14 @@ class Index extends Component
                 ->latest()
                 ->get();
 
-
         return view(
             'livewire.assessments.activities.index',
             [
-                'activities' =>
-                    $activities,
+                'activities' => $activities,
 
-                'factors' =>
-                    $factors,
+                'factors' => $factors,
 
-                'assessments' =>
-                    $assessments,
+                'assessments' => $assessments,
             ]
         );
     }
