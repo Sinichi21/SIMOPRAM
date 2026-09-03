@@ -94,6 +94,8 @@ class RolePermissionSeeder extends Seeder
             'reports.grades.view',
             'reports.attendance.view',
             'reports.export',
+            'report_verifications.view',
+            'report_verifications.manage',
 
             'notifications.telegram',
             'notifications.whatsapp',
@@ -255,6 +257,7 @@ class RolePermissionSeeder extends Seeder
 
             'attendance_score_settings.view',
             'semester_closures.view',
+            'report_verifications.view'
         ]);
 
         $student->syncPermissions([

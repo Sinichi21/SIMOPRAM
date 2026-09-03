@@ -15,8 +15,8 @@ class ReportVerification extends Model
     | Model ini sengaja TIDAK menggunakan BelongsToSchool karena halaman
     | /verify/report/{code} harus dapat dibuka tanpa SchoolContext/login.
     |
-    | Seluruh pembuatan record dilakukan melalui ReportVerificationService,
-    | sedangkan akses publik hanya menggunakan kode acak 48 karakter.
+    | Semua operasi administratif wajib melakukan scope school_id secara
+    | eksplisit.
     |--------------------------------------------------------------------------
     */
 
@@ -26,10 +26,20 @@ class ReportVerification extends Model
         'code',
         'document_type',
         'snapshot_checksum',
+
+        'file_disk',
+        'file_path',
+        'file_name',
+        'file_sha256',
+        'file_size',
+        'archived_at',
+
         'issued_by',
         'issued_at',
+
         'verification_count',
         'last_verified_at',
+
         'revoked_at',
         'revoked_by',
         'revocation_reason',
@@ -39,6 +49,12 @@ class ReportVerification extends Model
     protected function casts(): array
     {
         return [
+            'file_size' =>
+                'integer',
+
+            'archived_at' =>
+                'datetime',
+
             'issued_at' =>
                 'datetime',
 
@@ -62,12 +78,26 @@ class ReportVerification extends Model
     }
 
 
+    /*
+    |--------------------------------------------------------------------------
+    | Closure Public-Safe
+    |--------------------------------------------------------------------------
+    |
+    | SemesterClosure menggunakan global tenant scope. Halaman verifikasi
+    | publik tidak memiliki SchoolContext, sehingga relation ini secara sengaja
+    | melepas global scope. Record closure tetap tidak dapat ditebak melalui
+    | halaman publik karena entry point-nya adalah verification code acak.
+    |--------------------------------------------------------------------------
+    */
+
     public function closure(): BelongsTo
     {
-        return $this->belongsTo(
-            SemesterClosure::class,
-            'semester_closure_id'
-        );
+        return $this
+            ->belongsTo(
+                SemesterClosure::class,
+                'semester_closure_id'
+            )
+            ->withoutGlobalScopes();
     }
 
 
@@ -93,6 +123,18 @@ class ReportVerification extends Model
     {
         return $this->revoked_at
             !== null;
+    }
+
+
+    public function hasArchivedPdf(): bool
+    {
+        return filled(
+            $this->file_path
+        )
+            &&
+            filled(
+                $this->file_sha256
+            );
     }
 
 

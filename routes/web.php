@@ -4,6 +4,7 @@ use App\Http\Controllers\ReportPdfController;
 use App\Http\Controllers\SchoolSwitchController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ReportVerificationController;
+use App\Http\Controllers\PublishedDocumentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -557,6 +558,56 @@ Route::middleware([
             )
             ->name(
                 'semester-closures.index'
+            );
+
+        Route::view(
+            '/laporan/dokumen-terbit',
+            'reports.published-documents'
+        )
+            ->middleware(
+                'can:report_verifications.view'
+            )
+            ->name(
+                'reports.published-documents.index'
+            );
+
+
+        Route::get(
+            '/laporan/dokumen-terbit/{code}',
+            [
+                PublishedDocumentController::class,
+                'show',
+            ]
+        )
+            ->where(
+                'code',
+                '[a-f0-9]{48}'
+            )
+            ->middleware(
+                'can:report_verifications.view'
+            )
+            ->name(
+                'reports.published-documents.show'
+            );
+
+
+        Route::get(
+            '/laporan/dokumen-terbit/{code}/download',
+            [
+                PublishedDocumentController::class,
+                'download',
+            ]
+        )
+            ->where(
+                'code',
+                '[a-f0-9]{48}'
+            )
+            ->middleware([
+                'can:report_verifications.view',
+                'can:reports.export',
+            ])
+            ->name(
+                'reports.published-documents.download'
             );
     });
 });

@@ -17,6 +17,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class ReportPdfController extends Controller
 {
@@ -301,7 +302,9 @@ class ReportPdfController extends Controller
                         $documentSetting,
 
                     'reportGeneratedAt' =>
-                        now(),
+                        $verification
+                            ?->issued_at
+                        ?? now(),
 
                     'reportSourceLabel' =>
                         $reportSource
@@ -355,6 +358,16 @@ class ReportPdfController extends Controller
                     . $selectedClosure->version
                 : '';
 
+        $filenameTimestamp =
+            $verification
+                ?->issued_at
+                ?->format(
+                    'Ymd-His'
+                )
+            ?? now()->format(
+                'Ymd-His'
+            );
+
         $filename =
             'rekap-nilai-'
             . Str::slug(
@@ -362,10 +375,80 @@ class ReportPdfController extends Controller
             )
             . $versionSuffix
             . '-'
-            . now()->format(
-                'Ymd-His'
-            )
+            . $filenameTimestamp
             . '.pdf';
+
+        /*
+        |--------------------------------------------------------------------------
+        | Snapshot Resmi: Simpan Binary Pertama
+        |--------------------------------------------------------------------------
+        |
+        | Binary yang dikirim pada download pertama adalah binary yang sama
+        | dengan binary yang disimpan ke private storage. Download ulang tidak
+        | menjalankan DomPDF lagi.
+        |--------------------------------------------------------------------------
+        */
+
+        if ($verification) {
+            try {
+                $binary =
+                    $pdf->output();
+
+                $reportVerificationService
+                    ->archivePdf(
+                        verification:
+                            $verification,
+
+                        binary:
+                            $binary,
+
+                        filename:
+                            $filename
+                    );
+            } catch (
+                Throwable $exception
+            ) {
+                $reportVerificationService
+                    ->discardFailedIssue(
+                        $verification
+                    );
+
+                throw $exception;
+            }
+
+            return response(
+                $binary,
+                200,
+                [
+                    'Content-Type' =>
+                        'application/pdf',
+
+                    'Content-Disposition' =>
+                        'attachment; filename="'
+                        . addslashes(
+                            $filename
+                        )
+                        . '"',
+
+                    'Content-Length' =>
+                        (string) strlen(
+                            $binary
+                        ),
+
+                    'X-Content-Type-Options' =>
+                        'nosniff',
+
+                    'Cache-Control' =>
+                        'private, no-store, max-age=0',
+                ]
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Data Berjalan
+        |--------------------------------------------------------------------------
+        */
 
         return $pdf->download(
             $filename

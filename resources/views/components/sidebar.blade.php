@@ -528,6 +528,22 @@
 
                     @endcan
 
+                    @can('report_verifications.view')
+                        <flux:sidebar.item
+                            icon="document-check"
+                            :href="route(
+                                'reports.published-documents.index'
+                            )"
+                            :current="request()->routeIs(
+                                'reports.published-documents.*'
+                            )"
+                            wire:navigate
+                        >
+                            Dokumen Terbit
+                        </flux:sidebar.item>
+                    @endcan
+
+
                 </flux:sidebar.group>
 
             </flux:sidebar.nav>
