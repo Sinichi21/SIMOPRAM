@@ -1,4 +1,4 @@
-name: SIMOPRAM CI/CD
+name: SIMPRAM CI/CD
 
 on:
   pull_request:
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: simopram-${{ github.ref }}
+  group: simpram-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -23,9 +23,9 @@ jobs:
       mysql:
         image: mysql:8.4
         env:
-          MYSQL_DATABASE: simopram_test
-          MYSQL_USER: simopram
-          MYSQL_PASSWORD: simopram
+          MYSQL_DATABASE: simpram_test
+          MYSQL_USER: simpram
+          MYSQL_PASSWORD: simpram
           MYSQL_ROOT_PASSWORD: root
         ports:
           - 3306:3306
@@ -42,9 +42,9 @@ jobs:
       DB_CONNECTION: mysql
       DB_HOST: 127.0.0.1
       DB_PORT: 3306
-      DB_DATABASE: simopram_test
-      DB_USERNAME: simopram
-      DB_PASSWORD: simopram
+      DB_DATABASE: simpram_test
+      DB_USERNAME: simpram
+      DB_PASSWORD: simpram
       CACHE_STORE: array
       SESSION_DRIVER: array
       QUEUE_CONNECTION: sync
@@ -109,14 +109,14 @@ jobs:
             --exclude='storage/framework/sessions/*' \
             --exclude='storage/framework/views/*'
 
-          tar -czf simopram-release.tar.gz -C release .
+          tar -czf simpram-release.tar.gz -C release .
 
       - name: Upload release artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v6
         with:
-          name: simopram-release
-          path: simopram-release.tar.gz
+          name: simpram-release
+          path: simpram-release.tar.gz
           retention-days: 7
 
   deploy:
@@ -133,7 +133,7 @@ jobs:
       - name: Download release artifact
         uses: actions/download-artifact@v7
         with:
-          name: simopram-release
+          name: simpram-release
 
       - name: Configure SSH
         env:
@@ -154,8 +154,8 @@ jobs:
           SSH_USER: ${{ secrets.STAGING_SSH_USER }}
         run: |
           scp -P "${SSH_PORT:-22}" \
-            simopram-release.tar.gz \
-            "${SSH_USER}@${SSH_HOST}:/tmp/simopram-release.tar.gz"
+            simpram-release.tar.gz \
+            "${SSH_USER}@${SSH_HOST}:/tmp/simpram-release.tar.gz"
 
       - name: Activate release
         env:

@@ -40,7 +40,7 @@
 
             <p class="mt-1 text-sm text-zinc-500">
                 Akun ini digunakan siswa untuk
-                mengakses SIMOPRAM dan absensi mandiri.
+                mengakses SIMPRAM dan absensi mandiri.
             </p>
 
 

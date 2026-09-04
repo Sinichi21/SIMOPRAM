@@ -40,6 +40,14 @@ class Index extends Component
 
     public string $timezone = 'Asia/Makassar';
 
+    public string $tagline = '';
+
+    public string $profile = '';
+
+    public string $primary_color = '#166534';
+
+    public bool $registration_open = true;
+
     public bool $is_active = true;
 
     public string $search = '';
@@ -140,6 +148,14 @@ class Index extends Component
                 'max:50',
             ],
 
+            'tagline' => ['nullable', 'string', 'max:180'],
+
+            'profile' => ['nullable', 'string', 'max:3000'],
+
+            'primary_color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
+
+            'registration_open' => ['boolean'],
+
             'is_active' => [
                 'boolean',
             ],
@@ -166,7 +182,7 @@ class Index extends Component
 
         } else {
 
-            $school = new School();
+            $school = new School;
 
         }
 
@@ -234,6 +250,14 @@ class Index extends Component
 
         $this->timezone =
             $school->timezone ?: 'Asia/Makassar';
+
+        $this->tagline = $school->tagline ?? '';
+
+        $this->profile = $school->profile ?? '';
+
+        $this->primary_color = $school->primary_color ?: '#166534';
+
+        $this->registration_open = $school->registration_open;
 
         $this->is_active =
             $school->is_active;
@@ -308,17 +332,16 @@ class Index extends Component
                 ->where('slug', $slug)
                 ->when(
                     $ignoreId,
-                    fn ($query) =>
-                        $query->where(
-                            'id',
-                            '!=',
-                            $ignoreId
-                        )
+                    fn ($query) => $query->where(
+                        'id',
+                        '!=',
+                        $ignoreId
+                    )
                 )
                 ->exists()
         ) {
             $slug =
-                $baseSlug . '-' . $counter;
+                $baseSlug.'-'.$counter;
 
             $counter++;
         }
@@ -342,10 +365,16 @@ class Index extends Component
             'phone',
             'email',
             'website',
+            'tagline',
+            'profile',
         ]);
 
         $this->timezone =
             'Asia/Makassar';
+
+        $this->primary_color = '#166534';
+
+        $this->registration_open = true;
 
         $this->is_active = true;
 
@@ -360,8 +389,8 @@ class Index extends Component
                 function ($query) {
 
                     $search =
-                        '%' .
-                        $this->search .
+                        '%'.
+                        $this->search.
                         '%';
 
                     $query->where(

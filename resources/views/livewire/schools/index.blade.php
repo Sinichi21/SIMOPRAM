@@ -9,7 +9,7 @@
             </h1>
 
             <p class="mt-1 text-sm text-zinc-500">
-                Kelola sekolah yang menggunakan SIMOPRAM.
+                Kelola sekolah yang menggunakan SIMPRAM.
             </p>
         </div>
 
@@ -378,6 +378,29 @@
 
                 </div>
 
+            </div>
+
+
+            <div class="mt-6 border-t border-zinc-200 pt-5 dark:border-zinc-800">
+                <h3 class="font-semibold">Landing Page Sekolah</h3>
+                <p class="mt-1 text-sm text-zinc-500">Konten ini tampil di halaman publik sekolah.</p>
+                <div class="mt-4 grid gap-4 md:grid-cols-[1fr_120px]">
+                    <div>
+                        <label class="mb-1 block text-sm font-medium">Tagline</label>
+                        <input type="text" wire:model="tagline" placeholder="Tumbuh tangguh, berkarya bersama." class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
+                        @error('tagline') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium">Warna utama</label>
+                        <input type="color" wire:model="primary_color" class="h-10 w-full rounded-lg border border-zinc-300 p-1 dark:border-zinc-700 dark:bg-zinc-800">
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <label class="mb-1 block text-sm font-medium">Profil Pramuka sekolah</label>
+                    <textarea wire:model="profile" rows="4" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"></textarea>
+                    @error('profile') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
+                <label class="mt-4 flex items-center gap-2"><input type="checkbox" wire:model="registration_open"><span class="text-sm">Buka pendaftaran anggota dari landing page</span></label>
             </div>
 
 

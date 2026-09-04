@@ -9,7 +9,7 @@
     >
 
     <title>
-        Verifikasi Laporan SIMOPRAM
+        Verifikasi Laporan SIMPRAM
     </title>
 
     <style>
@@ -202,7 +202,7 @@
     <main class="card">
         <header class="header">
             <div class="eyebrow">
-                SIMOPRAM
+                SIMPRAM
             </div>
 
             <h1>
@@ -245,7 +245,7 @@
                     </strong>
 
                     Dokumen ini telah dicabut dari daftar
-                    dokumen resmi SIMOPRAM.
+                    dokumen resmi SIMPRAM.
 
                     @if ($verification->revocation_reason)
                         Alasan:
@@ -357,7 +357,7 @@
         </section>
 
         <footer class="footer">
-            SIMOPRAM · Sistem Informasi Monitoring Pramuka
+            SIMPRAM · Sistem Informasi Pramuka
         </footer>
     </main>
 </div>

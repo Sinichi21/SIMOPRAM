@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Announcement;
 use App\Models\NotificationLog;
+use App\Models\School;
 use App\Models\User;
 use App\Models\UserNotificationChannel;
 use App\Services\TelegramService;
@@ -20,15 +21,12 @@ class SendAnnouncementNotification implements ShouldQueue
 
     public int $timeout = 30;
 
-
     public function __construct(
         public int $schoolId,
         public int $announcementId,
         public int $userId,
         public string $channel,
-    ) {
-    }
-
+    ) {}
 
     public function handle(
         TelegramService $telegram
@@ -42,7 +40,7 @@ class SendAnnouncementNotification implements ShouldQueue
         */
 
         $school =
-            \App\Models\School::query()
+            School::query()
                 ->withoutGlobalScopes()
                 ->findOrFail(
                     $this->schoolId
@@ -50,7 +48,6 @@ class SendAnnouncementNotification implements ShouldQueue
 
         app(SchoolContext::class)
             ->set($school);
-
 
         $announcement =
             Announcement::query()
@@ -64,63 +61,52 @@ class SendAnnouncementNotification implements ShouldQueue
                     $this->userId
                 );
 
-
         $log =
             NotificationLog::query()
                 ->firstOrCreate(
                     [
-                        'announcement_id' =>
-                            $announcement->id,
+                        'announcement_id' => $announcement->id,
 
-                        'user_id' =>
-                            $user->id,
+                        'user_id' => $user->id,
 
-                        'channel' =>
-                            $this->channel,
+                        'channel' => $this->channel,
                     ],
                     [
-                        'status' =>
-                            'pending',
+                        'status' => 'pending',
                     ]
                 );
-
 
         try {
 
             match ($this->channel) {
 
-                'telegram' =>
-                    $this->sendTelegram(
-                        $telegram,
-                        $announcement,
-                        $user,
-                        $log
-                    ),
+                'telegram' => $this->sendTelegram(
+                    $telegram,
+                    $announcement,
+                    $user,
+                    $log
+                ),
 
-                default =>
-                    throw new \RuntimeException(
-                        "Channel [{$this->channel}] tidak didukung."
-                    ),
+                default => throw new \RuntimeException(
+                    "Channel [{$this->channel}] tidak didukung."
+                ),
             };
 
         } catch (Throwable $exception) {
 
             $log->update([
-                'status' =>
-                    'failed',
+                'status' => 'failed',
 
-                'error_message' =>
-                    mb_substr(
-                        $exception->getMessage(),
-                        0,
-                        5000
-                    ),
+                'error_message' => mb_substr(
+                    $exception->getMessage(),
+                    0,
+                    5000
+                ),
             ]);
 
             throw $exception;
         }
     }
-
 
     protected function sendTelegram(
         TelegramService $telegram,
@@ -148,7 +134,6 @@ class SendAnnouncementNotification implements ShouldQueue
                 )
                 ->first();
 
-
         if (! $channel) {
             /*
             |--------------------------------------------------------------------------
@@ -158,22 +143,18 @@ class SendAnnouncementNotification implements ShouldQueue
             */
 
             $log->update([
-                'status' =>
-                    'failed',
+                'status' => 'failed',
 
-                'error_message' =>
-                    'Akun Telegram pengguna belum terhubung.',
+                'error_message' => 'Akun Telegram pengguna belum terhubung.',
             ]);
 
             return;
         }
 
-
         $message =
             $this->formatTelegramMessage(
                 $announcement
             );
-
 
         $response =
             $telegram->sendMessage(
@@ -181,35 +162,27 @@ class SendAnnouncementNotification implements ShouldQueue
                 $message
             );
 
-
         $telegramMessageId =
             data_get(
                 $response,
                 'result.message_id'
             );
 
-
         $log->update([
-            'status' =>
-                'sent',
+            'status' => 'sent',
 
-            'recipient' =>
-                $channel->destination,
+            'recipient' => $channel->destination,
 
-            'response' =>
-                $telegramMessageId
+            'response' => $telegramMessageId
                     ? 'message_id='
-                        . $telegramMessageId
+                        .$telegramMessageId
                     : 'sent',
 
-            'error_message' =>
-                null,
+            'error_message' => null,
 
-            'sent_at' =>
-                now(),
+            'sent_at' => now(),
         ]);
     }
-
 
     protected function formatTelegramMessage(
         Announcement $announcement
@@ -218,7 +191,7 @@ class SendAnnouncementNotification implements ShouldQueue
             $announcement
                 ->school
                 ?->name
-            ?? 'SIMOPRAM';
+            ?? 'SIMPRAM';
 
         return implode(
             PHP_EOL,

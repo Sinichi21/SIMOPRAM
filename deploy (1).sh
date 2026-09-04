@@ -2,9 +2,9 @@ server {
     listen 80;
     listen [::]:80;
 
-    server_name staging.simopram.example.com;
+    server_name staging.simpram.example.com;
 
-    root /var/www/simopram/current/public;
+    root /var/www/simpram/current/public;
     index index.php index.html;
 
     client_max_body_size 20M;

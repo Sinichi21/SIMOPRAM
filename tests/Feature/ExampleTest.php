@@ -1,7 +1,7 @@
 <?php
 
-test('guests are redirected from the home page to login', function () {
+test('guests can visit the public home page', function () {
     $response = $this->get(route('home'));
 
-    $response->assertRedirect(route('login'));
+    $response->assertOk()->assertSee('Pramuka tertata');
 });

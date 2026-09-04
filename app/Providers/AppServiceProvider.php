@@ -63,7 +63,7 @@ class AppServiceProvider extends ServiceProvider
                     in_array(
                         $ability,
                         config(
-                            'simopram.scout_admin_permissions',
+                            'simpram.scout_admin_permissions',
                             []
                         ),
                         true

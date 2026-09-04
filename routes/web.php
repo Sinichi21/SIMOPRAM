@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\LpjReportController;
 use App\Http\Controllers\PublishedDocumentController;
 use App\Http\Controllers\ReportPdfController;
 use App\Http\Controllers\ReportVerificationController;
+use App\Http\Controllers\SchoolRegistrationController;
 use App\Http\Controllers\SchoolSwitchController;
 use Illuminate\Support\Facades\Route;
 
@@ -13,17 +15,11 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-Route::get('/', function () {
-
-    if (auth()->check()) {
-        return redirect()
-            ->route('dashboard');
-    }
-
-    return redirect()
-        ->route('login');
-
-})->name('home');
+Route::get('/', [LandingPageController::class, 'index'])->name('home');
+Route::get('/s/{school:slug}', [LandingPageController::class, 'school'])->name('schools.landing');
+Route::post('/pendaftaran-sekolah', [SchoolRegistrationController::class, 'store'])
+    ->middleware('throttle:5,1')
+    ->name('school-registrations.store');
 
 /*
 |--------------------------------------------------------------------------

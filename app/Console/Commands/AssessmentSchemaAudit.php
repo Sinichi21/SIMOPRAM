@@ -11,11 +11,11 @@ use Throwable;
 
 class AssessmentSchemaAudit extends Command
 {
-    protected $signature = 'simopram:audit-assessment-schema
+    protected $signature = 'simpram:audit-assessment-schema
                             {--json : Tampilkan hasil sebagai JSON}';
 
     protected $description =
-        'Audit read-only schema penilaian SIMOPRAM dan deteksi risiko overwrite nilai manual.';
+        'Audit read-only schema penilaian SIMPRAM dan deteksi risiko overwrite nilai manual.';
 
     protected array $tables = [
         'student_scores',
@@ -71,8 +71,7 @@ class AssessmentSchemaAudit extends Command
 
         return collect($report['checks'])
             ->contains(
-                fn (array $check): bool =>
-                    ($check['level'] ?? null) === 'critical'
+                fn (array $check): bool => ($check['level'] ?? null) === 'critical'
             )
                 ? self::FAILURE
                 : self::SUCCESS;
@@ -94,8 +93,7 @@ class AssessmentSchemaAudit extends Command
                 ->map(
                     fn (array $column): array => [
                         'name' => $column['name'] ?? null,
-                        'type' =>
-                            $column['type_name']
+                        'type' => $column['type_name']
                             ?? $column['type']
                             ?? null,
                         'nullable' => $column['nullable'] ?? null,
@@ -113,12 +111,9 @@ class AssessmentSchemaAudit extends Command
                 ->map(
                     fn (array $index): array => [
                         'name' => $index['name'] ?? null,
-                        'columns' =>
-                            array_values($index['columns'] ?? []),
-                        'unique' =>
-                            (bool) ($index['unique'] ?? false),
-                        'primary' =>
-                            (bool) ($index['primary'] ?? false),
+                        'columns' => array_values($index['columns'] ?? []),
+                        'unique' => (bool) ($index['unique'] ?? false),
+                        'primary' => (bool) ($index['primary'] ?? false),
                     ]
                 )
                 ->values()
@@ -132,14 +127,11 @@ class AssessmentSchemaAudit extends Command
                 ->map(
                     fn (array $fk): array => [
                         'name' => $fk['name'] ?? null,
-                        'columns' =>
-                            array_values($fk['columns'] ?? []),
-                        'foreign_table' =>
-                            $fk['foreign_table'] ?? null,
-                        'foreign_columns' =>
-                            array_values(
-                                $fk['foreign_columns'] ?? []
-                            ),
+                        'columns' => array_values($fk['columns'] ?? []),
+                        'foreign_table' => $fk['foreign_table'] ?? null,
+                        'foreign_columns' => array_values(
+                            $fk['foreign_columns'] ?? []
+                        ),
                     ]
                 )
                 ->values()
@@ -189,8 +181,7 @@ class AssessmentSchemaAudit extends Command
             return [[
                 'id' => 'student_scores.exists',
                 'level' => 'critical',
-                'message' =>
-                    'Tabel student_scores tidak ditemukan.',
+                'message' => 'Tabel student_scores tidak ditemukan.',
             ]];
         }
 
@@ -207,8 +198,7 @@ class AssessmentSchemaAudit extends Command
                 'student_id',
                 'assessment_factor_id',
                 'score',
-            ]
-            as $column
+            ] as $column
         ) {
             $exists = $columnNames->contains($column);
 
@@ -227,8 +217,7 @@ class AssessmentSchemaAudit extends Command
                 'source_key',
                 'source_version',
                 'source_synced_at',
-            ]
-            as $column
+            ] as $column
         ) {
             $exists = $columnNames->contains($column);
 
@@ -250,17 +239,15 @@ class AssessmentSchemaAudit extends Command
         $uniqueIndexes = collect(
             $studentScores['indexes'] ?? []
         )->filter(
-            fn (array $index): bool =>
-                (bool) ($index['unique'] ?? false)
+            fn (array $index): bool => (bool) ($index['unique'] ?? false)
         );
 
         $dangerousUnique =
             $uniqueIndexes->first(
-                fn (array $index): bool =>
-                    $this->sameColumnSet(
-                        $index['columns'] ?? [],
-                        $identityColumns
-                    )
+                fn (array $index): bool => $this->sameColumnSet(
+                    $index['columns'] ?? [],
+                    $identityColumns
+                )
             );
 
         $sourceAwareUnique =
@@ -273,12 +260,11 @@ class AssessmentSchemaAudit extends Command
                     $hasIdentity = collect(
                         $identityColumns
                     )->every(
-                        fn (string $column): bool =>
-                            in_array(
-                                $column,
-                                $columns,
-                                true
-                            )
+                        fn (string $column): bool => in_array(
+                            $column,
+                            $columns,
+                            true
+                        )
                     );
 
                     $hasSource =
@@ -300,37 +286,28 @@ class AssessmentSchemaAudit extends Command
 
         if ($dangerousUnique) {
             $checks[] = [
-                'id' =>
-                    'student_scores.manual_overwrite_risk',
-                'level' =>
-                    'critical',
-                'message' =>
-                    'Ditemukan UNIQUE hanya pada '
-                    . '(assessment_config_id, student_id, assessment_factor_id) '
-                    . 'yaitu index '
-                    . ($dangerousUnique['name'] ?? '(tanpa nama)')
-                    . '. Nilai otomatis berpotensi menimpa nilai manual.',
+                'id' => 'student_scores.manual_overwrite_risk',
+                'level' => 'critical',
+                'message' => 'Ditemukan UNIQUE hanya pada '
+                    .'(assessment_config_id, student_id, assessment_factor_id) '
+                    .'yaitu index '
+                    .($dangerousUnique['name'] ?? '(tanpa nama)')
+                    .'. Nilai otomatis berpotensi menimpa nilai manual.',
             ];
         } elseif ($sourceAwareUnique) {
             $checks[] = [
-                'id' =>
-                    'student_scores.manual_overwrite_risk',
-                'level' =>
-                    'ok',
-                'message' =>
-                    'Unique identity sudah membedakan sumber nilai melalui index '
-                    . ($sourceAwareUnique['name'] ?? '(tanpa nama)')
-                    . '.',
+                'id' => 'student_scores.manual_overwrite_risk',
+                'level' => 'ok',
+                'message' => 'Unique identity sudah membedakan sumber nilai melalui index '
+                    .($sourceAwareUnique['name'] ?? '(tanpa nama)')
+                    .'.',
             ];
         } else {
             $checks[] = [
-                'id' =>
-                    'student_scores.manual_overwrite_risk',
-                'level' =>
-                    'warning',
-                'message' =>
-                    'Tidak ditemukan unique identity yang dapat disimpulkan aman. '
-                    . 'Perlu review migration/model StudentScore sebelum mengubah sinkronisasi.',
+                'id' => 'student_scores.manual_overwrite_risk',
+                'level' => 'warning',
+                'message' => 'Tidak ditemukan unique identity yang dapat disimpulkan aman. '
+                    .'Perlu review migration/model StudentScore sebelum mengubah sinkronisasi.',
             ];
         }
 
@@ -351,32 +328,25 @@ class AssessmentSchemaAudit extends Command
                     'assessment_config_signature',
                     'calculated_at',
                     'calculated_by',
-                ]
-                as $column
+                ] as $column
             ) {
                 $exists =
                     $finalColumnNames
                         ->contains($column);
 
                 $checks[] = [
-                    'id' =>
-                        'final_grades.metadata.'.$column,
-                    'level' =>
-                        $exists ? 'ok' : 'warning',
-                    'message' =>
-                        $exists
+                    'id' => 'final_grades.metadata.'.$column,
+                    'level' => $exists ? 'ok' : 'warning',
+                    'message' => $exists
                             ? "FinalGrade memiliki {$column}."
                             : "FinalGrade belum memiliki {$column}.",
                 ];
             }
         } else {
             $checks[] = [
-                'id' =>
-                    'final_grades.exists',
-                'level' =>
-                    'critical',
-                'message' =>
-                    'Tabel final_grades tidak ditemukan.',
+                'id' => 'final_grades.exists',
+                'level' => 'critical',
+                'message' => 'Tabel final_grades tidak ditemukan.',
             ];
         }
 
@@ -398,7 +368,7 @@ class AssessmentSchemaAudit extends Command
     ): void {
         $this->newLine();
         $this->info(
-            'SIMOPRAM Assessment Schema Audit'
+            'SIMPRAM Assessment Schema Audit'
         );
         $this->line(
             'Generated: '.$report['generated_at']
@@ -411,9 +381,9 @@ class AssessmentSchemaAudit extends Command
         foreach ($report['checks'] as $check) {
             $message =
                 '['
-                . strtoupper($check['level'] ?? 'info')
-                . '] '
-                . ($check['message'] ?? '');
+                .strtoupper($check['level'] ?? 'info')
+                .'] '
+                .($check['message'] ?? '');
 
             match ($check['level'] ?? null) {
                 'critical' => $this->error($message),
@@ -462,7 +432,7 @@ class AssessmentSchemaAudit extends Command
             'Command ini read-only. Tidak ada migration atau data yang diubah.'
         );
         $this->comment(
-            'Hasil lengkap: php artisan simopram:audit-assessment-schema --json'
+            'Hasil lengkap: php artisan simpram:audit-assessment-schema --json'
         );
     }
 }

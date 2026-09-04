@@ -17,7 +17,6 @@ class TelegramPollUpdates extends Command
     protected $description =
         'Menerima update Telegram Bot untuk development';
 
-
     public function handle(
         TelegramService $telegram,
         TelegramLinkService $linkService
@@ -31,7 +30,6 @@ class TelegramPollUpdates extends Command
         $this->line(
             'Tekan Ctrl+C untuk berhenti.'
         );
-
 
         while (true) {
 
@@ -50,7 +48,6 @@ class TelegramPollUpdates extends Command
                         20
                     );
 
-
                 foreach ($updates as $update) {
 
                     $updateId =
@@ -66,7 +63,6 @@ class TelegramPollUpdates extends Command
                         );
                     }
 
-
                     $this->processUpdate(
                         $update,
                         $telegram,
@@ -77,12 +73,12 @@ class TelegramPollUpdates extends Command
             } catch (Throwable $exception) {
 
                 $this->error(
-                    '[' .
+                    '['.
                     now()->format(
                         'H:i:s'
                     )
-                    . '] '
-                    . $exception
+                    .'] '
+                    .$exception
                         ->getMessage()
                 );
 
@@ -92,7 +88,6 @@ class TelegramPollUpdates extends Command
 
         return self::SUCCESS;
     }
-
 
     protected function processUpdate(
         array $update,
@@ -109,7 +104,6 @@ class TelegramPollUpdates extends Command
             return;
         }
 
-
         /*
         |--------------------------------------------------------------------------
         | Kita hanya menerima private chat
@@ -124,7 +118,6 @@ class TelegramPollUpdates extends Command
         ) {
             return;
         }
-
 
         $chatId =
             data_get(
@@ -142,7 +135,6 @@ class TelegramPollUpdates extends Command
                 )
             );
 
-
         if (
             ! $chatId
             ||
@@ -150,7 +142,6 @@ class TelegramPollUpdates extends Command
         ) {
             return;
         }
-
 
         /*
         |--------------------------------------------------------------------------
@@ -169,10 +160,8 @@ class TelegramPollUpdates extends Command
             return;
         }
 
-
         $rawToken =
             $matches[1] ?? null;
-
 
         /*
         |--------------------------------------------------------------------------
@@ -187,16 +176,15 @@ class TelegramPollUpdates extends Command
                 implode(
                     PHP_EOL,
                     [
-                        'SIMOPRAM',
+                        'SIMPRAM',
                         '',
-                        'Untuk menghubungkan akun Telegram, buka SIMOPRAM lalu pilih menu Hubungkan Telegram.',
+                        'Untuk menghubungkan akun Telegram, buka SIMPRAM lalu pilih menu Hubungkan Telegram.',
                     ]
                 )
             );
 
             return;
         }
-
 
         try {
 
@@ -210,7 +198,6 @@ class TelegramPollUpdates extends Command
                 )
             );
 
-
             $telegram->sendMessage(
                 (string) $chatId,
                 implode(
@@ -218,11 +205,10 @@ class TelegramPollUpdates extends Command
                     [
                         '✅ Telegram berhasil dihubungkan.',
                         '',
-                        'Anda sekarang dapat menerima pengumuman SIMOPRAM melalui Telegram.',
+                        'Anda sekarang dapat menerima pengumuman SIMPRAM melalui Telegram.',
                     ]
                 )
             );
-
 
             $this->info(
                 sprintf(
@@ -246,10 +232,9 @@ class TelegramPollUpdates extends Command
                     ->first()
                 ?? 'Gagal menghubungkan Telegram.';
 
-
             $telegram->sendMessage(
                 (string) $chatId,
-                '❌ ' . $message
+                '❌ '.$message
             );
 
         }
