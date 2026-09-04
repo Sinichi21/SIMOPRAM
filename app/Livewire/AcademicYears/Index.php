@@ -45,11 +45,10 @@ class Index extends Component
                     'name'
                 )
                     ->where(
-                        fn ($query) =>
-                            $query->where(
-                                'school_id',
-                                $schoolId
-                            )
+                        fn ($query) => $query->where(
+                            'school_id',
+                            $schoolId
+                        )
                     )
                     ->ignore($this->editingId),
             ],
@@ -88,12 +87,11 @@ class Index extends Component
                 AcademicYear::query()
                     ->when(
                         $this->editingId,
-                        fn ($query) =>
-                            $query->where(
-                                'id',
-                                '!=',
-                                $this->editingId
-                            )
+                        fn ($query) => $query->where(
+                            'id',
+                            '!=',
+                            $this->editingId
+                        )
                     )
                     ->update([
                         'is_active' => false,
@@ -105,7 +103,7 @@ class Index extends Component
                     $this->editingId
                 );
             } else {
-                $academicYear = new AcademicYear();
+                $academicYear = new AcademicYear;
             }
 
             $academicYear->fill($validated);
@@ -212,12 +210,11 @@ class Index extends Component
             AcademicYear::query()
                 ->when(
                     $this->search,
-                    fn ($query) =>
-                        $query->where(
-                            'name',
-                            'like',
-                            '%' . $this->search . '%'
-                        )
+                    fn ($query) => $query->where(
+                        'name',
+                        'like',
+                        '%'.$this->search.'%'
+                    )
                 )
                 ->orderByDesc('start_date')
                 ->paginate(10);

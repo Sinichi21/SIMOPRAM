@@ -16,7 +16,6 @@ class Manage extends Component
 
     public string $password_confirmation = '';
 
-
     public function mount(
         int $studentId
     ): void {
@@ -26,7 +25,6 @@ class Manage extends Component
         $this->studentId =
             $studentId;
     }
-
 
     public function createAccount(
         StudentAccountService $service
@@ -78,7 +76,6 @@ class Manage extends Component
         );
     }
 
-
     public function resetPassword(
         StudentAccountService $service
     ): void {
@@ -120,7 +117,6 @@ class Manage extends Component
             'Password siswa berhasil diubah.'
         );
     }
-
 
     public function render()
     {

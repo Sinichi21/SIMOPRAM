@@ -151,7 +151,6 @@ return new class extends Migration
 
                 $table->timestamps();
 
-
                 /*
                 |--------------------------------------------------------------------------
                 | Foreign Keys
@@ -212,7 +211,6 @@ return new class extends Migration
                     ->on('users')
                     ->nullOnDelete();
 
-
                 /*
                 |--------------------------------------------------------------------------
                 | Constraints
@@ -247,7 +245,6 @@ return new class extends Migration
                 );
             }
         );
-
 
         /*
         |--------------------------------------------------------------------------
@@ -394,7 +391,6 @@ return new class extends Migration
                     )
                     ->useCurrent();
 
-
                 /*
                 |--------------------------------------------------------------------------
                 | Foreign Keys
@@ -437,7 +433,6 @@ return new class extends Migration
                     ->on('classrooms')
                     ->nullOnDelete();
 
-
                 /*
                 |--------------------------------------------------------------------------
                 | Constraints
@@ -462,7 +457,6 @@ return new class extends Migration
             }
         );
     }
-
 
     public function down(): void
     {

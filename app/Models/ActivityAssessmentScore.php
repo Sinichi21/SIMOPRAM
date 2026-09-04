@@ -10,7 +10,6 @@ class ActivityAssessmentScore extends Model
 {
     use BelongsToSchool;
 
-
     protected $fillable = [
         'activity_assessment_target_id',
         'activity_assessment_criterion_id',
@@ -19,18 +18,14 @@ class ActivityAssessmentScore extends Model
         'notes',
     ];
 
-
     protected function casts(): array
     {
         return [
-            'score' =>
-                'float',
+            'score' => 'float',
 
-            'weighted_score' =>
-                'float',
+            'weighted_score' => 'float',
         ];
     }
-
 
     public function target(): BelongsTo
     {
@@ -39,7 +34,6 @@ class ActivityAssessmentScore extends Model
             'activity_assessment_target_id'
         );
     }
-
 
     public function criterion(): BelongsTo
     {

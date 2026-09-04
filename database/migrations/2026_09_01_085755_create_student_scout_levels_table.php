@@ -40,10 +40,10 @@ return new class extends Migration
 
             $table->unique(
                 [
-                'student_id',
-                'academic_year_id',
-                'scout_level_id',
-            ],
+                    'student_id',
+                    'academic_year_id',
+                    'scout_level_id',
+                ],
                 'student_scout_levels_student_year_level_unique'
             );
         });

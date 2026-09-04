@@ -46,11 +46,10 @@ class Index extends Component
                     'academic_years',
                     'id'
                 )->where(
-                    fn ($query) =>
-                        $query->where(
-                            'school_id',
-                            $schoolId
-                        )
+                    fn ($query) => $query->where(
+                        'school_id',
+                        $schoolId
+                    )
                 ),
             ],
 
@@ -137,12 +136,11 @@ class Index extends Component
             )
             ->when(
                 $this->editingId,
-                fn ($query) =>
-                    $query->where(
-                        'id',
-                        '!=',
-                        $this->editingId
-                    )
+                fn ($query) => $query->where(
+                    'id',
+                    '!=',
+                    $this->editingId
+                )
             )
             ->exists();
 
@@ -177,12 +175,11 @@ class Index extends Component
                     Semester::query()
                         ->when(
                             $this->editingId,
-                            fn ($query) =>
-                                $query->where(
-                                    'id',
-                                    '!=',
-                                    $this->editingId
-                                )
+                            fn ($query) => $query->where(
+                                'id',
+                                '!=',
+                                $this->editingId
+                            )
                         )
                         ->update([
                             'is_active' => false,
@@ -207,26 +204,20 @@ class Index extends Component
                     ? Semester::findOrFail(
                         $this->editingId
                     )
-                    : new Semester();
+                    : new Semester;
 
                 $semester->fill([
-                    'academic_year_id' =>
-                        $validated['academic_year_id'],
+                    'academic_year_id' => $validated['academic_year_id'],
 
-                    'name' =>
-                        $semesterName,
+                    'name' => $semesterName,
 
-                    'semester_number' =>
-                        $validated['semester_number'],
+                    'semester_number' => $validated['semester_number'],
 
-                    'start_date' =>
-                        $validated['start_date'],
+                    'start_date' => $validated['start_date'],
 
-                    'end_date' =>
-                        $validated['end_date'],
+                    'end_date' => $validated['end_date'],
 
-                    'is_active' =>
-                        $validated['is_active'],
+                    'is_active' => $validated['is_active'],
                 ]);
 
                 $semester->save();
@@ -335,14 +326,13 @@ class Index extends Component
                     function ($query) {
                         $query->whereHas(
                             'academicYear',
-                            fn ($query) =>
-                                $query->where(
-                                    'name',
-                                    'like',
-                                    '%' .
-                                    $this->search .
-                                    '%'
-                                )
+                            fn ($query) => $query->where(
+                                'name',
+                                'like',
+                                '%'.
+                                $this->search.
+                                '%'
+                            )
                         );
                     }
                 )

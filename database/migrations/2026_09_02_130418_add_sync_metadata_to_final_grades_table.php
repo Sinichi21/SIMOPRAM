@@ -35,7 +35,6 @@ return new class extends Migration
             );
         }
 
-
         /*
         |--------------------------------------------------------------------------
         | calculated_at
@@ -62,7 +61,6 @@ return new class extends Migration
                 }
             );
         }
-
 
         /*
         |--------------------------------------------------------------------------
@@ -96,7 +94,6 @@ return new class extends Migration
         }
     }
 
-
     public function down(): void
     {
         /*
@@ -125,7 +122,6 @@ return new class extends Migration
             );
         }
 
-
         /*
         |--------------------------------------------------------------------------
         | calculated_at
@@ -147,7 +143,6 @@ return new class extends Migration
                 }
             );
         }
-
 
         /*
         |--------------------------------------------------------------------------

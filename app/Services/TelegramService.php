@@ -23,7 +23,6 @@ class TelegramService
         return $token;
     }
 
-
     public function sendMessage(
         string $chatId,
         string $message
@@ -47,14 +46,12 @@ class TelegramService
             )
             ->post(
                 'https://api.telegram.org/bot'
-                . $this->token()
-                . '/sendMessage',
+                .$this->token()
+                .'/sendMessage',
                 [
-                    'chat_id' =>
-                        $chatId,
+                    'chat_id' => $chatId,
 
-                    'text' =>
-                        $message,
+                    'text' => $message,
                 ]
             );
 
@@ -63,16 +60,15 @@ class TelegramService
         );
     }
 
-
     protected function handleResponse(
         Response $response
     ): array {
         if ($response->failed()) {
             throw new RuntimeException(
                 'Telegram HTTP error: '
-                . $response->status()
-                . ' - '
-                . $response->body()
+                .$response->status()
+                .' - '
+                .$response->body()
             );
         }
 
@@ -86,7 +82,7 @@ class TelegramService
         ) {
             throw new RuntimeException(
                 'Telegram menolak pengiriman: '
-                . json_encode($payload)
+                .json_encode($payload)
             );
         }
 
@@ -116,8 +112,8 @@ class TelegramService
             )
                 ->get(
                     'https://api.telegram.org/bot'
-                    . $this->token()
-                    . '/getUpdates',
+                    .$this->token()
+                    .'/getUpdates',
                     $payload
                 );
 

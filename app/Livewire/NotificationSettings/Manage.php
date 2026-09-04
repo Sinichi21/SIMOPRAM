@@ -11,7 +11,6 @@ class Manage extends Component
 {
     public ?string $telegramLink = null;
 
-
     protected function schoolId(): int
     {
         $schoolId =
@@ -27,7 +26,6 @@ class Manage extends Component
         return $schoolId;
     }
 
-
     public function connectTelegram(
         TelegramLinkService $service
     ): void {
@@ -36,7 +34,6 @@ class Manage extends Component
                 auth()->user()
             );
     }
-
 
     public function disconnectTelegram(): void
     {
@@ -54,8 +51,7 @@ class Manage extends Component
                 'telegram'
             )
             ->update([
-                'is_active' =>
-                    false,
+                'is_active' => false,
             ]);
 
         $this->telegramLink = null;
@@ -65,7 +61,6 @@ class Manage extends Component
             'Telegram berhasil dinonaktifkan.'
         );
     }
-
 
     public function render()
     {

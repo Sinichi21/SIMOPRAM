@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Jobs\SendAnnouncementNotification;
 use App\Models\Announcement;
 use App\Models\NotificationLog;
-use App\Models\User;
 use App\Support\SchoolContext;
 use Illuminate\Support\Collection;
 
@@ -13,9 +12,7 @@ class NotificationService
 {
     public function __construct(
         protected AnnouncementAudienceService $audience
-    ) {
-    }
-
+    ) {}
 
     public function publish(
         Announcement $announcement
@@ -36,7 +33,6 @@ class NotificationService
             $users
         );
 
-
         /*
         |--------------------------------------------------------------------------
         | Telegram via Queue
@@ -49,7 +45,6 @@ class NotificationService
         );
     }
 
-
     protected function sendWeb(
         Announcement $announcement,
         Collection $users
@@ -59,29 +54,22 @@ class NotificationService
             NotificationLog::query()
                 ->firstOrCreate(
                     [
-                        'announcement_id' =>
-                            $announcement->id,
+                        'announcement_id' => $announcement->id,
 
-                        'user_id' =>
-                            $user->id,
+                        'user_id' => $user->id,
 
-                        'channel' =>
-                            'web',
+                        'channel' => 'web',
                     ],
                     [
-                        'status' =>
-                            'sent',
+                        'status' => 'sent',
 
-                        'recipient' =>
-                            $user->email,
+                        'recipient' => $user->email,
 
-                        'sent_at' =>
-                            now(),
+                        'sent_at' => now(),
                     ]
                 );
         }
     }
-
 
     protected function dispatchTelegram(
         Announcement $announcement,
@@ -97,27 +85,21 @@ class NotificationService
             'SchoolContext tidak tersedia.'
         );
 
-
         foreach ($users as $user) {
 
             NotificationLog::query()
                 ->firstOrCreate(
                     [
-                        'announcement_id' =>
-                            $announcement->id,
+                        'announcement_id' => $announcement->id,
 
-                        'user_id' =>
-                            $user->id,
+                        'user_id' => $user->id,
 
-                        'channel' =>
-                            'telegram',
+                        'channel' => 'telegram',
                     ],
                     [
-                        'status' =>
-                            'pending',
+                        'status' => 'pending',
                     ]
                 );
-
 
             SendAnnouncementNotification::dispatch(
                 $schoolId,

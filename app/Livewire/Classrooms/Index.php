@@ -44,11 +44,10 @@ class Index extends Component
                     'name'
                 )
                     ->where(
-                        fn ($query) =>
-                            $query->where(
-                                'school_id',
-                                $schoolId
-                            )
+                        fn ($query) => $query->where(
+                            'school_id',
+                            $schoolId
+                        )
                     )
                     ->ignore($this->editingId),
             ],
@@ -84,7 +83,7 @@ class Index extends Component
             ? Classroom::findOrFail(
                 $this->editingId
             )
-            : new Classroom();
+            : new Classroom;
 
         $classroom->fill($validated);
 
@@ -137,8 +136,7 @@ class Index extends Component
             Classroom::findOrFail($id);
 
         $classroom->update([
-            'is_active' =>
-                ! $classroom->is_active,
+            'is_active' => ! $classroom->is_active,
         ]);
 
         session()->flash(
@@ -174,14 +172,13 @@ class Index extends Component
             Classroom::query()
                 ->when(
                     $this->search,
-                    fn ($query) =>
-                        $query->where(
-                            'name',
-                            'like',
-                            '%' .
-                            $this->search .
-                            '%'
-                        )
+                    fn ($query) => $query->where(
+                        'name',
+                        'like',
+                        '%'.
+                        $this->search.
+                        '%'
+                    )
                 )
                 ->orderBy('grade')
                 ->orderBy('name')

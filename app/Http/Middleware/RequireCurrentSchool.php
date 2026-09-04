@@ -11,8 +11,7 @@ class RequireCurrentSchool
 {
     public function __construct(
         protected SchoolContext $schoolContext
-    ) {
-    }
+    ) {}
 
     public function handle(
         Request $request,

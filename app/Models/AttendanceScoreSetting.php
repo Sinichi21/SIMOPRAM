@@ -10,7 +10,6 @@ class AttendanceScoreSetting extends Model
 {
     use BelongsToSchool;
 
-
     protected $fillable = [
         'present_weight',
         'late_weight',
@@ -19,7 +18,6 @@ class AttendanceScoreSetting extends Model
         'absent_weight',
         'updated_by',
     ];
-
 
     protected function casts(): array
     {
@@ -34,7 +32,6 @@ class AttendanceScoreSetting extends Model
         ];
     }
 
-
     public static function defaultWeights(): array
     {
         return [
@@ -46,27 +43,20 @@ class AttendanceScoreSetting extends Model
         ];
     }
 
-
     public function percentages(): array
     {
         return [
-            'present' =>
-                (float) $this->present_weight,
+            'present' => (float) $this->present_weight,
 
-            'late' =>
-                (float) $this->late_weight,
+            'late' => (float) $this->late_weight,
 
-            'sick' =>
-                (float) $this->sick_weight,
+            'sick' => (float) $this->sick_weight,
 
-            'excused' =>
-                (float) $this->excused_weight,
+            'excused' => (float) $this->excused_weight,
 
-            'absent' =>
-                (float) $this->absent_weight,
+            'absent' => (float) $this->absent_weight,
         ];
     }
-
 
     public function factors(): array
     {
@@ -74,12 +64,10 @@ class AttendanceScoreSetting extends Model
             $this->percentages()
         )
             ->map(
-                fn (float $value): float =>
-                    $value / 100
+                fn (float $value): float => $value / 100
             )
             ->all();
     }
-
 
     public function school(): BelongsTo
     {
@@ -87,7 +75,6 @@ class AttendanceScoreSetting extends Model
             School::class
         );
     }
-
 
     public function updatedBy(): BelongsTo
     {

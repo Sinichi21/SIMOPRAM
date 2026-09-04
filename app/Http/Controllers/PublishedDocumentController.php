@@ -47,26 +47,21 @@ class PublishedDocumentController extends Controller
         return view(
             'reports.published-document-show',
             [
-                'verification' =>
-                    $verification,
+                'verification' => $verification,
 
-                'publicUrl' =>
-                    route(
-                        'reports.verify',
-                        [
-                            'code' =>
-                                $verification
-                                    ->code,
-                        ]
-                    ),
+                'publicUrl' => route(
+                    'reports.verify',
+                    [
+                        'code' => $verification
+                            ->code,
+                    ]
+                ),
 
-                'status' =>
-                    $verification
-                        ->publicStatus(),
+                'status' => $verification
+                    ->publicStatus(),
             ]
         );
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -138,39 +133,33 @@ class PublishedDocumentController extends Controller
                 ->file_name
             ?: (
                 'rekap-nilai-'
-                . $verification
+                .$verification
                     ->code
-                . '.pdf'
+                .'.pdf'
             );
 
         return response(
             $binary,
             200,
             [
-                'Content-Type' =>
-                    'application/pdf',
+                'Content-Type' => 'application/pdf',
 
-                'Content-Disposition' =>
-                    'attachment; filename="'
-                    . addslashes(
+                'Content-Disposition' => 'attachment; filename="'
+                    .addslashes(
                         $filename
                     )
-                    . '"',
+                    .'"',
 
-                'Content-Length' =>
-                    (string) strlen(
-                        $binary
-                    ),
+                'Content-Length' => (string) strlen(
+                    $binary
+                ),
 
-                'X-Content-Type-Options' =>
-                    'nosniff',
+                'X-Content-Type-Options' => 'nosniff',
 
-                'Cache-Control' =>
-                    'private, no-store, max-age=0',
+                'Cache-Control' => 'private, no-store, max-age=0',
             ]
         );
     }
-
 
     /*
     |--------------------------------------------------------------------------

@@ -34,22 +34,20 @@ class Index extends Component
                 ])
                 ->when(
                     $this->search,
-                    fn ($query) =>
-                        $query->where(
-                            'title',
-                            'like',
-                            '%' .
-                            trim($this->search) .
-                            '%'
-                        )
+                    fn ($query) => $query->where(
+                        'title',
+                        'like',
+                        '%'.
+                        trim($this->search).
+                        '%'
+                    )
                 )
                 ->when(
                     $this->status,
-                    fn ($query) =>
-                        $query->where(
-                            'status',
-                            $this->status
-                        )
+                    fn ($query) => $query->where(
+                        'status',
+                        $this->status
+                    )
                 )
                 ->latest()
                 ->paginate(10);

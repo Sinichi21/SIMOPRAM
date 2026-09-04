@@ -11,7 +11,6 @@ class ActivityAssessmentCriterion extends Model
 {
     use BelongsToSchool;
 
-
     protected $fillable = [
         'activity_assessment_id',
         'name',
@@ -21,21 +20,16 @@ class ActivityAssessmentCriterion extends Model
         'sort_order',
     ];
 
-
     protected function casts(): array
     {
         return [
-            'max_score' =>
-                'float',
+            'max_score' => 'float',
 
-            'weight' =>
-                'float',
+            'weight' => 'float',
 
-            'sort_order' =>
-                'integer',
+            'sort_order' => 'integer',
         ];
     }
-
 
     public function assessment(): BelongsTo
     {
@@ -44,7 +38,6 @@ class ActivityAssessmentCriterion extends Model
             'activity_assessment_id'
         );
     }
-
 
     public function scores(): HasMany
     {

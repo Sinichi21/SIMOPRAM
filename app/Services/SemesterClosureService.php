@@ -9,7 +9,6 @@ use App\Models\SemesterGradeSnapshot;
 use App\Models\Student;
 use App\Models\StudentScore;
 use App\Support\SchoolContext;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -40,7 +39,6 @@ class SemesterClosureService
             ->first();
     }
 
-
     /*
     |--------------------------------------------------------------------------
     | Apakah Periode Dikunci
@@ -60,7 +58,6 @@ class SemesterClosureService
             ?? false;
     }
 
-
     /*
     |--------------------------------------------------------------------------
     | Guard Write
@@ -69,8 +66,12 @@ class SemesterClosureService
 
     public function assertOpen(
         int $academicYearId,
-        int $semesterId
+        ?int $semesterId
     ): void {
+        if ($semesterId === null) {
+            return;
+        }
+
         if (
             $this->isLocked(
                 $academicYearId,
@@ -78,14 +79,12 @@ class SemesterClosureService
             )
         ) {
             throw ValidationException::withMessages([
-                'semester' =>
-                    'Semester telah dikunci. '
-                    . 'Buka kembali semester terlebih dahulu '
-                    . 'untuk melakukan perubahan data penilaian.',
+                'semester' => 'Semester telah dikunci. '
+                    .'Buka kembali semester terlebih dahulu '
+                    .'untuk melakukan perubahan data penilaian.',
             ]);
         }
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -101,24 +100,20 @@ class SemesterClosureService
                 SchoolContext::class
             )->school();
 
-
         abort_unless(
             $school,
             409,
             'Pilih sekolah aktif terlebih dahulu.'
         );
 
-
         if (
             ! $config->is_active
         ) {
             throw ValidationException::withMessages([
-                'semester' =>
-                    'Konfigurasi penilaian harus aktif '
-                    . 'sebelum semester dapat dikunci.',
+                'semester' => 'Konfigurasi penilaian harus aktif '
+                    .'sebelum semester dapat dikunci.',
             ]);
         }
-
 
         /*
         |--------------------------------------------------------------------------
@@ -132,20 +127,17 @@ class SemesterClosureService
                 $config->semester_id
             );
 
-
         if (
             $current
             &&
             $current->isLocked()
         ) {
             throw ValidationException::withMessages([
-                'semester' =>
-                    'Semester ini sudah dikunci pada versi '
-                    . $current->version
-                    . '.',
+                'semester' => 'Semester ini sudah dikunci pada versi '
+                    .$current->version
+                    .'.',
             ]);
         }
-
 
         /*
         |--------------------------------------------------------------------------
@@ -158,20 +150,17 @@ class SemesterClosureService
                 AssessmentService::class
             );
 
-
         $attendanceStatus =
             $assessmentService
                 ->attendanceSyncStatus(
                     $config
                 );
 
-
         $finalStatus =
             $assessmentService
                 ->finalGradeSyncStatus(
                     $config
                 );
-
 
         if (
             (
@@ -189,20 +178,17 @@ class SemesterClosureService
             )
         ) {
             throw ValidationException::withMessages([
-                'semester' =>
-                    'Semester belum dapat dikunci karena masih '
-                    . 'terdapat nilai yang belum sinkron. '
-                    . 'Jalankan Sinkronisasi Penilaian terlebih dahulu.',
+                'semester' => 'Semester belum dapat dikunci karena masih '
+                    .'terdapat nilai yang belum sinkron. '
+                    .'Jalankan Sinkronisasi Penilaian terlebih dahulu.',
             ]);
         }
-
 
         $config->loadMissing([
             'academicYear',
             'semester',
             'items.factor',
         ]);
-
 
         /*
         |--------------------------------------------------------------------------
@@ -213,20 +199,19 @@ class SemesterClosureService
         $students =
             Student::query()
                 ->with([
-                    'enrollments' =>
-                        function ($query) use (
-                            $config
-                        ): void {
-                            $query
-                                ->where(
-                                    'academic_year_id',
-                                    $config
-                                        ->academic_year_id
-                                )
-                                ->with(
-                                    'classroom'
-                                );
-                        },
+                    'enrollments' => function ($query) use (
+                        $config
+                    ): void {
+                        $query
+                            ->where(
+                                'academic_year_id',
+                                $config
+                                    ->academic_year_id
+                            )
+                            ->with(
+                                'classroom'
+                            );
+                    },
                 ])
                 ->where(
                     'status',
@@ -234,24 +219,21 @@ class SemesterClosureService
                 )
                 ->whereHas(
                     'enrollments',
-                    fn ($query) =>
-                        $query->where(
-                            'academic_year_id',
-                            $config
-                                ->academic_year_id
-                        )
+                    fn ($query) => $query->where(
+                        'academic_year_id',
+                        $config
+                            ->academic_year_id
+                    )
                 )
                 ->orderBy(
                     'name'
                 )
                 ->get();
 
-
         $studentIds =
             $students->pluck(
                 'id'
             );
-
 
         /*
         |--------------------------------------------------------------------------
@@ -274,7 +256,6 @@ class SemesterClosureService
                     'student_id'
                 );
 
-
         /*
         |--------------------------------------------------------------------------
         | Defensive validation
@@ -286,12 +267,10 @@ class SemesterClosureService
             !== $students->count()
         ) {
             throw ValidationException::withMessages([
-                'semester' =>
-                    'Jumlah nilai akhir tidak sesuai dengan '
-                    . 'jumlah siswa aktif pada periode ini.',
+                'semester' => 'Jumlah nilai akhir tidak sesuai dengan '
+                    .'jumlah siswa aktif pada periode ini.',
             ]);
         }
-
 
         /*
         |--------------------------------------------------------------------------
@@ -314,12 +293,10 @@ class SemesterClosureService
                     'student_id'
                 )
                 ->map(
-                    fn ($items) =>
-                        $items->keyBy(
-                            'assessment_factor_id'
-                        )
+                    fn ($items) => $items->keyBy(
+                        'assessment_factor_id'
+                    )
                 );
-
 
         $configSignature =
             $assessmentService
@@ -327,12 +304,10 @@ class SemesterClosureService
                     $config
                 );
 
-
         $attendanceVersion =
             app(
                 AttendanceWeightService::class
             )->version();
-
 
         return DB::transaction(
             function () use (
@@ -367,11 +342,9 @@ class SemesterClosureService
                             'version'
                         );
 
-
                 $nextVersion =
                     ((int) $lastVersion)
                     + 1;
-
 
                 /*
                 |--------------------------------------------------------------------------
@@ -388,129 +361,99 @@ class SemesterClosureService
                         ->values()
                         ->map(
                             fn ($item): array => [
-                                'assessment_factor_id' =>
-                                    (int) $item
-                                        ->assessment_factor_id,
+                                'assessment_factor_id' => (int) $item
+                                    ->assessment_factor_id,
 
-                                'name' =>
-                                    $item
-                                        ->factor
-                                        ?->name,
+                                'name' => $item
+                                    ->factor
+                                    ?->name,
 
-                                'source_type' =>
-                                    $item
-                                        ->factor
-                                        ?->source_type,
+                                'source_type' => $item
+                                    ->factor
+                                    ?->source_type,
 
-                                'weight' =>
-                                    (float) $item
-                                        ->weight,
+                                'weight' => (float) $item
+                                    ->weight,
                             ]
                         )
                         ->all();
 
-
                 $closure =
                     SemesterClosure::query()
                         ->create([
-                            'academic_year_id' =>
-                                $config
-                                    ->academic_year_id,
+                            'academic_year_id' => $config
+                                ->academic_year_id,
 
-                            'semester_id' =>
-                                $config
-                                    ->semester_id,
+                            'semester_id' => $config
+                                ->semester_id,
 
-                            'assessment_config_id' =>
-                                $config->id,
+                            'assessment_config_id' => $config->id,
 
-                            'version' =>
-                                $nextVersion,
+                            'version' => $nextVersion,
 
-                            'status' =>
-                                'locked',
+                            'status' => 'locked',
 
-                            'config_signature' =>
-                                $configSignature,
+                            'config_signature' => $configSignature,
 
-                            'attendance_source_version' =>
-                                $attendanceVersion,
+                            'attendance_source_version' => $attendanceVersion,
 
-                            'snapshot_count' =>
-                                0,
+                            'snapshot_count' => 0,
 
-                            'snapshot_checksum' =>
-                                null,
+                            'snapshot_checksum' => null,
 
                             'metadata' => [
                                 'school' => [
-                                    'id' =>
-                                        $school->id,
+                                    'id' => $school->id,
 
-                                    'name' =>
-                                        $school->name,
+                                    'name' => $school->name,
                                 ],
 
                                 'academic_year' => [
-                                    'id' =>
-                                        $config
-                                            ->academic_year_id,
+                                    'id' => $config
+                                        ->academic_year_id,
 
-                                    'name' =>
-                                        $config
-                                            ->academicYear
-                                            ?->name,
+                                    'name' => $config
+                                        ->academicYear
+                                        ?->name,
                                 ],
 
                                 'semester' => [
-                                    'id' =>
-                                        $config
-                                            ->semester_id,
+                                    'id' => $config
+                                        ->semester_id,
 
-                                    'name' =>
-                                        $config
-                                            ->semester
-                                            ?->name,
+                                    'name' => $config
+                                        ->semester
+                                        ?->name,
                                 ],
 
-                                'factors' =>
-                                    $factorConfiguration,
+                                'factors' => $factorConfiguration,
                             ],
 
-                            'locked_by' =>
-                                auth()->id(),
+                            'locked_by' => auth()->id(),
 
-                            'locked_at' =>
-                                now(),
+                            'locked_at' => now(),
                         ]);
-
 
                 $recordHashes = [];
 
-
                 foreach (
-                    $students
-                    as $student
+                    $students as $student
                 ) {
                     $final =
                         $finalGrades->get(
                             $student->id
                         );
 
-
                     if (! $final) {
                         throw ValidationException::withMessages([
-                            'semester' =>
-                                "Nilai akhir {$student->name} tidak ditemukan.",
+                            'semester' => "Nilai akhir {$student->name} tidak ditemukan.",
                         ]);
                     }
-
 
                     $enrollment =
                         $student
                             ->enrollments
                             ->first();
-
 
                     /*
                     |--------------------------------------------------------------------------
@@ -520,10 +463,8 @@ class SemesterClosureService
 
                     $factorScores = [];
 
-
                     foreach (
-                        $config->items
-                        as $item
+                        $config->items as $item
                     ) {
                         $studentScore =
                             $scores
@@ -536,34 +477,27 @@ class SemesterClosureService
                                         ->assessment_factor_id
                                 );
 
-
                         $factorScores[] = [
-                            'assessment_factor_id' =>
-                                (int) $item
-                                    ->assessment_factor_id,
+                            'assessment_factor_id' => (int) $item
+                                ->assessment_factor_id,
 
-                            'name' =>
-                                $item
-                                    ->factor
-                                    ?->name,
+                            'name' => $item
+                                ->factor
+                                ?->name,
 
-                            'source_type' =>
-                                $item
-                                    ->factor
-                                    ?->source_type,
+                            'source_type' => $item
+                                ->factor
+                                ?->source_type,
 
-                            'weight' =>
-                                (float) $item
-                                    ->weight,
+                            'weight' => (float) $item
+                                ->weight,
 
-                            'score' =>
-                                $studentScore
+                            'score' => $studentScore
                                     ? (float) $studentScore
                                         ->score
                                     : null,
                         ];
                     }
-
 
                     /*
                     |--------------------------------------------------------------------------
@@ -572,54 +506,41 @@ class SemesterClosureService
                     */
 
                     $payload = [
-                        'closure_version' =>
-                            $nextVersion,
+                        'closure_version' => $nextVersion,
 
-                        'student_id' =>
-                            (int) $student->id,
+                        'student_id' => (int) $student->id,
 
-                        'student_nis' =>
-                            $student->nis,
+                        'student_nis' => $student->nis,
 
-                        'student_name' =>
-                            $student->name,
+                        'student_name' => $student->name,
 
-                        'classroom_id' =>
-                            $enrollment
-                                ?->classroom_id,
+                        'classroom_id' => $enrollment
+                            ?->classroom_id,
 
-                        'classroom_name' =>
-                            $enrollment
-                                ?->classroom
-                                ?->name,
+                        'classroom_name' => $enrollment
+                            ?->classroom
+                            ?->name,
 
-                        'final_score' =>
-                            number_format(
-                                (float) $final
-                                    ->final_score,
-                                2,
-                                '.',
-                                ''
-                            ),
+                        'final_score' => number_format(
+                            (float) $final
+                                ->final_score,
+                            2,
+                            '.',
+                            ''
+                        ),
 
-                        'letter_grade' =>
-                            $final
-                                ->letter_grade,
+                        'letter_grade' => $final
+                            ->letter_grade,
 
-                        'description' =>
-                            $final
-                                ->description,
+                        'description' => $final
+                            ->description,
 
-                        'factor_scores' =>
-                            $factorScores,
+                        'factor_scores' => $factorScores,
 
-                        'config_signature' =>
-                            $configSignature,
+                        'config_signature' => $configSignature,
 
-                        'attendance_source_version' =>
-                            $attendanceVersion,
+                        'attendance_source_version' => $attendanceVersion,
                     ];
-
 
                     $recordHash =
                         hash(
@@ -634,67 +555,49 @@ class SemesterClosureService
                             )
                         );
 
-
                     SemesterGradeSnapshot::query()
                         ->create([
-                            'semester_closure_id' =>
-                                $closure->id,
+                            'semester_closure_id' => $closure->id,
 
-                            'student_id' =>
-                                $student->id,
+                            'student_id' => $student->id,
 
-                            'student_nis' =>
-                                $student->nis,
+                            'student_nis' => $student->nis,
 
-                            'student_name' =>
-                                $student->name,
+                            'student_name' => $student->name,
 
-                            'classroom_id' =>
-                                $enrollment
-                                    ?->classroom_id,
+                            'classroom_id' => $enrollment
+                                ?->classroom_id,
 
-                            'classroom_name' =>
-                                $enrollment
-                                    ?->classroom
-                                    ?->name,
+                            'classroom_name' => $enrollment
+                                ?->classroom
+                                ?->name,
 
-                            'final_score' =>
-                                $final
-                                    ->final_score,
+                            'final_score' => $final
+                                ->final_score,
 
-                            'letter_grade' =>
-                                $final
-                                    ->letter_grade,
+                            'letter_grade' => $final
+                                ->letter_grade,
 
-                            'description' =>
-                                $final
-                                    ->description,
+                            'description' => $final
+                                ->description,
 
-                            'factor_scores' =>
-                                $factorScores,
+                            'factor_scores' => $factorScores,
 
-                            'config_signature' =>
-                                $configSignature,
+                            'config_signature' => $configSignature,
 
-                            'attendance_source_version' =>
-                                $attendanceVersion,
+                            'attendance_source_version' => $attendanceVersion,
 
-                            'source_calculated_at' =>
-                                $final
-                                    ->calculated_at,
+                            'source_calculated_at' => $final
+                                ->calculated_at,
 
-                            'record_hash' =>
-                                $recordHash,
+                            'record_hash' => $recordHash,
 
-                            'created_at' =>
-                                now(),
+                            'created_at' => now(),
                         ]);
-
 
                     $recordHashes[] =
                         $recordHash;
                 }
-
 
                 /*
                 |--------------------------------------------------------------------------
@@ -706,7 +609,6 @@ class SemesterClosureService
                     $recordHashes
                 );
 
-
                 $checksum =
                     hash(
                         'sha256',
@@ -716,17 +618,13 @@ class SemesterClosureService
                         )
                     );
 
-
                 $closure->update([
-                    'snapshot_count' =>
-                        count(
-                            $recordHashes
-                        ),
+                    'snapshot_count' => count(
+                        $recordHashes
+                    ),
 
-                    'snapshot_checksum' =>
-                        $checksum,
+                    'snapshot_checksum' => $checksum,
                 ]);
-
 
                 /*
                 |--------------------------------------------------------------------------
@@ -738,49 +636,37 @@ class SemesterClosureService
                     AssessmentAuditService::class
                 )
                     ->record(
-                        action:
-                            'semester.locked',
+                        action: 'semester.locked',
 
-                        subject:
-                            $closure,
+                        subject: $closure,
 
-                        description:
-                            'Semester dikunci dan snapshot nilai resmi dibuat.',
+                        description: 'Semester dikunci dan snapshot nilai resmi dibuat.',
 
                         newValues: [
-                            'version' =>
-                                $closure
-                                    ->version,
+                            'version' => $closure
+                                ->version,
 
-                            'snapshot_count' =>
-                                $closure
-                                    ->snapshot_count,
+                            'snapshot_count' => $closure
+                                ->snapshot_count,
 
-                            'snapshot_checksum' =>
-                                $closure
-                                    ->snapshot_checksum,
+                            'snapshot_checksum' => $closure
+                                ->snapshot_checksum,
                         ],
 
                         metadata: [
-                            'academic_year_id' =>
-                                $config
-                                    ->academic_year_id,
+                            'academic_year_id' => $config
+                                ->academic_year_id,
 
-                            'semester_id' =>
-                                $config
-                                    ->semester_id,
+                            'semester_id' => $config
+                                ->semester_id,
 
-                            'assessment_config_id' =>
-                                $config->id,
+                            'assessment_config_id' => $config->id,
 
-                            'config_signature' =>
-                                $configSignature,
+                            'config_signature' => $configSignature,
                         ],
 
-                        module:
-                            'semester_closure'
+                        module: 'semester_closure'
                     );
-
 
                 return $closure->fresh([
                     'snapshots',
@@ -788,7 +674,6 @@ class SemesterClosureService
             }
         );
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -805,25 +690,21 @@ class SemesterClosureService
                 $reason
             );
 
-
         if (
             mb_strlen(
                 $reason
             ) < 5
         ) {
             throw ValidationException::withMessages([
-                'reopenReason' =>
-                    'Alasan membuka semester minimal 5 karakter.',
+                'reopenReason' => 'Alasan membuka semester minimal 5 karakter.',
             ]);
         }
-
 
         $latest =
             $this->currentClosure(
                 $closure->academic_year_id,
                 $closure->semester_id
             );
-
 
         if (
             ! $latest
@@ -832,21 +713,17 @@ class SemesterClosureService
                 !== $closure->id
         ) {
             throw ValidationException::withMessages([
-                'reopenReason' =>
-                    'Hanya versi semester terbaru yang dapat dibuka kembali.',
+                'reopenReason' => 'Hanya versi semester terbaru yang dapat dibuka kembali.',
             ]);
         }
-
 
         if (
             ! $closure->isLocked()
         ) {
             throw ValidationException::withMessages([
-                'reopenReason' =>
-                    'Semester tersebut sudah dalam keadaan terbuka.',
+                'reopenReason' => 'Semester tersebut sudah dalam keadaan terbuka.',
             ]);
         }
-
 
         return DB::transaction(
             function () use (
@@ -855,19 +732,14 @@ class SemesterClosureService
             ): SemesterClosure {
 
                 $closure->update([
-                    'status' =>
-                        'reopened',
+                    'status' => 'reopened',
 
-                    'reopened_by' =>
-                        auth()->id(),
+                    'reopened_by' => auth()->id(),
 
-                    'reopened_at' =>
-                        now(),
+                    'reopened_at' => now(),
 
-                    'reopen_reason' =>
-                        $reason,
+                    'reopen_reason' => $reason,
                 ]);
-
 
                 /*
                 |--------------------------------------------------------------------------
@@ -879,42 +751,32 @@ class SemesterClosureService
                     AssessmentAuditService::class
                 )
                     ->record(
-                        action:
-                            'semester.reopened',
+                        action: 'semester.reopened',
 
-                        subject:
-                            $closure,
+                        subject: $closure,
 
-                        description:
-                            'Semester dibuka kembali untuk koreksi.',
+                        description: 'Semester dibuka kembali untuk koreksi.',
 
                         oldValues: [
-                            'status' =>
-                                'locked',
+                            'status' => 'locked',
                         ],
 
                         newValues: [
-                            'status' =>
-                                'reopened',
+                            'status' => 'reopened',
 
-                            'reason' =>
-                                $reason,
+                            'reason' => $reason,
                         ],
 
                         metadata: [
-                            'version' =>
-                                $closure
-                                    ->version,
+                            'version' => $closure
+                                ->version,
 
-                            'snapshot_checksum' =>
-                                $closure
-                                    ->snapshot_checksum,
+                            'snapshot_checksum' => $closure
+                                ->snapshot_checksum,
                         ],
 
-                        module:
-                            'semester_closure'
+                        module: 'semester_closure'
                     );
-
 
                 return $closure->fresh();
             }

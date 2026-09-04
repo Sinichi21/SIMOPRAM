@@ -11,7 +11,6 @@ class ActivityAssessmentTarget extends Model
 {
     use BelongsToSchool;
 
-
     protected $fillable = [
         'activity_assessment_id',
         'student_id',
@@ -23,21 +22,16 @@ class ActivityAssessmentTarget extends Model
         'assessed_at',
     ];
 
-
     protected function casts(): array
     {
         return [
-            'total_score' =>
-                'float',
+            'total_score' => 'float',
 
-            'normalized_score' =>
-                'float',
+            'normalized_score' => 'float',
 
-            'assessed_at' =>
-                'datetime',
+            'assessed_at' => 'datetime',
         ];
     }
-
 
     public function assessment(): BelongsTo
     {
@@ -47,14 +41,12 @@ class ActivityAssessmentTarget extends Model
         );
     }
 
-
     public function student(): BelongsTo
     {
         return $this->belongsTo(
             Student::class
         );
     }
-
 
     public function scoutUnit(): BelongsTo
     {
@@ -63,7 +55,6 @@ class ActivityAssessmentTarget extends Model
         );
     }
 
-
     public function members(): HasMany
     {
         return $this->hasMany(
@@ -71,14 +62,12 @@ class ActivityAssessmentTarget extends Model
         );
     }
 
-
     public function scores(): HasMany
     {
         return $this->hasMany(
             ActivityAssessmentScore::class
         );
     }
-
 
     public function assessor(): BelongsTo
     {

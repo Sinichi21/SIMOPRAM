@@ -40,19 +40,19 @@ return new class extends Migration
 
             $table->unique(
                 [
-                'student_id',
-                'academic_year_id',
-            ],
+                    'student_id',
+                    'academic_year_id',
+                ],
                 'student_enrollments_student_year_unique'
-            
+
             );
 
             $table->index(
                 [
-                'school_id',
-                'academic_year_id',
-                'classroom_id',
-            ],
+                    'school_id',
+                    'academic_year_id',
+                    'classroom_id',
+                ],
                 'student_enrollments_school_year_class_idx'
             );
         });

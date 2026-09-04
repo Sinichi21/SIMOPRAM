@@ -110,7 +110,6 @@ return new class extends Migration
                     )
                     ->useCurrent();
 
-
                 /*
                 |--------------------------------------------------------------------------
                 | FK - nama pendek agar aman dari batas 64 karakter MySQL
@@ -134,7 +133,6 @@ return new class extends Migration
                     ->references('id')
                     ->on('users')
                     ->nullOnDelete();
-
 
                 /*
                 |--------------------------------------------------------------------------
@@ -176,7 +174,6 @@ return new class extends Migration
             }
         );
     }
-
 
     public function down(): void
     {

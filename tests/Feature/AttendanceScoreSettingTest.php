@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\AttendanceScoreSetting;
 use App\Models\School;
 use App\Models\User;
 use App\Services\AttendanceWeightService;
@@ -14,42 +13,34 @@ class AttendanceScoreSettingTest extends TestCase
 {
     use RefreshDatabase;
 
-
     public function test_default_weights_are_used_when_school_has_no_configuration(): void
     {
         $user =
             User::factory()
                 ->create([
-                    'system_role' =>
-                        'super_admin',
+                    'system_role' => 'super_admin',
 
-                    'is_active' =>
-                        true,
+                    'is_active' => true,
                 ]);
-
 
         $school =
             School::factory()
                 ->create();
 
-
         $this
             ->actingAs($user)
             ->withSession([
-                'active_school_id' =>
-                    $school->id,
+                'active_school_id' => $school->id,
             ])
             ->get(
                 route('dashboard')
             )
             ->assertOk();
 
-
         $weights =
             app(
                 AttendanceWeightService::class
             )->percentages();
-
 
         $this->assertSame(
             100.0,
@@ -77,92 +68,67 @@ class AttendanceScoreSettingTest extends TestCase
         );
     }
 
-
     public function test_attendance_weights_follow_active_school(): void
     {
         $user =
             User::factory()
                 ->create([
-                    'system_role' =>
-                        'super_admin',
+                    'system_role' => 'super_admin',
 
-                    'is_active' =>
-                        true,
+                    'is_active' => true,
                 ]);
-
 
         $schoolA =
             School::factory()
                 ->create([
-                    'name' =>
-                        'Sekolah A',
+                    'name' => 'Sekolah A',
                 ]);
-
 
         $schoolB =
             School::factory()
                 ->create([
-                    'name' =>
-                        'Sekolah B',
+                    'name' => 'Sekolah B',
                 ]);
-
 
         DB::table(
             'attendance_score_settings'
         )->insert([
             [
-                'school_id' =>
-                    $schoolA->id,
+                'school_id' => $schoolA->id,
 
-                'present_weight' =>
-                    100,
+                'present_weight' => 100,
 
-                'late_weight' =>
-                    80,
+                'late_weight' => 80,
 
-                'sick_weight' =>
-                    60,
+                'sick_weight' => 60,
 
-                'excused_weight' =>
-                    70,
+                'excused_weight' => 70,
 
-                'absent_weight' =>
-                    0,
+                'absent_weight' => 0,
 
-                'created_at' =>
-                    now(),
+                'created_at' => now(),
 
-                'updated_at' =>
-                    now(),
+                'updated_at' => now(),
             ],
 
             [
-                'school_id' =>
-                    $schoolB->id,
+                'school_id' => $schoolB->id,
 
-                'present_weight' =>
-                    100,
+                'present_weight' => 100,
 
-                'late_weight' =>
-                    50,
+                'late_weight' => 50,
 
-                'sick_weight' =>
-                    50,
+                'sick_weight' => 50,
 
-                'excused_weight' =>
-                    50,
+                'excused_weight' => 50,
 
-                'absent_weight' =>
-                    10,
+                'absent_weight' => 10,
 
-                'created_at' =>
-                    now(),
+                'created_at' => now(),
 
-                'updated_at' =>
-                    now(),
+                'updated_at' => now(),
             ],
         ]);
-
 
         /*
         |--------------------------------------------------------------------------
@@ -173,20 +139,17 @@ class AttendanceScoreSettingTest extends TestCase
         $this
             ->actingAs($user)
             ->withSession([
-                'active_school_id' =>
-                    $schoolA->id,
+                'active_school_id' => $schoolA->id,
             ])
             ->get(
                 route('dashboard')
             )
             ->assertOk();
 
-
         $weightsA =
             app(
                 AttendanceWeightService::class
             )->percentages();
-
 
         $this->assertSame(
             80.0,
@@ -197,7 +160,6 @@ class AttendanceScoreSettingTest extends TestCase
             60.0,
             $weightsA['sick']
         );
-
 
         /*
         |--------------------------------------------------------------------------
@@ -210,14 +172,12 @@ class AttendanceScoreSettingTest extends TestCase
             ->post(
                 route('school.switch'),
                 [
-                    'school_id' =>
-                        $schoolB->id,
+                    'school_id' => $schoolB->id,
                 ]
             )
             ->assertRedirect(
                 route('dashboard')
             );
-
 
         $this
             ->actingAs($user)
@@ -225,7 +185,6 @@ class AttendanceScoreSettingTest extends TestCase
                 route('dashboard')
             )
             ->assertOk();
-
 
         /*
         |--------------------------------------------------------------------------
@@ -238,7 +197,6 @@ class AttendanceScoreSettingTest extends TestCase
                 AttendanceWeightService::class
             )->percentages();
 
-
         $this->assertSame(
             50.0,
             $weightsB['late']
@@ -250,19 +208,15 @@ class AttendanceScoreSettingTest extends TestCase
         );
     }
 
-
     public function test_global_super_admin_cannot_open_attendance_scoring_settings(): void
     {
         $user =
             User::factory()
                 ->create([
-                    'system_role' =>
-                        'super_admin',
+                    'system_role' => 'super_admin',
 
-                    'is_active' =>
-                        true,
+                    'is_active' => true,
                 ]);
-
 
         $this
             ->actingAs($user)

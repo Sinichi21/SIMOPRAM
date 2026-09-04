@@ -36,7 +36,6 @@ class Settings extends Component
 
     public string $factor_source_type = 'manual';
 
-
     /*
     |--------------------------------------------------------------------------
     | Konfigurasi
@@ -59,7 +58,6 @@ class Settings extends Component
 
     public array $weights = [];
 
-
     public function mount(): void
     {
         $year = AcademicYear::query()
@@ -77,7 +75,6 @@ class Settings extends Component
             $semester?->id;
     }
 
-
     protected function schoolId(): int
     {
         $schoolId = app(
@@ -92,7 +89,6 @@ class Settings extends Component
 
         return $schoolId;
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -141,11 +137,10 @@ class Settings extends Component
                     'code'
                 )
                     ->where(
-                        fn ($query) =>
-                            $query->where(
-                                'school_id',
-                                $schoolId
-                            )
+                        fn ($query) => $query->where(
+                            'school_id',
+                            $schoolId
+                        )
                     )
                     ->ignore(
                         $this->editingFactorId
@@ -178,26 +173,23 @@ class Settings extends Component
         ]);
 
         $data = [
-            'name' =>
-                trim(
-                    $validated[
-                        'factor_name'
-                    ]
-                ),
+            'name' => trim(
+                $validated[
+                    'factor_name'
+                ]
+            ),
 
-            'code' =>
-                trim(
-                    $validated[
-                        'factor_code'
-                    ]
-                ),
+            'code' => trim(
+                $validated[
+                    'factor_code'
+                ]
+            ),
 
-            'description' =>
-                filled(
-                    $validated[
-                        'factor_description'
-                    ]
-                )
+            'description' => filled(
+                $validated[
+                    'factor_description'
+                ]
+            )
                     ? trim(
                         $validated[
                             'factor_description'
@@ -205,18 +197,15 @@ class Settings extends Component
                     )
                     : null,
 
-            'source_type' =>
-                $validated[
+            'source_type' => $validated[
                     'factor_source_type'
                 ],
 
-            'sort_order' =>
-                $validated[
+            'sort_order' => $validated[
                     'factor_sort_order'
                 ],
 
-            'is_active' =>
-                $validated[
+            'is_active' => $validated[
                     'factor_is_active'
                 ],
         ];
@@ -245,7 +234,6 @@ class Settings extends Component
             $message
         );
     }
-
 
     public function editFactor(
         int $id
@@ -276,7 +264,6 @@ class Settings extends Component
             $factor->is_active;
     }
 
-
     public function toggleFactor(
         int $id
     ): void {
@@ -292,17 +279,14 @@ class Settings extends Component
                 ->findOrFail($id);
 
         $factor->update([
-            'is_active' =>
-                ! $factor->is_active,
+            'is_active' => ! $factor->is_active,
         ]);
     }
-
 
     public function cancelFactorEdit(): void
     {
         $this->resetFactorForm();
     }
-
 
     protected function resetFactorForm(): void
     {
@@ -322,7 +306,6 @@ class Settings extends Component
 
         $this->resetValidation();
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -380,21 +363,17 @@ class Settings extends Component
         $config =
             AssessmentConfig::query()
                 ->create([
-                    'academic_year_id' =>
-                        $year->id,
+                    'academic_year_id' => $year->id,
 
-                    'semester_id' =>
-                        $semester->id,
+                    'semester_id' => $semester->id,
 
-                    'name' =>
-                        trim(
-                            $validated[
-                                'config_name'
-                            ]
-                        ),
+                    'name' => trim(
+                        $validated[
+                            'config_name'
+                        ]
+                    ),
 
-                    'is_active' =>
-                        false,
+                    'is_active' => false,
                 ]);
 
         $this->editingConfigId =
@@ -407,7 +386,6 @@ class Settings extends Component
             'Konfigurasi penilaian berhasil dibuat. Atur bobot hingga total 100%.'
         );
     }
-
 
     public function editConfig(
         int $id
@@ -436,14 +414,11 @@ class Settings extends Component
                     fn ($item) => [
                         (string)
                         $item
-                            ->assessment_factor_id
-                            =>
-                        (float) $item->weight,
+                            ->assessment_factor_id => (float) $item->weight,
                     ]
                 )
                 ->toArray();
     }
-
 
     public function saveWeights(): void
     {
@@ -456,8 +431,7 @@ class Settings extends Component
 
         if (! $this->editingConfigId) {
             throw ValidationException::withMessages([
-                'weights' =>
-                    'Pilih konfigurasi penilaian terlebih dahulu.',
+                'weights' => 'Pilih konfigurasi penilaian terlebih dahulu.',
             ]);
         }
 
@@ -490,8 +464,7 @@ class Settings extends Component
 
             if ($weight < 0 || $weight > 100) {
                 throw ValidationException::withMessages([
-                    "weights.{$factor->id}" =>
-                        'Bobot harus berada antara 0 dan 100.',
+                    "weights.{$factor->id}" => 'Bobot harus berada antara 0 dan 100.',
                 ]);
             }
 
@@ -504,8 +477,7 @@ class Settings extends Component
 
         if (empty($cleanWeights)) {
             throw ValidationException::withMessages([
-                'weights' =>
-                    'Minimal satu faktor penilaian harus memiliki bobot.',
+                'weights' => 'Minimal satu faktor penilaian harus memiliki bobot.',
             ]);
         }
 
@@ -520,13 +492,12 @@ class Settings extends Component
             ) > 0.01
         ) {
             throw ValidationException::withMessages([
-                'weights' =>
-                    'Total bobot harus tepat 100%. Total saat ini: '
-                    . number_format(
+                'weights' => 'Total bobot harus tepat 100%. Total saat ini: '
+                    .number_format(
                         $total,
                         2
                     )
-                    . '%.',
+                    .'%.',
             ]);
         }
 
@@ -542,22 +513,17 @@ class Settings extends Component
                 $order = 0;
 
                 foreach (
-                    $cleanWeights
-                    as $factorId => $weight
+                    $cleanWeights as $factorId => $weight
                 ) {
                     AssessmentConfigItem::query()
                         ->create([
-                            'assessment_config_id' =>
-                                $config->id,
+                            'assessment_config_id' => $config->id,
 
-                            'assessment_factor_id' =>
-                                $factorId,
+                            'assessment_factor_id' => $factorId,
 
-                            'weight' =>
-                                $weight,
+                            'weight' => $weight,
 
-                            'sort_order' =>
-                                $order++,
+                            'sort_order' => $order++,
                         ]);
                 }
             }
@@ -568,7 +534,6 @@ class Settings extends Component
             'Bobot penilaian berhasil disimpan.'
         );
     }
-
 
     public function activateConfig(
         int $id
@@ -597,8 +562,7 @@ class Settings extends Component
             ) > 0.01
         ) {
             throw ValidationException::withMessages([
-                'weights' =>
-                    'Konfigurasi tidak dapat diaktifkan karena total bobot belum 100%.',
+                'weights' => 'Konfigurasi tidak dapat diaktifkan karena total bobot belum 100%.',
             ]);
         }
 
@@ -623,13 +587,11 @@ class Settings extends Component
                         $config->id
                     )
                     ->update([
-                        'is_active' =>
-                            false,
+                        'is_active' => false,
                     ]);
 
                 $config->update([
-                    'is_active' =>
-                        true,
+                    'is_active' => true,
                 ]);
             }
         );
@@ -639,7 +601,6 @@ class Settings extends Component
             'Konfigurasi penilaian berhasil diaktifkan.'
         );
     }
-
 
     public function render()
     {
@@ -654,12 +615,11 @@ class Settings extends Component
             Semester::query()
                 ->when(
                     $this->academic_year_id,
-                    fn ($query) =>
-                        $query->where(
-                            'academic_year_id',
-                            $this
-                                ->academic_year_id
-                        )
+                    fn ($query) => $query->where(
+                        'academic_year_id',
+                        $this
+                            ->academic_year_id
+                    )
                 )
                 ->orderBy(
                     'semester_number'

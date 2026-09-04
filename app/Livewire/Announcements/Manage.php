@@ -31,7 +31,6 @@ class Manage extends Component
 
     public array $scout_unit_ids = [];
 
-
     public function mount(
         ?int $announcementId = null
     ): void {
@@ -89,8 +88,7 @@ class Manage extends Component
                     'target_id'
                 )
                 ->map(
-                    fn ($id) =>
-                        (string) $id
+                    fn ($id) => (string) $id
                 )
                 ->toArray();
 
@@ -105,12 +103,10 @@ class Manage extends Component
                     'target_id'
                 )
                 ->map(
-                    fn ($id) =>
-                        (string) $id
+                    fn ($id) => (string) $id
                 )
                 ->toArray();
     }
-
 
     protected function rules(): array
     {
@@ -176,7 +172,6 @@ class Manage extends Component
             ],
         ];
     }
-
 
     public function save(): void
     {
@@ -266,33 +261,27 @@ class Manage extends Component
             ): void {
 
                 $data = [
-                    'title' =>
-                        trim(
-                            $validated['title']
-                        ),
+                    'title' => trim(
+                        $validated['title']
+                    ),
 
-                    'body' =>
-                        trim(
-                            $validated['body']
-                        ),
+                    'body' => trim(
+                        $validated['body']
+                    ),
 
-                    'is_public' =>
-                        $validated[
+                    'is_public' => $validated[
                             'is_public'
                         ],
 
-                    'publish_at' =>
-                        $validated[
+                    'publish_at' => $validated[
                             'publish_at'
                         ] ?: null,
 
-                    'expires_at' =>
-                        $validated[
+                    'expires_at' => $validated[
                             'expires_at'
                         ] ?: null,
 
-                    'updated_by' =>
-                        auth()->id(),
+                    'updated_by' => auth()->id(),
                 ];
 
                 if (
@@ -341,14 +330,12 @@ class Manage extends Component
         );
     }
 
-
     protected function saveTargets(
         Announcement $announcement,
         array $validated
     ): void {
         foreach (
-            $validated['target_types']
-            as $type
+            $validated['target_types'] as $type
         ) {
             if (
                 in_array(
@@ -362,18 +349,14 @@ class Manage extends Component
             ) {
                 AnnouncementTarget::query()
                     ->create([
-                        'announcement_id' =>
-                            $announcement->id,
+                        'announcement_id' => $announcement->id,
 
-                        'target_type' =>
-                            $type,
+                        'target_type' => $type,
 
-                        'target_id' =>
-                            null,
+                        'target_id' => null,
                     ]);
             }
         }
-
 
         if (
             in_array(
@@ -387,23 +370,18 @@ class Manage extends Component
             foreach (
                 $validated[
                     'classroom_ids'
-                ]
-                as $classroomId
+                ] as $classroomId
             ) {
                 AnnouncementTarget::query()
                     ->create([
-                        'announcement_id' =>
-                            $announcement->id,
+                        'announcement_id' => $announcement->id,
 
-                        'target_type' =>
-                            'classroom',
+                        'target_type' => 'classroom',
 
-                        'target_id' =>
-                            $classroomId,
+                        'target_id' => $classroomId,
                     ]);
             }
         }
-
 
         if (
             in_array(
@@ -417,24 +395,19 @@ class Manage extends Component
             foreach (
                 $validated[
                     'scout_unit_ids'
-                ]
-                as $unitId
+                ] as $unitId
             ) {
                 AnnouncementTarget::query()
                     ->create([
-                        'announcement_id' =>
-                            $announcement->id,
+                        'announcement_id' => $announcement->id,
 
-                        'target_type' =>
-                            'scout_unit',
+                        'target_type' => 'scout_unit',
 
-                        'target_id' =>
-                            $unitId,
+                        'target_id' => $unitId,
                     ]);
             }
         }
     }
-
 
     public function publish(
         NotificationService $notificationService
@@ -472,14 +445,11 @@ class Manage extends Component
                 $announcement
             ): void {
                 $announcement->update([
-                    'status' =>
-                        'published',
+                    'status' => 'published',
 
-                    'published_at' =>
-                        now(),
+                    'published_at' => now(),
 
-                    'updated_by' =>
-                        auth()->id(),
+                    'updated_by' => auth()->id(),
                 ]);
             }
         );
@@ -494,7 +464,6 @@ class Manage extends Component
             'Pengumuman berhasil dipublikasikan.'
         );
     }
-
 
     public function archive(): void
     {
@@ -512,11 +481,9 @@ class Manage extends Component
                 );
 
         $announcement->update([
-            'status' =>
-                'archived',
+            'status' => 'archived',
 
-            'updated_by' =>
-                auth()->id(),
+            'updated_by' => auth()->id(),
         ]);
 
         session()->flash(
@@ -524,7 +491,6 @@ class Manage extends Component
             'Pengumuman berhasil diarsipkan.'
         );
     }
-
 
     public function render()
     {

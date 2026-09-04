@@ -40,7 +40,6 @@ class Manage extends Component
 
     public array $attachments = [];
 
-
     public function mount(
         int $activityId
     ): void {
@@ -78,7 +77,6 @@ class Manage extends Component
             $firstSession?->id;
     }
 
-
     protected function rules(): array
     {
         $schoolId =
@@ -94,16 +92,15 @@ class Manage extends Component
                     'attendance_sessions',
                     'id'
                 )->where(
-                    fn ($query) =>
-                        $query
-                            ->where(
-                                'school_id',
-                                $schoolId
-                            )
-                            ->where(
-                                'activity_id',
-                                $this->activityId
-                            )
+                    fn ($query) => $query
+                        ->where(
+                            'school_id',
+                            $schoolId
+                        )
+                        ->where(
+                            'activity_id',
+                            $this->activityId
+                        )
                 ),
             ],
 
@@ -162,7 +159,6 @@ class Manage extends Component
         ];
     }
 
-
     public function save(): void
     {
         $permission =
@@ -213,53 +209,43 @@ class Manage extends Component
                 ): Journal {
 
                     $data = [
-                        'activity_id' =>
-                            $activity->id,
+                        'activity_id' => $activity->id,
 
-                        'attendance_session_id' =>
-                            $validated[
+                        'attendance_session_id' => $validated[
                                 'attendance_session_id'
                             ] ?: null,
 
-                        'objective' =>
-                            $this->nullableText(
-                                $validated['objective']
-                            ),
+                        'objective' => $this->nullableText(
+                            $validated['objective']
+                        ),
 
-                        'material' =>
-                            $this->nullableText(
-                                $validated['material']
-                            ),
+                        'material' => $this->nullableText(
+                            $validated['material']
+                        ),
 
-                        'activity_description' =>
-                            trim(
-                                $validated[
-                                    'activity_description'
-                                ]
-                            ),
+                        'activity_description' => trim(
+                            $validated[
+                                'activity_description'
+                            ]
+                        ),
 
-                        'result' =>
-                            $this->nullableText(
-                                $validated['result']
-                            ),
+                        'result' => $this->nullableText(
+                            $validated['result']
+                        ),
 
-                        'evaluation' =>
-                            $this->nullableText(
-                                $validated['evaluation']
-                            ),
+                        'evaluation' => $this->nullableText(
+                            $validated['evaluation']
+                        ),
 
-                        'follow_up' =>
-                            $this->nullableText(
-                                $validated['follow_up']
-                            ),
+                        'follow_up' => $this->nullableText(
+                            $validated['follow_up']
+                        ),
 
-                        'notes' =>
-                            $this->nullableText(
-                                $validated['notes']
-                            ),
+                        'notes' => $this->nullableText(
+                            $validated['notes']
+                        ),
 
-                        'updated_by' =>
-                            auth()->id(),
+                        'updated_by' => auth()->id(),
                     ];
 
                     if ($this->journalId) {
@@ -288,7 +274,6 @@ class Manage extends Component
                 }
             );
 
-
         /*
         |--------------------------------------------------------------------------
         | Lampiran
@@ -298,7 +283,6 @@ class Manage extends Component
         $this->storeAttachments(
             $journal
         );
-
 
         $this->journalId =
             $journal->id;
@@ -310,7 +294,6 @@ class Manage extends Component
             'Jurnal kegiatan berhasil disimpan.'
         );
     }
-
 
     protected function storeAttachments(
         Journal $journal
@@ -324,8 +307,7 @@ class Manage extends Component
                 ->id();
 
         foreach (
-            $this->attachments
-            as $attachment
+            $this->attachments as $attachment
         ) {
             $path =
                 $attachment->store(
@@ -335,30 +317,23 @@ class Manage extends Component
 
             JournalAttachment::query()
                 ->create([
-                    'journal_id' =>
-                        $journal->id,
+                    'journal_id' => $journal->id,
 
-                    'uploaded_by' =>
-                        auth()->id(),
+                    'uploaded_by' => auth()->id(),
 
-                    'original_name' =>
-                        $attachment
-                            ->getClientOriginalName(),
+                    'original_name' => $attachment
+                        ->getClientOriginalName(),
 
-                    'path' =>
-                        $path,
+                    'path' => $path,
 
-                    'mime_type' =>
-                        $attachment
-                            ->getMimeType(),
+                    'mime_type' => $attachment
+                        ->getMimeType(),
 
-                    'size_bytes' =>
-                        $attachment
-                            ->getSize(),
+                    'size_bytes' => $attachment
+                        ->getSize(),
                 ]);
         }
     }
-
 
     public function deleteAttachment(
         int $id
@@ -391,7 +366,6 @@ class Manage extends Component
         );
     }
 
-
     public function publish(): void
     {
         abort_unless(
@@ -408,14 +382,11 @@ class Manage extends Component
                 );
 
         $journal->update([
-            'status' =>
-                'published',
+            'status' => 'published',
 
-            'published_at' =>
-                now(),
+            'published_at' => now(),
 
-            'updated_by' =>
-                auth()->id(),
+            'updated_by' => auth()->id(),
         ]);
 
         session()->flash(
@@ -423,7 +394,6 @@ class Manage extends Component
             'Jurnal berhasil dipublikasikan.'
         );
     }
-
 
     public function returnToDraft(): void
     {
@@ -441,14 +411,11 @@ class Manage extends Component
                 );
 
         $journal->update([
-            'status' =>
-                'draft',
+            'status' => 'draft',
 
-            'published_at' =>
-                null,
+            'published_at' => null,
 
-            'updated_by' =>
-                auth()->id(),
+            'updated_by' => auth()->id(),
         ]);
 
         session()->flash(
@@ -456,7 +423,6 @@ class Manage extends Component
             'Jurnal dikembalikan menjadi draft.'
         );
     }
-
 
     protected function loadJournal(
         Journal $journal
@@ -491,7 +457,6 @@ class Manage extends Component
             $journal->notes ?? '';
     }
 
-
     protected function nullableText(
         ?string $value
     ): ?string {
@@ -503,7 +468,6 @@ class Manage extends Component
             ? null
             : $value;
     }
-
 
     protected function attendanceStats(): array
     {
@@ -563,41 +527,33 @@ class Manage extends Component
             $counts->sum();
 
         return [
-            'participants' =>
-                $session
-                    ->participants_count,
+            'participants' => $session
+                ->participants_count,
 
-            'present' =>
-                (int)
+            'present' => (int)
                 ($counts['present'] ?? 0),
 
-            'late' =>
-                (int)
+            'late' => (int)
                 ($counts['late'] ?? 0),
 
-            'sick' =>
-                (int)
+            'sick' => (int)
                 ($counts['sick'] ?? 0),
 
-            'excused' =>
-                (int)
+            'excused' => (int)
                 ($counts['excused'] ?? 0),
 
-            'absent' =>
-                (int)
+            'absent' => (int)
                 ($counts['absent'] ?? 0),
 
-            'unrecorded' =>
-                max(
-                    0,
-                    $session
-                        ->participants_count
-                    -
-                    $recorded
-                ),
+            'unrecorded' => max(
+                0,
+                $session
+                    ->participants_count
+                -
+                $recorded
+            ),
         ];
     }
-
 
     public function render()
     {

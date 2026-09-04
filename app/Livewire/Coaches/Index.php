@@ -65,11 +65,10 @@ class Index extends Component
                     'nip'
                 )
                     ->where(
-                        fn ($query) =>
-                            $query->where(
-                                'school_id',
-                                $schoolId
-                            )
+                        fn ($query) => $query->where(
+                            'school_id',
+                            $schoolId
+                        )
                     )
                     ->ignore(
                         $this->editingId
@@ -253,8 +252,7 @@ class Index extends Component
             ->findOrFail($id);
 
         $coach->update([
-            'is_active' =>
-                ! $coach->is_active,
+            'is_active' => ! $coach->is_active,
         ]);
 
         session()->flash(
@@ -295,8 +293,8 @@ class Index extends Component
                 function ($query): void {
 
                     $search =
-                        '%' .
-                        trim($this->search) .
+                        '%'.
+                        trim($this->search).
                         '%';
 
                     $query->where(
