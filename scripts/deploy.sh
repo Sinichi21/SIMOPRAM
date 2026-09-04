@@ -8,7 +8,7 @@ SHARED_DIR="${APP_DIR}/shared"
 CURRENT_LINK="${APP_DIR}/current"
 TIMESTAMP="$(date +%Y%m%d%H%M%S)"
 RELEASE_DIR="${RELEASES_DIR}/${TIMESTAMP}"
-ARCHIVE="/tmp/simpram-release.tar.gz"
+ARCHIVE="/tmp/simopram-release.tar.gz"
 
 echo "==> Preparing release ${TIMESTAMP}"
 
