@@ -13,6 +13,7 @@ use App\Support\SchoolContext;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
+use App\Services\StudentScoreWriter;
 
 class ActivityAssessmentService
 {
@@ -1232,33 +1233,67 @@ class ActivityAssessmentService
                             $scores
                         );
 
-                    StudentScore::query()
-                        ->updateOrCreate(
-                            [
-                                'assessment_config_id' => $config->id,
+                    // StudentScore::query()
+                    //     ->updateOrCreate(
+                    //         [
+                    //             'assessment_config_id' => $config->id,
 
-                                'student_id' => (int) $studentId,
+                    //             'student_id' => (int) $studentId,
 
-                                'assessment_factor_id' => $assessment
-                                    ->assessment_factor_id,
-                            ],
-                            [
-                                'score' => round(
-                                    $average,
-                                    2
-                                ),
+                    //             'assessment_factor_id' => $assessment
+                    //                 ->assessment_factor_id,
+                    //         ],
+                    //         [
+                    //             'score' => round(
+                    //                 $average,
+                    //                 2
+                    //             ),
 
-                                'source' => 'system',
+                    //             'source' => 'system',
 
-                                'source_version' => null,
+                    //             'source_version' => null,
 
-                                'source_synced_at' => now(),
+                    //             'source_synced_at' => now(),
 
-                                'entered_by' => auth()->id(),
+                    //             'entered_by' => auth()->id(),
 
-                                'notes' => 'Rekap otomatis penilaian kegiatan.',
-                            ]
-                        );
+                    //             'notes' => 'Rekap otomatis penilaian kegiatan.',
+                    //         ]
+                    //     );
+
+                    $result =
+                        app(
+                            StudentScoreWriter::class
+                        )->writeAutomatic(
+                            assessmentConfigId:
+                                $config->id,
+
+                            studentId:
+                                $studentId,
+
+                            assessmentFactorId:
+                                $assessment->assessment_factor_id,
+
+                            score:
+                                $aggregatedScore,
+
+                            source:
+                                StudentScoreWriter::SOURCE_ACTIVITY_ASSESSMENT,
+
+                            sourceVersion:
+                                null,
+
+                            notes:
+                                'Rekap otomatis dari Penilaian Kegiatan'
+                    );
+
+                    if (
+                        $result[
+                            'skipped_manual'
+                        ]
+                    ) {
+                        continue;
+                    }
 
                     $updated++;
                 }

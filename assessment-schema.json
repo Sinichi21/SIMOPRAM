@@ -1,0 +1,2185 @@
+﻿{
+    "generated_at": "2026-09-03T22:53:23+00:00",
+    "database_connection": "mysql",
+    "tables": {
+        "student_scores": {
+            "exists": true,
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "school_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "assessment_config_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "student_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "assessment_factor_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "score",
+                    "type": "decimal",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "source",
+                    "type": "varchar",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "source_version",
+                    "type": "bigint",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "source_synced_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "entered_by",
+                    "type": "bigint",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "notes",
+                    "type": "text",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "created_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "updated_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                }
+            ],
+            "indexes": [
+                {
+                    "name": "primary",
+                    "columns": [
+                        "id"
+                    ],
+                    "unique": true,
+                    "primary": true
+                },
+                {
+                    "name": "student_score_config_student_factor_unique",
+                    "columns": [
+                        "assessment_config_id",
+                        "student_id",
+                        "assessment_factor_id"
+                    ],
+                    "unique": true,
+                    "primary": false
+                },
+                {
+                    "name": "student_score_school_student_idx",
+                    "columns": [
+                        "school_id",
+                        "student_id"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "student_scores_assessment_factor_id_foreign",
+                    "columns": [
+                        "assessment_factor_id"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "student_scores_entered_by_foreign",
+                    "columns": [
+                        "entered_by"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "student_scores_source_ver_idx",
+                    "columns": [
+                        "assessment_config_id",
+                        "source",
+                        "source_version"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "student_scores_student_id_foreign",
+                    "columns": [
+                        "student_id"
+                    ],
+                    "unique": false,
+                    "primary": false
+                }
+            ],
+            "foreign_keys": [
+                {
+                    "name": "student_scores_assessment_config_id_foreign",
+                    "columns": [
+                        "assessment_config_id"
+                    ],
+                    "foreign_table": "assessment_configs",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "student_scores_assessment_factor_id_foreign",
+                    "columns": [
+                        "assessment_factor_id"
+                    ],
+                    "foreign_table": "assessment_factors",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "student_scores_entered_by_foreign",
+                    "columns": [
+                        "entered_by"
+                    ],
+                    "foreign_table": "users",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "student_scores_school_id_foreign",
+                    "columns": [
+                        "school_id"
+                    ],
+                    "foreign_table": "schools",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "student_scores_student_id_foreign",
+                    "columns": [
+                        "student_id"
+                    ],
+                    "foreign_table": "students",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                }
+            ]
+        },
+        "final_grades": {
+            "exists": true,
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "school_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "assessment_config_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "student_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "final_score",
+                    "type": "decimal",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "attendance_source_version",
+                    "type": "bigint",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "assessment_config_signature",
+                    "type": "varchar",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "letter_grade",
+                    "type": "varchar",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "description",
+                    "type": "text",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "calculated_at",
+                    "type": "timestamp",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "calculated_by",
+                    "type": "bigint",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "created_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "updated_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                }
+            ],
+            "indexes": [
+                {
+                    "name": "fg_config_signature_idx",
+                    "columns": [
+                        "assessment_config_signature"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "final_grade_config_student_unique",
+                    "columns": [
+                        "assessment_config_id",
+                        "student_id"
+                    ],
+                    "unique": true,
+                    "primary": false
+                },
+                {
+                    "name": "final_grade_school_student_idx",
+                    "columns": [
+                        "school_id",
+                        "student_id"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "final_grades_calculated_by_foreign",
+                    "columns": [
+                        "calculated_by"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "final_grades_student_id_foreign",
+                    "columns": [
+                        "student_id"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "primary",
+                    "columns": [
+                        "id"
+                    ],
+                    "unique": true,
+                    "primary": true
+                }
+            ],
+            "foreign_keys": [
+                {
+                    "name": "final_grades_assessment_config_id_foreign",
+                    "columns": [
+                        "assessment_config_id"
+                    ],
+                    "foreign_table": "assessment_configs",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "final_grades_calculated_by_foreign",
+                    "columns": [
+                        "calculated_by"
+                    ],
+                    "foreign_table": "users",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "final_grades_school_id_foreign",
+                    "columns": [
+                        "school_id"
+                    ],
+                    "foreign_table": "schools",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "final_grades_student_id_foreign",
+                    "columns": [
+                        "student_id"
+                    ],
+                    "foreign_table": "students",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                }
+            ]
+        },
+        "activity_assessments": {
+            "exists": true,
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "school_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "activity_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "assessment_factor_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "title",
+                    "type": "varchar",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "mode",
+                    "type": "varchar",
+                    "nullable": false,
+                    "default": "individual"
+                },
+                {
+                    "name": "status",
+                    "type": "varchar",
+                    "nullable": false,
+                    "default": "draft"
+                },
+                {
+                    "name": "description",
+                    "type": "text",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "created_by",
+                    "type": "bigint",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "published_by",
+                    "type": "bigint",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "published_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "created_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "updated_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                }
+            ],
+            "indexes": [
+                {
+                    "name": "aa_activity_factor_idx",
+                    "columns": [
+                        "activity_id",
+                        "assessment_factor_id"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "aa_created_by_fk",
+                    "columns": [
+                        "created_by"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "aa_factor_fk",
+                    "columns": [
+                        "assessment_factor_id"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "aa_published_by_fk",
+                    "columns": [
+                        "published_by"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "aa_school_status_idx",
+                    "columns": [
+                        "school_id",
+                        "status"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "primary",
+                    "columns": [
+                        "id"
+                    ],
+                    "unique": true,
+                    "primary": true
+                }
+            ],
+            "foreign_keys": [
+                {
+                    "name": "aa_activity_fk",
+                    "columns": [
+                        "activity_id"
+                    ],
+                    "foreign_table": "activities",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "aa_created_by_fk",
+                    "columns": [
+                        "created_by"
+                    ],
+                    "foreign_table": "users",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "aa_factor_fk",
+                    "columns": [
+                        "assessment_factor_id"
+                    ],
+                    "foreign_table": "assessment_factors",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "aa_published_by_fk",
+                    "columns": [
+                        "published_by"
+                    ],
+                    "foreign_table": "users",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "aa_school_fk",
+                    "columns": [
+                        "school_id"
+                    ],
+                    "foreign_table": "schools",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                }
+            ]
+        },
+        "activity_assessment_criteria": {
+            "exists": true,
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "school_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "activity_assessment_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "name",
+                    "type": "varchar",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "description",
+                    "type": "text",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "max_score",
+                    "type": "decimal",
+                    "nullable": false,
+                    "default": "100.00"
+                },
+                {
+                    "name": "weight",
+                    "type": "decimal",
+                    "nullable": false,
+                    "default": "0.00"
+                },
+                {
+                    "name": "sort_order",
+                    "type": "smallint",
+                    "nullable": false,
+                    "default": "0"
+                },
+                {
+                    "name": "created_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "updated_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                }
+            ],
+            "indexes": [
+                {
+                    "name": "aac_assessment_order_idx",
+                    "columns": [
+                        "activity_assessment_id",
+                        "sort_order"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "aac_school_fk",
+                    "columns": [
+                        "school_id"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "primary",
+                    "columns": [
+                        "id"
+                    ],
+                    "unique": true,
+                    "primary": true
+                }
+            ],
+            "foreign_keys": [
+                {
+                    "name": "aac_assessment_fk",
+                    "columns": [
+                        "activity_assessment_id"
+                    ],
+                    "foreign_table": "activity_assessments",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "aac_school_fk",
+                    "columns": [
+                        "school_id"
+                    ],
+                    "foreign_table": "schools",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                }
+            ]
+        },
+        "activity_assessment_targets": {
+            "exists": true,
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "school_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "activity_assessment_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "student_id",
+                    "type": "bigint",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "scout_unit_id",
+                    "type": "bigint",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "total_score",
+                    "type": "decimal",
+                    "nullable": false,
+                    "default": "0.00"
+                },
+                {
+                    "name": "normalized_score",
+                    "type": "decimal",
+                    "nullable": false,
+                    "default": "0.00"
+                },
+                {
+                    "name": "notes",
+                    "type": "text",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "assessed_by",
+                    "type": "bigint",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "assessed_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "created_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "updated_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                }
+            ],
+            "indexes": [
+                {
+                    "name": "aat_assessed_by_fk",
+                    "columns": [
+                        "assessed_by"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "aat_school_assessment_idx",
+                    "columns": [
+                        "school_id",
+                        "activity_assessment_id"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "aat_student_fk",
+                    "columns": [
+                        "student_id"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "aat_student_uq",
+                    "columns": [
+                        "activity_assessment_id",
+                        "student_id"
+                    ],
+                    "unique": true,
+                    "primary": false
+                },
+                {
+                    "name": "aat_unit_fk",
+                    "columns": [
+                        "scout_unit_id"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "aat_unit_uq",
+                    "columns": [
+                        "activity_assessment_id",
+                        "scout_unit_id"
+                    ],
+                    "unique": true,
+                    "primary": false
+                },
+                {
+                    "name": "primary",
+                    "columns": [
+                        "id"
+                    ],
+                    "unique": true,
+                    "primary": true
+                }
+            ],
+            "foreign_keys": [
+                {
+                    "name": "aat_assessed_by_fk",
+                    "columns": [
+                        "assessed_by"
+                    ],
+                    "foreign_table": "users",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "aat_assessment_fk",
+                    "columns": [
+                        "activity_assessment_id"
+                    ],
+                    "foreign_table": "activity_assessments",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "aat_school_fk",
+                    "columns": [
+                        "school_id"
+                    ],
+                    "foreign_table": "schools",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "aat_student_fk",
+                    "columns": [
+                        "student_id"
+                    ],
+                    "foreign_table": "students",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "aat_unit_fk",
+                    "columns": [
+                        "scout_unit_id"
+                    ],
+                    "foreign_table": "scout_units",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                }
+            ]
+        },
+        "activity_assessment_target_members": {
+            "exists": true,
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "school_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "activity_assessment_target_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "student_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "created_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "updated_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                }
+            ],
+            "indexes": [
+                {
+                    "name": "aatm_school_student_idx",
+                    "columns": [
+                        "school_id",
+                        "student_id"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "aatm_student_fk",
+                    "columns": [
+                        "student_id"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "aatm_target_student_uq",
+                    "columns": [
+                        "activity_assessment_target_id",
+                        "student_id"
+                    ],
+                    "unique": true,
+                    "primary": false
+                },
+                {
+                    "name": "primary",
+                    "columns": [
+                        "id"
+                    ],
+                    "unique": true,
+                    "primary": true
+                }
+            ],
+            "foreign_keys": [
+                {
+                    "name": "aatm_school_fk",
+                    "columns": [
+                        "school_id"
+                    ],
+                    "foreign_table": "schools",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "aatm_student_fk",
+                    "columns": [
+                        "student_id"
+                    ],
+                    "foreign_table": "students",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "aatm_target_fk",
+                    "columns": [
+                        "activity_assessment_target_id"
+                    ],
+                    "foreign_table": "activity_assessment_targets",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                }
+            ]
+        },
+        "activity_assessment_scores": {
+            "exists": true,
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "school_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "activity_assessment_target_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "activity_assessment_criterion_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "score",
+                    "type": "decimal",
+                    "nullable": false,
+                    "default": "0.00"
+                },
+                {
+                    "name": "weighted_score",
+                    "type": "decimal",
+                    "nullable": false,
+                    "default": "0.0000"
+                },
+                {
+                    "name": "notes",
+                    "type": "text",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "created_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "updated_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                }
+            ],
+            "indexes": [
+                {
+                    "name": "aas_criterion_fk",
+                    "columns": [
+                        "activity_assessment_criterion_id"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "aas_school_target_idx",
+                    "columns": [
+                        "school_id",
+                        "activity_assessment_target_id"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "aas_target_criterion_uq",
+                    "columns": [
+                        "activity_assessment_target_id",
+                        "activity_assessment_criterion_id"
+                    ],
+                    "unique": true,
+                    "primary": false
+                },
+                {
+                    "name": "primary",
+                    "columns": [
+                        "id"
+                    ],
+                    "unique": true,
+                    "primary": true
+                }
+            ],
+            "foreign_keys": [
+                {
+                    "name": "aas_criterion_fk",
+                    "columns": [
+                        "activity_assessment_criterion_id"
+                    ],
+                    "foreign_table": "activity_assessment_criteria",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "aas_school_fk",
+                    "columns": [
+                        "school_id"
+                    ],
+                    "foreign_table": "schools",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "aas_target_fk",
+                    "columns": [
+                        "activity_assessment_target_id"
+                    ],
+                    "foreign_table": "activity_assessment_targets",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                }
+            ]
+        },
+        "attendance_score_settings": {
+            "exists": true,
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "school_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "present_weight",
+                    "type": "decimal",
+                    "nullable": false,
+                    "default": "100.00"
+                },
+                {
+                    "name": "late_weight",
+                    "type": "decimal",
+                    "nullable": false,
+                    "default": "75.00"
+                },
+                {
+                    "name": "sick_weight",
+                    "type": "decimal",
+                    "nullable": false,
+                    "default": "75.00"
+                },
+                {
+                    "name": "excused_weight",
+                    "type": "decimal",
+                    "nullable": false,
+                    "default": "75.00"
+                },
+                {
+                    "name": "absent_weight",
+                    "type": "decimal",
+                    "nullable": false,
+                    "default": "0.00"
+                },
+                {
+                    "name": "version",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": "1"
+                },
+                {
+                    "name": "updated_by",
+                    "type": "bigint",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "created_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "updated_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                }
+            ],
+            "indexes": [
+                {
+                    "name": "attendance_score_settings_school_unique",
+                    "columns": [
+                        "school_id"
+                    ],
+                    "unique": true,
+                    "primary": false
+                },
+                {
+                    "name": "attendance_score_settings_updated_by_foreign",
+                    "columns": [
+                        "updated_by"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "primary",
+                    "columns": [
+                        "id"
+                    ],
+                    "unique": true,
+                    "primary": true
+                }
+            ],
+            "foreign_keys": [
+                {
+                    "name": "attendance_score_settings_school_id_foreign",
+                    "columns": [
+                        "school_id"
+                    ],
+                    "foreign_table": "schools",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "attendance_score_settings_updated_by_foreign",
+                    "columns": [
+                        "updated_by"
+                    ],
+                    "foreign_table": "users",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                }
+            ]
+        },
+        "semester_closures": {
+            "exists": true,
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "school_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "academic_year_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "semester_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "assessment_config_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "version",
+                    "type": "int",
+                    "nullable": false,
+                    "default": "1"
+                },
+                {
+                    "name": "status",
+                    "type": "varchar",
+                    "nullable": false,
+                    "default": "locked"
+                },
+                {
+                    "name": "config_signature",
+                    "type": "char",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "attendance_source_version",
+                    "type": "bigint",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "snapshot_count",
+                    "type": "int",
+                    "nullable": false,
+                    "default": "0"
+                },
+                {
+                    "name": "snapshot_checksum",
+                    "type": "char",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "metadata",
+                    "type": "json",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "locked_by",
+                    "type": "bigint",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "locked_at",
+                    "type": "timestamp",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "reopened_by",
+                    "type": "bigint",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "reopened_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "reopen_reason",
+                    "type": "text",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "created_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "updated_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                }
+            ],
+            "indexes": [
+                {
+                    "name": "primary",
+                    "columns": [
+                        "id"
+                    ],
+                    "unique": true,
+                    "primary": true
+                },
+                {
+                    "name": "sc_config_fk",
+                    "columns": [
+                        "assessment_config_id"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "sc_locked_by_fk",
+                    "columns": [
+                        "locked_by"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "sc_period_idx",
+                    "columns": [
+                        "school_id",
+                        "academic_year_id",
+                        "semester_id"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "sc_period_version_uq",
+                    "columns": [
+                        "school_id",
+                        "academic_year_id",
+                        "semester_id",
+                        "version"
+                    ],
+                    "unique": true,
+                    "primary": false
+                },
+                {
+                    "name": "sc_reopened_by_fk",
+                    "columns": [
+                        "reopened_by"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "sc_semester_fk",
+                    "columns": [
+                        "semester_id"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "sc_status_idx",
+                    "columns": [
+                        "school_id",
+                        "status"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "sc_year_fk",
+                    "columns": [
+                        "academic_year_id"
+                    ],
+                    "unique": false,
+                    "primary": false
+                }
+            ],
+            "foreign_keys": [
+                {
+                    "name": "sc_config_fk",
+                    "columns": [
+                        "assessment_config_id"
+                    ],
+                    "foreign_table": "assessment_configs",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "sc_locked_by_fk",
+                    "columns": [
+                        "locked_by"
+                    ],
+                    "foreign_table": "users",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "sc_reopened_by_fk",
+                    "columns": [
+                        "reopened_by"
+                    ],
+                    "foreign_table": "users",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "sc_school_fk",
+                    "columns": [
+                        "school_id"
+                    ],
+                    "foreign_table": "schools",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "sc_semester_fk",
+                    "columns": [
+                        "semester_id"
+                    ],
+                    "foreign_table": "semesters",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "sc_year_fk",
+                    "columns": [
+                        "academic_year_id"
+                    ],
+                    "foreign_table": "academic_years",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                }
+            ]
+        },
+        "semester_grade_snapshots": {
+            "exists": true,
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "school_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "semester_closure_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "student_id",
+                    "type": "bigint",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "student_nis",
+                    "type": "varchar",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "student_name",
+                    "type": "varchar",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "classroom_id",
+                    "type": "bigint",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "classroom_name",
+                    "type": "varchar",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "final_score",
+                    "type": "decimal",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "letter_grade",
+                    "type": "varchar",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "description",
+                    "type": "text",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "factor_scores",
+                    "type": "json",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "config_signature",
+                    "type": "char",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "attendance_source_version",
+                    "type": "bigint",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "source_calculated_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "record_hash",
+                    "type": "char",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "created_at",
+                    "type": "timestamp",
+                    "nullable": false,
+                    "default": "CURRENT_TIMESTAMP"
+                }
+            ],
+            "indexes": [
+                {
+                    "name": "primary",
+                    "columns": [
+                        "id"
+                    ],
+                    "unique": true,
+                    "primary": true
+                },
+                {
+                    "name": "sgs_classroom_fk",
+                    "columns": [
+                        "classroom_id"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "sgs_closure_student_uq",
+                    "columns": [
+                        "semester_closure_id",
+                        "student_id"
+                    ],
+                    "unique": true,
+                    "primary": false
+                },
+                {
+                    "name": "sgs_school_closure_idx",
+                    "columns": [
+                        "school_id",
+                        "semester_closure_id"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "sgs_student_fk",
+                    "columns": [
+                        "student_id"
+                    ],
+                    "unique": false,
+                    "primary": false
+                }
+            ],
+            "foreign_keys": [
+                {
+                    "name": "sgs_classroom_fk",
+                    "columns": [
+                        "classroom_id"
+                    ],
+                    "foreign_table": "classrooms",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "sgs_closure_fk",
+                    "columns": [
+                        "semester_closure_id"
+                    ],
+                    "foreign_table": "semester_closures",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "sgs_school_fk",
+                    "columns": [
+                        "school_id"
+                    ],
+                    "foreign_table": "schools",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "sgs_student_fk",
+                    "columns": [
+                        "student_id"
+                    ],
+                    "foreign_table": "students",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                }
+            ]
+        },
+        "assessment_audit_logs": {
+            "exists": true,
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "school_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "user_id",
+                    "type": "bigint",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "action",
+                    "type": "varchar",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "module",
+                    "type": "varchar",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "subject_type",
+                    "type": "varchar",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "subject_id",
+                    "type": "bigint",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "description",
+                    "type": "varchar",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "old_values",
+                    "type": "json",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "new_values",
+                    "type": "json",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "metadata",
+                    "type": "json",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "created_at",
+                    "type": "timestamp",
+                    "nullable": false,
+                    "default": "CURRENT_TIMESTAMP"
+                }
+            ],
+            "indexes": [
+                {
+                    "name": "aal_school_action_idx",
+                    "columns": [
+                        "school_id",
+                        "action"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "aal_school_created_idx",
+                    "columns": [
+                        "school_id",
+                        "created_at"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "aal_school_module_idx",
+                    "columns": [
+                        "school_id",
+                        "module"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "aal_subject_idx",
+                    "columns": [
+                        "subject_type",
+                        "subject_id"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "aal_user_fk",
+                    "columns": [
+                        "user_id"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "primary",
+                    "columns": [
+                        "id"
+                    ],
+                    "unique": true,
+                    "primary": true
+                }
+            ],
+            "foreign_keys": [
+                {
+                    "name": "aal_school_fk",
+                    "columns": [
+                        "school_id"
+                    ],
+                    "foreign_table": "schools",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "aal_user_fk",
+                    "columns": [
+                        "user_id"
+                    ],
+                    "foreign_table": "users",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                }
+            ]
+        },
+        "report_verifications": {
+            "exists": true,
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "school_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "semester_closure_id",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "code",
+                    "type": "char",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "document_type",
+                    "type": "varchar",
+                    "nullable": false,
+                    "default": "grades"
+                },
+                {
+                    "name": "snapshot_checksum",
+                    "type": "char",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "file_disk",
+                    "type": "varchar",
+                    "nullable": false,
+                    "default": "local"
+                },
+                {
+                    "name": "file_path",
+                    "type": "varchar",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "file_name",
+                    "type": "varchar",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "file_sha256",
+                    "type": "char",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "file_size",
+                    "type": "bigint",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "archived_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "issued_by",
+                    "type": "bigint",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "issued_at",
+                    "type": "timestamp",
+                    "nullable": false,
+                    "default": null
+                },
+                {
+                    "name": "verification_count",
+                    "type": "bigint",
+                    "nullable": false,
+                    "default": "0"
+                },
+                {
+                    "name": "last_verified_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "revoked_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "revoked_by",
+                    "type": "bigint",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "revocation_reason",
+                    "type": "text",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "created_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                },
+                {
+                    "name": "updated_at",
+                    "type": "timestamp",
+                    "nullable": true,
+                    "default": null
+                }
+            ],
+            "indexes": [
+                {
+                    "name": "primary",
+                    "columns": [
+                        "id"
+                    ],
+                    "unique": true,
+                    "primary": true
+                },
+                {
+                    "name": "rv_closure_type_idx",
+                    "columns": [
+                        "semester_closure_id",
+                        "document_type"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "rv_code_uq",
+                    "columns": [
+                        "code"
+                    ],
+                    "unique": true,
+                    "primary": false
+                },
+                {
+                    "name": "rv_issued_by_fk",
+                    "columns": [
+                        "issued_by"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "rv_revoked_by_fk",
+                    "columns": [
+                        "revoked_by"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "rv_school_closure_idx",
+                    "columns": [
+                        "school_id",
+                        "semester_closure_id"
+                    ],
+                    "unique": false,
+                    "primary": false
+                },
+                {
+                    "name": "rv_school_issued_idx",
+                    "columns": [
+                        "school_id",
+                        "issued_at"
+                    ],
+                    "unique": false,
+                    "primary": false
+                }
+            ],
+            "foreign_keys": [
+                {
+                    "name": "rv_closure_fk",
+                    "columns": [
+                        "semester_closure_id"
+                    ],
+                    "foreign_table": "semester_closures",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "rv_issued_by_fk",
+                    "columns": [
+                        "issued_by"
+                    ],
+                    "foreign_table": "users",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "rv_revoked_by_fk",
+                    "columns": [
+                        "revoked_by"
+                    ],
+                    "foreign_table": "users",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                },
+                {
+                    "name": "rv_school_fk",
+                    "columns": [
+                        "school_id"
+                    ],
+                    "foreign_table": "schools",
+                    "foreign_columns": [
+                        "id"
+                    ]
+                }
+            ]
+        }
+    },
+    "models": {
+        "StudentScore": {
+            "class": "App\\Models\\StudentScore",
+            "table": "student_scores",
+            "fillable": [
+                "assessment_config_id",
+                "student_id",
+                "assessment_factor_id",
+                "score",
+                "source",
+                "source_version",
+                "source_synced_at",
+                "entered_by",
+                "notes"
+            ],
+            "guarded": [
+                "*"
+            ],
+            "casts": {
+                "id": "int",
+                "score": "float",
+                "source_version": "integer",
+                "source_synced_at": "datetime"
+            }
+        },
+        "FinalGrade": {
+            "class": "App\\Models\\FinalGrade",
+            "table": "final_grades",
+            "fillable": [
+                "assessment_config_id",
+                "student_id",
+                "final_score",
+                "letter_grade",
+                "description",
+                "attendance_source_version",
+                "assessment_config_signature",
+                "calculated_at",
+                "calculated_by"
+            ],
+            "guarded": [
+                "*"
+            ],
+            "casts": {
+                "id": "int",
+                "final_score": "float",
+                "attendance_source_version": "integer",
+                "calculated_at": "datetime"
+            }
+        }
+    },
+    "checks": [
+        {
+            "id": "student_scores.column.assessment_config_id",
+            "level": "ok",
+            "message": "Kolom assessment_config_id tersedia."
+        },
+        {
+            "id": "student_scores.column.student_id",
+            "level": "ok",
+            "message": "Kolom student_id tersedia."
+        },
+        {
+            "id": "student_scores.column.assessment_factor_id",
+            "level": "ok",
+            "message": "Kolom assessment_factor_id tersedia."
+        },
+        {
+            "id": "student_scores.column.score",
+            "level": "ok",
+            "message": "Kolom score tersedia."
+        },
+        {
+            "id": "student_scores.optional.source",
+            "level": "ok",
+            "message": "Kolom source tersedia."
+        },
+        {
+            "id": "student_scores.optional.source_key",
+            "level": "info",
+            "message": "Kolom source_key belum tersedia."
+        },
+        {
+            "id": "student_scores.optional.source_version",
+            "level": "ok",
+            "message": "Kolom source_version tersedia."
+        },
+        {
+            "id": "student_scores.optional.source_synced_at",
+            "level": "ok",
+            "message": "Kolom source_synced_at tersedia."
+        },
+        {
+            "id": "student_scores.manual_overwrite_risk",
+            "level": "critical",
+            "message": "Ditemukan UNIQUE hanya pada (assessment_config_id, student_id, assessment_factor_id) yaitu index student_score_config_student_factor_unique. Nilai otomatis berpotensi menimpa nilai manual."
+        },
+        {
+            "id": "final_grades.metadata.attendance_source_version",
+            "level": "ok",
+            "message": "FinalGrade memiliki attendance_source_version."
+        },
+        {
+            "id": "final_grades.metadata.assessment_config_signature",
+            "level": "ok",
+            "message": "FinalGrade memiliki assessment_config_signature."
+        },
+        {
+            "id": "final_grades.metadata.calculated_at",
+            "level": "ok",
+            "message": "FinalGrade memiliki calculated_at."
+        },
+        {
+            "id": "final_grades.metadata.calculated_by",
+            "level": "ok",
+            "message": "FinalGrade memiliki calculated_by."
+        }
+    ]
+}

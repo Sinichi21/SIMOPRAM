@@ -11,6 +11,7 @@ use App\Support\SchoolContext;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Services\StudentScoreWriter;
 
 class AssessmentService
 {
@@ -476,30 +477,65 @@ class AssessmentService
                         $attendanceItems as $item
                     ) {
 
-                        StudentScore::query()
-                            ->updateOrCreate(
-                                [
-                                    'assessment_config_id' => $config->id,
+                        // StudentScore::query()
+                        //     ->updateOrCreate(
+                        //         [
+                        //             'assessment_config_id' => $config->id,
 
-                                    'student_id' => $student->id,
+                        //             'student_id' => $student->id,
 
-                                    'assessment_factor_id' => $item
-                                        ->assessment_factor_id,
-                                ],
-                                [
-                                    'score' => $attendanceScore,
+                        //             'assessment_factor_id' => $item
+                        //                 ->assessment_factor_id,
+                        //         ],
+                        //         [
+                        //             'score' => $attendanceScore,
 
-                                    'source' => 'attendance',
+                        //             'source' => 'attendance',
 
-                                    'source_version' => $version,
+                        //             'source_version' => $version,
 
-                                    'source_synced_at' => now(),
+                        //             'source_synced_at' => now(),
 
-                                    'entered_by' => auth()->id(),
+                        //             'entered_by' => auth()->id(),
 
-                                    'notes' => 'Nilai otomatis dari rekap kehadiran.',
-                                ]
+                        //             'notes' => 'Nilai otomatis dari rekap kehadiran.',
+                        //         ]
+                        //     );
+
+                        $result =
+                            app(
+                                StudentScoreWriter::class
+                            )->writeAutomatic(
+                                assessmentConfigId:
+                                    $config->id,
+
+                                studentId:
+                                    $student->id,
+
+                                assessmentFactorId:
+                                    $attendanceFactor->id,
+
+                                score:
+                                    $attendanceScore,
+
+                                source:
+                                    StudentScoreWriter::SOURCE_ATTENDANCE,
+
+                                sourceVersion:
+                                    $attendanceVersion,
+
+                                notes:
+                                    'Sinkronisasi otomatis nilai kehadiran'
                             );
+
+
+                        if (
+                            $result[
+                                'skipped_manual'
+                            ]
+                        ) {
+                            continue;
+                        }
 
                         $updated++;
                     }
