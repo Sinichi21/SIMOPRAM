@@ -12,42 +12,34 @@ class AttendanceWeightVersionTest extends TestCase
 {
     use RefreshDatabase;
 
-
     public function test_default_configuration_uses_version_one(): void
     {
         $user =
             User::factory()
                 ->create([
-                    'system_role' =>
-                        'super_admin',
+                    'system_role' => 'super_admin',
 
-                    'is_active' =>
-                        true,
+                    'is_active' => true,
                 ]);
-
 
         $school =
             School::factory()
                 ->create();
 
-
         $this
             ->actingAs($user)
             ->withSession([
-                'active_school_id' =>
-                    $school->id,
+                'active_school_id' => $school->id,
             ])
             ->get(
                 route('dashboard')
             )
             ->assertOk();
 
-
         $service =
             app(
                 AttendanceWeightService::class
             );
-
 
         $this->assertSame(
             1,
@@ -55,42 +47,34 @@ class AttendanceWeightVersionTest extends TestCase
         );
     }
 
-
     public function test_saving_default_weights_keeps_version_one(): void
     {
         $user =
             User::factory()
                 ->create([
-                    'system_role' =>
-                        'super_admin',
+                    'system_role' => 'super_admin',
 
-                    'is_active' =>
-                        true,
+                    'is_active' => true,
                 ]);
-
 
         $school =
             School::factory()
                 ->create();
 
-
         $this
             ->actingAs($user)
             ->withSession([
-                'active_school_id' =>
-                    $school->id,
+                'active_school_id' => $school->id,
             ])
             ->get(
                 route('dashboard')
             )
             ->assertOk();
 
-
         $service =
             app(
                 AttendanceWeightService::class
             );
-
 
         $setting =
             $service
@@ -105,49 +89,40 @@ class AttendanceWeightVersionTest extends TestCase
                     $user->id
                 );
 
-
         $this->assertSame(
             1,
             $setting->version
         );
     }
 
-
     public function test_changing_weight_increments_configuration_version(): void
     {
         $user =
             User::factory()
                 ->create([
-                    'system_role' =>
-                        'super_admin',
+                    'system_role' => 'super_admin',
 
-                    'is_active' =>
-                        true,
+                    'is_active' => true,
                 ]);
-
 
         $school =
             School::factory()
                 ->create();
 
-
         $this
             ->actingAs($user)
             ->withSession([
-                'active_school_id' =>
-                    $school->id,
+                'active_school_id' => $school->id,
             ])
             ->get(
                 route('dashboard')
             )
             ->assertOk();
 
-
         $service =
             app(
                 AttendanceWeightService::class
             );
-
 
         /*
         |--------------------------------------------------------------------------
@@ -165,7 +140,6 @@ class AttendanceWeightVersionTest extends TestCase
             ],
             $user->id
         );
-
 
         /*
         |--------------------------------------------------------------------------
@@ -186,12 +160,10 @@ class AttendanceWeightVersionTest extends TestCase
                     $user->id
                 );
 
-
         $this->assertSame(
             2,
             $setting->version
         );
-
 
         /*
         |--------------------------------------------------------------------------
@@ -212,12 +184,10 @@ class AttendanceWeightVersionTest extends TestCase
                     $user->id
                 );
 
-
         $this->assertSame(
             2,
             $setting->version
         );
-
 
         /*
         |--------------------------------------------------------------------------
@@ -238,36 +208,29 @@ class AttendanceWeightVersionTest extends TestCase
                     $user->id
                 );
 
-
         $this->assertSame(
             3,
             $setting->version
         );
     }
 
-
     public function test_configuration_version_is_isolated_per_school(): void
     {
         $user =
             User::factory()
                 ->create([
-                    'system_role' =>
-                        'super_admin',
+                    'system_role' => 'super_admin',
 
-                    'is_active' =>
-                        true,
+                    'is_active' => true,
                 ]);
-
 
         $schoolA =
             School::factory()
                 ->create();
 
-
         $schoolB =
             School::factory()
                 ->create();
-
 
         /*
         |--------------------------------------------------------------------------
@@ -278,14 +241,12 @@ class AttendanceWeightVersionTest extends TestCase
         $this
             ->actingAs($user)
             ->withSession([
-                'active_school_id' =>
-                    $schoolA->id,
+                'active_school_id' => $schoolA->id,
             ])
             ->get(
                 route('dashboard')
             )
             ->assertOk();
-
 
         app(
             AttendanceWeightService::class
@@ -301,19 +262,16 @@ class AttendanceWeightVersionTest extends TestCase
                 $user->id
             );
 
-
         $versionA =
             app(
                 AttendanceWeightService::class
             )
                 ->version();
 
-
         $this->assertSame(
             2,
             $versionA
         );
-
 
         /*
         |--------------------------------------------------------------------------
@@ -326,14 +284,12 @@ class AttendanceWeightVersionTest extends TestCase
             ->post(
                 route('school.switch'),
                 [
-                    'school_id' =>
-                        $schoolB->id,
+                    'school_id' => $schoolB->id,
                 ]
             )
             ->assertRedirect(
                 route('dashboard')
             );
-
 
         $this
             ->actingAs($user)
@@ -342,13 +298,11 @@ class AttendanceWeightVersionTest extends TestCase
             )
             ->assertOk();
 
-
         $versionB =
             app(
                 AttendanceWeightService::class
             )
                 ->version();
-
 
         $this->assertSame(
             1,

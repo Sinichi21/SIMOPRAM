@@ -43,11 +43,11 @@ return new class extends Migration
 
             $table->unique(
                 [
-                'school_id',
-                'academic_year_id',
-                'scout_level_id',
-                'name',
-            ],
+                    'school_id',
+                    'academic_year_id',
+                    'scout_level_id',
+                    'name',
+                ],
                 'scout_units_school_year_level_name_unique'
             );
         });

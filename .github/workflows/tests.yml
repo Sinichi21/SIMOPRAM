@@ -35,4 +35,6 @@ jobs:
         run: composer setup
 
       - name: Run CI Checks
-        run: composer ci:check
+        run: |
+          vendor/bin/pint --test --format agent
+          php artisan test --compact

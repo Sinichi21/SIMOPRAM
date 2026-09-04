@@ -12,7 +12,6 @@ class SelfCheckin extends Component
 {
     public ?string $successMessage = null;
 
-
     protected function student(): Student
     {
         return Student::query()
@@ -26,7 +25,6 @@ class SelfCheckin extends Component
             )
             ->firstOrFail();
     }
-
 
     public function checkIn(
         AttendanceService $service,
@@ -42,7 +40,6 @@ class SelfCheckin extends Component
             403
         );
 
-
         /*
         |--------------------------------------------------------------------------
         | Validasi data dari browser
@@ -52,14 +49,11 @@ class SelfCheckin extends Component
         $validated =
             Validator::make(
                 [
-                    'latitude' =>
-                        $latitude,
+                    'latitude' => $latitude,
 
-                    'longitude' =>
-                        $longitude,
+                    'longitude' => $longitude,
 
-                    'accuracy' =>
-                        $accuracy,
+                    'accuracy' => $accuracy,
                 ],
                 [
                     'latitude' => [
@@ -83,10 +77,8 @@ class SelfCheckin extends Component
                 ]
             )->validate();
 
-
         $student =
             $this->student();
-
 
         /*
         |--------------------------------------------------------------------------
@@ -106,16 +98,14 @@ class SelfCheckin extends Component
                 )
                 ->whereHas(
                     'participants',
-                    fn ($query) =>
-                        $query->where(
-                            'student_id',
-                            $student->id
-                        )
+                    fn ($query) => $query->where(
+                        'student_id',
+                        $student->id
+                    )
                 )
                 ->findOrFail(
                     $sessionId
                 );
-
 
         $attendance =
             $service->checkInGps(
@@ -132,13 +122,11 @@ class SelfCheckin extends Component
                 ]
             );
 
-
         $this->successMessage =
             $attendance->status === 'late'
                 ? 'Absensi berhasil. Status: Terlambat.'
                 : 'Absensi berhasil. Status: Hadir.';
     }
-
 
     public function render()
     {
@@ -170,19 +158,16 @@ class SelfCheckin extends Component
                 )
                 ->whereHas(
                     'participants',
-                    fn ($query) =>
-                        $query->where(
-                            'student_id',
-                            $student->id
-                        )
+                    fn ($query) => $query->where(
+                        'student_id',
+                        $student->id
+                    )
                 )
                 ->with([
-                    'attendances' =>
-                        fn ($query) =>
-                            $query->where(
-                                'student_id',
-                                $student->id
-                            ),
+                    'attendances' => fn ($query) => $query->where(
+                        'student_id',
+                        $student->id
+                    ),
                 ])
                 ->orderBy('open_at')
                 ->get();

@@ -53,43 +53,32 @@ class ReportVerificationService
             ! $closure->snapshot_checksum
         ) {
             throw ValidationException::withMessages([
-                'verification' =>
-                    'Snapshot semester belum memiliki checksum.',
+                'verification' => 'Snapshot semester belum memiliki checksum.',
             ]);
         }
 
         return ReportVerification::query()
             ->create([
-                'school_id' =>
-                    $schoolId,
+                'school_id' => $schoolId,
 
-                'semester_closure_id' =>
-                    $closure->id,
+                'semester_closure_id' => $closure->id,
 
-                'code' =>
-                    $this->generateUniqueCode(),
+                'code' => $this->generateUniqueCode(),
 
-                'document_type' =>
-                    $documentType,
+                'document_type' => $documentType,
 
-                'snapshot_checksum' =>
-                    $closure
-                        ->snapshot_checksum,
+                'snapshot_checksum' => $closure
+                    ->snapshot_checksum,
 
-                'file_disk' =>
-                    'local',
+                'file_disk' => 'local',
 
-                'issued_by' =>
-                    $issuedBy,
+                'issued_by' => $issuedBy,
 
-                'issued_at' =>
-                    now(),
+                'issued_at' => now(),
 
-                'verification_count' =>
-                    0,
+                'verification_count' => 0,
             ]);
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -124,10 +113,10 @@ class ReportVerificationService
 
         $path =
             'report-verifications/'
-            . $verification->school_id
-            . '/'
-            . $verification->code
-            . '.pdf';
+            .$verification->school_id
+            .'/'
+            .$verification->code
+            .'.pdf';
 
         $written =
             Storage::disk(
@@ -144,77 +133,60 @@ class ReportVerificationService
         }
 
         $verification->forceFill([
-            'file_disk' =>
-                $disk,
+            'file_disk' => $disk,
 
-            'file_path' =>
-                $path,
+            'file_path' => $path,
 
-            'file_name' =>
-                $filename,
+            'file_name' => $filename,
 
-            'file_sha256' =>
-                hash(
-                    'sha256',
-                    $binary
-                ),
+            'file_sha256' => hash(
+                'sha256',
+                $binary
+            ),
 
-            'file_size' =>
-                strlen(
-                    $binary
-                ),
+            'file_size' => strlen(
+                $binary
+            ),
 
-            'archived_at' =>
-                now(),
+            'archived_at' => now(),
         ])->save();
 
         app(
             AssessmentAuditService::class
         )
             ->record(
-                action:
-                    'report.pdf.issued',
+                action: 'report.pdf.issued',
 
-                subject:
-                    $verification,
+                subject: $verification,
 
-                description:
-                    'PDF rekap nilai snapshot diterbitkan dan diarsipkan.',
+                description: 'PDF rekap nilai snapshot diterbitkan dan diarsipkan.',
 
                 newValues: [
-                    'document_type' =>
-                        $verification
-                            ->document_type,
+                    'document_type' => $verification
+                        ->document_type,
 
-                    'verification_code' =>
-                        $verification
-                            ->code,
+                    'verification_code' => $verification
+                        ->code,
 
-                    'snapshot_checksum' =>
-                        $verification
-                            ->snapshot_checksum,
+                    'snapshot_checksum' => $verification
+                        ->snapshot_checksum,
 
-                    'file_sha256' =>
-                        $verification
-                            ->file_sha256,
+                    'file_sha256' => $verification
+                        ->file_sha256,
 
-                    'file_size' =>
-                        $verification
-                            ->file_size,
+                    'file_size' => $verification
+                        ->file_size,
                 ],
 
                 metadata: [
-                    'semester_closure_id' =>
-                        $verification
-                            ->semester_closure_id,
+                    'semester_closure_id' => $verification
+                        ->semester_closure_id,
 
-                    'file_name' =>
-                        $verification
-                            ->file_name,
+                    'file_name' => $verification
+                        ->file_name,
                 ],
 
-                module:
-                    'report_verification'
+                module: 'report_verification'
             );
 
         return $verification->fresh([
@@ -222,7 +194,6 @@ class ReportVerificationService
             'issuer',
         ]);
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -247,7 +218,6 @@ class ReportVerificationService
         $verification->delete();
     }
 
-
     /*
     |--------------------------------------------------------------------------
     | Binary Arsip untuk Download Ulang
@@ -266,8 +236,7 @@ class ReportVerificationService
                 ->hasArchivedPdf()
         ) {
             throw ValidationException::withMessages([
-                'document' =>
-                    'Arsip PDF untuk dokumen ini belum tersedia.',
+                'document' => 'Arsip PDF untuk dokumen ini belum tersedia.',
             ]);
         }
 
@@ -306,15 +275,13 @@ class ReportVerificationService
             )
         ) {
             throw ValidationException::withMessages([
-                'document' =>
-                    'Integritas arsip PDF tidak valid. '
-                    . 'Hash file tidak sesuai dengan catatan penerbitan.',
+                'document' => 'Integritas arsip PDF tidak valid. '
+                    .'Hash file tidak sesuai dengan catatan penerbitan.',
             ]);
         }
 
         return $binary;
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -333,33 +300,25 @@ class ReportVerificationService
             AssessmentAuditService::class
         )
             ->record(
-                action:
-                    'report.pdf.redownloaded',
+                action: 'report.pdf.redownloaded',
 
-                subject:
-                    $verification,
+                subject: $verification,
 
-                description:
-                    'Arsip PDF resmi diunduh ulang menggunakan identitas dokumen yang sama.',
+                description: 'Arsip PDF resmi diunduh ulang menggunakan identitas dokumen yang sama.',
 
                 metadata: [
-                    'verification_code' =>
-                        $verification->code,
+                    'verification_code' => $verification->code,
 
-                    'file_sha256' =>
-                        $verification
-                            ->file_sha256,
+                    'file_sha256' => $verification
+                        ->file_sha256,
 
-                    'file_size' =>
-                        $verification
-                            ->file_size,
+                    'file_size' => $verification
+                        ->file_size,
                 ],
 
-                module:
-                    'report_verification'
+                module: 'report_verification'
             );
     }
-
 
     public function publicUrl(
         ReportVerification $verification
@@ -367,12 +326,10 @@ class ReportVerificationService
         return route(
             'reports.verify',
             [
-                'code' =>
-                    $verification->code,
+                'code' => $verification->code,
             ]
         );
     }
-
 
     public function qrDataUri(
         ReportVerification $verification
@@ -381,48 +338,38 @@ class ReportVerificationService
             extension_loaded(
                 'gd'
             )
-                ? new PngWriter()
-                : new SvgWriter();
+                ? new PngWriter
+                : new SvgWriter;
 
         $builder =
             new Builder(
-                writer:
-                    $writer,
+                writer: $writer,
 
-                writerOptions:
-                    [],
+                writerOptions: [],
 
-                validateResult:
-                    false,
+                validateResult: false,
 
-                data:
-                    $this->publicUrl(
-                        $verification
-                    ),
+                data: $this->publicUrl(
+                    $verification
+                ),
 
-                encoding:
-                    new Encoding(
-                        'UTF-8'
-                    ),
+                encoding: new Encoding(
+                    'UTF-8'
+                ),
 
-                errorCorrectionLevel:
-                    ErrorCorrectionLevel::Medium,
+                errorCorrectionLevel: ErrorCorrectionLevel::Medium,
 
-                size:
-                    220,
+                size: 220,
 
-                margin:
-                    8,
+                margin: 8,
 
-                roundBlockSizeMode:
-                    RoundBlockSizeMode::Margin
+                roundBlockSizeMode: RoundBlockSizeMode::Margin
             );
 
         return $builder
             ->build()
             ->getDataUri();
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -459,8 +406,7 @@ class ReportVerificationService
         );
 
         $verification->forceFill([
-            'last_verified_at' =>
-                now(),
+            'last_verified_at' => now(),
         ])->save();
 
         return $verification->fresh([
@@ -469,7 +415,6 @@ class ReportVerificationService
             'closure.semester',
         ]);
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -497,8 +442,7 @@ class ReportVerificationService
             ) < 5
         ) {
             throw ValidationException::withMessages([
-                'revocationReason' =>
-                    'Alasan pencabutan minimal 5 karakter.',
+                'revocationReason' => 'Alasan pencabutan minimal 5 karakter.',
             ]);
         }
 
@@ -509,71 +453,55 @@ class ReportVerificationService
         }
 
         $verification->forceFill([
-            'revoked_at' =>
-                now(),
+            'revoked_at' => now(),
 
-            'revoked_by' =>
-                $revokedBy,
+            'revoked_by' => $revokedBy,
 
-            'revocation_reason' =>
-                $reason,
+            'revocation_reason' => $reason,
         ])->save();
 
         app(
             AssessmentAuditService::class
         )
             ->record(
-                action:
-                    'report.verification.revoked',
+                action: 'report.verification.revoked',
 
-                subject:
-                    $verification,
+                subject: $verification,
 
-                description:
-                    'Dokumen terbit dicabut dari daftar dokumen resmi.',
+                description: 'Dokumen terbit dicabut dari daftar dokumen resmi.',
 
                 oldValues: [
-                    'revoked_at' =>
-                        null,
+                    'revoked_at' => null,
 
-                    'revoked_by' =>
-                        null,
+                    'revoked_by' => null,
 
-                    'revocation_reason' =>
-                        null,
+                    'revocation_reason' => null,
                 ],
 
                 newValues: [
-                    'revoked_at' =>
-                        $verification
-                            ->revoked_at
-                            ?->toISOString(),
+                    'revoked_at' => $verification
+                        ->revoked_at
+                        ?->toISOString(),
 
-                    'revoked_by' =>
-                        $verification
-                            ->revoked_by,
+                    'revoked_by' => $verification
+                        ->revoked_by,
 
-                    'revocation_reason' =>
-                        $verification
-                            ->revocation_reason,
+                    'revocation_reason' => $verification
+                        ->revocation_reason,
                 ],
 
                 metadata: [
-                    'verification_code' =>
-                        $verification
-                            ->code,
+                    'verification_code' => $verification
+                        ->code,
 
-                    'semester_closure_id' =>
-                        $verification
-                            ->semester_closure_id,
+                    'semester_closure_id' => $verification
+                        ->semester_closure_id,
 
-                    'snapshot_checksum' =>
-                        $verification
-                            ->snapshot_checksum,
+                    'snapshot_checksum' => $verification
+                        ->snapshot_checksum,
                 ],
 
-                module:
-                    'report_verification'
+                module: 'report_verification'
             );
 
         return $verification->fresh([
@@ -582,7 +510,6 @@ class ReportVerificationService
             'revoker',
         ]);
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -610,7 +537,6 @@ class ReportVerificationService
             404
         );
     }
-
 
     protected function generateUniqueCode(): string
     {

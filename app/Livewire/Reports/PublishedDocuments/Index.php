@@ -14,12 +14,17 @@ class Index extends Component
     use WithPagination;
 
     public string $search = '';
+
     public string $status = '';
+
     public string $documentType = '';
+
     public string $dateFrom = '';
+
     public string $dateTo = '';
 
     public ?int $revokeId = null;
+
     public string $revocationReason = '';
 
     public function updatedSearch(): void
@@ -148,7 +153,7 @@ class Index extends Component
         session()->flash(
             'status',
             'Dokumen berhasil dicabut. QR lama tetap dapat dipindai, '
-            . 'tetapi halaman verifikasi akan menampilkan status Dicabut.'
+            .'tetapi halaman verifikasi akan menampilkan status Dicabut.'
         );
     }
 
@@ -171,6 +176,7 @@ class Index extends Component
     ): void {
         if ($this->status === 'revoked') {
             $query->whereNotNull('revoked_at');
+
             return;
         }
 
@@ -179,12 +185,12 @@ class Index extends Component
                 ->whereNull('revoked_at')
                 ->whereHas(
                     'closure',
-                    fn ($query) =>
-                        $query->where(
-                            'status',
-                            'reopened'
-                        )
+                    fn ($query) => $query->where(
+                        'status',
+                        'reopened'
+                    )
                 );
+
             return;
         }
 
@@ -193,11 +199,10 @@ class Index extends Component
                 ->whereNull('revoked_at')
                 ->whereHas(
                     'closure',
-                    fn ($query) =>
-                        $query->where(
-                            'status',
-                            'locked'
-                        )
+                    fn ($query) => $query->where(
+                        'status',
+                        'locked'
+                    )
                 );
         }
     }
@@ -207,43 +212,36 @@ class Index extends Component
         $base = $this->baseQuery();
 
         return [
-            'total' =>
-                (clone $base)->count(),
+            'total' => (clone $base)->count(),
 
-            'valid' =>
-                (clone $base)
-                    ->whereNull('revoked_at')
-                    ->whereHas(
-                        'closure',
-                        fn ($query) =>
-                            $query->where(
-                                'status',
-                                'locked'
-                            )
+            'valid' => (clone $base)
+                ->whereNull('revoked_at')
+                ->whereHas(
+                    'closure',
+                    fn ($query) => $query->where(
+                        'status',
+                        'locked'
                     )
-                    ->count(),
+                )
+                ->count(),
 
-            'superseded' =>
-                (clone $base)
-                    ->whereNull('revoked_at')
-                    ->whereHas(
-                        'closure',
-                        fn ($query) =>
-                            $query->where(
-                                'status',
-                                'reopened'
-                            )
+            'superseded' => (clone $base)
+                ->whereNull('revoked_at')
+                ->whereHas(
+                    'closure',
+                    fn ($query) => $query->where(
+                        'status',
+                        'reopened'
                     )
-                    ->count(),
+                )
+                ->count(),
 
-            'revoked' =>
-                (clone $base)
-                    ->whereNotNull('revoked_at')
-                    ->count(),
+            'revoked' => (clone $base)
+                ->whereNotNull('revoked_at')
+                ->count(),
 
-            'verification_count' =>
-                (int) (clone $base)
-                    ->sum('verification_count'),
+            'verification_count' => (int) (clone $base)
+                ->sum('verification_count'),
         ];
     }
 
@@ -271,12 +269,11 @@ class Index extends Component
                         )
                         ->orWhereHas(
                             'issuer',
-                            fn ($query) =>
-                                $query->where(
-                                    'name',
-                                    'like',
-                                    $term
-                                )
+                            fn ($query) => $query->where(
+                                'name',
+                                'like',
+                                $term
+                            )
                         );
                 }
             );

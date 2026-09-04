@@ -19,30 +19,24 @@ class AnnouncementAudienceService
         $userIds = collect();
 
         foreach (
-            $announcement->targets
-            as $target
+            $announcement->targets as $target
         ) {
             $ids = match (
                 $target->target_type
             ) {
-                'all_students' =>
-                    $this->allStudents(),
+                'all_students' => $this->allStudents(),
 
-                'all_coaches' =>
-                    $this->allCoaches(),
+                'all_coaches' => $this->allCoaches(),
 
-                'classroom' =>
-                    $this->classroom(
-                        (int) $target->target_id
-                    ),
+                'classroom' => $this->classroom(
+                    (int) $target->target_id
+                ),
 
-                'scout_unit' =>
-                    $this->scoutUnit(
-                        (int) $target->target_id
-                    ),
+                'scout_unit' => $this->scoutUnit(
+                    (int) $target->target_id
+                ),
 
-                default =>
-                    collect(),
+                default => collect(),
             };
 
             $userIds = $userIds->merge(
@@ -70,11 +64,10 @@ class AnnouncementAudienceService
         return User::query()
             ->whereHas(
                 'student',
-                fn (Builder $query) =>
-                    $query->where(
-                        'status',
-                        'active'
-                    )
+                fn (Builder $query) => $query->where(
+                    'status',
+                    'active'
+                )
             )
             ->pluck('id');
     }
@@ -84,11 +77,10 @@ class AnnouncementAudienceService
         return User::query()
             ->whereHas(
                 'coach',
-                fn (Builder $query) =>
-                    $query->where(
-                        'is_active',
-                        true
-                    )
+                fn (Builder $query) => $query->where(
+                    'is_active',
+                    true
+                )
             )
             ->pluck('id');
     }
@@ -113,16 +105,15 @@ class AnnouncementAudienceService
                             'enrollments',
                             fn (
                                 Builder $query
-                            ) =>
-                                $query
-                                    ->where(
-                                        'classroom_id',
-                                        $classroomId
-                                    )
-                                    ->where(
-                                        'status',
-                                        'active'
-                                    )
+                            ) => $query
+                                ->where(
+                                    'classroom_id',
+                                    $classroomId
+                                )
+                                ->where(
+                                    'status',
+                                    'active'
+                                )
                         );
                 }
             )
@@ -149,15 +140,14 @@ class AnnouncementAudienceService
                             'scoutUnitMembers',
                             fn (
                                 Builder $query
-                            ) =>
-                                $query
-                                    ->where(
-                                        'scout_unit_id',
-                                        $unitId
-                                    )
-                                    ->whereNull(
-                                        'left_at'
-                                    )
+                            ) => $query
+                                ->where(
+                                    'scout_unit_id',
+                                    $unitId
+                                )
+                                ->whereNull(
+                                    'left_at'
+                                )
                         );
                 }
             )

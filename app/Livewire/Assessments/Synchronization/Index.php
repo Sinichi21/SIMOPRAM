@@ -252,7 +252,6 @@ class Index extends Component
                 ?? 0
             );
 
-
         if (
             $configurationChanged > 0
         ) {
@@ -260,8 +259,8 @@ class Index extends Component
                 number_format(
                     $configurationChanged
                 )
-                . ' nilai akhir masih menggunakan '
-                . 'konfigurasi bobot faktor lama.';
+                .' nilai akhir masih menggunakan '
+                .'konfigurasi bobot faktor lama.';
         }
 
         if (

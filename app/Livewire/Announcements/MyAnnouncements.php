@@ -3,7 +3,6 @@
 namespace App\Livewire\Announcements;
 
 use App\Models\Announcement;
-use App\Models\NotificationLog;
 use Livewire\Component;
 
 class MyAnnouncements extends Component
@@ -39,20 +38,19 @@ class MyAnnouncements extends Component
                 )
                 ->whereHas(
                     'notificationLogs',
-                    fn ($query) =>
-                        $query
-                            ->where(
-                                'user_id',
-                                auth()->id()
-                            )
-                            ->where(
-                                'channel',
-                                'web'
-                            )
-                            ->where(
-                                'status',
-                                'sent'
-                            )
+                    fn ($query) => $query
+                        ->where(
+                            'user_id',
+                            auth()->id()
+                        )
+                        ->where(
+                            'channel',
+                            'web'
+                        )
+                        ->where(
+                            'status',
+                            'sent'
+                        )
                 )
                 ->latest(
                     'published_at'

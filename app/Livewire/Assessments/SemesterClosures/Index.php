@@ -21,7 +21,6 @@ class Index extends Component
 
     public string $reopenReason = '';
 
-
     public function mount(): void
     {
         $year =
@@ -32,17 +31,14 @@ class Index extends Component
                 )
                 ->first();
 
-
         $this->academicYearId =
             $year?->id;
-
 
         if (
             ! $this->academicYearId
         ) {
             return;
         }
-
 
         $semester =
             Semester::query()
@@ -56,11 +52,9 @@ class Index extends Component
                 )
                 ->first();
 
-
         $this->semesterId =
             $semester?->id;
     }
-
 
     public function updatedAcademicYearId(): void
     {
@@ -69,13 +63,11 @@ class Index extends Component
 
         $this->cancelReopen();
 
-
         if (
             ! $this->academicYearId
         ) {
             return;
         }
-
 
         $this->semesterId =
             Semester::query()
@@ -92,12 +84,10 @@ class Index extends Component
                 );
     }
 
-
     public function updatedSemesterId(): void
     {
         $this->cancelReopen();
     }
-
 
     protected function activeConfig(): ?AssessmentConfig
     {
@@ -108,7 +98,6 @@ class Index extends Component
         ) {
             return null;
         }
-
 
         return AssessmentConfig::query()
             ->with([
@@ -131,7 +120,6 @@ class Index extends Component
             ->first();
     }
 
-
     public function lockSemester(
         SemesterClosureService $service
     ): void {
@@ -144,38 +132,32 @@ class Index extends Component
             403
         );
 
-
         $config =
             $this->activeConfig();
 
-
         if (! $config) {
             throw ValidationException::withMessages([
-                'semester' =>
-                    'Konfigurasi penilaian aktif tidak ditemukan '
-                    . 'untuk periode yang dipilih.',
+                'semester' => 'Konfigurasi penilaian aktif tidak ditemukan '
+                    .'untuk periode yang dipilih.',
             ]);
         }
-
 
         $closure =
             $service->lock(
                 $config
             );
 
-
         session()->flash(
             'status',
             'Semester berhasil dikunci sebagai versi '
-            . $closure->version
-            . '. '
-            . number_format(
+            .$closure->version
+            .'. '
+            .number_format(
                 $closure->snapshot_count
             )
-            . ' snapshot nilai resmi dibuat.'
+            .' snapshot nilai resmi dibuat.'
         );
     }
-
 
     public function startReopen(
         int $closureId
@@ -189,13 +171,11 @@ class Index extends Component
             403
         );
 
-
         $closure =
             SemesterClosure::query()
                 ->findOrFail(
                     $closureId
                 );
-
 
         $this->reopenClosureId =
             $closure->id;
@@ -205,7 +185,6 @@ class Index extends Component
 
         $this->resetValidation();
     }
-
 
     public function cancelReopen(): void
     {
@@ -217,7 +196,6 @@ class Index extends Component
 
         $this->resetValidation();
     }
-
 
     public function reopenSemester(
         SemesterClosureService $service
@@ -231,13 +209,11 @@ class Index extends Component
             403
         );
 
-
         if (
             ! $this->reopenClosureId
         ) {
             return;
         }
-
 
         $this->validate([
             'reopenReason' => [
@@ -248,30 +224,25 @@ class Index extends Component
             ],
         ]);
 
-
         $closure =
             SemesterClosure::query()
                 ->findOrFail(
                     $this->reopenClosureId
                 );
 
-
         $service->reopen(
             $closure,
             $this->reopenReason
         );
 
-
         $this->cancelReopen();
-
 
         session()->flash(
             'status',
             'Semester berhasil dibuka kembali. '
-            . 'Snapshot versi sebelumnya tetap disimpan sebagai histori.'
+            .'Snapshot versi sebelumnya tetap disimpan sebagai histori.'
         );
     }
-
 
     public function render()
     {
@@ -282,30 +253,25 @@ class Index extends Component
                 )
                 ->get();
 
-
         $semesters =
             Semester::query()
                 ->when(
                     $this->academicYearId,
-                    fn ($query) =>
-                        $query->where(
-                            'academic_year_id',
-                            $this->academicYearId
-                        )
+                    fn ($query) => $query->where(
+                        'academic_year_id',
+                        $this->academicYearId
+                    )
                 )
                 ->orderBy(
                     'semester_number'
                 )
                 ->get();
 
-
         $config =
             $this->activeConfig();
 
-
         $syncStatus =
             null;
-
 
         if ($config) {
             $assessmentService =
@@ -313,26 +279,21 @@ class Index extends Component
                     AssessmentService::class
                 );
 
-
             $syncStatus = [
-                'attendance' =>
-                    $assessmentService
-                        ->attendanceSyncStatus(
-                            $config
-                        ),
+                'attendance' => $assessmentService
+                    ->attendanceSyncStatus(
+                        $config
+                    ),
 
-                'final' =>
-                    $assessmentService
-                        ->finalGradeSyncStatus(
-                            $config
-                        ),
+                'final' => $assessmentService
+                    ->finalGradeSyncStatus(
+                        $config
+                    ),
             ];
         }
 
-
         $history =
             collect();
-
 
         if (
             $this->academicYearId
@@ -359,16 +320,13 @@ class Index extends Component
                     ->get();
         }
 
-
         $currentClosure =
             $history->first();
-
 
         $isLocked =
             $currentClosure
                 ?->isLocked()
                 ?? false;
-
 
         $canLock =
             $config
@@ -393,33 +351,24 @@ class Index extends Component
                 ?? true
             );
 
-
         return view(
             'livewire.assessments.semester-closures.index',
             [
-                'academicYears' =>
-                    $academicYears,
+                'academicYears' => $academicYears,
 
-                'semesters' =>
-                    $semesters,
+                'semesters' => $semesters,
 
-                'config' =>
-                    $config,
+                'config' => $config,
 
-                'syncStatus' =>
-                    $syncStatus,
+                'syncStatus' => $syncStatus,
 
-                'history' =>
-                    $history,
+                'history' => $history,
 
-                'currentClosure' =>
-                    $currentClosure,
+                'currentClosure' => $currentClosure,
 
-                'isLocked' =>
-                    $isLocked,
+                'isLocked' => $isLocked,
 
-                'canLock' =>
-                    $canLock,
+                'canLock' => $canLock,
             ]
         );
     }

@@ -86,7 +86,6 @@ return new class extends Migration
 
                 $table->timestamps();
 
-
                 /*
                 |--------------------------------------------------------------------------
                 | Foreign Keys
@@ -138,7 +137,6 @@ return new class extends Migration
                     ->on('users')
                     ->nullOnDelete();
 
-
                 /*
                 |--------------------------------------------------------------------------
                 | Index
@@ -162,7 +160,6 @@ return new class extends Migration
                 );
             }
         );
-
 
         /*
         |--------------------------------------------------------------------------
@@ -222,7 +219,6 @@ return new class extends Migration
 
                 $table->timestamps();
 
-
                 /*
                 |--------------------------------------------------------------------------
                 | Foreign Keys
@@ -247,7 +243,6 @@ return new class extends Migration
                     ->on('activity_assessments')
                     ->cascadeOnDelete();
 
-
                 /*
                 |--------------------------------------------------------------------------
                 | Index
@@ -263,7 +258,6 @@ return new class extends Migration
                 );
             }
         );
-
 
         /*
         |--------------------------------------------------------------------------
@@ -337,7 +331,6 @@ return new class extends Migration
 
                 $table->timestamps();
 
-
                 /*
                 |--------------------------------------------------------------------------
                 | Foreign Keys
@@ -389,7 +382,6 @@ return new class extends Migration
                     ->on('users')
                     ->nullOnDelete();
 
-
                 /*
                 |--------------------------------------------------------------------------
                 | Unique
@@ -412,7 +404,6 @@ return new class extends Migration
                     'aat_unit_uq'
                 );
 
-
                 /*
                 |--------------------------------------------------------------------------
                 | Index
@@ -428,7 +419,6 @@ return new class extends Migration
                 );
             }
         );
-
 
         /*
         |--------------------------------------------------------------------------
@@ -458,7 +448,6 @@ return new class extends Migration
                 );
 
                 $table->timestamps();
-
 
                 /*
                 |--------------------------------------------------------------------------
@@ -493,7 +482,6 @@ return new class extends Migration
                     ->on('students')
                     ->cascadeOnDelete();
 
-
                 /*
                 |--------------------------------------------------------------------------
                 | Unique
@@ -508,7 +496,6 @@ return new class extends Migration
                     'aatm_target_student_uq'
                 );
 
-
                 $table->index(
                     [
                         'school_id',
@@ -518,7 +505,6 @@ return new class extends Migration
                 );
             }
         );
-
 
         /*
         |--------------------------------------------------------------------------
@@ -571,7 +557,6 @@ return new class extends Migration
 
                 $table->timestamps();
 
-
                 /*
                 |--------------------------------------------------------------------------
                 | Foreign Keys
@@ -605,7 +590,6 @@ return new class extends Migration
                     ->on('activity_assessment_criteria')
                     ->cascadeOnDelete();
 
-
                 /*
                 |--------------------------------------------------------------------------
                 | Unique
@@ -620,7 +604,6 @@ return new class extends Migration
                     'aas_target_criterion_uq'
                 );
 
-
                 $table->index(
                     [
                         'school_id',
@@ -631,7 +614,6 @@ return new class extends Migration
             }
         );
     }
-
 
     public function down(): void
     {

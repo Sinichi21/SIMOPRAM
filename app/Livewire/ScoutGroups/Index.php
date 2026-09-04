@@ -130,7 +130,7 @@ class Index extends Component
             ? ScoutGroup::findOrFail(
                 $this->editingId
             )
-            : new ScoutGroup();
+            : new ScoutGroup;
 
         $scoutGroup->fill($validated);
 
@@ -207,8 +207,7 @@ class Index extends Component
             ScoutGroup::findOrFail($id);
 
         $gudep->update([
-            'is_active' =>
-                ! $gudep->is_active,
+            'is_active' => ! $gudep->is_active,
         ]);
 
         session()->flash(
@@ -250,14 +249,13 @@ class Index extends Component
             ScoutGroup::query()
                 ->when(
                     $this->search,
-                    fn ($query) =>
-                        $query->where(
-                            'name',
-                            'like',
-                            '%' .
-                            $this->search .
-                            '%'
-                        )
+                    fn ($query) => $query->where(
+                        'name',
+                        'like',
+                        '%'.
+                        $this->search.
+                        '%'
+                    )
                 )
                 ->latest()
                 ->paginate(10);

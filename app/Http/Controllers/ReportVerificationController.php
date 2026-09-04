@@ -21,12 +21,10 @@ class ReportVerificationController extends Controller
         return view(
             'reports.verify',
             [
-                'verification' =>
-                    $verification,
+                'verification' => $verification,
 
-                'status' =>
-                    $verification
-                        ->publicStatus(),
+                'status' => $verification
+                    ->publicStatus(),
             ]
         );
     }

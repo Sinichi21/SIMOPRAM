@@ -225,8 +225,7 @@ class GradeReportService
 
         if (! $config) {
             throw ValidationException::withMessages([
-                'export' =>
-                    'Konfigurasi penilaian aktif tidak ditemukan.',
+                'export' => 'Konfigurasi penilaian aktif tidak ditemukan.',
             ]);
         }
 
@@ -263,10 +262,9 @@ class GradeReportService
             )
         ) {
             throw ValidationException::withMessages([
-                'export' =>
-                    'Data penilaian belum sinkron. '
-                    . 'Lakukan Sinkronisasi Penilaian '
-                    . 'sebelum mengekspor laporan.',
+                'export' => 'Data penilaian belum sinkron. '
+                    .'Lakukan Sinkronisasi Penilaian '
+                    .'sebelum mengekspor laporan.',
             ]);
         }
     }
@@ -286,12 +284,11 @@ class GradeReportService
         $config =
             AssessmentConfig::query()
                 ->with([
-                    'items' =>
-                        function ($query): void {
-                            $query->orderBy(
-                                'sort_order'
-                            );
-                        },
+                    'items' => function ($query): void {
+                        $query->orderBy(
+                            'sort_order'
+                        );
+                    },
                     'items.factor',
                     'academicYear',
                     'semester',
@@ -317,20 +314,19 @@ class GradeReportService
         $students =
             Student::query()
                 ->with([
-                    'enrollments' =>
-                        function ($query) use (
-                            $config
-                        ): void {
-                            $query
-                                ->where(
-                                    'academic_year_id',
-                                    $config
-                                        ->academic_year_id
-                                )
-                                ->with(
-                                    'classroom'
-                                );
-                        },
+                    'enrollments' => function ($query) use (
+                        $config
+                    ): void {
+                        $query
+                            ->where(
+                                'academic_year_id',
+                                $config
+                                    ->academic_year_id
+                            )
+                            ->with(
+                                'classroom'
+                            );
+                    },
                 ])
                 ->where(
                     'status',
@@ -365,10 +361,10 @@ class GradeReportService
                     ): void {
                         $term =
                             '%'
-                            . trim(
+                            .trim(
                                 $search
                             )
-                            . '%';
+                            .'%';
 
                         $query->where(
                             function ($query) use (
@@ -424,10 +420,9 @@ class GradeReportService
                     'student_id'
                 )
                 ->map(
-                    fn ($items) =>
-                        $items->keyBy(
-                            'assessment_factor_id'
-                        )
+                    fn ($items) => $items->keyBy(
+                        'assessment_factor_id'
+                    )
                 );
 
         $finalGrades =
@@ -446,26 +441,19 @@ class GradeReportService
                 );
 
         return [
-            'selectedConfig' =>
-                $config,
+            'selectedConfig' => $config,
 
-            'students' =>
-                $students,
+            'students' => $students,
 
-            'scores' =>
-                $scores,
+            'scores' => $scores,
 
-            'finalGrades' =>
-                $finalGrades,
+            'finalGrades' => $finalGrades,
 
-            'reportSource' =>
-                'live',
+            'reportSource' => 'live',
 
-            'selectedClosure' =>
-                null,
+            'selectedClosure' => null,
 
-            'isOfficialSnapshot' =>
-                false,
+            'isOfficialSnapshot' => false,
         ];
     }
 
@@ -491,8 +479,7 @@ class GradeReportService
 
         if (! $config) {
             throw ValidationException::withMessages([
-                'report' =>
-                    'Konfigurasi penilaian pada snapshot tidak ditemukan.',
+                'report' => 'Konfigurasi penilaian pada snapshot tidak ditemukan.',
             ]);
         }
 
@@ -501,11 +488,10 @@ class GradeReportService
                 ->snapshots()
                 ->when(
                     $classroomId,
-                    fn ($query) =>
-                        $query->where(
-                            'classroom_id',
-                            $classroomId
-                        )
+                    fn ($query) => $query->where(
+                        'classroom_id',
+                        $classroomId
+                    )
                 )
                 ->when(
                     trim(
@@ -516,10 +502,10 @@ class GradeReportService
                     ): void {
                         $term =
                             '%'
-                            . trim(
+                            .trim(
                                 $search
                             )
-                            . '%';
+                            .'%';
 
                         $query->where(
                             function ($query) use (
@@ -574,8 +560,7 @@ class GradeReportService
             collect();
 
         foreach (
-            $snapshots
-            as $snapshot
+            $snapshots as $snapshot
         ) {
             /*
             |--------------------------------------------------------------------------
@@ -594,42 +579,34 @@ class GradeReportService
 
             $classroom =
                 (object) [
-                    'id' =>
-                        $snapshot
-                            ->classroom_id,
+                    'id' => $snapshot
+                        ->classroom_id,
 
-                    'name' =>
-                        $snapshot
-                            ->classroom_name,
+                    'name' => $snapshot
+                        ->classroom_name,
                 ];
 
             $enrollment =
                 (object) [
-                    'classroom_id' =>
-                        $snapshot
-                            ->classroom_id,
+                    'classroom_id' => $snapshot
+                        ->classroom_id,
 
-                    'classroom' =>
-                        $classroom,
+                    'classroom' => $classroom,
                 ];
 
             $student =
                 (object) [
-                    'id' =>
-                        $studentKey,
+                    'id' => $studentKey,
 
-                    'nis' =>
-                        $snapshot
-                            ->student_nis,
+                    'nis' => $snapshot
+                        ->student_nis,
 
-                    'name' =>
-                        $snapshot
-                            ->student_name,
+                    'name' => $snapshot
+                        ->student_name,
 
-                    'enrollments' =>
-                        collect([
-                            $enrollment,
-                        ]),
+                    'enrollments' => collect([
+                        $enrollment,
+                    ]),
                 ];
 
             $students->push(
@@ -647,8 +624,7 @@ class GradeReportService
 
             foreach (
                 $snapshot->factor_scores
-                ?? []
-                as $factorScore
+                ?? [] as $factorScore
             ) {
                 $factorId =
                     (int) (
@@ -667,17 +643,14 @@ class GradeReportService
                 $studentScores->put(
                     $factorId,
                     (object) [
-                        'assessment_factor_id' =>
-                            $factorId,
+                        'assessment_factor_id' => $factorId,
 
-                        'score' =>
-                            $factorScore[
+                        'score' => $factorScore[
                                 'score'
                             ]
                             ?? null,
 
-                        'source' =>
-                            'snapshot',
+                        'source' => 'snapshot',
                     ]
                 );
             }
@@ -696,49 +669,37 @@ class GradeReportService
             $finalGrades->put(
                 $studentKey,
                 (object) [
-                    'student_id' =>
-                        $studentKey,
+                    'student_id' => $studentKey,
 
-                    'final_score' =>
-                        $snapshot
-                            ->final_score,
+                    'final_score' => $snapshot
+                        ->final_score,
 
-                    'letter_grade' =>
-                        $snapshot
-                            ->letter_grade,
+                    'letter_grade' => $snapshot
+                        ->letter_grade,
 
-                    'description' =>
-                        $snapshot
-                            ->description,
+                    'description' => $snapshot
+                        ->description,
 
-                    'calculated_at' =>
-                        $snapshot
-                            ->source_calculated_at,
+                    'calculated_at' => $snapshot
+                        ->source_calculated_at,
                 ]
             );
         }
 
         return [
-            'selectedConfig' =>
-                $snapshotConfig,
+            'selectedConfig' => $snapshotConfig,
 
-            'students' =>
-                $students,
+            'students' => $students,
 
-            'scores' =>
-                $scores,
+            'scores' => $scores,
 
-            'finalGrades' =>
-                $finalGrades,
+            'finalGrades' => $finalGrades,
 
-            'reportSource' =>
-                'snapshot',
+            'reportSource' => 'snapshot',
 
-            'selectedClosure' =>
-                $closure,
+            'selectedClosure' => $closure,
 
-            'isOfficialSnapshot' =>
-                true,
+            'isOfficialSnapshot' => true,
         ];
     }
 
@@ -801,57 +762,49 @@ class GradeReportService
 
                         $factor =
                             (object) [
-                                'id' =>
-                                    $factorId,
+                                'id' => $factorId,
 
-                                'name' =>
-                                    $definition[
+                                'name' => $definition[
                                         'name'
                                     ]
                                     ?? (
                                         'Faktor '
-                                        . $factorId
+                                        .$factorId
                                     ),
 
-                                'source_type' =>
-                                    $definition[
+                                'source_type' => $definition[
                                         'source_type'
                                     ]
                                     ?? null,
                             ];
 
                         return (object) [
-                            'assessment_factor_id' =>
-                                $factorId,
+                            'assessment_factor_id' => $factorId,
 
-                            'weight' =>
-                                (float) (
-                                    $definition[
-                                        'weight'
-                                    ]
-                                    ?? 0
-                                ),
+                            'weight' => (float) (
+                                $definition[
+                                    'weight'
+                                ]
+                                ?? 0
+                            ),
 
-                            'sort_order' =>
-                                (int) (
-                                    $definition[
-                                        'sort_order'
-                                    ]
-                                    ?? (
-                                        $index
-                                        + 1
-                                    )
-                                ),
+                            'sort_order' => (int) (
+                                $definition[
+                                    'sort_order'
+                                ]
+                                ?? (
+                                    $index
+                                    + 1
+                                )
+                            ),
 
-                            'factor' =>
-                                $factor,
+                            'factor' => $factor,
                         ];
                     }
                 )
                 ->filter(
-                    fn ($item): bool =>
-                        $item
-                            ->assessment_factor_id
+                    fn ($item): bool => $item
+                        ->assessment_factor_id
                         > 0
                 )
                 ->sortBy(
@@ -879,26 +832,19 @@ class GradeReportService
     protected function emptyData(): array
     {
         return [
-            'selectedConfig' =>
-                null,
+            'selectedConfig' => null,
 
-            'students' =>
-                collect(),
+            'students' => collect(),
 
-            'scores' =>
-                collect(),
+            'scores' => collect(),
 
-            'finalGrades' =>
-                collect(),
+            'finalGrades' => collect(),
 
-            'reportSource' =>
-                'live',
+            'reportSource' => 'live',
 
-            'selectedClosure' =>
-                null,
+            'selectedClosure' => null,
 
-            'isOfficialSnapshot' =>
-                false,
+            'isOfficialSnapshot' => false,
         ];
     }
 }

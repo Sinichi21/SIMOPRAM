@@ -18,7 +18,6 @@ class StudentScoreWriter
     public const SOURCE_ACTIVITY_ASSESSMENT =
         'activity_assessment';
 
-
     /*
     |--------------------------------------------------------------------------
     | Simpan Nilai Manual
@@ -62,38 +61,29 @@ class StudentScoreWriter
                         $studentId,
                         $assessmentFactorId
                     )
-                    ?? new StudentScore();
+                    ?? new StudentScore;
 
                 $studentScore->fill([
-                    'assessment_config_id' =>
-                        $assessmentConfigId,
+                    'assessment_config_id' => $assessmentConfigId,
 
-                    'student_id' =>
-                        $studentId,
+                    'student_id' => $studentId,
 
-                    'assessment_factor_id' =>
-                        $assessmentFactorId,
+                    'assessment_factor_id' => $assessmentFactorId,
 
-                    'score' =>
-                        round(
-                            $score,
-                            2
-                        ),
+                    'score' => round(
+                        $score,
+                        2
+                    ),
 
-                    'source' =>
-                        self::SOURCE_MANUAL,
+                    'source' => self::SOURCE_MANUAL,
 
-                    'source_version' =>
-                        null,
+                    'source_version' => null,
 
-                    'source_synced_at' =>
-                        null,
+                    'source_synced_at' => null,
 
-                    'entered_by' =>
-                        $enteredBy,
+                    'entered_by' => $enteredBy,
 
-                    'notes' =>
-                        $notes,
+                    'notes' => $notes,
                 ]);
 
                 $studentScore->save();
@@ -102,7 +92,6 @@ class StudentScoreWriter
             }
         );
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -146,8 +135,7 @@ class StudentScoreWriter
             $source === self::SOURCE_MANUAL
         ) {
             throw ValidationException::withMessages([
-                'source' =>
-                    'writeAutomatic() hanya menerima source otomatis.',
+                'source' => 'writeAutomatic() hanya menerima source otomatis.',
             ]);
         }
 
@@ -185,17 +173,13 @@ class StudentScoreWriter
                         === self::SOURCE_MANUAL
                 ) {
                     return [
-                        'score' =>
-                            $studentScore,
+                        'score' => $studentScore,
 
-                        'written' =>
-                            false,
+                        'written' => false,
 
-                        'skipped_manual' =>
-                            true,
+                        'skipped_manual' => true,
 
-                        'created' =>
-                            false,
+                        'created' => false,
                     ];
                 }
 
@@ -203,32 +187,25 @@ class StudentScoreWriter
                     $studentScore === null;
 
                 $studentScore ??=
-                    new StudentScore();
+                    new StudentScore;
 
                 $studentScore->fill([
-                    'assessment_config_id' =>
-                        $assessmentConfigId,
+                    'assessment_config_id' => $assessmentConfigId,
 
-                    'student_id' =>
-                        $studentId,
+                    'student_id' => $studentId,
 
-                    'assessment_factor_id' =>
-                        $assessmentFactorId,
+                    'assessment_factor_id' => $assessmentFactorId,
 
-                    'score' =>
-                        round(
-                            $score,
-                            2
-                        ),
+                    'score' => round(
+                        $score,
+                        2
+                    ),
 
-                    'source' =>
-                        $source,
+                    'source' => $source,
 
-                    'source_version' =>
-                        $sourceVersion,
+                    'source_version' => $sourceVersion,
 
-                    'source_synced_at' =>
-                        now(),
+                    'source_synced_at' => now(),
 
                     /*
                     |--------------------------------------------------------------------------
@@ -236,32 +213,25 @@ class StudentScoreWriter
                     |--------------------------------------------------------------------------
                     */
 
-                    'entered_by' =>
-                        null,
+                    'entered_by' => null,
 
-                    'notes' =>
-                        $notes,
+                    'notes' => $notes,
                 ]);
 
                 $studentScore->save();
 
                 return [
-                    'score' =>
-                        $studentScore->fresh(),
+                    'score' => $studentScore->fresh(),
 
-                    'written' =>
-                        true,
+                    'written' => true,
 
-                    'skipped_manual' =>
-                        false,
+                    'skipped_manual' => false,
 
-                    'created' =>
-                        $created,
+                    'created' => $created,
                 ];
             }
         );
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -292,8 +262,7 @@ class StudentScoreWriter
             $source === self::SOURCE_MANUAL
         ) {
             throw ValidationException::withMessages([
-                'source' =>
-                    'deleteAutomatic() membutuhkan source otomatis.',
+                'source' => 'deleteAutomatic() membutuhkan source otomatis.',
             ]);
         }
 
@@ -333,7 +302,6 @@ class StudentScoreWriter
             }
         );
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -381,7 +349,6 @@ class StudentScoreWriter
         );
     }
 
-
     /*
     |--------------------------------------------------------------------------
     | Status Manual Override
@@ -415,7 +382,6 @@ class StudentScoreWriter
             ->exists();
     }
 
-
     /*
     |--------------------------------------------------------------------------
     | Canonical Row Lock
@@ -444,7 +410,6 @@ class StudentScoreWriter
             ->first();
     }
 
-
     protected function validateScore(
         float $score
     ): void {
@@ -458,12 +423,10 @@ class StudentScoreWriter
             $score > 100
         ) {
             throw ValidationException::withMessages([
-                'score' =>
-                    'Nilai harus berada pada rentang 0 sampai 100.',
+                'score' => 'Nilai harus berada pada rentang 0 sampai 100.',
             ]);
         }
     }
-
 
     protected function assertSchoolContext(): void
     {

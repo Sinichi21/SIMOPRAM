@@ -6,18 +6,14 @@ use App\Exports\ReportViewExport;
 use App\Models\AcademicYear;
 use App\Models\AssessmentConfig;
 use App\Models\Classroom;
-use App\Models\FinalGrade;
 use App\Models\Semester;
-use App\Models\Student;
-use App\Models\StudentScore;
 use App\Services\AssessmentService;
+use App\Services\GradeReportService;
 use App\Support\SchoolContext;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Models\SemesterClosure;
-use App\Services\GradeReportService;
 
 class Grades extends Component
 {
@@ -30,7 +26,6 @@ class Grades extends Component
     public string $search = '';
 
     public ?int $closureId = null;
-
 
     /*
     |--------------------------------------------------------------------------
@@ -48,15 +43,12 @@ class Grades extends Component
                 )
                 ->first();
 
-
         $this->academicYearId =
             $year?->id;
-
 
         if (! $this->academicYearId) {
             return;
         }
-
 
         $semester =
             Semester::query()
@@ -70,13 +62,11 @@ class Grades extends Component
                 )
                 ->first();
 
-
         $this->semesterId =
             $semester?->id;
 
         $this->selectDefaultReportSource();
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -95,11 +85,9 @@ class Grades extends Component
         $this->closureId =
             null;
 
-
         if (! $this->academicYearId) {
             return;
         }
-
 
         $semester =
             Semester::query()
@@ -113,10 +101,8 @@ class Grades extends Component
                 )
                 ->first();
 
-
         $this->semesterId =
             $semester?->id;
-
 
         $this->selectDefaultReportSource();
     }
@@ -132,23 +118,17 @@ class Grades extends Component
         return app(
             GradeReportService::class
         )->getData(
-            academicYearId:
-                $this->academicYearId,
+            academicYearId: $this->academicYearId,
 
-            semesterId:
-                $this->semesterId,
+            semesterId: $this->semesterId,
 
-            classroomId:
-                $this->classroomId,
+            classroomId: $this->classroomId,
 
-            search:
-                $this->search,
+            search: $this->search,
 
-            closureId:
-                $this->closureId
+            closureId: $this->closureId
         );
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -163,28 +143,23 @@ class Grades extends Component
             return null;
         }
 
-
         $assessmentService =
             app(
                 AssessmentService::class
             );
 
-
         return [
-            'attendance' =>
-                $assessmentService
-                    ->attendanceSyncStatus(
-                        $selectedConfig
-                    ),
+            'attendance' => $assessmentService
+                ->attendanceSyncStatus(
+                    $selectedConfig
+                ),
 
-            'final' =>
-                $assessmentService
-                    ->finalGradeSyncStatus(
-                        $selectedConfig
-                    ),
+            'final' => $assessmentService
+                ->finalGradeSyncStatus(
+                    $selectedConfig
+                ),
         ];
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -200,11 +175,9 @@ class Grades extends Component
                 $selectedConfig
             );
 
-
         if (! $syncStatus) {
             return false;
         }
-
 
         return ! (
             $syncStatus[
@@ -220,7 +193,6 @@ class Grades extends Component
             ]
         );
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -239,7 +211,6 @@ class Grades extends Component
             );
     }
 
-
     /*
     |--------------------------------------------------------------------------
     | Export CSV
@@ -257,24 +228,19 @@ class Grades extends Component
             403
         );
 
-
         $data =
             $this->getReportData();
-
 
         $config =
             $data[
                 'selectedConfig'
             ];
 
-
         if (! $config) {
             throw ValidationException::withMessages([
-                'export' =>
-                    'Konfigurasi penilaian aktif tidak ditemukan.',
+                'export' => 'Konfigurasi penilaian aktif tidak ditemukan.',
             ]);
         }
-
 
         /*
         |--------------------------------------------------------------------------
@@ -286,13 +252,11 @@ class Grades extends Component
             $data
         );
 
-
         $filename =
             $this->exportFilename(
                 'rekap-nilai'
             )
-            . '.csv';
-
+            .'.csv';
 
         return response()->streamDownload(
             function () use (
@@ -304,11 +268,9 @@ class Grades extends Component
                         'w'
                     );
 
-
                 if (! $handle) {
                     return;
                 }
-
 
                 /*
                 |--------------------------------------------------------------------------
@@ -337,7 +299,6 @@ class Grades extends Component
                     ';'
                 );
 
-
                 if (
                     (
                         $data[
@@ -355,17 +316,15 @@ class Grades extends Component
                             'selectedClosure'
                         ];
 
-
                     fputcsv(
                         $handle,
                         [
                             'Versi Snapshot',
                             'v'
-                            . $closure->version,
+                            .$closure->version,
                         ],
                         ';'
                     );
-
 
                     fputcsv(
                         $handle,
@@ -380,7 +339,6 @@ class Grades extends Component
                         ';'
                     );
 
-
                     fputcsv(
                         $handle,
                         [
@@ -392,13 +350,11 @@ class Grades extends Component
                     );
                 }
 
-
                 fputcsv(
                     $handle,
                     [],
                     ';'
                 );
-
 
                 /*
                 |--------------------------------------------------------------------------
@@ -412,26 +368,23 @@ class Grades extends Component
                     'Kelas',
                 ];
 
-
                 foreach (
                     $data[
                         'selectedConfig'
-                    ]->items
-                    as $item
+                    ]->items as $item
                 ) {
                     $header[] =
                         $item
                             ->factor
                             ->name
-                        . ' ('
-                        . number_format(
+                        .' ('
+                        .number_format(
                             (float) $item
                                 ->weight,
                             2
                         )
-                        . '%)';
+                        .'%)';
                 }
-
 
                 $header[] =
                     'Nilai Akhir';
@@ -442,13 +395,11 @@ class Grades extends Component
                 $header[] =
                     'Deskripsi';
 
-
                 fputcsv(
                     $handle,
                     $header,
                     ';'
                 );
-
 
                 /*
                 |--------------------------------------------------------------------------
@@ -459,14 +410,12 @@ class Grades extends Component
                 foreach (
                     $data[
                         'students'
-                    ]
-                    as $student
+                    ] as $student
                 ) {
                     $enrollment =
                         $student
                             ->enrollments
                             ->first();
-
 
                     $row = [
                         $student->nis,
@@ -479,12 +428,10 @@ class Grades extends Component
                             ?? '-',
                     ];
 
-
                     foreach (
                         $data[
                             'selectedConfig'
-                        ]->items
-                        as $item
+                        ]->items as $item
                     ) {
                         $score =
                             $data[
@@ -499,7 +446,6 @@ class Grades extends Component
                                         ->assessment_factor_id
                                 );
 
-
                         $row[] =
                             $score
                                 ? number_format(
@@ -512,7 +458,6 @@ class Grades extends Component
                                 : '';
                     }
 
-
                     $final =
                         $data[
                             'finalGrades'
@@ -520,7 +465,6 @@ class Grades extends Component
                             ->get(
                                 $student->id
                             );
-
 
                     $row[] =
                         $final
@@ -533,18 +477,15 @@ class Grades extends Component
                             )
                             : '';
 
-
                     $row[] =
                         $final
                             ?->letter_grade
                         ?? '';
 
-
                     $row[] =
                         $final
                             ?->description
                         ?? '';
-
 
                     fputcsv(
                         $handle,
@@ -553,19 +494,16 @@ class Grades extends Component
                     );
                 }
 
-
                 fclose(
                     $handle
                 );
             },
             $filename,
             [
-                'Content-Type' =>
-                    'text/csv; charset=UTF-8',
+                'Content-Type' => 'text/csv; charset=UTF-8',
             ]
         );
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -578,19 +516,16 @@ class Grades extends Component
         $data =
             $this->getReportData();
 
-
         if (
             ! $data[
                 'selectedConfig'
             ]
         ) {
             throw ValidationException::withMessages([
-                'export' =>
-                    'Belum ada konfigurasi penilaian aktif '
-                    . 'untuk periode yang dipilih.',
+                'export' => 'Belum ada konfigurasi penilaian aktif '
+                    .'untuk periode yang dipilih.',
             ]);
         }
-
 
         /*
         |--------------------------------------------------------------------------
@@ -601,7 +536,6 @@ class Grades extends Component
         $this->ensureReportCanBeExported(
             $data
         );
-
 
         /*
         |--------------------------------------------------------------------------
@@ -614,60 +548,51 @@ class Grades extends Component
                 SchoolContext::class
             )->school();
 
-
         abort_unless(
             $school,
             409,
             'Pilih sekolah aktif terlebih dahulu.'
         );
 
-
         return array_merge(
             $data,
             [
-                'school' =>
-                    $school,
+                'school' => $school,
 
-                'academicYear' =>
-                    $this->academicYearId
+                'academicYear' => $this->academicYearId
                         ? AcademicYear::query()
                             ->find(
                                 $this->academicYearId
                             )
                         : null,
 
-                'semester' =>
-                    $this->semesterId
+                'semester' => $this->semesterId
                         ? Semester::query()
                             ->find(
                                 $this->semesterId
                             )
                         : null,
 
-                'classroom' =>
-                    $this->classroomId
+                'classroom' => $this->classroomId
                         ? Classroom::query()
                             ->find(
                                 $this->classroomId
                             )
                         : null,
 
-                'reportGeneratedAt' =>
-                    now(),
+                'reportGeneratedAt' => now(),
 
-                'reportSourceLabel' =>
-                    (
-                        $data[
-                            'reportSource'
-                        ]
-                        ?? 'live'
-                    ) === 'snapshot'
+                'reportSourceLabel' => (
+                    $data[
+                        'reportSource'
+                    ]
+                    ?? 'live'
+                ) === 'snapshot'
                         ? 'Snapshot Resmi'
                         : 'Data Berjalan',
             ]
         );
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -682,7 +607,6 @@ class Grades extends Component
             app(
                 SchoolContext::class
             )->school();
-
 
         return implode(
             '-',
@@ -700,7 +624,6 @@ class Grades extends Component
             ])
         );
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -724,20 +647,17 @@ class Grades extends Component
                 AssessmentService::class
             );
 
-
         $attendanceStatus =
             $assessmentService
                 ->attendanceSyncStatus(
                     $data['selectedConfig']
                 );
 
-
         $finalStatus =
             $assessmentService
                 ->finalGradeSyncStatus(
                     $data['selectedConfig']
                 );
-
 
         if (
             $attendanceStatus['is_stale']
@@ -755,25 +675,20 @@ class Grades extends Component
         $data =
             $this->exportViewData();
 
-
         return Excel::download(
             new ReportViewExport(
-                viewName:
-                    'exports.reports.grades',
+                viewName: 'exports.reports.grades',
 
-                viewData:
-                    $data,
+                viewData: $data,
 
-                sheetTitle:
-                    'Rekap Nilai'
+                sheetTitle: 'Rekap Nilai'
             ),
             $this->exportFilename(
                 'rekap-nilai'
             )
-            . '.xlsx'
+            .'.xlsx'
         );
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -796,7 +711,6 @@ class Grades extends Component
                 )
                 ->get();
 
-
         /*
         |--------------------------------------------------------------------------
         | Semester
@@ -807,17 +721,15 @@ class Grades extends Component
             Semester::query()
                 ->when(
                     $this->academicYearId,
-                    fn ($query) =>
-                        $query->where(
-                            'academic_year_id',
-                            $this->academicYearId
-                        )
+                    fn ($query) => $query->where(
+                        'academic_year_id',
+                        $this->academicYearId
+                    )
                 )
                 ->orderBy(
                     'semester_number'
                 )
                 ->get();
-
 
         /*
         |--------------------------------------------------------------------------
@@ -832,7 +744,6 @@ class Grades extends Component
                 )
                 ->get();
 
-
         /*
         |--------------------------------------------------------------------------
         | Laporan
@@ -841,7 +752,6 @@ class Grades extends Component
 
         $data =
             $this->getReportData();
-
 
         /*
         |--------------------------------------------------------------------------
@@ -863,7 +773,6 @@ class Grades extends Component
                 )
                 : null;
 
-
         /*
         |--------------------------------------------------------------------------
         | View
@@ -883,20 +792,15 @@ class Grades extends Component
             'livewire.reports.grades',
             array_merge(
                 [
-                    'academicYears' =>
-                        $academicYears,
+                    'academicYears' => $academicYears,
 
-                    'semesters' =>
-                        $semesters,
+                    'semesters' => $semesters,
 
-                    'classrooms' =>
-                        $classrooms,
+                    'classrooms' => $classrooms,
 
-                    'closures' =>
-                        $closures,
+                    'closures' => $closures,
 
-                    'syncStatus' =>
-                        $syncStatus,
+                    'syncStatus' => $syncStatus,
                 ],
                 $data
             )
@@ -927,7 +831,6 @@ class Grades extends Component
             return;
         }
 
-
         $closure =
             app(
                 GradeReportService::class
@@ -936,7 +839,6 @@ class Grades extends Component
                     $this->academicYearId,
                     $this->semesterId
                 );
-
 
         $this->closureId =
             $closure?->id;

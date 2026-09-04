@@ -88,17 +88,19 @@ class FinalGradeSyncVersionTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        $assessmentService = app(AssessmentService::class);
+
         $finalGrade = FinalGrade::query()->create([
             'assessment_config_id' => $config->id,
             'student_id' => $student->id,
             'final_score' => 80,
             'attendance_source_version' => 1,
+            'assessment_config_signature' => $assessmentService->configurationSignature($config),
             'calculated_at' => now(),
             'calculated_by' => $user->id,
         ]);
 
-        $staleStatus = app(AssessmentService::class)
-            ->finalGradeSyncStatus($config);
+        $staleStatus = $assessmentService->finalGradeSyncStatus($config);
 
         expect($staleStatus)->toMatchArray([
             'version' => 2,
@@ -110,8 +112,7 @@ class FinalGradeSyncVersionTest extends TestCase
 
         $finalGrade->update(['attendance_source_version' => 2]);
 
-        $currentStatus = app(AssessmentService::class)
-            ->finalGradeSyncStatus($config);
+        $currentStatus = $assessmentService->finalGradeSyncStatus($config);
 
         expect($currentStatus)->toMatchArray([
             'version' => 2,

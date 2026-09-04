@@ -16,15 +16,12 @@ class GradeScaleSeeder extends Seeder
                 GradeScaleConfig::query()
                     ->firstOrCreate(
                         [
-                            'school_id' =>
-                                $school->id,
+                            'school_id' => $school->id,
 
-                            'name' =>
-                                'Skala Nilai Default',
+                            'name' => 'Skala Nilai Default',
                         ],
                         [
-                            'is_active' =>
-                                true,
+                            'is_active' => true,
                         ]
                     );
 
@@ -63,14 +60,11 @@ class GradeScaleSeeder extends Seeder
                 GradeScale::query()
                     ->updateOrCreate(
                         [
-                            'school_id' =>
-                                $school->id,
+                            'school_id' => $school->id,
 
-                            'grade_scale_config_id' =>
-                                $config->id,
+                            'grade_scale_config_id' => $config->id,
 
-                            'letter_grade' =>
-                                $scale[
+                            'letter_grade' => $scale[
                                     'letter_grade'
                                 ],
                         ],

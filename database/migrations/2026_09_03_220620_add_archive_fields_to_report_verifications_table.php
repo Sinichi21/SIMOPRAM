@@ -116,7 +116,6 @@ return new class extends Migration
         );
     }
 
-
     public function down(): void
     {
         Schema::table(
@@ -132,8 +131,7 @@ return new class extends Migration
                 ];
 
                 foreach (
-                    $columns
-                    as $column
+                    $columns as $column
                 ) {
                     if (
                         Schema::hasColumn(

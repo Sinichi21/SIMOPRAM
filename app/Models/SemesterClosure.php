@@ -11,7 +11,6 @@ class SemesterClosure extends Model
 {
     use BelongsToSchool;
 
-
     protected $fillable = [
         'academic_year_id',
         'semester_id',
@@ -30,30 +29,22 @@ class SemesterClosure extends Model
         'reopen_reason',
     ];
 
-
     protected function casts(): array
     {
         return [
-            'version' =>
-                'integer',
+            'version' => 'integer',
 
-            'attendance_source_version' =>
-                'integer',
+            'attendance_source_version' => 'integer',
 
-            'snapshot_count' =>
-                'integer',
+            'snapshot_count' => 'integer',
 
-            'metadata' =>
-                'array',
+            'metadata' => 'array',
 
-            'locked_at' =>
-                'datetime',
+            'locked_at' => 'datetime',
 
-            'reopened_at' =>
-                'datetime',
+            'reopened_at' => 'datetime',
         ];
     }
-
 
     public function academicYear(): BelongsTo
     {
@@ -62,14 +53,12 @@ class SemesterClosure extends Model
         );
     }
 
-
     public function semester(): BelongsTo
     {
         return $this->belongsTo(
             Semester::class
         );
     }
-
 
     public function assessmentConfig(): BelongsTo
     {
@@ -78,14 +67,12 @@ class SemesterClosure extends Model
         );
     }
 
-
     public function snapshots(): HasMany
     {
         return $this->hasMany(
             SemesterGradeSnapshot::class
         );
     }
-
 
     public function locker(): BelongsTo
     {
@@ -95,7 +82,6 @@ class SemesterClosure extends Model
         );
     }
 
-
     public function reopener(): BelongsTo
     {
         return $this->belongsTo(
@@ -104,13 +90,11 @@ class SemesterClosure extends Model
         );
     }
 
-
     public function isLocked(): bool
     {
         return $this->status
             === 'locked';
     }
-
 
     public function isReopened(): bool
     {

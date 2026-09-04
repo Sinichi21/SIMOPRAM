@@ -10,12 +10,10 @@ class ActivityAssessmentTargetMember extends Model
 {
     use BelongsToSchool;
 
-
     protected $fillable = [
         'activity_assessment_target_id',
         'student_id',
     ];
-
 
     public function target(): BelongsTo
     {
@@ -24,7 +22,6 @@ class ActivityAssessmentTargetMember extends Model
             'activity_assessment_target_id'
         );
     }
-
 
     public function student(): BelongsTo
     {

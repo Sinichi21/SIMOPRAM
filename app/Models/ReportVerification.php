@@ -45,30 +45,22 @@ class ReportVerification extends Model
         'revocation_reason',
     ];
 
-
     protected function casts(): array
     {
         return [
-            'file_size' =>
-                'integer',
+            'file_size' => 'integer',
 
-            'archived_at' =>
-                'datetime',
+            'archived_at' => 'datetime',
 
-            'issued_at' =>
-                'datetime',
+            'issued_at' => 'datetime',
 
-            'verification_count' =>
-                'integer',
+            'verification_count' => 'integer',
 
-            'last_verified_at' =>
-                'datetime',
+            'last_verified_at' => 'datetime',
 
-            'revoked_at' =>
-                'datetime',
+            'revoked_at' => 'datetime',
         ];
     }
-
 
     public function school(): BelongsTo
     {
@@ -76,7 +68,6 @@ class ReportVerification extends Model
             School::class
         );
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -100,7 +91,6 @@ class ReportVerification extends Model
             ->withoutGlobalScopes();
     }
 
-
     public function issuer(): BelongsTo
     {
         return $this->belongsTo(
@@ -108,7 +98,6 @@ class ReportVerification extends Model
             'issued_by'
         );
     }
-
 
     public function revoker(): BelongsTo
     {
@@ -118,13 +107,11 @@ class ReportVerification extends Model
         );
     }
 
-
     public function isRevoked(): bool
     {
         return $this->revoked_at
             !== null;
     }
-
 
     public function hasArchivedPdf(): bool
     {
@@ -136,7 +123,6 @@ class ReportVerification extends Model
                 $this->file_sha256
             );
     }
-
 
     public function publicStatus(): string
     {
