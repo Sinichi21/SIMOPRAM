@@ -1,0 +1,19 @@
+name: Emergency Deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Deploy
+        run: |
+          # upload release
+          # ssh ke VPS
+          # jalankan deploy.sh
