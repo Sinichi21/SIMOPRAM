@@ -29,8 +29,7 @@ class StudentAccountService
 
         if ($student->user_id) {
             throw ValidationException::withMessages([
-                'email' =>
-                    'Siswa ini sudah memiliki akun.',
+                'email' => 'Siswa ini sudah memiliki akun.',
             ]);
         }
 
@@ -40,8 +39,7 @@ class StudentAccountService
                 ->exists()
         ) {
             throw ValidationException::withMessages([
-                'email' =>
-                    'Email tersebut sudah digunakan.',
+                'email' => 'Email tersebut sudah digunakan.',
             ]);
         }
 
@@ -60,19 +58,22 @@ class StudentAccountService
                 */
 
                 $user = User::query()->create([
-                    'name' =>
-                        $student->name,
+                    'name' => $student->name,
 
-                    'email' =>
-                        strtolower(trim($email)),
+                    'email' => strtolower(trim($email)),
 
-                    'password' =>
-                        Hash::make($password),
+                    'password' => Hash::make($password),
 
-                    'is_active' =>
-                        true,
+                    'system_role' => 'student',
+
+                    'approval_status' => 'approved',
+
+                    'approved_by' => auth()->id(),
+
+                    'approved_at' => now(),
+
+                    'is_active' => true,
                 ]);
-
 
                 /*
                 |--------------------------------------------------------------------------
@@ -83,24 +84,18 @@ class StudentAccountService
                 SchoolUserMembership::query()
                     ->updateOrCreate(
                         [
-                            'school_id' =>
-                                $schoolId,
+                            'school_id' => $schoolId,
 
-                            'user_id' =>
-                                $user->id,
+                            'user_id' => $user->id,
                         ],
                         [
-                            'is_active' =>
-                                true,
+                            'is_active' => true,
 
-                            'joined_at' =>
-                                now()->toDateString(),
+                            'joined_at' => now()->toDateString(),
 
-                            'left_at' =>
-                                null,
+                            'left_at' => null,
                         ]
                     );
-
 
                 /*
                 |--------------------------------------------------------------------------
@@ -136,7 +131,6 @@ class StudentAccountService
                         ?->unsetRelation('permissions');
                 }
 
-
                 /*
                 |--------------------------------------------------------------------------
                 | Hubungkan User dengan Student
@@ -144,8 +138,7 @@ class StudentAccountService
                 */
 
                 $student->update([
-                    'user_id' =>
-                        $user->id,
+                    'user_id' => $user->id,
                 ]);
 
                 return $user;
@@ -153,15 +146,13 @@ class StudentAccountService
         );
     }
 
-
     public function resetPassword(
         Student $student,
         string $password
     ): void {
         if (! $student->user_id) {
             throw ValidationException::withMessages([
-                'password' =>
-                    'Siswa belum memiliki akun.',
+                'password' => 'Siswa belum memiliki akun.',
             ]);
         }
 
@@ -171,8 +162,7 @@ class StudentAccountService
             );
 
         $user->update([
-            'password' =>
-                Hash::make($password),
+            'password' => Hash::make($password),
         ]);
     }
 }

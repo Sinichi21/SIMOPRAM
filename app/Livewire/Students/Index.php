@@ -8,15 +8,22 @@ use App\Models\ScoutLevel;
 use App\Models\Student;
 use App\Models\StudentEnrollment;
 use App\Models\StudentScoutLevel;
+use App\Services\StudentCsvImporter;
 use App\Support\SchoolContext;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 class Index extends Component
 {
+    use WithFileUploads;
     use WithPagination;
+
+    public $csvFile = null;
+
+    public array $importErrors = [];
 
     public ?int $editingId = null;
 
@@ -50,6 +57,16 @@ class Index extends Component
 
     public string $search = '';
 
+    public string $filterAcademicYearId = '';
+
+    public string $filterClassroomId = '';
+
+    public string $filterScoutLevelId = '';
+
+    public string $filterStatus = '';
+
+    public string $filterGender = '';
+
     public function mount(): void
     {
         $academicYear = AcademicYear::query()
@@ -59,6 +76,9 @@ class Index extends Component
         $this->academic_year_id =
             $academicYear?->id;
 
+        $this->filterAcademicYearId =
+            (string) ($academicYear?->id ?? '');
+
         $this->joined_at =
             now()->toDateString();
     }
@@ -66,6 +86,131 @@ class Index extends Component
     public function updatedSearch(): void
     {
         $this->resetPage();
+    }
+
+    public function updatedFilterAcademicYearId(): void
+    {
+        $this->filterClassroomId = '';
+        $this->filterScoutLevelId = '';
+        $this->resetPage();
+    }
+
+    public function updatedFilterClassroomId(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterScoutLevelId(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterStatus(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterGender(): void
+    {
+        $this->resetPage();
+    }
+
+    public function resetFilters(): void
+    {
+        $activeAcademicYear = AcademicYear::query()
+            ->where('is_active', true)
+            ->first();
+
+        $this->reset([
+            'search',
+            'filterClassroomId',
+            'filterScoutLevelId',
+            'filterStatus',
+            'filterGender',
+        ]);
+
+        $this->filterAcademicYearId =
+            (string) ($activeAcademicYear?->id ?? '');
+
+        $this->resetPage();
+    }
+
+    public function importCsv(StudentCsvImporter $importer): void
+    {
+        abort_unless(auth()->user()->can('students.create'), 403);
+
+        $this->validate([
+            'csvFile' => [
+                'required',
+                'file',
+                'mimes:csv,txt',
+                'max:5120',
+            ],
+        ]);
+
+        try {
+            $result = $importer->import($this->csvFile->getRealPath());
+        } catch (\InvalidArgumentException $exception) {
+            $this->addError('csvFile', $exception->getMessage());
+
+            return;
+        }
+
+        $this->importErrors = $result['errors'];
+        $this->csvFile = null;
+        $this->resetPage();
+
+        session()->flash(
+            'success',
+            "Impor selesai. Berhasil: {$result['imported']}, gagal: {$result['failed']}."
+        );
+    }
+
+    public function downloadCsvTemplate()
+    {
+        abort_unless(auth()->user()->can('students.create'), 403);
+
+        return response()->streamDownload(function (): void {
+            $output = fopen('php://output', 'wb');
+
+            fwrite($output, "\xEF\xBB\xBF");
+            fputcsv($output, [
+                'nis',
+                'nisn',
+                'nama',
+                'jenis_kelamin',
+                'tempat_lahir',
+                'tanggal_lahir',
+                'telepon',
+                'telepon_orang_tua',
+                'alamat',
+                'tanggal_masuk',
+                'status',
+                'tahun_ajaran',
+                'kelas',
+                'golongan',
+            ]);
+            fputcsv($output, [
+                '2026001',
+                '0012345678',
+                'Budi Santoso',
+                'L',
+                'Makassar',
+                '2012-05-10',
+                '081234567890',
+                '081298765432',
+                'Jl. Pramuka No. 1',
+                '2026-07-01',
+                'active',
+                '2026/2027',
+                'Kelas 7A',
+                'Penggalang',
+            ]);
+
+            fclose($output);
+        }, 'template-import-siswa.csv', [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
     }
 
     public function updatedAcademicYearId(): void
@@ -104,11 +249,10 @@ class Index extends Component
                     'nis'
                 )
                     ->where(
-                        fn ($query) =>
-                            $query->where(
-                                'school_id',
-                                $schoolId
-                            )
+                        fn ($query) => $query->where(
+                            'school_id',
+                            $schoolId
+                        )
                     )
                     ->ignore(
                         $this->editingId
@@ -125,11 +269,10 @@ class Index extends Component
                     'nisn'
                 )
                     ->where(
-                        fn ($query) =>
-                            $query->where(
-                                'school_id',
-                                $schoolId
-                            )
+                        fn ($query) => $query->where(
+                            'school_id',
+                            $schoolId
+                        )
                     )
                     ->ignore(
                         $this->editingId
@@ -209,11 +352,10 @@ class Index extends Component
                     'academic_years',
                     'id'
                 )->where(
-                    fn ($query) =>
-                        $query->where(
-                            'school_id',
-                            $schoolId
-                        )
+                    fn ($query) => $query->where(
+                        'school_id',
+                        $schoolId
+                    )
                 ),
             ],
 
@@ -225,11 +367,10 @@ class Index extends Component
                     'classrooms',
                     'id'
                 )->where(
-                    fn ($query) =>
-                        $query->where(
-                            'school_id',
-                            $schoolId
-                        )
+                    fn ($query) => $query->where(
+                        'school_id',
+                        $schoolId
+                    )
                 ),
             ],
 
@@ -307,8 +448,7 @@ class Index extends Component
                 $validated['name']
             ),
 
-            'gender' =>
-                $validated['gender'],
+            'gender' => $validated['gender'],
 
             'birth_place' => filled(
                 $validated['birth_place']
@@ -320,8 +460,7 @@ class Index extends Component
                 )
                 : null,
 
-            'birth_date' =>
-                $validated['birth_date']
+            'birth_date' => $validated['birth_date']
                 ?: null,
 
             'phone' => filled(
@@ -350,12 +489,10 @@ class Index extends Component
                 )
                 : null,
 
-            'joined_at' =>
-                $validated['joined_at']
+            'joined_at' => $validated['joined_at']
                 ?: null,
 
-            'status' =>
-                $validated['status'],
+            'status' => $validated['status'],
         ];
 
         /*
@@ -372,7 +509,6 @@ class Index extends Component
         DB::transaction(
             function () use (
                 $studentData,
-                $validated,
                 $academicYear,
                 $classroom,
                 $scoutLevel
@@ -403,7 +539,6 @@ class Index extends Component
                         );
                 }
 
-
                 /*
                 |--------------------------------------------------------------------------
                 | 2. Enrollment Kelas
@@ -413,16 +548,13 @@ class Index extends Component
                 $enrollment =
                     StudentEnrollment::query()
                         ->firstOrNew([
-                            'student_id' =>
-                                $student->id,
+                            'student_id' => $student->id,
 
-                            'academic_year_id' =>
-                                $academicYear->id,
+                            'academic_year_id' => $academicYear->id,
                         ]);
 
                 $enrollment->classroom_id =
                     $classroom->id;
-
 
                 /*
                 |--------------------------------------------------------------------------
@@ -448,7 +580,6 @@ class Index extends Component
                         'completed';
                 }
 
-
                 /*
                 |--------------------------------------------------------------------------
                 | Tanggal Enrollment
@@ -466,7 +597,6 @@ class Index extends Component
                             ->start_date;
                 }
 
-
                 if (
                     $enrollment->status ===
                     'completed'
@@ -480,7 +610,6 @@ class Index extends Component
                 }
 
                 $enrollment->save();
-
 
                 /*
                 |--------------------------------------------------------------------------
@@ -509,15 +638,12 @@ class Index extends Component
                         ]);
                 }
 
-
                 $studentScoutLevel =
                     StudentScoutLevel::query()
                         ->firstOrNew([
-                            'student_id' =>
-                                $student->id,
+                            'student_id' => $student->id,
 
-                            'academic_year_id' =>
-                                $academicYear->id,
+                            'academic_year_id' => $academicYear->id,
                         ]);
 
                 $studentScoutLevel
@@ -596,12 +722,11 @@ class Index extends Component
                 )
                 ->when(
                     $activeAcademicYear,
-                    fn ($query) =>
-                        $query->where(
-                            'academic_year_id',
-                            $activeAcademicYear
-                                ->id
-                        )
+                    fn ($query) => $query->where(
+                        'academic_year_id',
+                        $activeAcademicYear
+                            ->id
+                    )
                 )
                 ->first();
 
@@ -645,7 +770,6 @@ class Index extends Component
                     )
                     ->first()
                 : null;
-
 
         /*
         |--------------------------------------------------------------------------
@@ -751,8 +875,7 @@ class Index extends Component
                         : 'active';
 
                 $student->update([
-                    'status' =>
-                        $newStatus,
+                    'status' => $newStatus,
                 ]);
 
                 /*
@@ -781,8 +904,7 @@ class Index extends Component
                             $activeYear->id
                         )
                         ->update([
-                            'status' =>
-                                $newStatus,
+                            'status' => $newStatus,
                         ]);
                 }
             }
@@ -875,9 +997,11 @@ class Index extends Component
                     true
                 );
 
-        $activeYearId =
-            $activeAcademicYear
-                ?->id;
+        $listAcademicYearId = filled(
+            $this->filterAcademicYearId
+        )
+            ? (int) $this->filterAcademicYearId
+            : null;
 
         /*
         |--------------------------------------------------------------------------
@@ -888,57 +1012,56 @@ class Index extends Component
         $students =
             Student::query()
                 ->with([
-                    'enrollments' =>
-                        function ($query) use (
-                            $activeYearId
-                        ): void {
+                    'enrollments' => function ($query) use (
+                        $listAcademicYearId
+                    ): void {
 
-                            if ($activeYearId) {
-                                $query->where(
-                                    'academic_year_id',
-                                    $activeYearId
-                                );
-                            }
-
-                            $query->with([
-                                'classroom',
-                                'academicYear',
-                            ]);
-                        },
-
-                    'scoutLevelHistories' =>
-                        function ($query) use (
-                            $activeYearId
-                        ): void {
-
-                            if ($activeYearId) {
-                                $query->where(
-                                    'academic_year_id',
-                                    $activeYearId
-                                );
-                            }
-
-                            $query->with(
-                                'scoutLevel'
+                        if ($listAcademicYearId) {
+                            $query->where(
+                                'academic_year_id',
+                                $listAcademicYearId
                             );
-                        },
+                        }
+
+                        $query->with([
+                            'classroom',
+                            'academicYear',
+                        ]);
+                    },
+
+                    'scoutLevelHistories' => function ($query) use (
+                        $listAcademicYearId
+                    ): void {
+
+                        if ($listAcademicYearId) {
+                            $query->where(
+                                'academic_year_id',
+                                $listAcademicYearId
+                            );
+                        }
+
+                        $query->with(
+                            'scoutLevel'
+                        );
+                    },
                 ])
                 ->when(
                     $this->search,
-                    function ($query): void {
+                    function ($query) use ($listAcademicYearId): void {
 
                         $search =
-                            '%' .
+                            '%'.
                             trim(
                                 $this->search
-                            ) .
+                            ).
                             '%';
 
                         $query->where(
                             function (
                                 $query
                             ) use (
-                                $search
+                                $search,
+                                $listAcademicYearId
                             ): void {
 
                                 $query
@@ -966,7 +1089,111 @@ class Index extends Component
                                         'parent_phone',
                                         'like',
                                         $search
+                                    )
+                                    ->orWhereHas(
+                                        'enrollments',
+                                        function ($query) use (
+                                            $search,
+                                            $listAcademicYearId
+                                        ): void {
+                                            if ($listAcademicYearId) {
+                                                $query->where(
+                                                    'academic_year_id',
+                                                    $listAcademicYearId
+                                                );
+                                            }
+
+                                            $query->whereHas(
+                                                'classroom',
+                                                fn ($query) => $query->where(
+                                                    'name',
+                                                    'like',
+                                                    $search
+                                                )
+                                            );
+                                        }
+                                    )
+                                    ->orWhereHas(
+                                        'scoutLevelHistories',
+                                        function ($query) use (
+                                            $search,
+                                            $listAcademicYearId
+                                        ): void {
+                                            if ($listAcademicYearId) {
+                                                $query->where(
+                                                    'academic_year_id',
+                                                    $listAcademicYearId
+                                                );
+                                            }
+
+                                            $query->whereHas(
+                                                'scoutLevel',
+                                                fn ($query) => $query->where(
+                                                    'name',
+                                                    'like',
+                                                    $search
+                                                )
+                                            );
+                                        }
                                     );
+                            }
+                        );
+                    }
+                )
+                ->when(
+                    $this->filterStatus,
+                    fn ($query) => $query->where(
+                        'status',
+                        $this->filterStatus
+                    )
+                )
+                ->when(
+                    $this->filterGender,
+                    fn ($query) => $query->where(
+                        'gender',
+                        $this->filterGender
+                    )
+                )
+                ->when(
+                    $listAcademicYearId || $this->filterClassroomId,
+                    function ($query) use ($listAcademicYearId): void {
+                        $query->whereHas(
+                            'enrollments',
+                            function ($query) use ($listAcademicYearId): void {
+                                if ($listAcademicYearId) {
+                                    $query->where(
+                                        'academic_year_id',
+                                        $listAcademicYearId
+                                    );
+                                }
+
+                                if ($this->filterClassroomId) {
+                                    $query->where(
+                                        'classroom_id',
+                                        (int) $this->filterClassroomId
+                                    );
+                                }
+                            }
+                        );
+                    }
+                )
+                ->when(
+                    $this->filterScoutLevelId,
+                    function ($query) use ($listAcademicYearId): void {
+                        $query->whereHas(
+                            'scoutLevelHistories',
+                            function ($query) use ($listAcademicYearId): void {
+                                $query->where(
+                                    'scout_level_id',
+                                    (int) $this->filterScoutLevelId
+                                );
+
+                                if ($listAcademicYearId) {
+                                    $query->where(
+                                        'academic_year_id',
+                                        $listAcademicYearId
+                                    );
+                                }
                             }
                         );
                     }

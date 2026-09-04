@@ -17,8 +17,7 @@ class AttendanceService
 {
     public function __construct(
         protected GeolocationService $geolocation
-    ) {
-    }
+    ) {}
 
     /*
     |--------------------------------------------------------------------------
@@ -31,8 +30,7 @@ class AttendanceService
     ): void {
         if ($session->attendances()->exists()) {
             throw ValidationException::withMessages([
-                'participant_scope' =>
-                    'Peserta tidak dapat diubah karena absensi sudah berjalan.',
+                'participant_scope' => 'Peserta tidak dapat diubah karena absensi sudah berjalan.',
             ]);
         }
 
@@ -42,28 +40,23 @@ class AttendanceService
         $studentIds = match (
             $session->participant_scope
         ) {
-            'all' =>
-                Student::query()
-                    ->where('status', 'active')
-                    ->pluck('id'),
+            'all' => Student::query()
+                ->where('status', 'active')
+                ->pluck('id'),
 
-            'classroom' =>
-                $this->studentsFromClassroom(
-                    $session,
-                    $activity->academic_year_id
-                ),
+            'classroom' => $this->studentsFromClassroom(
+                $session,
+                $activity->academic_year_id
+            ),
 
-            'scout_unit' =>
-                $this->studentsFromScoutUnit(
-                    $session,
-                    $activity->academic_year_id
-                ),
+            'scout_unit' => $this->studentsFromScoutUnit(
+                $session,
+                $activity->academic_year_id
+            ),
 
-            default =>
-                throw ValidationException::withMessages([
-                    'participant_scope' =>
-                        'Target peserta tidak valid.',
-                ]),
+            default => throw ValidationException::withMessages([
+                'participant_scope' => 'Target peserta tidak valid.',
+            ]),
         };
 
         DB::transaction(
@@ -77,11 +70,9 @@ class AttendanceService
                 foreach ($studentIds as $studentId) {
                     AttendanceSessionParticipant::query()
                         ->create([
-                            'attendance_session_id' =>
-                                $session->id,
+                            'attendance_session_id' => $session->id,
 
-                            'student_id' =>
-                                $studentId,
+                            'student_id' => $studentId,
                         ]);
                 }
             }
@@ -94,8 +85,7 @@ class AttendanceService
     ) {
         if (! $session->participant_scope_id) {
             throw ValidationException::withMessages([
-                'participant_scope_id' =>
-                    'Pilih kelas.',
+                'participant_scope_id' => 'Pilih kelas.',
             ]);
         }
 
@@ -108,21 +98,20 @@ class AttendanceService
             ->where('status', 'active')
             ->whereHas(
                 'enrollments',
-                fn ($query) =>
-                    $query
-                        ->where(
-                            'academic_year_id',
-                            $academicYearId
-                        )
-                        ->where(
-                            'classroom_id',
-                            $session
-                                ->participant_scope_id
-                        )
-                        ->where(
-                            'status',
-                            'active'
-                        )
+                fn ($query) => $query
+                    ->where(
+                        'academic_year_id',
+                        $academicYearId
+                    )
+                    ->where(
+                        'classroom_id',
+                        $session
+                            ->participant_scope_id
+                    )
+                    ->where(
+                        'status',
+                        'active'
+                    )
             )
             ->pluck('id');
     }
@@ -133,8 +122,7 @@ class AttendanceService
     ) {
         if (! $session->participant_scope_id) {
             throw ValidationException::withMessages([
-                'participant_scope_id' =>
-                    'Pilih Regu / Barung.',
+                'participant_scope_id' => 'Pilih Regu / Barung.',
             ]);
         }
 
@@ -151,13 +139,12 @@ class AttendanceService
             ->where('status', 'active')
             ->whereHas(
                 'scoutUnitMembers',
-                fn ($query) =>
-                    $query
-                        ->where(
-                            'scout_unit_id',
-                            $unit->id
-                        )
-                        ->whereNull('left_at')
+                fn ($query) => $query
+                    ->where(
+                        'scout_unit_id',
+                        $unit->id
+                    )
+                    ->whereNull('left_at')
             )
             ->pluck('id');
     }
@@ -175,10 +162,15 @@ class AttendanceService
         User $user,
         ?string $notes = null,
     ): Attendance {
+        if (! $session->is_active) {
+            throw ValidationException::withMessages([
+                'attendance' => 'Sesi absensi tidak aktif.',
+            ]);
+        }
+
         if (! $session->allow_manual) {
             throw ValidationException::withMessages([
-                'attendance' =>
-                    'Absensi manual tidak diaktifkan.',
+                'attendance' => 'Absensi manual tidak diaktifkan.',
             ]);
         }
 
@@ -201,8 +193,7 @@ class AttendanceService
             )
         ) {
             throw ValidationException::withMessages([
-                'attendance' =>
-                    'Status kehadiran tidak valid.',
+                'attendance' => 'Status kehadiran tidak valid.',
             ]);
         }
 
@@ -217,11 +208,9 @@ class AttendanceService
                 $attendance =
                     Attendance::query()
                         ->firstOrNew([
-                            'attendance_session_id' =>
-                                $session->id,
+                            'attendance_session_id' => $session->id,
 
-                            'student_id' =>
-                                $student->id,
+                            'student_id' => $student->id,
                         ]);
 
                 $oldStatus =
@@ -258,23 +247,17 @@ class AttendanceService
                 if ($oldStatus !== $status) {
                     AttendanceHistory::query()
                         ->create([
-                            'attendance_id' =>
-                                $attendance->id,
+                            'attendance_id' => $attendance->id,
 
-                            'changed_by' =>
-                                $user->id,
+                            'changed_by' => $user->id,
 
-                            'old_status' =>
-                                $oldStatus,
+                            'old_status' => $oldStatus,
 
-                            'new_status' =>
-                                $status,
+                            'new_status' => $status,
 
-                            'source' =>
-                                'manual',
+                            'source' => 'manual',
 
-                            'notes' =>
-                                $notes,
+                            'notes' => $notes,
                         ]);
                 }
 
@@ -298,15 +281,13 @@ class AttendanceService
     ): Attendance {
         if (! $session->allow_self_checkin) {
             throw ValidationException::withMessages([
-                'location' =>
-                    'Absensi mandiri tidak diaktifkan.',
+                'location' => 'Absensi mandiri tidak diaktifkan.',
             ]);
         }
 
         if (! $session->is_active) {
             throw ValidationException::withMessages([
-                'location' =>
-                    'Sesi absensi tidak aktif.',
+                'location' => 'Sesi absensi tidak aktif.',
             ]);
         }
 
@@ -318,8 +299,7 @@ class AttendanceService
             $now->gt($session->close_at)
         ) {
             throw ValidationException::withMessages([
-                'location' =>
-                    'Sesi absensi belum dibuka atau sudah ditutup.',
+                'location' => 'Sesi absensi belum dibuka atau sudah ditutup.',
             ]);
         }
 
@@ -335,8 +315,7 @@ class AttendanceService
             $session->max_accuracy_m
         ) {
             throw ValidationException::withMessages([
-                'location' =>
-                    'Akurasi lokasi terlalu rendah. Coba aktifkan GPS dengan akurasi tinggi.',
+                'location' => 'Akurasi lokasi terlalu rendah. Coba aktifkan GPS dengan akurasi tinggi.',
             ]);
         }
 
@@ -346,8 +325,7 @@ class AttendanceService
             $session->longitude === null
         ) {
             throw ValidationException::withMessages([
-                'location' =>
-                    'Lokasi sesi absensi belum dikonfigurasi.',
+                'location' => 'Lokasi sesi absensi belum dikonfigurasi.',
             ]);
         }
 
@@ -362,8 +340,7 @@ class AttendanceService
 
         if ($distance > $session->radius_m) {
             throw ValidationException::withMessages([
-                'location' =>
-                    'Anda berada di luar radius absensi.',
+                'location' => 'Anda berada di luar radius absensi.',
             ]);
         }
 
@@ -381,8 +358,7 @@ class AttendanceService
 
         if ($existing) {
             throw ValidationException::withMessages([
-                'location' =>
-                    'Kehadiran Anda sudah tercatat. Hubungi pembina jika perlu koreksi.',
+                'location' => 'Kehadiran Anda sudah tercatat. Hubungi pembina jika perlu koreksi.',
             ]);
         }
 
@@ -407,7 +383,7 @@ class AttendanceService
                 $attendance =
                     $existing
                     ??
-                    new Attendance();
+                    new Attendance;
 
                 $oldStatus =
                     $attendance->exists
@@ -451,17 +427,13 @@ class AttendanceService
 
                 AttendanceHistory::query()
                     ->create([
-                        'attendance_id' =>
-                            $attendance->id,
+                        'attendance_id' => $attendance->id,
 
-                        'old_status' =>
-                            $oldStatus,
+                        'old_status' => $oldStatus,
 
-                        'new_status' =>
-                            $status,
+                        'new_status' => $status,
 
-                        'source' =>
-                            'gps',
+                        'source' => 'gps',
                     ]);
 
                 return $attendance;
@@ -487,8 +459,7 @@ class AttendanceService
 
         if (! $exists) {
             throw ValidationException::withMessages([
-                'attendance' =>
-                    'Siswa bukan peserta sesi absensi ini.',
+                'attendance' => 'Siswa bukan peserta sesi absensi ini.',
             ]);
         }
     }

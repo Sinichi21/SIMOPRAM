@@ -261,17 +261,27 @@
             </h2>
 
 
-            <input
-                type="search"
-                wire:model.live.debounce.300ms="search"
-                placeholder="Cari form..."
-                class="rounded-lg border
-                       border-zinc-300
-                       bg-white px-3 py-2
-                       text-sm
-                       dark:border-zinc-700
-                       dark:bg-zinc-950"
-            >
+            <div class="flex flex-col gap-2 sm:flex-row">
+                <select
+                    wire:model.live="scoutLevelId"
+                    class="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                >
+                    <option value="">Semua Golongan</option>
+
+                    @foreach ($scoutLevels as $scoutLevel)
+                        <option value="{{ $scoutLevel->id }}">
+                            {{ $scoutLevel->name }}
+                        </option>
+                    @endforeach
+                </select>
+
+                <input
+                    type="search"
+                    wire:model.live.debounce.300ms="search"
+                    placeholder="Cari form..."
+                    class="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                >
+            </div>
 
         </div>
 
@@ -330,6 +340,10 @@
 
                             <td class="px-4 py-3">
                                 {{ $assessment->activity?->title ?? '-' }}
+
+                                <div class="text-xs text-zinc-500">
+                                    {{ $assessment->activity?->scoutLevels->pluck('name')->join(', ') ?: 'Semua Golongan' }}
+                                </div>
                             </td>
 
                             <td class="px-4 py-3">

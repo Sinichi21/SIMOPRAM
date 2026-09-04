@@ -354,6 +354,19 @@
 
                 @endcan
 
+                @can('user_approvals.manage')
+
+                    <flux:sidebar.item
+                        icon="users"
+                        :href="route('user-approvals.index')"
+                        :current="request()->routeIs('user-approvals.*')"
+                        wire:navigate
+                    >
+                        Persetujuan User
+                    </flux:sidebar.item>
+
+                @endcan
+
             </flux:sidebar.group>
 
         </flux:sidebar.nav>
@@ -524,6 +537,19 @@
                             wire:navigate
                         >
                             Rekap Absensi
+                        </flux:sidebar.item>
+
+                    @endcan
+
+                    @can('reports.lpj.view')
+
+                        <flux:sidebar.item
+                            icon="document-text"
+                            :href="route('reports.lpj')"
+                            :current="request()->routeIs('reports.lpj*')"
+                            wire:navigate
+                        >
+                            LPJ Kegiatan
                         </flux:sidebar.item>
 
                     @endcan

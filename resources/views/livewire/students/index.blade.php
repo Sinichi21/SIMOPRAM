@@ -63,6 +63,73 @@
     @endif
 
 
+    @can('students.create')
+
+        <form
+            wire:submit="importCsv"
+            class="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+        >
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold">Import Data Siswa</h2>
+
+                    <p class="mt-1 text-sm text-zinc-500">
+                        Unggah CSV maksimal 5 MB. Nama tahun ajaran, kelas, dan golongan harus sama dengan master data.
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    wire:click="downloadCsvTemplate"
+                    class="rounded-lg border border-zinc-300 px-4 py-2 text-sm dark:border-zinc-700"
+                >
+                    Unduh Template CSV
+                </button>
+            </div>
+
+            <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start">
+                <div class="flex-1">
+                    <input
+                        type="file"
+                        wire:model="csvFile"
+                        accept=".csv,text/csv"
+                        class="block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                    >
+
+                    @error('csvFile')
+                        <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <button
+                    type="submit"
+                    wire:loading.attr="disabled"
+                    wire:target="csvFile,importCsv"
+                    class="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-zinc-900"
+                >
+                    <span wire:loading.remove wire:target="importCsv">Import CSV</span>
+                    <span wire:loading wire:target="csvFile,importCsv">Memproses...</span>
+                </button>
+            </div>
+
+            @if ($importErrors !== [])
+                <div class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
+                    <div class="font-medium">Baris yang gagal:</div>
+
+                    <ul class="mt-2 list-disc space-y-1 pl-5">
+                        @foreach ($importErrors as $importError)
+                            <li wire:key="student-import-error-{{ $loop->index }}">
+                                {{ $importError }}
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+        </form>
+
+    @endcan
+
+
     {{-- FORM --}}
     @canany([
         'students.create',
@@ -722,13 +789,7 @@
                dark:bg-zinc-900"
     >
 
-        <div
-            class="mb-5 flex
-                   flex-col gap-3
-                   md:flex-row
-                   md:items-center
-                   md:justify-between"
-        >
+        <div class="mb-5 space-y-4">
 
             <div>
 
@@ -749,22 +810,120 @@
             </div>
 
 
-            <input
-                type="search"
-                wire:model.live.debounce.300ms="
-                    search
-                "
-                placeholder="
-                    Cari nama / NIS / NISN...
-                "
-                class="rounded-lg
-                       border
-                       border-zinc-300
-                       px-3 py-2
-                       text-sm
-                       dark:border-zinc-700
-                       dark:bg-zinc-800"
-            >
+            <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                <div class="md:col-span-2 xl:col-span-1">
+                    <label class="mb-1 block text-sm font-medium">
+                        Pencarian
+                    </label>
+
+                    <input
+                        type="search"
+                        wire:model.live.debounce.300ms="search"
+                        placeholder="Nama, NIS, NISN, telepon, kelas..."
+                        class="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                    >
+                </div>
+
+                <div>
+                    <label class="mb-1 block text-sm font-medium">
+                        Tahun Ajaran
+                    </label>
+
+                    <select
+                        wire:model.live="filterAcademicYearId"
+                        class="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                    >
+                        <option value="">Semua Tahun Ajaran</option>
+
+                        @foreach ($academicYears as $academicYear)
+                            <option value="{{ $academicYear->id }}">
+                                {{ $academicYear->name }}
+                                {{ $academicYear->is_active ? '(Aktif)' : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="mb-1 block text-sm font-medium">
+                        Kelas
+                    </label>
+
+                    <select
+                        wire:model.live="filterClassroomId"
+                        class="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                    >
+                        <option value="">Semua Kelas</option>
+
+                        @foreach ($classrooms as $classroom)
+                            <option value="{{ $classroom->id }}">
+                                {{ $classroom->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="mb-1 block text-sm font-medium">
+                        Golongan
+                    </label>
+
+                    <select
+                        wire:model.live="filterScoutLevelId"
+                        class="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                    >
+                        <option value="">Semua Golongan</option>
+
+                        @foreach ($scoutLevels as $scoutLevel)
+                            <option value="{{ $scoutLevel->id }}">
+                                {{ $scoutLevel->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="mb-1 block text-sm font-medium">
+                        Status
+                    </label>
+
+                    <select
+                        wire:model.live="filterStatus"
+                        class="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                    >
+                        <option value="">Semua Status</option>
+                        <option value="active">Aktif</option>
+                        <option value="inactive">Nonaktif</option>
+                        <option value="graduated">Lulus</option>
+                        <option value="transferred">Pindah</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="mb-1 block text-sm font-medium">
+                        Jenis Kelamin
+                    </label>
+
+                    <div class="flex gap-2">
+                        <select
+                            wire:model.live="filterGender"
+                            class="min-w-0 flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                        >
+                            <option value="">Semua</option>
+                            <option value="L">Laki-laki</option>
+                            <option value="P">Perempuan</option>
+                        </select>
+
+                        <button
+                            type="button"
+                            wire:click="resetFilters"
+                            class="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700"
+                        >
+                            Reset
+                        </button>
+                    </div>
+                </div>
+            </div>
 
         </div>
 
@@ -974,6 +1133,16 @@
                                     class="flex
                                            flex-wrap gap-2"
                                 >
+
+                                    @can('student_accounts.manage')
+                                        <a
+                                            href="{{ route('student-accounts.manage', $student->id) }}"
+                                            wire:navigate
+                                            class="rounded-lg border border-zinc-300 px-3 py-1.5 dark:border-zinc-700"
+                                        >
+                                            {{ $student->user_id ? 'Kelola Akun' : 'Buat Akun' }}
+                                        </a>
+                                    @endcan
 
                                     @can(
                                         'students.update'

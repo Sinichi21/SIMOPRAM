@@ -5,7 +5,13 @@ namespace Tests\Feature;
 use App\Models\ActivityAssessment;
 use App\Models\ActivityAssessmentCriterion;
 use App\Models\ActivityAssessmentTarget;
+use App\Models\AssessmentConfig;
+use App\Models\AssessmentConfigItem;
 use App\Models\School;
+use App\Models\ScoutLevel;
+use App\Models\ScoutUnit;
+use App\Models\Student;
+use App\Models\StudentScore;
 use App\Services\ActivityAssessmentService;
 use App\Support\SchoolContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -459,5 +465,135 @@ class ActivityAssessmentCalculationTest extends TestCase
                 $criterion->id => 11,
             ]
         );
+    }
+
+    public function test_published_activity_scores_are_averaged_into_student_scores(): void
+    {
+        $school =
+            School::factory()
+                ->create([
+                    'is_active' => true,
+                ]);
+
+        $this->activateSchool(
+            $school
+        );
+
+        $assessment =
+            ActivityAssessment::factory()
+                ->published()
+                ->individual()
+                ->create([
+                    'school_id' => $school->id,
+                ]);
+
+        $config =
+            AssessmentConfig::query()
+                ->create([
+                    'academic_year_id' => $assessment->activity->academic_year_id,
+
+                    'semester_id' => $assessment->activity->semester_id,
+
+                    'name' => 'Rekap kegiatan',
+
+                    'is_active' => true,
+                ]);
+
+        AssessmentConfigItem::query()
+            ->create([
+                'assessment_config_id' => $config->id,
+
+                'assessment_factor_id' => $assessment->assessment_factor_id,
+
+                'weight' => 100,
+
+                'sort_order' => 1,
+            ]);
+
+        $student =
+            Student::query()
+                ->create([
+                    'nis' => 'ACTIVITY-SCORE-001',
+
+                    'name' => 'Siswa Penilaian Kegiatan',
+
+                    'status' => 'active',
+                ]);
+
+        $assessment->targets()
+            ->create([
+                'student_id' => $student->id,
+
+                'total_score' => 75,
+
+                'normalized_score' => 75,
+
+                'assessed_at' => now(),
+            ]);
+
+        $updated =
+            app(
+                ActivityAssessmentService::class
+            )->syncToStudentScores(
+                $assessment
+            );
+
+        $studentScore =
+            StudentScore::query()
+                ->where('assessment_config_id', $config->id)
+                ->where('student_id', $student->id)
+                ->where('assessment_factor_id', $assessment->assessment_factor_id)
+                ->firstOrFail();
+
+        expect($updated)->toBe(1);
+        expect((float) $studentScore->score)->toBe(75.0);
+        expect($studentScore->source)->toBe('activity_assessment');
+    }
+
+    public function test_team_targets_only_include_units_from_the_activity_scout_levels(): void
+    {
+        $school = School::factory()->create([
+            'is_active' => true,
+        ]);
+        $this->activateSchool($school);
+        $siaga = ScoutLevel::query()->create([
+            'code' => 'SIAGA-TARGET',
+            'name' => 'Siaga Target',
+            'sort_order' => 1,
+        ]);
+        $penggalang = ScoutLevel::query()->create([
+            'code' => 'PENGGALANG-TARGET',
+            'name' => 'Penggalang Target',
+            'sort_order' => 2,
+        ]);
+        $assessment = ActivityAssessment::factory()
+            ->team()
+            ->create([
+                'school_id' => $school->id,
+            ]);
+        $assessment->activity->scoutLevels()->attach($penggalang);
+        $siagaUnit = ScoutUnit::query()->create([
+            'scout_level_id' => $siaga->id,
+            'academic_year_id' => $assessment->activity->academic_year_id,
+            'name' => 'Barung Merah',
+            'unit_type' => 'barung',
+            'is_active' => true,
+        ]);
+        $penggalangUnit = ScoutUnit::query()->create([
+            'scout_level_id' => $penggalang->id,
+            'academic_year_id' => $assessment->activity->academic_year_id,
+            'name' => 'Regu Elang',
+            'unit_type' => 'regu',
+            'is_active' => true,
+        ]);
+
+        $created = app(ActivityAssessmentService::class)
+            ->prepareTargets($assessment);
+
+        expect($created)->toBe(1);
+        expect($assessment->targets()->pluck('scout_unit_id')->all())
+            ->toBe([$penggalangUnit->id]);
+        expect($assessment->targets()->where('scout_unit_id', $siagaUnit->id)->exists())
+            ->toBeFalse();
     }
 }

@@ -5,6 +5,7 @@ namespace App\Livewire\Assessments\Activities;
 use App\Models\Activity;
 use App\Models\ActivityAssessment;
 use App\Models\AssessmentFactor;
+use App\Models\ScoutLevel;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
 
@@ -21,6 +22,8 @@ class Index extends Component
     public string $description = '';
 
     public string $search = '';
+
+    public string $scoutLevelId = '';
 
     public function create(): void
     {
@@ -151,6 +154,24 @@ class Index extends Component
     {
         $activities =
             Activity::query()
+                ->with('scoutLevels')
+                ->when(
+                    $this->scoutLevelId,
+                    function ($query): void {
+                        $query->where(
+                            function ($query): void {
+                                $query
+                                    ->whereDoesntHave('scoutLevels')
+                                    ->orWhereHas(
+                                        'scoutLevels',
+                                        fn ($query) => $query->whereKey(
+                                            (int) $this->scoutLevelId
+                                        )
+                                    );
+                            }
+                        );
+                    }
+                )
                 ->orderByDesc(
                     'start_at'
                 )
@@ -177,7 +198,28 @@ class Index extends Component
                 ->with([
                     'activity',
                     'factor',
+                    'activity.scoutLevels',
                 ])
+                ->when(
+                    $this->scoutLevelId,
+                    fn ($query) => $query->whereHas(
+                        'activity',
+                        function ($query): void {
+                            $query->where(
+                                function ($query): void {
+                                    $query
+                                        ->whereDoesntHave('scoutLevels')
+                                        ->orWhereHas(
+                                            'scoutLevels',
+                                            fn ($query) => $query->whereKey(
+                                                (int) $this->scoutLevelId
+                                            )
+                                        );
+                                }
+                            );
+                        }
+                    )
+                )
                 ->when(
                     trim(
                         $this->search
@@ -215,6 +257,11 @@ class Index extends Component
                 ->latest()
                 ->get();
 
+        $scoutLevels = ScoutLevel::query()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
         return view(
             'livewire.assessments.activities.index',
             [
@@ -223,6 +270,8 @@ class Index extends Component
                 'factors' => $factors,
 
                 'assessments' => $assessments,
+
+                'scoutLevels' => $scoutLevels,
             ]
         );
     }

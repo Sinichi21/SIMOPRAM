@@ -296,22 +296,18 @@ MENU MASTER DATA
 
 @endcan
 
-@can('student_accounts.manage')
-
+@can('user_approvals.manage')
     <a
-        href="{{ route(
-            'student-accounts.manage',
-            $student->id
-        ) }}"
+        href="{{ route('user-approvals.index') }}"
         wire:navigate
-        class="rounded-lg border
-               border-zinc-300
-               px-3 py-1.5 text-sm
-               dark:border-zinc-700"
+        @class([
+            'block rounded-lg px-3 py-2 text-sm font-medium transition',
+            'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' => request()->routeIs('user-approvals.*'),
+            'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800' => ! request()->routeIs('user-approvals.*'),
+        ])
     >
-        Akun
+        Persetujuan User
     </a>
-
 @endcan
 
 @can('attendances.self')

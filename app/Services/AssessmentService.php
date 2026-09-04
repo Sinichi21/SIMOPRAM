@@ -11,7 +11,6 @@ use App\Support\SchoolContext;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
-use App\Services\StudentScoreWriter;
 
 class AssessmentService
 {
@@ -43,6 +42,10 @@ class AssessmentService
         $participations =
             $student
                 ->attendanceParticipations()
+                ->whereHas(
+                    'session',
+                    fn ($query) => $query->active()
+                )
                 ->whereHas(
                     'session.activity',
                     function ($query) use (
@@ -332,10 +335,9 @@ class AssessmentService
                             AttendanceWeightService::class
                         )->version(),
 
-                        'assessment_config_signature' =>
-                            $this->configurationSignature(
-                                $config
-                            ),
+                        'assessment_config_signature' => $this->configurationSignature(
+                            $config
+                        ),
 
                         'calculated_at' => now(),
 
@@ -459,7 +461,6 @@ class AssessmentService
                 $config,
                 $attendanceItems,
                 $students,
-                $version,
                 &$updated
             ): void {
 
@@ -506,28 +507,20 @@ class AssessmentService
                             app(
                                 StudentScoreWriter::class
                             )->writeAutomatic(
-                                assessmentConfigId:
-                                    $config->id,
+                                assessmentConfigId: $config->id,
 
-                                studentId:
-                                    $student->id,
+                                studentId: $student->id,
 
-                                assessmentFactorId:
-                                    $attendanceFactor->id,
+                                assessmentFactorId: $attendanceFactor->id,
 
-                                score:
-                                    $attendanceScore,
+                                score: $attendanceScore,
 
-                                source:
-                                    StudentScoreWriter::SOURCE_ATTENDANCE,
+                                source: StudentScoreWriter::SOURCE_ATTENDANCE,
 
-                                sourceVersion:
-                                    $attendanceVersion,
+                                sourceVersion: $attendanceVersion,
 
-                                notes:
-                                    'Sinkronisasi otomatis nilai kehadiran'
+                                notes: 'Sinkronisasi otomatis nilai kehadiran'
                             );
-
 
                         if (
                             $result[
@@ -740,11 +733,9 @@ class AssessmentService
 
                 'score_changed_count' => 0,
 
-                'configuration_signature' =>
-                    $currentConfigSignature,
+                'configuration_signature' => $currentConfigSignature,
 
-                'configuration_changed_count' =>
-                    0,
+                'configuration_changed_count' => 0,
 
                 'is_stale' => false,
             ];
@@ -974,11 +965,9 @@ class AssessmentService
 
             'score_changed_count' => $scoreChangedCount,
 
-            'configuration_changed_count' =>
-                $configurationChangedCount,
+            'configuration_changed_count' => $configurationChangedCount,
 
-            'configuration_signature' =>
-                $currentConfigSignature,
+            'configuration_signature' => $currentConfigSignature,
 
             'is_stale' => $staleCount > 0,
         ];
@@ -1198,7 +1187,6 @@ class AssessmentService
             'items.factor',
         ]);
 
-
         /*
         |--------------------------------------------------------------------------
         | Urutkan berdasarkan assessment_factor_id agar signature deterministik.
@@ -1209,17 +1197,15 @@ class AssessmentService
             $config
                 ->items
                 ->sortBy(
-                    fn ($item): int =>
-                        (int) $item
-                            ->assessment_factor_id
+                    fn ($item): int => (int) $item
+                        ->assessment_factor_id
                 )
                 ->values()
                 ->map(
                     function ($item): array {
                         return [
-                            'assessment_factor_id' =>
-                                (int) $item
-                                    ->assessment_factor_id,
+                            'assessment_factor_id' => (int) $item
+                                ->assessment_factor_id,
 
                             /*
                             |--------------------------------------------------------------------------
@@ -1233,24 +1219,21 @@ class AssessmentService
                             |--------------------------------------------------------------------------
                             */
 
-                            'weight' =>
-                                number_format(
-                                    (float) $item
-                                        ->weight,
-                                    4,
-                                    '.',
-                                    ''
-                                ),
+                            'weight' => number_format(
+                                (float) $item
+                                    ->weight,
+                                4,
+                                '.',
+                                ''
+                            ),
 
-                            'source_type' =>
-                                $item
-                                    ->factor
-                                    ?->source_type,
+                            'source_type' => $item
+                                ->factor
+                                ?->source_type,
                         ];
                     }
                 )
                 ->all();
-
 
         /*
         |--------------------------------------------------------------------------
@@ -1259,21 +1242,16 @@ class AssessmentService
         */
 
         $payload = [
-            'assessment_config_id' =>
-                (int) $config->id,
+            'assessment_config_id' => (int) $config->id,
 
-            'academic_year_id' =>
-                (int) $config
-                    ->academic_year_id,
+            'academic_year_id' => (int) $config
+                ->academic_year_id,
 
-            'semester_id' =>
-                (int) $config
-                    ->semester_id,
+            'semester_id' => (int) $config
+                ->semester_id,
 
-            'items' =>
-                $items,
+            'items' => $items,
         ];
-
 
         return hash(
             'sha256',

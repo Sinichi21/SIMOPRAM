@@ -332,6 +332,12 @@
             Sesi Absensi
         </h2>
 
+        @error('sessions')
+            <p class="mb-4 text-sm text-red-600 dark:text-red-400">
+                {{ $message }}
+            </p>
+        @enderror
+
         <div class="space-y-3">
 
             @forelse ($sessions as $session)
@@ -346,6 +352,15 @@
                     <div>
                         <div class="font-semibold">
                             {{ $session->name }}
+
+                            <span
+                                class="ml-2 inline-flex rounded-full px-2 py-0.5 text-xs font-medium
+                                    {{ $session->is_active
+                                        ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
+                                        : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300' }}"
+                            >
+                                {{ $session->is_active ? 'Aktif' : 'Nonaktif' }}
+                            </span>
                         </div>
 
                         <div class="mt-1 text-sm text-zinc-500">
@@ -373,6 +388,20 @@
                         </button>
 
                         @can('attendance_sessions.manage')
+
+                            <button
+                                type="button"
+                                wire:click="toggleSession({{ $session->id }})"
+                                wire:confirm="{{ $session->is_active
+                                    ? 'Nonaktifkan sesi ini? Data tetap tersimpan tetapi tidak akan dihitung.'
+                                    : 'Aktifkan kembali sesi ini?' }}"
+                                class="rounded-lg border px-3 py-2 text-sm
+                                    {{ $session->is_active
+                                        ? 'border-red-300 text-red-700 dark:border-red-800 dark:text-red-300'
+                                        : 'border-green-300 text-green-700 dark:border-green-800 dark:text-green-300' }}"
+                            >
+                                {{ $session->is_active ? 'Nonaktifkan' : 'Aktifkan' }}
+                            </button>
 
                             <button
                                 type="button"
@@ -424,13 +453,31 @@
             </div>
 
 
-            <input
-                type="search"
-                wire:model.live.debounce.300ms="participantSearch"
-                placeholder="Cari siswa..."
-                class="mb-4 rounded-lg border
-                       border-zinc-300 px-3 py-2"
-            >
+            <div class="mb-4 grid gap-3 md:grid-cols-2">
+                <input
+                    type="search"
+                    wire:model.live.debounce.300ms="participantSearch"
+                    placeholder="Cari siswa atau NIS..."
+                    class="w-full rounded-lg border
+                           border-zinc-300 px-3 py-2
+                           dark:border-zinc-700 dark:bg-zinc-800"
+                >
+
+                <select
+                    wire:model.live="participantClassroomId"
+                    class="w-full rounded-lg border
+                           border-zinc-300 px-3 py-2
+                           dark:border-zinc-700 dark:bg-zinc-800"
+                >
+                    <option value="">Semua Kelas</option>
+
+                    @foreach ($participantClassrooms as $classroom)
+                        <option value="{{ $classroom->id }}">
+                            {{ $classroom->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
 
 
             <div class="overflow-x-auto">
@@ -440,6 +487,7 @@
                     <thead>
                         <tr class="border-b text-zinc-500">
                             <th class="p-3">Siswa</th>
+                            <th class="p-3">Kelas</th>
                             <th class="p-3">Status</th>
                             <th class="p-3">Waktu</th>
                             <th class="p-3">Aksi</th>
@@ -468,6 +516,11 @@
                                         NIS:
                                         {{ $participant->student->nis }}
                                     </div>
+                                </td>
+
+                                <td class="p-3">
+                                    {{ $participant->student->enrollments
+                                        ->first()?->classroom?->name ?? '-' }}
                                 </td>
 
 

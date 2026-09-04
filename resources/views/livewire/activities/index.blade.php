@@ -263,6 +263,42 @@
             <div class="mt-4">
 
                 <label class="mb-2 block text-sm font-medium">
+                    Golongan Peserta
+                </label>
+
+                <p class="mb-2 text-xs text-zinc-500">
+                    Kosongkan pilihan jika kegiatan berlaku untuk semua golongan.
+                </p>
+
+                <div class="grid gap-2 md:grid-cols-3">
+
+                    @foreach ($scoutLevels as $scoutLevel)
+                        <label
+                            wire:key="activity-level-{{ $scoutLevel->id }}"
+                            class="flex items-center gap-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700"
+                        >
+                            <input
+                                type="checkbox"
+                                wire:model="scout_level_ids"
+                                value="{{ $scoutLevel->id }}"
+                            >
+
+                            <span class="text-sm">{{ $scoutLevel->name }}</span>
+                        </label>
+                    @endforeach
+
+                </div>
+
+                @error('scout_level_ids.*')
+                    <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
+                @enderror
+
+            </div>
+
+
+            <div class="mt-4">
+
+                <label class="mb-2 block text-sm font-medium">
                     Pembina
                 </label>
 
@@ -393,6 +429,19 @@
                 </option>
             </select>
 
+            <select
+                wire:model.live="filterScoutLevelId"
+                class="rounded-lg border border-zinc-300 px-3 py-2"
+            >
+                <option value="">Semua Golongan</option>
+
+                @foreach ($scoutLevels as $scoutLevel)
+                    <option value="{{ $scoutLevel->id }}">
+                        {{ $scoutLevel->name }}
+                    </option>
+                @endforeach
+            </select>
+
         </div>
 
 
@@ -429,6 +478,10 @@
 
                                 <div class="text-xs text-zinc-500">
                                     {{ $activity->academicYear?->name }}
+                                </div>
+
+                                <div class="text-xs text-zinc-500">
+                                    {{ $activity->scoutLevels->pluck('name')->join(', ') ?: 'Semua Golongan' }}
                                 </div>
                             </td>
 

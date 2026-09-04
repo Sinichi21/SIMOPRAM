@@ -548,33 +548,59 @@
                 >
 
                     {{-- Student --}}
-                    <select
-                        wire:model="memberStudentId"
-                        class="rounded-lg border
-                               border-zinc-300 px-3 py-2
-                               dark:border-zinc-700
-                               dark:bg-zinc-800"
+                    <div
+                        wire:key="member-student-selector-{{ $selectedUnit->id }}"
+                        x-data="{
+                            open: false,
+                            search: '',
+                            selectStudent(id, label) {
+                                $wire.set('memberStudentId', id);
+                                this.search = label;
+                                this.open = false;
+                            },
+                        }"
+                        x-on:click.outside="open = false"
+                        x-on:member-added.window="search = ''; open = false"
+                        class="relative"
                     >
+                        <input
+                            type="search"
+                            x-model="search"
+                            x-on:focus="open = true"
+                            x-on:input="open = true; $wire.set('memberStudentId', null)"
+                            x-on:keydown.escape="open = false"
+                            placeholder="Cari nama atau NIS siswa..."
+                            autocomplete="off"
+                            class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
+                        >
 
-                        <option value="">
-                            -- Pilih Siswa --
-                        </option>
+                        <div
+                            x-show="open"
+                            x-cloak
+                            class="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
+                        >
+                            @forelse ($eligibleStudents as $student)
+                                @php
+                                    $studentLabel = $student->name.' - '.$student->nis;
+                                @endphp
 
-                        @foreach (
-                            $eligibleStudents
-                            as $student
-                        )
+                                <button
+                                    type="button"
+                                    x-show="@js(mb_strtolower($studentLabel)).includes(search.toLowerCase())"
+                                    x-on:click="selectStudent({{ $student->id }}, @js($studentLabel))"
+                                    class="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                                >
+                                    <span class="font-medium">{{ $student->name }}</span>
+                                    <span class="text-zinc-500">— {{ $student->nis }}</span>
+                                </button>
+                            @empty
+                                <p class="px-3 py-2 text-sm text-zinc-500">
+                                    Tidak ada siswa yang dapat ditambahkan.
+                                </p>
+                            @endforelse
+                        </div>
 
-                            <option
-                                value="{{ $student->id }}"
-                            >
-                                {{ $student->name }}
-                                - {{ $student->nis }}
-                            </option>
-
-                        @endforeach
-
-                    </select>
+                    </div>
 
 
                     {{-- Position --}}

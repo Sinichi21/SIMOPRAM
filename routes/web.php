@@ -1,10 +1,11 @@
 <?php
 
+use App\Http\Controllers\LpjReportController;
+use App\Http\Controllers\PublishedDocumentController;
 use App\Http\Controllers\ReportPdfController;
+use App\Http\Controllers\ReportVerificationController;
 use App\Http\Controllers\SchoolSwitchController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ReportVerificationController;
-use App\Http\Controllers\PublishedDocumentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -49,7 +50,6 @@ Route::get(
     ->name(
         'reports.verify'
     );
-
 
 /*
 |--------------------------------------------------------------------------
@@ -256,6 +256,19 @@ Route::middleware([
             ->name(
                 'student-accounts.manage'
             );
+
+        Route::get(
+            '/master/pembina/{coachId}/akun',
+            function (int $coachId) {
+                return view('master.coach-account', compact('coachId'));
+            }
+        )
+            ->middleware('can:coach_accounts.manage')
+            ->name('coach-accounts.manage');
+
+        Route::view('/admin/persetujuan-user', 'admin.user-approvals')
+            ->middleware('can:user_approvals.manage')
+            ->name('user-approvals.index');
 
         Route::view(
             '/absensi-saya',
@@ -466,6 +479,14 @@ Route::middleware([
                 'reports.attendance.pdf'
             );
 
+        Route::view('/laporan/lpj', 'reports.lpj')
+            ->middleware('can:reports.lpj.view')
+            ->name('reports.lpj');
+
+        Route::get('/laporan/lpj/pdf', LpjReportController::class)
+            ->middleware('can:reports.export')
+            ->name('reports.lpj.pdf');
+
         Route::view(
             '/pengaturan/dokumen-sekolah',
             'settings.school-documents'
@@ -571,7 +592,6 @@ Route::middleware([
                 'reports.published-documents.index'
             );
 
-
         Route::get(
             '/laporan/dokumen-terbit/{code}',
             [
@@ -589,7 +609,6 @@ Route::middleware([
             ->name(
                 'reports.published-documents.show'
             );
-
 
         Route::get(
             '/laporan/dokumen-terbit/{code}/download',

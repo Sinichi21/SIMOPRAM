@@ -80,6 +80,14 @@ class Activity extends Model
             ->withTimestamps();
     }
 
+    public function scoutLevels(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            ScoutLevel::class,
+            'activity_scout_level'
+        )->withTimestamps();
+    }
+
     public function attendanceSessions(): HasMany
     {
         return $this->hasMany(

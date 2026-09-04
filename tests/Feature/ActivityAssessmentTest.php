@@ -6,6 +6,7 @@ use App\Models\Activity;
 use App\Models\ActivityAssessment;
 use App\Models\AssessmentFactor;
 use App\Models\School;
+use App\Models\ScoutLevel;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -87,4 +88,52 @@ test('attendance factor cannot be used for an activity assessment', function () 
         ->toThrow(ModelNotFoundException::class);
 
     expect(ActivityAssessment::query()->count())->toBe(0);
+});
+
+test('activity assessments can be filtered by scout level while shared activities remain visible', function () {
+    ['user' => $user, 'activity' => $sharedActivity] = createActivityAssessmentContext();
+    $siaga = ScoutLevel::query()->create([
+        'code' => 'SIAGA',
+        'name' => 'Siaga',
+        'sort_order' => 1,
+    ]);
+    $penggalang = ScoutLevel::query()->create([
+        'code' => 'PENGGALANG',
+        'name' => 'Penggalang',
+        'sort_order' => 2,
+    ]);
+    $penggalangActivity = Activity::factory()->create([
+        'school_id' => $sharedActivity->school_id,
+        'academic_year_id' => $sharedActivity->academic_year_id,
+        'created_by' => $user->id,
+        'title' => 'Latihan Khusus Penggalang',
+    ]);
+    $penggalangActivity->scoutLevels()->attach($penggalang);
+    $factor = AssessmentFactor::query()->create([
+        'name' => 'Keterampilan',
+        'code' => 'SKILL-FILTER',
+        'source_type' => 'manual',
+        'is_active' => true,
+    ]);
+
+    foreach ([$sharedActivity, $penggalangActivity] as $activity) {
+        ActivityAssessment::query()->create([
+            'activity_id' => $activity->id,
+            'assessment_factor_id' => $factor->id,
+            'title' => 'Nilai '.$activity->title,
+            'mode' => 'individual',
+            'status' => 'draft',
+            'created_by' => $user->id,
+        ]);
+    }
+
+    Livewire::test(Index::class)
+        ->set('scoutLevelId', (string) $siaga->id)
+        ->assertSee('Nilai Perkemahan Pengujian')
+        ->assertDontSee('Nilai Latihan Khusus Penggalang');
+
+    Livewire::test(Index::class)
+        ->set('scoutLevelId', (string) $penggalang->id)
+        ->assertSee('Nilai Perkemahan Pengujian')
+        ->assertSee('Nilai Latihan Khusus Penggalang');
 });

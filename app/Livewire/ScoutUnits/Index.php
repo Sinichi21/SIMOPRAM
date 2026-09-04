@@ -36,7 +36,6 @@ class Index extends Component
 
     public bool $is_active = true;
 
-
     /*
     |--------------------------------------------------------------------------
     | Filter
@@ -48,7 +47,6 @@ class Index extends Component
     public ?int $filterAcademicYearId = null;
 
     public ?int $filterScoutLevelId = null;
-
 
     /*
     |--------------------------------------------------------------------------
@@ -63,7 +61,6 @@ class Index extends Component
     public string $memberPosition = 'member';
 
     public string $memberJoinedAt = '';
-
 
     public function mount(): void
     {
@@ -81,7 +78,6 @@ class Index extends Component
             now()->toDateString();
     }
 
-
     protected function schoolId(): int
     {
         $schoolId = app(
@@ -96,7 +92,6 @@ class Index extends Component
 
         return $schoolId;
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -122,7 +117,6 @@ class Index extends Component
         };
     }
 
-
     /*
     |--------------------------------------------------------------------------
     | Validation Unit
@@ -142,11 +136,10 @@ class Index extends Component
                     'academic_years',
                     'id'
                 )->where(
-                    fn ($query) =>
-                        $query->where(
-                            'school_id',
-                            $schoolId
-                        )
+                    fn ($query) => $query->where(
+                        'school_id',
+                        $schoolId
+                    )
                 ),
             ],
 
@@ -170,20 +163,19 @@ class Index extends Component
                     'name'
                 )
                     ->where(
-                        fn ($query) =>
-                            $query
-                                ->where(
-                                    'school_id',
-                                    $schoolId
-                                )
-                                ->where(
-                                    'academic_year_id',
-                                    $this->academic_year_id
-                                )
-                                ->where(
-                                    'scout_level_id',
-                                    $this->scout_level_id
-                                )
+                        fn ($query) => $query
+                            ->where(
+                                'school_id',
+                                $schoolId
+                            )
+                            ->where(
+                                'academic_year_id',
+                                $this->academic_year_id
+                            )
+                            ->where(
+                                'scout_level_id',
+                                $this->scout_level_id
+                            )
                     )
                     ->ignore(
                         $this->editingId
@@ -201,7 +193,6 @@ class Index extends Component
             ],
         ];
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -252,26 +243,21 @@ class Index extends Component
             ): void {
 
                 $data = [
-                    'academic_year_id' =>
-                        $academicYear->id,
+                    'academic_year_id' => $academicYear->id,
 
-                    'scout_level_id' =>
-                        $scoutLevel->id,
+                    'scout_level_id' => $scoutLevel->id,
 
-                    'name' =>
-                        trim(
-                            $validated['name']
-                        ),
+                    'name' => trim(
+                        $validated['name']
+                    ),
 
-                    'unit_type' =>
-                        $unitType,
+                    'unit_type' => $unitType,
 
-                    'description' =>
-                        filled(
-                            $validated[
-                                'description'
-                            ]
-                        )
+                    'description' => filled(
+                        $validated[
+                            'description'
+                        ]
+                    )
                             ? trim(
                                 $validated[
                                     'description'
@@ -279,8 +265,7 @@ class Index extends Component
                             )
                             : null,
 
-                    'is_active' =>
-                        $validated[
+                    'is_active' => $validated[
                             'is_active'
                         ],
                 ];
@@ -319,7 +304,6 @@ class Index extends Component
         $this->resetUnitForm();
     }
 
-
     public function editUnit(int $id): void
     {
         abort_unless(
@@ -353,12 +337,10 @@ class Index extends Component
         $this->resetValidation();
     }
 
-
     public function cancelUnitEdit(): void
     {
         $this->resetUnitForm();
     }
-
 
     protected function resetUnitForm(): void
     {
@@ -384,7 +366,6 @@ class Index extends Component
         $this->resetValidation();
     }
 
-
     /*
     |--------------------------------------------------------------------------
     | Toggle Unit
@@ -405,8 +386,7 @@ class Index extends Component
             ->findOrFail($id);
 
         $unit->update([
-            'is_active' =>
-                ! $unit->is_active,
+            'is_active' => ! $unit->is_active,
         ]);
 
         session()->flash(
@@ -414,7 +394,6 @@ class Index extends Component
             'Status Regu/Barung berhasil diperbarui.'
         );
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -439,7 +418,6 @@ class Index extends Component
 
         $this->resetValidation();
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -472,11 +450,10 @@ class Index extends Component
                     'students',
                     'id'
                 )->where(
-                    fn ($query) =>
-                        $query->where(
-                            'school_id',
-                            $schoolId
-                        )
+                    fn ($query) => $query->where(
+                        'school_id',
+                        $schoolId
+                    )
                 ),
             ],
 
@@ -505,7 +482,6 @@ class Index extends Component
                 $this->memberStudentId
             );
 
-
         /*
         |--------------------------------------------------------------------------
         | Pastikan Golongan Siswa Sesuai Unit
@@ -533,7 +509,6 @@ class Index extends Component
             422,
             'Golongan Pramuka siswa tidak sesuai dengan Regu/Barung.'
         );
-
 
         /*
         |--------------------------------------------------------------------------
@@ -577,7 +552,6 @@ class Index extends Component
             'Siswa sudah menjadi anggota unit lain pada tahun ajaran ini.'
         );
 
-
         DB::transaction(
             function () use (
                 $unit,
@@ -607,11 +581,9 @@ class Index extends Component
                             'left_at'
                         )
                         ->update([
-                            'position' =>
-                                'member',
+                            'position' => 'member',
                         ]);
                 }
-
 
                 /*
                 |--------------------------------------------------------------------------
@@ -636,11 +608,9 @@ class Index extends Component
                             'left_at'
                         )
                         ->update([
-                            'position' =>
-                                'member',
+                            'position' => 'member',
                         ]);
                 }
-
 
                 /*
                 |--------------------------------------------------------------------------
@@ -651,11 +621,9 @@ class Index extends Component
                 $membership =
                     ScoutUnitMember::query()
                         ->firstOrNew([
-                            'scout_unit_id' =>
-                                $unit->id,
+                            'scout_unit_id' => $unit->id,
 
-                            'student_id' =>
-                                $student->id,
+                            'student_id' => $student->id,
                         ]);
 
                 if (
@@ -673,7 +641,6 @@ class Index extends Component
 
                 $membership->save();
 
-
                 /*
                 |--------------------------------------------------------------------------
                 | Leader Unit
@@ -685,8 +652,7 @@ class Index extends Component
                     'leader'
                 ) {
                     $unit->update([
-                        'leader_student_id' =>
-                            $student->id,
+                        'leader_student_id' => $student->id,
                     ]);
                 }
             }
@@ -697,12 +663,13 @@ class Index extends Component
         $this->memberPosition =
             'member';
 
+        $this->dispatch('member-added');
+
         session()->flash(
             'success',
             'Siswa berhasil ditambahkan ke Regu/Barung.'
         );
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -755,7 +722,6 @@ class Index extends Component
                             ->scout_unit_id
                     );
 
-
                 if ($position === 'leader') {
 
                     ScoutUnitMember::query()
@@ -776,15 +742,13 @@ class Index extends Component
                             'left_at'
                         )
                         ->update([
-                            'position' =>
-                                'member',
+                            'position' => 'member',
                         ]);
 
                     $unit->leader_student_id =
                         $membership
                             ->student_id;
                 }
-
 
                 if ($position === 'deputy') {
 
@@ -806,11 +770,9 @@ class Index extends Component
                             'left_at'
                         )
                         ->update([
-                            'position' =>
-                                'member',
+                            'position' => 'member',
                         ]);
                 }
-
 
                 /*
                 |--------------------------------------------------------------------------
@@ -845,7 +807,6 @@ class Index extends Component
             'Jabatan anggota berhasil diperbarui.'
         );
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -896,8 +857,7 @@ class Index extends Component
                     $membership->student_id
                 ) {
                     $unit->update([
-                        'leader_student_id' =>
-                            null,
+                        'leader_student_id' => null,
                     ]);
                 }
             }
@@ -909,12 +869,10 @@ class Index extends Component
         );
     }
 
-
     public function updatedSearch(): void
     {
         $this->resetPage();
     }
-
 
     public function updatedFilterAcademicYearId(): void
     {
@@ -924,7 +882,6 @@ class Index extends Component
             null;
     }
 
-
     public function updatedFilterScoutLevelId(): void
     {
         $this->resetPage();
@@ -932,7 +889,6 @@ class Index extends Component
         $this->selectedUnitId =
             null;
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -946,62 +902,46 @@ class Index extends Component
         return match ($unitType) {
 
             'barung' => [
-                'leader' =>
-                    'Pemimpin Barung',
+                'leader' => 'Pemimpin Barung',
 
-                'deputy' =>
-                    'Wakil Pemimpin Barung',
+                'deputy' => 'Wakil Pemimpin Barung',
 
-                'member' =>
-                    'Anggota',
+                'member' => 'Anggota',
             ],
 
             'regu' => [
-                'leader' =>
-                    'Pemimpin Regu',
+                'leader' => 'Pemimpin Regu',
 
-                'deputy' =>
-                    'Wakil Pemimpin Regu',
+                'deputy' => 'Wakil Pemimpin Regu',
 
-                'member' =>
-                    'Anggota',
+                'member' => 'Anggota',
             ],
 
             'sangga' => [
-                'leader' =>
-                    'Pemimpin Sangga',
+                'leader' => 'Pemimpin Sangga',
 
-                'deputy' =>
-                    'Wakil Pemimpin Sangga',
+                'deputy' => 'Wakil Pemimpin Sangga',
 
-                'member' =>
-                    'Anggota',
+                'member' => 'Anggota',
             ],
 
             'racana' => [
-                'leader' =>
-                    'Ketua',
+                'leader' => 'Ketua',
 
-                'deputy' =>
-                    'Wakil Ketua',
+                'deputy' => 'Wakil Ketua',
 
-                'member' =>
-                    'Anggota',
+                'member' => 'Anggota',
             ],
 
             default => [
-                'leader' =>
-                    'Pemimpin',
+                'leader' => 'Pemimpin',
 
-                'deputy' =>
-                    'Wakil',
+                'deputy' => 'Wakil',
 
-                'member' =>
-                    'Anggota',
+                'member' => 'Anggota',
             ],
         };
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -1025,7 +965,6 @@ class Index extends Component
                 )
                 ->get();
 
-
         /*
         |--------------------------------------------------------------------------
         | Unit List
@@ -1040,39 +979,35 @@ class Index extends Component
                     'leader',
                 ])
                 ->withCount([
-                    'memberships as active_members_count'
-                        => fn ($query) =>
-                            $query->whereNull(
-                                'left_at'
-                            ),
+                    'memberships as active_members_count' => fn ($query) => $query->whereNull(
+                        'left_at'
+                    ),
                 ])
                 ->when(
                     $this->filterAcademicYearId,
-                    fn ($query) =>
-                        $query->where(
-                            'academic_year_id',
-                            $this
-                                ->filterAcademicYearId
-                        )
+                    fn ($query) => $query->where(
+                        'academic_year_id',
+                        $this
+                            ->filterAcademicYearId
+                    )
                 )
                 ->when(
                     $this->filterScoutLevelId,
-                    fn ($query) =>
-                        $query->where(
-                            'scout_level_id',
-                            $this
-                                ->filterScoutLevelId
-                        )
+                    fn ($query) => $query->where(
+                        'scout_level_id',
+                        $this
+                            ->filterScoutLevelId
+                    )
                 )
                 ->when(
                     $this->search,
                     function ($query): void {
 
                         $search =
-                            '%' .
+                            '%'.
                             trim(
                                 $this->search
-                            ) .
+                            ).
                             '%';
 
                         $query->where(
@@ -1084,7 +1019,6 @@ class Index extends Component
                 )
                 ->orderBy('name')
                 ->paginate(10);
-
 
         /*
         |--------------------------------------------------------------------------
@@ -1098,7 +1032,6 @@ class Index extends Component
 
         $positionOptions = [];
 
-
         if ($this->selectedUnitId) {
 
             $selectedUnit =
@@ -1108,26 +1041,24 @@ class Index extends Component
                         'scoutLevel',
                         'leader',
 
-                        'memberships' =>
-                            function ($query): void {
+                        'memberships' => function ($query): void {
 
-                                $query
-                                    ->whereNull(
-                                        'left_at'
-                                    )
-                                    ->with(
-                                        'student'
-                                    )
-                                    ->orderBy(
-                                        'position'
-                                    );
-                            },
+                            $query
+                                ->whereNull(
+                                    'left_at'
+                                )
+                                ->with(
+                                    'student'
+                                )
+                                ->orderBy(
+                                    'position'
+                                );
+                        },
                     ])
                     ->find(
                         $this
                             ->selectedUnitId
                     );
-
 
             if ($selectedUnit) {
 
@@ -1210,7 +1141,6 @@ class Index extends Component
                     );
             }
         }
-
 
         return view(
             'livewire.scout-units.index',

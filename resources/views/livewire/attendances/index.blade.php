@@ -7,11 +7,41 @@
     </div>
 
     <flux:card class="space-y-4">
-        <flux:input
-            wire:model.live.debounce.300ms="search"
-            icon="magnifying-glass"
-            placeholder="Cari kegiatan atau lokasi..."
-        />
+        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <flux:input
+                wire:model.live.debounce.300ms="search"
+                icon="magnifying-glass"
+                placeholder="Cari kegiatan atau lokasi..."
+            />
+
+            <flux:select wire:model.live="filterAcademicYearId">
+                <option value="">Semua Tahun Ajaran</option>
+
+                @foreach ($academicYears as $academicYear)
+                    <option value="{{ $academicYear->id }}">
+                        {{ $academicYear->name }}
+                    </option>
+                @endforeach
+            </flux:select>
+
+            <flux:select wire:model.live="filterSemesterId">
+                <option value="">Semua Semester</option>
+
+                @foreach ($semesters as $semester)
+                    <option value="{{ $semester->id }}">
+                        {{ $semester->name }}
+                    </option>
+                @endforeach
+            </flux:select>
+
+            <flux:select wire:model.live="filterStatus">
+                <option value="">Semua Status</option>
+                <option value="draft">Draft</option>
+                <option value="published">Dipublikasikan</option>
+                <option value="completed">Selesai</option>
+                <option value="cancelled">Dibatalkan</option>
+            </flux:select>
+        </div>
 
         <flux:table>
             <flux:table.columns>

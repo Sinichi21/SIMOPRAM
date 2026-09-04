@@ -165,22 +165,17 @@ class ReportPdfController extends Controller
         $data =
             $gradeReportService
                 ->getData(
-                    academicYearId:
-                        (int) $academicYear->id,
+                    academicYearId: (int) $academicYear->id,
 
-                    semesterId:
-                        (int) $semester->id,
+                    semesterId: (int) $semester->id,
 
-                    classroomId:
-                        $classroom
+                    classroomId: $classroom
                             ? (int) $classroom->id
                             : null,
 
-                    search:
-                        '',
+                    search: '',
 
-                    closureId:
-                        $closureId
+                    closureId: $closureId
                 );
 
         /*
@@ -257,16 +252,13 @@ class ReportPdfController extends Controller
             $verification =
                 $reportVerificationService
                     ->issue(
-                        closure:
-                            $selectedClosure,
+                        closure: $selectedClosure,
 
-                        documentType:
-                            'grades',
+                        documentType: 'grades',
 
-                        issuedBy:
-                            $request
-                                ->user()
-                                ?->id
+                        issuedBy: $request
+                            ->user()
+                            ?->id
                     );
 
             $verificationUrl =
@@ -286,40 +278,30 @@ class ReportPdfController extends Controller
             array_merge(
                 $data,
                 [
-                    'school' =>
-                        $school,
+                    'school' => $school,
 
-                    'academicYear' =>
-                        $academicYear,
+                    'academicYear' => $academicYear,
 
-                    'semester' =>
-                        $semester,
+                    'semester' => $semester,
 
-                    'classroom' =>
-                        $classroom,
+                    'classroom' => $classroom,
 
-                    'documentSetting' =>
-                        $documentSetting,
+                    'documentSetting' => $documentSetting,
 
-                    'reportGeneratedAt' =>
-                        $verification
-                            ?->issued_at
+                    'reportGeneratedAt' => $verification
+                        ?->issued_at
                         ?? now(),
 
-                    'reportSourceLabel' =>
-                        $reportSource
+                    'reportSourceLabel' => $reportSource
                             === 'snapshot'
                                 ? 'Snapshot Resmi'
                                 : 'Data Berjalan',
 
-                    'verification' =>
-                        $verification,
+                    'verification' => $verification,
 
-                    'verificationUrl' =>
-                        $verificationUrl,
+                    'verificationUrl' => $verificationUrl,
 
-                    'verificationQrDataUri' =>
-                        $verificationQrDataUri,
+                    'verificationQrDataUri' => $verificationQrDataUri,
                 ]
             );
 
@@ -355,7 +337,7 @@ class ReportPdfController extends Controller
             &&
             $selectedClosure
                 ? '-v'
-                    . $selectedClosure->version
+                    .$selectedClosure->version
                 : '';
 
         $filenameTimestamp =
@@ -370,13 +352,13 @@ class ReportPdfController extends Controller
 
         $filename =
             'rekap-nilai-'
-            . Str::slug(
+            .Str::slug(
                 $school->name
             )
-            . $versionSuffix
-            . '-'
-            . $filenameTimestamp
-            . '.pdf';
+            .$versionSuffix
+            .'-'
+            .$filenameTimestamp
+            .'.pdf';
 
         /*
         |--------------------------------------------------------------------------
@@ -396,14 +378,11 @@ class ReportPdfController extends Controller
 
                 $reportVerificationService
                     ->archivePdf(
-                        verification:
-                            $verification,
+                        verification: $verification,
 
-                        binary:
-                            $binary,
+                        binary: $binary,
 
-                        filename:
-                            $filename
+                        filename: $filename
                     );
             } catch (
                 Throwable $exception
@@ -420,26 +399,21 @@ class ReportPdfController extends Controller
                 $binary,
                 200,
                 [
-                    'Content-Type' =>
-                        'application/pdf',
+                    'Content-Type' => 'application/pdf',
 
-                    'Content-Disposition' =>
-                        'attachment; filename="'
-                        . addslashes(
+                    'Content-Disposition' => 'attachment; filename="'
+                        .addslashes(
                             $filename
                         )
-                        . '"',
+                        .'"',
 
-                    'Content-Length' =>
-                        (string) strlen(
-                            $binary
-                        ),
+                    'Content-Length' => (string) strlen(
+                        $binary
+                    ),
 
-                    'X-Content-Type-Options' =>
-                        'nosniff',
+                    'X-Content-Type-Options' => 'nosniff',
 
-                    'Cache-Control' =>
-                        'private, no-store, max-age=0',
+                    'Cache-Control' => 'private, no-store, max-age=0',
                 ]
             );
         }
@@ -517,6 +491,7 @@ class ReportPdfController extends Controller
 
         $sessionIds =
             AttendanceSession::query()
+                ->active()
                 ->whereHas(
                     'activity',
                     function ($query) use (

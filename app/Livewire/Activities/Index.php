@@ -5,6 +5,7 @@ namespace App\Livewire\Activities;
 use App\Models\AcademicYear;
 use App\Models\Activity;
 use App\Models\Coach;
+use App\Models\ScoutLevel;
 use App\Models\Semester;
 use App\Support\SchoolContext;
 use Illuminate\Support\Facades\DB;
@@ -40,9 +41,13 @@ class Index extends Component
 
     public array $coach_ids = [];
 
+    public array $scout_level_ids = [];
+
     public string $search = '';
 
     public string $filterStatus = '';
+
+    public string $filterScoutLevelId = '';
 
     public function mount(): void
     {
@@ -87,11 +92,10 @@ class Index extends Component
                     'academic_years',
                     'id'
                 )->where(
-                    fn ($query) =>
-                        $query->where(
-                            'school_id',
-                            $schoolId
-                        )
+                    fn ($query) => $query->where(
+                        'school_id',
+                        $schoolId
+                    )
                 ),
             ],
 
@@ -103,16 +107,15 @@ class Index extends Component
                     'semesters',
                     'id'
                 )->where(
-                    fn ($query) =>
-                        $query
-                            ->where(
-                                'school_id',
-                                $schoolId
-                            )
-                            ->where(
-                                'academic_year_id',
-                                $this->academic_year_id
-                            )
+                    fn ($query) => $query
+                        ->where(
+                            'school_id',
+                            $schoolId
+                        )
+                        ->where(
+                            'academic_year_id',
+                            $this->academic_year_id
+                        )
                 ),
             ],
 
@@ -183,17 +186,25 @@ class Index extends Component
                     'coaches',
                     'id'
                 )->where(
-                    fn ($query) =>
-                        $query
-                            ->where(
-                                'school_id',
-                                $schoolId
-                            )
-                            ->where(
-                                'is_active',
-                                true
-                            )
+                    fn ($query) => $query
+                        ->where(
+                            'school_id',
+                            $schoolId
+                        )
+                        ->where(
+                            'is_active',
+                            true
+                        )
                 ),
+            ],
+
+            'scout_level_ids' => [
+                'array',
+            ],
+
+            'scout_level_ids.*' => [
+                'integer',
+                Rule::exists('scout_levels', 'id'),
             ],
         ];
     }
@@ -220,43 +231,32 @@ class Index extends Component
             ): void {
 
                 $data = [
-                    'academic_year_id' =>
-                        $validated['academic_year_id'],
+                    'academic_year_id' => $validated['academic_year_id'],
 
-                    'semester_id' =>
-                        $validated['semester_id']
+                    'semester_id' => $validated['semester_id']
                         ?: null,
 
-                    'title' =>
-                        trim($validated['title']),
+                    'title' => trim($validated['title']),
 
-                    'activity_type' =>
-                        $validated['activity_type'],
+                    'activity_type' => $validated['activity_type'],
 
-                    'description' =>
-                        filled($validated['description'])
+                    'description' => filled($validated['description'])
                             ? trim($validated['description'])
                             : null,
 
-                    'location' =>
-                        filled($validated['location'])
+                    'location' => filled($validated['location'])
                             ? trim($validated['location'])
                             : null,
 
-                    'start_at' =>
-                        $validated['start_at'],
+                    'start_at' => $validated['start_at'],
 
-                    'end_at' =>
-                        $validated['end_at'],
+                    'end_at' => $validated['end_at'],
 
-                    'status' =>
-                        $validated['status'],
+                    'status' => $validated['status'],
 
-                    'is_public' =>
-                        $validated['is_public'],
+                    'is_public' => $validated['is_public'],
 
-                    'published_at' =>
-                        $validated['status'] ===
+                    'published_at' => $validated['status'] ===
                         'published'
                             ? now()
                             : null,
@@ -280,8 +280,7 @@ class Index extends Component
                 $syncData = [];
 
                 foreach (
-                    $validated['coach_ids']
-                    as $coachId
+                    $validated['coach_ids'] as $coachId
                 ) {
                     $syncData[$coachId] = [
                         'school_id' => $schoolId,
@@ -292,6 +291,10 @@ class Index extends Component
                 $activity
                     ->coaches()
                     ->sync($syncData);
+
+                $activity
+                    ->scoutLevels()
+                    ->sync($validated['scout_level_ids']);
             }
         );
 
@@ -315,7 +318,10 @@ class Index extends Component
         );
 
         $activity = Activity::query()
-            ->with('coaches')
+            ->with([
+                'coaches',
+                'scoutLevels',
+            ])
             ->findOrFail($id);
 
         $this->editingId =
@@ -361,6 +367,13 @@ class Index extends Component
                     fn ($id) => (string) $id
                 )
                 ->toArray();
+
+        $this->scout_level_ids =
+            $activity
+                ->scoutLevels
+                ->pluck('id')
+                ->map(fn ($id): string => (string) $id)
+                ->all();
 
         $this->resetValidation();
     }
@@ -410,6 +423,7 @@ class Index extends Component
             'description',
             'location',
             'coach_ids',
+            'scout_level_ids',
         ]);
 
         $this->academic_year_id =
@@ -444,6 +458,11 @@ class Index extends Component
         $this->resetPage();
     }
 
+    public function updatedFilterScoutLevelId(): void
+    {
+        $this->resetPage();
+    }
+
     public function render()
     {
         $academicYears =
@@ -455,11 +474,10 @@ class Index extends Component
             Semester::query()
                 ->when(
                     $this->academic_year_id,
-                    fn ($query) =>
-                        $query->where(
-                            'academic_year_id',
-                            $this->academic_year_id
-                        )
+                    fn ($query) => $query->where(
+                        'academic_year_id',
+                        $this->academic_year_id
+                    )
                 )
                 ->orderBy('semester_number')
                 ->get();
@@ -470,19 +488,26 @@ class Index extends Component
                 ->orderBy('name')
                 ->get();
 
+        $scoutLevels =
+            ScoutLevel::query()
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get();
+
         $activities =
             Activity::query()
                 ->with([
                     'academicYear',
                     'semester',
                     'coaches',
+                    'scoutLevels',
                 ])
                 ->when(
                     $this->search,
                     function ($query): void {
                         $search =
-                            '%' .
-                            trim($this->search) .
+                            '%'.
+                            trim($this->search).
                             '%';
 
                         $query->where(
@@ -504,11 +529,27 @@ class Index extends Component
                 )
                 ->when(
                     $this->filterStatus,
-                    fn ($query) =>
+                    fn ($query) => $query->where(
+                        'status',
+                        $this->filterStatus
+                    )
+                )
+                ->when(
+                    $this->filterScoutLevelId,
+                    function ($query): void {
                         $query->where(
-                            'status',
-                            $this->filterStatus
-                        )
+                            function ($query): void {
+                                $query
+                                    ->whereDoesntHave('scoutLevels')
+                                    ->orWhereHas(
+                                        'scoutLevels',
+                                        fn ($query) => $query->whereKey(
+                                            (int) $this->filterScoutLevelId
+                                        )
+                                    );
+                            }
+                        );
+                    }
                 )
                 ->orderByDesc('start_at')
                 ->paginate(10);
@@ -519,7 +560,7 @@ class Index extends Component
                 'activities',
                 'academicYears',
                 'semesters',
-                'coaches'
+                'coaches', 'scoutLevels'
             )
         );
     }

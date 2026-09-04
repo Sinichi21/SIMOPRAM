@@ -535,6 +535,16 @@
 
                                 <div class="flex gap-2">
 
+                                    @can('coach_accounts.manage')
+                                        <a
+                                            href="{{ route('coach-accounts.manage', $coach->id) }}"
+                                            wire:navigate
+                                            class="rounded-lg border border-zinc-300 px-3 py-1.5 dark:border-zinc-700"
+                                        >
+                                            {{ $coach->user_id ? 'Kelola Akun' : 'Buat Akun' }}
+                                        </a>
+                                    @endcan
+
                                     @can('coaches.update')
 
                                         <button

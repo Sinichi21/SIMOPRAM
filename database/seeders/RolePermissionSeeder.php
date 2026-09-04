@@ -93,6 +93,7 @@ class RolePermissionSeeder extends Seeder
             'reports.activities',
             'reports.grades.view',
             'reports.attendance.view',
+            'reports.lpj.view',
             'reports.export',
             'report_verifications.view',
             'report_verifications.manage',
@@ -133,6 +134,8 @@ class RolePermissionSeeder extends Seeder
             'schools.toggle',
 
             'student_accounts.manage',
+            'coach_accounts.manage',
+            'user_approvals.manage',
             'attendances.self',
 
             'school_documents.view',
@@ -234,6 +237,7 @@ class RolePermissionSeeder extends Seeder
             'reports.activities',
             'reports.grades.view',
             'reports.attendance.view',
+            'reports.lpj.view',
             'reports.export',
 
             'academic_years.view',
@@ -257,7 +261,7 @@ class RolePermissionSeeder extends Seeder
 
             'attendance_score_settings.view',
             'semester_closures.view',
-            'report_verifications.view'
+            'report_verifications.view',
         ]);
 
         $student->syncPermissions([

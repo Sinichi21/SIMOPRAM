@@ -10,6 +10,7 @@ use App\Models\Classroom;
 use App\Models\ScoutUnit;
 use App\Models\Student;
 use App\Services\AttendanceService;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
 
@@ -48,6 +49,8 @@ class Manage extends Component
     public bool $is_active = true;
 
     public string $participantSearch = '';
+
+    public string $participantClassroomId = '';
 
     public function mount(
         int $activityId
@@ -207,20 +210,42 @@ class Manage extends Component
                 $this->activityId
             );
 
+        $openAt = Carbon::parse($validated['open_at']);
+        $closeAt = Carbon::parse($validated['close_at']);
+
+        if (
+            $validated['is_active']
+            && AttendanceSession::query()
+                ->active()
+                ->where('activity_id', $activity->id)
+                ->when(
+                    $this->editingSessionId,
+                    fn ($query) => $query->whereKeyNot(
+                        $this->editingSessionId
+                    )
+                )
+                ->where('open_at', '<', $closeAt)
+                ->where('close_at', '>', $openAt)
+                ->exists()
+        ) {
+            $this->addError(
+                'open_at',
+                'Waktu sesi bertabrakan dengan sesi aktif lain pada kegiatan ini.'
+            );
+
+            return;
+        }
+
         $data = [
-            'activity_id' =>
-                $activity->id,
+            'activity_id' => $activity->id,
 
-            'name' =>
-                trim($validated['name']),
+            'name' => trim($validated['name']),
 
-            'participant_scope' =>
-                $validated[
+            'participant_scope' => $validated[
                     'participant_scope'
                 ],
 
-            'participant_scope_id' =>
-                $validated[
+            'participant_scope_id' => $validated[
                     'participant_scope'
                 ] === 'all'
                     ? null
@@ -228,46 +253,36 @@ class Manage extends Component
                         'participant_scope_id'
                     ],
 
-            'open_at' =>
-                $validated['open_at'],
+            'open_at' => $validated['open_at'],
 
-            'late_after' =>
-                $validated['late_after']
+            'late_after' => $validated['late_after']
                 ?: null,
 
-            'close_at' =>
-                $validated['close_at'],
+            'close_at' => $validated['close_at'],
 
-            'allow_manual' =>
-                $validated['allow_manual'],
+            'allow_manual' => $validated['allow_manual'],
 
-            'allow_self_checkin' =>
-                $validated[
+            'allow_self_checkin' => $validated[
                     'allow_self_checkin'
                 ],
 
-            'latitude' =>
-                $validated['latitude']
+            'latitude' => $validated['latitude']
                 !== ''
                     ? $validated['latitude']
                     : null,
 
-            'longitude' =>
-                $validated['longitude']
+            'longitude' => $validated['longitude']
                 !== ''
                     ? $validated['longitude']
                     : null,
 
-            'radius_m' =>
-                $validated['radius_m'],
+            'radius_m' => $validated['radius_m'],
 
-            'max_accuracy_m' =>
-                $validated[
+            'max_accuracy_m' => $validated[
                     'max_accuracy_m'
                 ],
 
-            'is_active' =>
-                $validated['is_active'],
+            'is_active' => $validated['is_active'],
         ];
 
         if ($this->editingSessionId) {
@@ -354,6 +369,10 @@ class Manage extends Component
 
         $this->selectedSessionId =
             $id;
+
+        $this->participantSearch = '';
+
+        $this->participantClassroomId = '';
     }
 
     public function editSession(
@@ -434,6 +453,10 @@ class Manage extends Component
 
         $session =
             AttendanceSession::query()
+                ->where(
+                    'activity_id',
+                    $this->activityId
+                )
                 ->findOrFail(
                     $this->selectedSessionId
                 );
@@ -469,12 +492,44 @@ class Manage extends Component
 
         $session =
             AttendanceSession::query()
+                ->where(
+                    'activity_id',
+                    $this->activityId
+                )
                 ->findOrFail($id);
 
+        if (
+            ! $session->is_active
+            && AttendanceSession::query()
+                ->active()
+                ->where('activity_id', $this->activityId)
+                ->whereKeyNot($session->id)
+                ->where('open_at', '<', $session->close_at)
+                ->where('close_at', '>', $session->open_at)
+                ->exists()
+        ) {
+            $this->addError(
+                'sessions',
+                'Sesi tidak dapat diaktifkan karena waktunya bertabrakan dengan sesi aktif lain.'
+            );
+
+            return;
+        }
+
         $session->update([
-            'is_active' =>
-                ! $session->is_active,
+            'is_active' => ! $session->is_active,
         ]);
+
+        if (! $session->is_active) {
+            $this->selectedSessionId = null;
+        }
+
+        session()->flash(
+            'success',
+            $session->is_active
+                ? 'Sesi absensi berhasil diaktifkan.'
+                : 'Sesi absensi dinonaktifkan dan tidak akan dihitung.'
+        );
     }
 
     public function cancelEdit(): void
@@ -580,6 +635,8 @@ class Manage extends Component
 
         $participants = collect();
 
+        $participantClassrooms = collect();
+
         $attendanceByStudent =
             collect();
 
@@ -596,9 +653,35 @@ class Manage extends Component
                     );
 
             if ($selectedSession) {
+                $participantClassrooms = Classroom::query()
+                    ->whereHas(
+                        'enrollments',
+                        fn ($query) => $query
+                            ->where(
+                                'academic_year_id',
+                                $activity->academic_year_id
+                            )
+                            ->whereHas(
+                                'student.attendanceParticipations',
+                                fn ($query) => $query->where(
+                                    'attendance_session_id',
+                                    $selectedSession->id
+                                )
+                            )
+                    )
+                    ->orderBy('name')
+                    ->get();
+
                 $participants =
                     AttendanceSessionParticipant::query()
-                        ->with('student')
+                        ->with([
+                            'student.enrollments' => fn ($query) => $query
+                                ->with('classroom')
+                                ->where(
+                                    'academic_year_id',
+                                    $activity->academic_year_id
+                                ),
+                        ])
                         ->where(
                             'attendance_session_id',
                             $selectedSession->id
@@ -607,28 +690,42 @@ class Manage extends Component
                             $this->participantSearch,
                             function ($query): void {
                                 $search =
-                                    '%' .
+                                    '%'.
                                     trim(
                                         $this->participantSearch
-                                    ) .
+                                    ).
                                     '%';
 
                                 $query->whereHas(
                                     'student',
-                                    fn ($studentQuery) =>
-                                        $studentQuery
-                                            ->where(
-                                                'name',
-                                                'like',
-                                                $search
-                                            )
-                                            ->orWhere(
-                                                'nis',
-                                                'like',
-                                                $search
-                                            )
+                                    fn ($studentQuery) => $studentQuery
+                                        ->where(
+                                            'name',
+                                            'like',
+                                            $search
+                                        )
+                                        ->orWhere(
+                                            'nis',
+                                            'like',
+                                            $search
+                                        )
                                 );
                             }
+                        )
+                        ->when(
+                            $this->participantClassroomId,
+                            fn ($query) => $query->whereHas(
+                                'student.enrollments',
+                                fn ($query) => $query
+                                    ->where(
+                                        'academic_year_id',
+                                        $activity->academic_year_id
+                                    )
+                                    ->where(
+                                        'classroom_id',
+                                        (int) $this->participantClassroomId
+                                    )
+                            )
                         )
                         ->get();
 
@@ -654,6 +751,7 @@ class Manage extends Component
                 'scoutUnits',
                 'selectedSession',
                 'participants',
+                'participantClassrooms',
                 'attendanceByStudent'
             )
         );

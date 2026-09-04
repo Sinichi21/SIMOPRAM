@@ -4,6 +4,7 @@ namespace App\Livewire\Assessments;
 
 use App\Models\AssessmentConfig;
 use App\Models\FinalGrade;
+use App\Models\ScoutLevel;
 use App\Models\Student;
 use App\Models\StudentScore;
 use App\Services\AssessmentService;
@@ -15,8 +16,9 @@ class Scores extends Component
 
     public string $search = '';
 
-    public array $scores = [];
+    public string $scoutLevelId = '';
 
+    public array $scores = [];
 
     public function mount(): void
     {
@@ -35,12 +37,10 @@ class Scores extends Component
         $this->loadScores();
     }
 
-
     public function updatedConfigId(): void
     {
         $this->loadScores();
     }
-
 
     protected function loadScores(): void
     {
@@ -50,7 +50,6 @@ class Scores extends Component
             return;
         }
 
-
         $existingScores =
             StudentScore::query()
                 ->where(
@@ -59,10 +58,8 @@ class Scores extends Component
                 )
                 ->get();
 
-
         foreach (
-            $existingScores
-            as $score
+            $existingScores as $score
         ) {
             $this->scores[
                 $score->student_id
@@ -74,7 +71,6 @@ class Scores extends Component
         }
     }
 
-
     public function refreshAttendanceScores(
         AssessmentService $service
     ): void {
@@ -85,14 +81,12 @@ class Scores extends Component
             403
         );
 
-
         $config =
             AssessmentConfig::query()
                 ->with('items.factor')
                 ->findOrFail(
                     $this->configId
                 );
-
 
         $students =
             Student::query()
@@ -102,7 +96,6 @@ class Scores extends Component
                 )
                 ->get();
 
-
         foreach ($students as $student) {
             $service
                 ->syncAutomaticScores(
@@ -111,16 +104,13 @@ class Scores extends Component
                 );
         }
 
-
         $this->loadScores();
-
 
         session()->flash(
             'success',
             'Nilai kehadiran berhasil diperbarui dari data absensi.'
         );
     }
-
 
     public function saveStudent(
         int $studentId,
@@ -133,7 +123,6 @@ class Scores extends Component
             403
         );
 
-
         $config =
             AssessmentConfig::query()
                 ->with('items.factor')
@@ -141,17 +130,14 @@ class Scores extends Component
                     $this->configId
                 );
 
-
         $student =
             Student::query()
                 ->findOrFail(
                     $studentId
                 );
 
-
         foreach (
-            $config->items
-            as $item
+            $config->items as $item
         ) {
 
             if (
@@ -162,7 +148,6 @@ class Scores extends Component
                 continue;
             }
 
-
             $value =
                 $this->scores[
                     $student->id
@@ -171,7 +156,6 @@ class Scores extends Component
                         ->assessment_factor_id
                 ]
                 ?? null;
-
 
             if (
                 $value === null
@@ -186,7 +170,6 @@ class Scores extends Component
                 return;
             }
 
-
             $service->saveManualScore(
                 $config,
                 $student,
@@ -196,22 +179,18 @@ class Scores extends Component
             );
         }
 
-
         $service->syncAutomaticScores(
             $config,
             $student
         );
-
 
         session()->flash(
             'success',
             "Nilai {$student->name} berhasil disimpan."
         );
 
-
         $this->loadScores();
     }
-
 
     public function calculateStudent(
         int $studentId,
@@ -224,7 +203,6 @@ class Scores extends Component
             403
         );
 
-
         $config =
             AssessmentConfig::query()
                 ->with('items.factor')
@@ -232,26 +210,22 @@ class Scores extends Component
                     $this->configId
                 );
 
-
         $student =
             Student::query()
                 ->findOrFail(
                     $studentId
                 );
 
-
         $service->calculateFinalGrade(
             $config,
             $student
         );
-
 
         session()->flash(
             'success',
             "Nilai akhir {$student->name} berhasil dihitung."
         );
     }
-
 
     public function calculateAll(
         AssessmentService $service
@@ -263,14 +237,12 @@ class Scores extends Component
             403
         );
 
-
         $config =
             AssessmentConfig::query()
                 ->with('items.factor')
                 ->findOrFail(
                     $this->configId
                 );
-
 
         $students =
             Student::query()
@@ -280,10 +252,8 @@ class Scores extends Component
                 )
                 ->get();
 
-
         $success = 0;
         $failed = 0;
-
 
         foreach ($students as $student) {
             try {
@@ -299,13 +269,11 @@ class Scores extends Component
             }
         }
 
-
         session()->flash(
             'success',
             "Perhitungan selesai. Berhasil: {$success}, belum lengkap: {$failed}."
         );
     }
-
 
     public function render()
     {
@@ -321,7 +289,6 @@ class Scores extends Component
                 ->latest()
                 ->get();
 
-
         $selectedConfig =
             $this->configId
                 ? AssessmentConfig::query()
@@ -333,7 +300,6 @@ class Scores extends Component
                     )
                 : null;
 
-
         $students =
             Student::query()
                 ->where(
@@ -342,24 +308,22 @@ class Scores extends Component
                 )
                 ->when(
                     $selectedConfig,
-                    fn ($query) =>
-                        $query->whereHas(
-                            'enrollments',
-                            fn ($enrollment) =>
-                                $enrollment->where(
-                                    'academic_year_id',
-                                    $selectedConfig
-                                        ->academic_year_id
-                                )
+                    fn ($query) => $query->whereHas(
+                        'enrollments',
+                        fn ($enrollment) => $enrollment->where(
+                            'academic_year_id',
+                            $selectedConfig
+                                ->academic_year_id
                         )
+                    )
                 )
                 ->when(
                     $this->search,
                     function ($query): void {
                         $search =
                             '%'
-                            . trim($this->search)
-                            . '%';
+                            .trim($this->search)
+                            .'%';
 
                         $query->where(
                             function ($query) use ($search): void {
@@ -378,9 +342,29 @@ class Scores extends Component
                         );
                     }
                 )
+                ->when(
+                    $this->scoutLevelId && $selectedConfig,
+                    fn ($query) => $query->whereHas(
+                        'scoutLevelHistories',
+                        fn ($query) => $query
+                            ->where(
+                                'academic_year_id',
+                                $selectedConfig->academic_year_id
+                            )
+                            ->where(
+                                'scout_level_id',
+                                (int) $this->scoutLevelId
+                            )
+                            ->where('is_active', true)
+                    )
+                )
                 ->orderBy('name')
                 ->get();
 
+        $scoutLevels = ScoutLevel::query()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
 
         $finalGrades =
             $this->configId
@@ -395,14 +379,13 @@ class Scores extends Component
                     )
                 : collect();
 
-
         return view(
             'livewire.assessments.scores',
             compact(
                 'configs',
                 'selectedConfig',
                 'students',
-                'finalGrades'
+                'finalGrades', 'scoutLevels'
             )
         );
     }

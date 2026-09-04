@@ -13,7 +13,6 @@ use App\Support\SchoolContext;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
-use App\Services\StudentScoreWriter;
 
 class ActivityAssessmentService
 {
@@ -117,7 +116,7 @@ class ActivityAssessmentService
         );
 
         $assessment->loadMissing(
-            'activity'
+            'activity.scoutLevels'
         );
 
         if (! $assessment->activity) {
@@ -164,6 +163,22 @@ class ActivityAssessmentService
                                 ->academic_year_id
                         );
                     }
+                )
+                ->when(
+                    $activity->scoutLevels->isNotEmpty(),
+                    fn ($query) => $query->whereHas(
+                        'scoutLevelHistories',
+                        fn ($query) => $query
+                            ->where(
+                                'academic_year_id',
+                                $activity->academic_year_id
+                            )
+                            ->whereIn(
+                                'scout_level_id',
+                                $activity->scoutLevels->modelKeys()
+                            )
+                            ->where('is_active', true)
+                    )
                 )
                 ->orderBy(
                     'name'
@@ -270,6 +285,13 @@ class ActivityAssessmentService
 
         $unitQuery =
             ScoutUnit::query();
+
+        if ($activity->scoutLevels->isNotEmpty()) {
+            $unitQuery->whereIn(
+                'scout_level_id',
+                $activity->scoutLevels->modelKeys()
+            );
+        }
 
         /*
         |--------------------------------------------------------------------------
@@ -572,8 +594,8 @@ class ActivityAssessmentService
     ): void {
 
         $this->assertPeriodOpen(
-                $assessment
-            );
+            $assessment
+        );
 
         $assessment->update([
             'status' => 'draft',
@@ -1265,27 +1287,20 @@ class ActivityAssessmentService
                         app(
                             StudentScoreWriter::class
                         )->writeAutomatic(
-                            assessmentConfigId:
-                                $config->id,
+                            assessmentConfigId: $config->id,
 
-                            studentId:
-                                $studentId,
+                            studentId: $studentId,
 
-                            assessmentFactorId:
-                                $assessment->assessment_factor_id,
+                            assessmentFactorId: $assessment->assessment_factor_id,
 
-                            score:
-                                $aggregatedScore,
+                            score: $average,
 
-                            source:
-                                StudentScoreWriter::SOURCE_ACTIVITY_ASSESSMENT,
+                            source: StudentScoreWriter::SOURCE_ACTIVITY_ASSESSMENT,
 
-                            sourceVersion:
-                                null,
+                            sourceVersion: null,
 
-                            notes:
-                                'Rekap otomatis dari Penilaian Kegiatan'
-                    );
+                            notes: 'Rekap otomatis dari Penilaian Kegiatan'
+                        );
 
                     if (
                         $result[
@@ -1330,10 +1345,8 @@ class ActivityAssessmentService
             'activity'
         );
 
-
         $activity =
             $assessment->activity;
-
 
         if (
             ! $activity
@@ -1344,7 +1357,6 @@ class ActivityAssessmentService
         ) {
             return;
         }
-
 
         app(
             SemesterClosureService::class

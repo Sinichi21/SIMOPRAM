@@ -93,6 +93,7 @@ class Attendance extends Component
 
         $sessionIds =
             AttendanceSession::query()
+                ->active()
                 ->whereHas(
                     'activity',
                     function ($query): void {

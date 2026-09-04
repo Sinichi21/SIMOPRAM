@@ -20,7 +20,7 @@
 
         <div
             class="mb-5 grid gap-3
-                   md:grid-cols-2"
+                   md:grid-cols-3"
         >
 
             <input
@@ -55,6 +55,19 @@
                 <option value="published">
                     Dipublikasikan
                 </option>
+            </select>
+
+            <select
+                wire:model.live="scoutLevelId"
+                class="rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
+            >
+                <option value="">Semua Golongan</option>
+
+                @foreach ($scoutLevels as $scoutLevel)
+                    <option value="{{ $scoutLevel->id }}">
+                        {{ $scoutLevel->name }}
+                    </option>
+                @endforeach
             </select>
 
         </div>
@@ -111,6 +124,10 @@
 
                                 <div class="font-medium">
                                     {{ $activity->title }}
+
+                                    <div class="text-xs font-normal text-zinc-500">
+                                        {{ $activity->scoutLevels->pluck('name')->join(', ') ?: 'Semua Golongan' }}
+                                    </div>
                                 </div>
 
                                 <div class="text-xs text-zinc-500">
