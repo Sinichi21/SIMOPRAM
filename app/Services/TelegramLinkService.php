@@ -7,7 +7,6 @@ use App\Models\User;
 use App\Models\UserNotificationChannel;
 use App\Support\SchoolContext;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class TelegramLinkService
@@ -38,8 +37,7 @@ class TelegramLinkService
 
         if (! $botUsername) {
             throw ValidationException::withMessages([
-                'telegram' =>
-                    'TELEGRAM_BOT_USERNAME belum dikonfigurasi.',
+                'telegram' => 'TELEGRAM_BOT_USERNAME belum dikonfigurasi.',
             ]);
         }
 
@@ -63,7 +61,6 @@ class TelegramLinkService
             )
             ->delete();
 
-
         /*
         |--------------------------------------------------------------------------
         | 32 random bytes → base64url
@@ -85,25 +82,19 @@ class TelegramLinkService
                 '='
             );
 
-
         TelegramLinkToken::query()
             ->create([
-                'school_id' =>
-                    $schoolId,
+                'school_id' => $schoolId,
 
-                'user_id' =>
-                    $user->id,
+                'user_id' => $user->id,
 
-                'token_hash' =>
-                    hash(
-                        'sha256',
-                        $rawToken
-                    ),
+                'token_hash' => hash(
+                    'sha256',
+                    $rawToken
+                ),
 
-                'expires_at' =>
-                    now()->addMinutes(10),
+                'expires_at' => now()->addMinutes(10),
             ]);
-
 
         return sprintf(
             'https://t.me/%s?start=%s',
@@ -115,10 +106,9 @@ class TelegramLinkService
         );
     }
 
-
     /*
     |--------------------------------------------------------------------------
-    | Hubungkan update Telegram dengan akun SIMOPRAM
+    | Hubungkan update Telegram dengan akun SIMPRAM
     |--------------------------------------------------------------------------
     */
 
@@ -143,25 +133,21 @@ class TelegramLinkService
 
         if (! $linkToken) {
             throw ValidationException::withMessages([
-                'telegram' =>
-                    'Token penghubung Telegram tidak valid.',
+                'telegram' => 'Token penghubung Telegram tidak valid.',
             ]);
         }
 
         if ($linkToken->isUsed()) {
             throw ValidationException::withMessages([
-                'telegram' =>
-                    'Token Telegram sudah digunakan.',
+                'telegram' => 'Token Telegram sudah digunakan.',
             ]);
         }
 
         if ($linkToken->isExpired()) {
             throw ValidationException::withMessages([
-                'telegram' =>
-                    'Token Telegram sudah kedaluwarsa. Buat link baru dari SIMOPRAM.',
+                'telegram' => 'Token Telegram sudah kedaluwarsa. Buat link baru dari SIMPRAM.',
             ]);
         }
-
 
         return DB::transaction(
             function () use (
@@ -200,68 +186,52 @@ class TelegramLinkService
 
                 if ($usedByOtherUser) {
                     throw ValidationException::withMessages([
-                        'telegram' =>
-                            'Akun Telegram ini sudah terhubung dengan akun SIMOPRAM lain.',
+                        'telegram' => 'Akun Telegram ini sudah terhubung dengan akun SIMPRAM lain.',
                     ]);
                 }
-
 
                 $channel =
                     UserNotificationChannel::query()
                         ->updateOrCreate(
                             [
-                                'school_id' =>
-                                    $linkToken->school_id,
+                                'school_id' => $linkToken->school_id,
 
-                                'user_id' =>
-                                    $linkToken->user_id,
+                                'user_id' => $linkToken->user_id,
 
-                                'channel' =>
-                                    'telegram',
+                                'channel' => 'telegram',
                             ],
                             [
-                                'destination' =>
-                                    $chatId,
+                                'destination' => $chatId,
 
-                                'is_verified' =>
-                                    true,
+                                'is_verified' => true,
 
-                                'is_active' =>
-                                    true,
+                                'is_active' => true,
 
-                                'verified_at' =>
-                                    now(),
+                                'verified_at' => now(),
 
                                 'metadata' => [
-                                    'telegram_user_id' =>
-                                        $telegramUser[
+                                    'telegram_user_id' => $telegramUser[
                                             'id'
                                         ] ?? null,
 
-                                    'username' =>
-                                        $telegramUser[
+                                    'username' => $telegramUser[
                                             'username'
                                         ] ?? null,
 
-                                    'first_name' =>
-                                        $telegramUser[
+                                    'first_name' => $telegramUser[
                                             'first_name'
                                         ] ?? null,
 
-                                    'last_name' =>
-                                        $telegramUser[
+                                    'last_name' => $telegramUser[
                                             'last_name'
                                         ] ?? null,
                                 ],
                             ]
                         );
 
-
                 $linkToken->update([
-                    'used_at' =>
-                        now(),
+                    'used_at' => now(),
                 ]);
-
 
                 return $channel;
             }

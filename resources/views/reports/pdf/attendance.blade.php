@@ -342,7 +342,7 @@
     @endif
 
     <div class="footer">
-        Dicetak dari SIMOPRAM pada
+        Dicetak dari SIMPRAM pada
         {{ now()->format('d-m-Y H:i') }}.
     </div>
 

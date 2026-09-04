@@ -23,12 +23,12 @@ HEADER
         </div>
 
         <h1 class="text-2xl font-semibold">
-            Dashboard Global SIMOPRAM
+            Dashboard Global SIMPRAM
         </h1>
 
         <p class="mt-1 text-sm text-zinc-500">
             Ringkasan seluruh sekolah yang
-            terdaftar pada SIMOPRAM.
+            terdaftar pada SIMPRAM.
         </p>
 
     </div>

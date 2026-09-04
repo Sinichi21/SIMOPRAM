@@ -32,7 +32,7 @@
                 @foreach ($schools as $school)
                     <flux:select.option
                         :value="$school->id"
-                        :selected="old('requested_school_id') == $school->id"
+                        :selected="old('requested_school_id', request('school')) == $school->id"
                     >
                         {{ $school->name }}
                     </flux:select.option>

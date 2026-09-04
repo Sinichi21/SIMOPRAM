@@ -25,7 +25,7 @@
 
         <p class="mt-1 text-sm text-zinc-500">
             Hubungkan akun untuk menerima
-            notifikasi SIMOPRAM.
+            notifikasi SIMPRAM.
         </p>
 
     </div>

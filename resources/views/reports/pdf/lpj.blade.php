@@ -67,5 +67,5 @@
 @empty
     <div class="empty">Belum ada kegiatan berstatus terbit atau selesai pada periode ini.</div>
 @endforelse
-<p class="footer-note">Dokumen dibuat oleh SIMOPRAM pada {{ now()->translatedFormat('d F Y H:i') }}. Bagian keuangan tidak termasuk dalam laporan ini.</p>
+<p class="footer-note">Dokumen dibuat oleh SIMPRAM pada {{ now()->translatedFormat('d F Y H:i') }}. Bagian keuangan tidak termasuk dalam laporan ini.</p>
 </body></html>

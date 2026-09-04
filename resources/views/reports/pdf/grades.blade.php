@@ -744,7 +744,7 @@
 </table>
 
 <div class="footer">
-    Dokumen dibuat melalui SIMOPRAM.
+    Dokumen dibuat melalui SIMPRAM.
 
     @if (
         ($reportSource ?? null) === 'snapshot'

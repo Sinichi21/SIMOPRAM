@@ -8,7 +8,7 @@
 >
 
     <h1 class="text-2xl font-semibold">
-        Dashboard SIMOPRAM
+        Dashboard SIMPRAM
     </h1>
 
     <p

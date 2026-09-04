@@ -29,6 +29,11 @@ class School extends Model
         'email',
         'website',
         'logo',
+        'tagline',
+        'profile',
+        'primary_color',
+        'hero_image',
+        'registration_open',
         'timezone',
         'is_active',
     ];
@@ -39,6 +44,7 @@ class School extends Model
             'latitude' => 'decimal:7',
             'longitude' => 'decimal:7',
             'is_active' => 'boolean',
+            'registration_open' => 'boolean',
         ];
     }
 
@@ -96,6 +102,16 @@ class School extends Model
         return $this->hasMany(
             ScoutUnit::class
         );
+    }
+
+    public function activities(): HasMany
+    {
+        return $this->hasMany(Activity::class);
+    }
+
+    public function announcements(): HasMany
+    {
+        return $this->hasMany(Announcement::class);
     }
 
     public function documentSetting(): HasOne

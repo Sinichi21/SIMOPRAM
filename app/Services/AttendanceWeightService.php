@@ -18,7 +18,7 @@ class AttendanceWeightService
     |--------------------------------------------------------------------------
     |
     | Jika sekolah belum pernah membuat konfigurasi,
-    | default SIMOPRAM dianggap sebagai version 1.
+    | default SIMPRAM dianggap sebagai version 1.
     |
     */
 

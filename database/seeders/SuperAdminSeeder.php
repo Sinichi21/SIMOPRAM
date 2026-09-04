@@ -14,7 +14,7 @@ class SuperAdminSeeder extends Seeder
             [
                 'email' => env(
                     'SUPER_ADMIN_EMAIL',
-                    'admin@simopram.local'
+                    'admin@simpram.local'
                 ),
             ],
             [

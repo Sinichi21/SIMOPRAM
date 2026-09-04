@@ -7,7 +7,7 @@
 
         <p class="mt-1 text-sm text-zinc-500">
             Informasi ini digunakan pada laporan
-            dan dokumen resmi SIMOPRAM.
+            dan dokumen resmi SIMPRAM.
         </p>
     </div>
 

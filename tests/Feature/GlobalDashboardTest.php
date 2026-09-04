@@ -63,7 +63,7 @@ class GlobalDashboardTest extends TestCase
         $response
             ->assertOk()
             ->assertSee(
-                'Dashboard Global SIMOPRAM'
+                'Dashboard Global SIMPRAM'
             )
             ->assertSee(
                 'Semua Sekolah'
@@ -230,7 +230,7 @@ class GlobalDashboardTest extends TestCase
         $dashboard
             ->assertOk()
             ->assertSee(
-                'Dashboard Global SIMOPRAM'
+                'Dashboard Global SIMPRAM'
             );
     }
 
