@@ -139,8 +139,20 @@ class AssessmentSynchronizationTest extends TestCase
         AssessmentConfigItem::query()->create([
             'assessment_config_id' => $config->id,
             'assessment_factor_id' => $factor->id,
-            'weight' => 100,
+            'weight' => 50,
             'sort_order' => 1,
+        ]);
+        $attendanceFactor = AssessmentFactor::query()->create([
+            'name' => 'Kehadiran',
+            'code' => 'ATTENDANCE',
+            'source_type' => 'attendance',
+            'is_active' => true,
+        ]);
+        AssessmentConfigItem::query()->create([
+            'assessment_config_id' => $config->id,
+            'assessment_factor_id' => $attendanceFactor->id,
+            'weight' => 50,
+            'sort_order' => 2,
         ]);
         StudentScore::query()->create([
             'assessment_config_id' => $config->id,
@@ -154,13 +166,21 @@ class AssessmentSynchronizationTest extends TestCase
         $result = app(AssessmentService::class)->syncAllScores($config);
 
         expect($result)->toBe([
-            'attendance_scores' => 0,
+            'attendance_scores' => 1,
             'final_grades' => 1,
+        ]);
+        $this->assertDatabaseHas('student_scores', [
+            'assessment_config_id' => $config->id,
+            'student_id' => $student->id,
+            'assessment_factor_id' => $attendanceFactor->id,
+            'source' => 'attendance',
+            'source_version' => 1,
+            'score' => 0,
         ]);
         $this->assertDatabaseHas('final_grades', [
             'assessment_config_id' => $config->id,
             'student_id' => $student->id,
-            'final_score' => 80,
+            'final_score' => 40,
         ]);
     }
 }
