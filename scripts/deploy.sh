@@ -58,6 +58,19 @@ mkdir -p "$SHARED_DIR/storage/app/public" "$SHARED_DIR/storage/app/private"
 mkdir -p "$SHARED_DIR/storage/framework/cache/data" "$SHARED_DIR/storage/framework/sessions"
 mkdir -p "$SHARED_DIR/storage/framework/views" "$SHARED_DIR/storage/logs"
 
+for runtime_directory in \
+  "$SHARED_DIR/storage/app/public" "$SHARED_DIR/storage/app/private" \
+  "$SHARED_DIR/storage/framework" "$SHARED_DIR/storage/framework/cache/data" \
+  "$SHARED_DIR/storage/framework/sessions" "$SHARED_DIR/storage/framework/views" \
+  "$SHARED_DIR/storage/logs"; do
+  if ! write_probe="$(mktemp "$runtime_directory/.deploy-write-XXXXXX")"; then
+    echo "Deployment user cannot write to $runtime_directory."
+    echo "Ask the VPS administrator to grant the deployment user and web/worker users shared group or ACL access to this directory."
+    exit 1
+  fi
+  rm -f -- "$write_probe"
+done
+
 echo "Preparing release $RELEASE_ID"
 tar -xzf "$ARCHIVE" -C "$RELEASE_DIR"
 [[ -f "$RELEASE_DIR/artisan" && -f "$RELEASE_DIR/vendor/autoload.php" && -f "$RELEASE_DIR/public/build/manifest.json" ]]
@@ -66,7 +79,7 @@ tar -xzf "$ARCHIVE" -C "$RELEASE_DIR"
 ln -s "$SHARED_DIR/storage" "$RELEASE_DIR/storage"
 ln -s "$SHARED_DIR/.env" "$RELEASE_DIR/.env"
 mkdir -p "$RELEASE_DIR/bootstrap/cache"
-chmod -R ug+rwX "$SHARED_DIR/storage" "$RELEASE_DIR/bootstrap/cache"
+chmod -R ug+rwX "$RELEASE_DIR/bootstrap/cache"
 
 cd "$RELEASE_DIR"
 composer check-platform-reqs --no-dev

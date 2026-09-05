@@ -46,10 +46,32 @@ case "$2" in
   up) rm -f storage/framework/down ;;
 esac
 SH
-chmod +x "$TEST_DIR/bin/php" "$TEST_DIR/bin/composer"
+export REAL_CHMOD="$(command -v chmod)"
+export REAL_MKTEMP="$(command -v mktemp)"
+cat > "$TEST_DIR/bin/chmod" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+for argument in "$@"; do
+  if [[ "$argument" == */shared/storage* ]]; then
+    echo 'chmod: runtime files belong to the web process: Operation not permitted' >&2
+    exit 1
+  fi
+done
+exec "$REAL_CHMOD" "$@"
+SH
+cat > "$TEST_DIR/bin/mktemp" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${FAIL_COMMAND:-}" == storage-unwritable && "$*" == */framework/sessions/* ]]; then
+  echo 'mktemp: Permission denied' >&2
+  exit 1
+fi
+exec "$REAL_MKTEMP" "$@"
+SH
+chmod +x "$TEST_DIR/bin/php" "$TEST_DIR/bin/composer" "$TEST_DIR/bin/chmod" "$TEST_DIR/bin/mktemp"
 export PATH="$TEST_DIR/bin:$PATH"
 
-for scenario in success migrate queue:restart up missing-env; do
+for scenario in success migrate queue:restart up missing-env storage-unwritable; do
   case_dir="$TEST_DIR/$scenario"
   mkdir -p "$case_dir/shared/storage/framework" "$case_dir/releases/old"
   printf 'preserve this environment\n' > "$case_dir/shared/.env"
@@ -74,6 +96,10 @@ for scenario in success migrate queue:restart up missing-env; do
   else
     [[ "$status" != 0 ]] || fail "Failure hidden: $scenario"
     [[ "$(readlink "$case_dir/current")" == "$case_dir/releases/old" ]] || fail "Old release not restored: $scenario"
+  fi
+  if [[ "$scenario" == storage-unwritable ]]; then
+    grep -Fq 'Deployment user cannot write to' "$case_dir/output.log" || fail 'Missing actionable storage error'
+    [[ ! -f "$case_dir/commands.log" ]] || fail 'Artisan ran before checking storage access'
   fi
   [[ ! -f "$case_dir/shared/storage/framework/down" ]] || fail "Application left in maintenance: $scenario"
   [[ -f "$case_dir/releases/old/artisan" ]] || fail "Previous release deleted: $scenario"
