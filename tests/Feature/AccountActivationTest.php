@@ -131,7 +131,7 @@ test('student account directory and activation actions work without admin passwo
     $otherSchool = School::factory()->create();
     Student::factory()->create(['school_id' => $otherSchool->id, 'name' => 'Siswa Akun Lain']);
     $this->get(route('student-accounts.index'))->assertDontSee('Siswa Akun Lain');
-    Livewire::test(\App\Livewire\StudentAccounts\Manage::class, ['studentId' => $student->id])
+    Livewire::test(App\Livewire\StudentAccounts\Manage::class, ['studentId' => $student->id])
         ->assertDontSee('Konfirmasi Password')
         ->set('email', 'siswa-aktivasi@example.com')->call('createAccount')->assertHasNoErrors()
         ->call('sendLink', 'share')->assertHasNoErrors()->assertSee('Bagikan ke WhatsApp');
