@@ -7,10 +7,12 @@ use App\Models\Attendance;
 use App\Models\AttendanceSession;
 use App\Models\AttendanceSessionParticipant;
 use App\Models\Classroom;
+use App\Models\ScoutLevel;
 use App\Models\ScoutUnit;
 use App\Models\Student;
 use App\Services\AttendanceService;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
 
@@ -93,6 +95,7 @@ class Manage extends Component
                     'all',
                     'classroom',
                     'scout_unit',
+                    'scout_level',
                 ]),
             ],
 
@@ -157,6 +160,12 @@ class Manage extends Component
                 'boolean',
             ],
         ];
+    }
+
+    public function updatedParticipantScope(): void
+    {
+        $this->participant_scope_id = null;
+        $this->resetValidation('participant_scope_id');
     }
 
     public function saveSession(
@@ -318,14 +327,13 @@ class Manage extends Component
                 return;
             }
 
-            $session->update($data);
+            DB::transaction(function () use ($session, $data, $targetChanged, $attendanceService): void {
+                $session->update($data);
 
-            if ($targetChanged) {
-                $attendanceService
-                    ->syncParticipants(
-                        $session
-                    );
-            }
+                if ($targetChanged || ! $session->attendances()->exists()) {
+                    $attendanceService->syncParticipants($session);
+                }
+            });
 
             $message =
                 'Sesi absensi berhasil diperbarui.';
@@ -333,14 +341,12 @@ class Manage extends Component
             $data['created_by'] =
                 auth()->id();
 
-            $session =
-                AttendanceSession::query()
-                    ->create($data);
+            $session = DB::transaction(function () use ($data, $attendanceService): AttendanceSession {
+                $session = AttendanceSession::query()->create($data);
+                $attendanceService->syncParticipants($session);
 
-            $attendanceService
-                ->syncParticipants(
-                    $session
-                );
+                return $session;
+            });
 
             $message =
                 'Sesi absensi berhasil dibuat.';
@@ -481,7 +487,8 @@ class Manage extends Component
     }
 
     public function toggleSession(
-        int $id
+        int $id,
+        AttendanceService $attendanceService
     ): void {
         abort_unless(
             auth()->user()->can(
@@ -516,9 +523,15 @@ class Manage extends Component
             return;
         }
 
-        $session->update([
-            'is_active' => ! $session->is_active,
-        ]);
+        DB::transaction(function () use ($session, $attendanceService): void {
+            if (! $session->is_active && ! $session->attendances()->exists()) {
+                $attendanceService->syncParticipants($session);
+            }
+
+            $session->update([
+                'is_active' => ! $session->is_active,
+            ]);
+        });
 
         if (! $session->is_active) {
             $this->selectedSessionId = null;
@@ -592,6 +605,7 @@ class Manage extends Component
     {
         $activity =
             Activity::query()
+                ->with('scoutLevels')
                 ->findOrFail(
                     $this->activityId
                 );
@@ -617,8 +631,14 @@ class Manage extends Component
                 ->orderBy('name')
                 ->get();
 
+        $scoutLevels = ScoutLevel::query()
+            ->when($activity->scoutLevels->isNotEmpty(), fn ($query) => $query->whereKey($activity->scoutLevels->modelKeys()))
+            ->orderBy('sort_order')
+            ->get();
+
         $scoutUnits =
             ScoutUnit::query()
+                ->when($activity->scoutLevels->isNotEmpty(), fn ($query) => $query->whereIn('scout_level_id', $activity->scoutLevels->modelKeys()))
                 ->where(
                     'academic_year_id',
                     $activity
@@ -749,6 +769,7 @@ class Manage extends Component
                 'sessions',
                 'classrooms',
                 'scoutUnits',
+                'scoutLevels',
                 'selectedSession',
                 'participants',
                 'participantClassrooms',

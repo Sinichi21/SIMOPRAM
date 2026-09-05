@@ -23,13 +23,13 @@ test('admin can create a login account for an existing coach', function () {
 
     $user = app(CoachAccountService::class)->createAccount(
         $coach,
-        'pembina@example.com',
-        'password123'
+        'pembina@example.com'
     );
 
     expect($coach->refresh()->user_id)->toBe($user->id)
         ->and($user->system_role)->toBe('coach')
-        ->and($user->is_active)->toBeTrue();
+        ->and($user->is_active)->toBeFalse()
+        ->and($user->activation_pending)->toBeTrue();
     $this->assertDatabaseHas('school_user_memberships', [
         'school_id' => $school->id,
         'user_id' => $user->id,

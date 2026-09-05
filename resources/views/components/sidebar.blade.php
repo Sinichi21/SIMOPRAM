@@ -354,22 +354,27 @@
 
                 @endcan
 
-                @can('user_approvals.manage')
-
-                    <flux:sidebar.item
-                        icon="users"
-                        :href="route('user-approvals.index')"
-                        :current="request()->routeIs('user-approvals.*')"
-                        wire:navigate
-                    >
-                        Persetujuan User
-                    </flux:sidebar.item>
-
-                @endcan
-
             </flux:sidebar.group>
 
         </flux:sidebar.nav>
+
+        @canany(['user_approvals.manage', 'coach_accounts.manage', 'student_accounts.manage'])
+            <flux:sidebar.nav data-school-menu>
+                <flux:sidebar.group heading="Manajemen User" expandable :expanded="request()->routeIs('user-approvals.*', 'coach-accounts.*', 'student-accounts.*')" class="grid">
+                    @can('user_approvals.manage')
+                        <flux:sidebar.item icon="users" :href="route('user-approvals.index')" :current="request()->routeIs('user-approvals.*')" wire:navigate>
+                            Akun dan Persetujuan
+                        </flux:sidebar.item>
+                    @endcan
+                    @can('coach_accounts.manage')
+                        <flux:sidebar.item icon="user-group" :href="route('coach-accounts.index')" :current="request()->routeIs('coach-accounts.*')" wire:navigate>Akun Pembina</flux:sidebar.item>
+                    @endcan
+                    @can('student_accounts.manage')
+                        <flux:sidebar.item icon="users" :href="route('student-accounts.index')" :current="request()->routeIs('student-accounts.*')" wire:navigate>Akun Siswa</flux:sidebar.item>
+                    @endcan
+                </flux:sidebar.group>
+            </flux:sidebar.nav>
+        @endcanany
 
 
         {{-- =================================================

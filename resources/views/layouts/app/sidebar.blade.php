@@ -297,6 +297,7 @@ MENU MASTER DATA
 @endcan
 
 @can('user_approvals.manage')
+    <flux:sidebar.group heading="Manajemen User">
     <a
         href="{{ route('user-approvals.index') }}"
         wire:navigate
@@ -306,8 +307,9 @@ MENU MASTER DATA
             'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800' => ! request()->routeIs('user-approvals.*'),
         ])
     >
-        Persetujuan User
+        Akun dan Persetujuan
     </a>
+    </flux:sidebar.group>
 @endcan
 
 @can('attendances.self')

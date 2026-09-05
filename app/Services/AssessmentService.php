@@ -461,6 +461,7 @@ class AssessmentService
                 $config,
                 $attendanceItems,
                 $students,
+                $version,
                 &$updated
             ): void {
 
@@ -511,13 +512,13 @@ class AssessmentService
 
                                 studentId: $student->id,
 
-                                assessmentFactorId: $attendanceFactor->id,
+                                assessmentFactorId: $item->assessment_factor_id,
 
                                 score: $attendanceScore,
 
                                 source: StudentScoreWriter::SOURCE_ATTENDANCE,
 
-                                sourceVersion: $attendanceVersion,
+                                sourceVersion: $version,
 
                                 notes: 'Sinkronisasi otomatis nilai kehadiran'
                             );

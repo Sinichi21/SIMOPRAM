@@ -35,7 +35,7 @@ use Spatie\Permission\Traits\HasRoles;
 #[Fillable([
     'name', 'email', 'password', 'phone', 'system_role', 'is_active',
     'requested_school_id', 'requested_role', 'approval_status',
-    'approved_by', 'approved_at',
+    'approved_by', 'approved_at', 'activation_pending',
 ])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
@@ -54,6 +54,7 @@ class User extends Authenticatable implements PasskeyUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'activation_pending' => 'boolean',
             'approved_at' => 'datetime',
         ];
     }

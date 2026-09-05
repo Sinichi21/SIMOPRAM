@@ -30,7 +30,8 @@ test('pending student registration can be approved', function () {
 
     $pendingUser->refresh();
 
-    expect($pendingUser->is_active)->toBeTrue()
+    expect($pendingUser->is_active)->toBeFalse()
+        ->and($pendingUser->activation_pending)->toBeTrue()
         ->and($pendingUser->approval_status)->toBe('approved')
         ->and($pendingUser->student)->not->toBeNull();
     $this->assertDatabaseHas('school_user_memberships', [
@@ -44,7 +45,7 @@ test('registration cannot be approved from another school', function () {
     $school = School::factory()->create();
     $otherSchool = School::factory()->create();
     app(SchoolContext::class)->set($school);
-    $approver = User::factory()->create();
+    $approver = User::factory()->create(['system_role' => 'super_admin']);
     $pendingUser = User::factory()->create([
         'requested_school_id' => $otherSchool->id,
         'requested_role' => 'coach',
