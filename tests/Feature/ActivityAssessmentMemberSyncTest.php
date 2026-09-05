@@ -140,9 +140,15 @@ test('member synchronization cannot target a different assessment or school', fu
     $this->actingAs(User::factory()->create(['system_role' => 'super_admin']));
     ['assessment' => $assessment] = memberSyncAssessment();
     $component = Livewire::test(Score::class, ['assessmentId' => $assessment->id]);
-    $other = ActivityAssessment::factory()->team()->published()->create([
+    $otherAttributes = [
         'school_id' => $otherSchool ? School::factory()->create()->id : $assessment->school_id,
-    ]);
+    ];
+
+    if (! $otherSchool) {
+        $otherAttributes['activity_id'] = $assessment->activity_id;
+    }
+
+    $other = ActivityAssessment::factory()->team()->published()->create($otherAttributes);
     $target = $other->targets()->create([]);
 
     expect(fn () => $component->update(
@@ -182,9 +188,15 @@ test('member synchronization rejects a unit from another academic year or an ina
     ['assessment' => $assessment, 'unit' => $unit] = memberSyncAssessment();
     $target = $assessment->targets()->create(['scout_unit_id' => $unit->id]);
     memberSyncStudent($unit, 'INVALID-UNIT');
+    $nextStartYear = (int) $assessment->activity->academicYear->start_date->format('Y') + 1;
     $unit->update(match ($reason) {
         'inactive' => ['is_active' => false],
-        'wrong year' => ['academic_year_id' => AcademicYear::factory()->create(['school_id' => $assessment->school_id])->id],
+        'wrong year' => ['academic_year_id' => AcademicYear::factory()->create([
+            'school_id' => $assessment->school_id,
+            'name' => $nextStartYear.'/'.($nextStartYear + 1),
+            'start_date' => $nextStartYear.'-07-01',
+            'end_date' => ($nextStartYear + 1).'-06-30',
+        ])->id],
     });
 
     expect(fn () => app(ActivityAssessmentService::class)->syncTeamMembers($target))
