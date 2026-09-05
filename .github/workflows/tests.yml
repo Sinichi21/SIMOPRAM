@@ -60,7 +60,16 @@ jobs:
         run: composer lint:check
 
       - name: Run tests
-        run: php artisan test --compact
+        run: php artisan test --compact --log-junit=test-results.xml
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: test-results
+          path: test-results.xml
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Test deployment scripts
         run: bash scripts/test-deploy.sh

@@ -24,6 +24,9 @@ class ResetUserPassword implements ResetsUserPasswords
 
         $user->forceFill([
             'password' => $input['password'],
+            ...($user->activation_pending && $user->approval_status === 'approved'
+                ? ['is_active' => true, 'activation_pending' => false]
+                : []),
         ])->save();
     }
 }

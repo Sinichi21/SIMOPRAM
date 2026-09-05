@@ -7,9 +7,11 @@ use App\Models\AttendanceHistory;
 use App\Models\AttendanceSession;
 use App\Models\AttendanceSessionParticipant;
 use App\Models\Classroom;
+use App\Models\ScoutLevel;
 use App\Models\ScoutUnit;
 use App\Models\Student;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -34,15 +36,23 @@ class AttendanceService
             ]);
         }
 
-        $activity = $session->activity()
+        $activity = $session->activity()->with('scoutLevels')
             ->firstOrFail();
 
-        $studentIds = match (
+        $levelIds = $activity->scoutLevels->modelKeys();
+
+        if ($session->participant_scope === 'scout_level' && $levelIds !== []
+            && ! in_array((int) $session->participant_scope_id, $levelIds, true)) {
+            throw ValidationException::withMessages([
+                'participant_scope_id' => 'Golongan peserta harus sesuai dengan golongan kegiatan.',
+            ]);
+        }
+
+        $students = match (
             $session->participant_scope
         ) {
             'all' => Student::query()
-                ->where('status', 'active')
-                ->pluck('id'),
+                ->where('status', 'active'),
 
             'classroom' => $this->studentsFromClassroom(
                 $session,
@@ -54,10 +64,22 @@ class AttendanceService
                 $activity->academic_year_id
             ),
 
+            'scout_level' => $this->studentsFromScoutLevel($session, $activity->academic_year_id),
+
             default => throw ValidationException::withMessages([
                 'participant_scope' => 'Target peserta tidak valid.',
             ]),
         };
+
+        $studentIds = $students
+            ->when($levelIds !== [], fn (Builder $query) => $query->whereHas(
+                'scoutLevelHistories',
+                fn (Builder $history) => $history
+                    ->where('academic_year_id', $activity->academic_year_id)
+                    ->where('is_active', true)
+                    ->whereIn('scout_level_id', $levelIds)
+            ))
+            ->pluck('id');
 
         DB::transaction(
             function () use (
@@ -79,10 +101,11 @@ class AttendanceService
         );
     }
 
+    /** @return Builder<Student> */
     protected function studentsFromClassroom(
         AttendanceSession $session,
         int $academicYearId
-    ) {
+    ): Builder {
         if (! $session->participant_scope_id) {
             throw ValidationException::withMessages([
                 'participant_scope_id' => 'Pilih kelas.',
@@ -112,14 +135,14 @@ class AttendanceService
                         'status',
                         'active'
                     )
-            )
-            ->pluck('id');
+            );
     }
 
+    /** @return Builder<Student> */
     protected function studentsFromScoutUnit(
         AttendanceSession $session,
         int $academicYearId
-    ) {
+    ): Builder {
         if (! $session->participant_scope_id) {
             throw ValidationException::withMessages([
                 'participant_scope_id' => 'Pilih Regu / Barung.',
@@ -145,8 +168,25 @@ class AttendanceService
                         $unit->id
                     )
                     ->whereNull('left_at')
-            )
-            ->pluck('id');
+            );
+    }
+
+    /** @return Builder<Student> */
+    protected function studentsFromScoutLevel(AttendanceSession $session, int $academicYearId): Builder
+    {
+        if (! $session->participant_scope_id) {
+            throw ValidationException::withMessages(['participant_scope_id' => 'Pilih golongan Pramuka.']);
+        }
+
+        ScoutLevel::query()->findOrFail($session->participant_scope_id);
+
+        return Student::query()->where('status', 'active')->whereHas(
+            'scoutLevelHistories',
+            fn (Builder $query) => $query
+                ->where('academic_year_id', $academicYearId)
+                ->where('is_active', true)
+                ->where('scout_level_id', $session->participant_scope_id)
+        );
     }
 
     /*

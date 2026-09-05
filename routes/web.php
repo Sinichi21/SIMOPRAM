@@ -266,6 +266,14 @@ Route::middleware([
             ->middleware('can:user_approvals.manage')
             ->name('user-approvals.index');
 
+        Route::view('/admin/akun-pembina', 'admin.account-directory', ['type' => 'coach'])
+            ->middleware('can:coach_accounts.manage')
+            ->name('coach-accounts.index');
+
+        Route::view('/admin/akun-siswa', 'admin.account-directory', ['type' => 'student'])
+            ->middleware('can:student_accounts.manage')
+            ->name('student-accounts.index');
+
         Route::view(
             '/absensi-saya',
             'attendances.self'

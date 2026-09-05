@@ -1,23 +1,18 @@
 <div class="space-y-6">
     @if (session('success'))<flux:callout variant="success">{{ session('success') }}</flux:callout>@endif
     <div><flux:heading size="xl">Akun Pembina</flux:heading><flux:text>{{ $coach->name }}</flux:text></div>
-    <flux:card class="max-w-xl">
+    <flux:card class="max-w-xl space-y-4">
         @if (! $coach->user)
             <form wire:submit="createAccount" class="space-y-4">
-                <flux:heading>Buat Akun Login</flux:heading>
-                <flux:input wire:model="email" label="Email" type="email" required />
-                <flux:input wire:model="password" label="Password" type="password" required viewable />
-                <flux:input wire:model="password_confirmation" label="Konfirmasi Password" type="password" required viewable />
-                <flux:button type="submit" variant="primary">Buat Akun</flux:button>
+                <flux:heading>Hubungkan Akun</flux:heading>
+                <flux:text>Gunakan email akun yang sama jika pengguna sudah terdaftar di sekolah lain. Pengguna baru mengatur password sendiri melalui tautan aktivasi.</flux:text>
+                <flux:input wire:model="email" label="Email pengguna" type="email" required />
+                <flux:button type="submit" variant="primary">Hubungkan Akun</flux:button>
             </form>
         @else
             <flux:text>Akun terhubung: <strong>{{ $coach->user->email }}</strong></flux:text>
-            <form wire:submit="resetPassword" class="mt-6 space-y-4">
-                <flux:heading>Ubah Password</flux:heading>
-                <flux:input wire:model="password" label="Password Baru" type="password" required viewable />
-                <flux:input wire:model="password_confirmation" label="Konfirmasi Password" type="password" required viewable />
-                <flux:button type="submit" variant="primary">Ubah Password</flux:button>
-            </form>
+            <flux:text>{{ $coach->user->activation_pending ? 'Menunggu pengguna mengatur password untuk aktivasi.' : ($coach->user->is_active ? 'Akun aktif.' : 'Akun dinonaktifkan.') }}</flux:text>
+            @include('livewire.user-approvals.activation-link', ['linkAction' => '', 'activationLink' => $activationLink])
         @endif
     </flux:card>
 </div>

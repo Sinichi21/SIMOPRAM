@@ -15,9 +15,12 @@ class UserApprovalService
     public function approve(User $user, User $approver, int $schoolId): void
     {
         abort_unless(app(SchoolContext::class)->id() === $schoolId, 409);
+        abort_unless($approver->can('user_approvals.manage'), 403);
+        abort_if($user->requested_role === 'school_admin' && ! $approver->isSuperAdmin(), 403);
 
         if (
             $user->approval_status !== 'pending'
+            || ! in_array($user->requested_role, ['student', 'coach', 'school_admin'], true)
             || (int) $user->requested_school_id !== $schoolId
         ) {
             throw ValidationException::withMessages([
@@ -31,7 +34,8 @@ class UserApprovalService
                 'approval_status' => 'approved',
                 'approved_by' => $approver->id,
                 'approved_at' => now(),
-                'is_active' => true,
+                'is_active' => false,
+                'activation_pending' => true,
             ]);
 
             SchoolUserMembership::query()->updateOrCreate(
@@ -73,6 +77,7 @@ class UserApprovalService
     public function reject(User $user, User $approver, int $schoolId): void
     {
         abort_unless(app(SchoolContext::class)->id() === $schoolId, 409);
+        abort_unless($approver->can('user_approvals.manage'), 403);
 
         if (
             $user->approval_status !== 'pending'

@@ -42,6 +42,23 @@
             </h2>
 
             <div class="grid gap-4 md:grid-cols-2">
+                <div class="md:col-span-2">
+                    <p class="text-sm text-zinc-500">
+                        @if ($activity->scoutLevels->isNotEmpty())
+                            Peserta otomatis dibatasi pada golongan {{ $activity->scoutLevels->pluck('name')->join(', ') }}
+                            sesuai tahun ajaran kegiatan. Pilihan kelas atau regu mempersempit peserta dalam golongan tersebut.
+                        @else
+                            Kegiatan ini terbuka untuk semua golongan. Pilih kelas, regu, atau golongan untuk membatasi peserta sesi.
+                        @endif
+                    </p>
+                    @if ($errors->any())
+                        <ul class="mt-2 text-sm text-red-600">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    @endif
+                </div>
 
                 <div>
                     <label class="mb-1 block text-sm font-medium">
@@ -72,7 +89,7 @@
                                dark:bg-zinc-800"
                     >
                         <option value="all">
-                            Semua Siswa Aktif
+                            Semua Siswa Aktif Sesuai Golongan Kegiatan
                         </option>
 
                         <option value="classroom">
@@ -82,58 +99,37 @@
                         <option value="scout_unit">
                             Berdasarkan Regu / Barung
                         </option>
+                        <option value="scout_level">Berdasarkan Golongan</option>
                     </select>
                 </div>
 
 
-                @if ($participant_scope === 'classroom')
-
-                    <div>
+                @if ($participant_scope !== 'all')
+                    <div wire:key="session-target-{{ $participant_scope }}">
                         <label class="mb-1 block text-sm font-medium">
-                            Kelas
+                            {{ match ($participant_scope) {
+                                'classroom' => 'Kelas',
+                                'scout_unit' => 'Regu / Barung',
+                                default => 'Golongan Pramuka',
+                            } }}
                         </label>
-
                         <select
-                            wire:model="participant_scope_id"
-                            class="w-full rounded-lg border
-                                   border-zinc-300 px-3 py-2"
+                            wire:model.live="participant_scope_id"
+                            wire:key="session-target-options-{{ $participant_scope }}"
+                            class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
                         >
-                            <option value="">
-                                -- Pilih Kelas --
-                            </option>
-
-                            @foreach ($classrooms as $classroom)
-                                <option value="{{ $classroom->id }}">
-                                    {{ $classroom->name }}
-                                </option>
-                            @endforeach
+                            <option value="">-- Pilih Target Peserta --</option>
+                            @forelse (match ($participant_scope) {
+                                'classroom' => $classrooms,
+                                'scout_unit' => $scoutUnits,
+                                default => $scoutLevels,
+                            } as $targetOption)
+                                <option value="{{ $targetOption->id }}">{{ $targetOption->name }}</option>
+                            @empty
+                                <option disabled>Belum ada pilihan aktif yang sesuai kegiatan ini.</option>
+                            @endforelse
                         </select>
                     </div>
-
-                @elseif ($participant_scope === 'scout_unit')
-
-                    <div>
-                        <label class="mb-1 block text-sm font-medium">
-                            Regu / Barung
-                        </label>
-
-                        <select
-                            wire:model="participant_scope_id"
-                            class="w-full rounded-lg border
-                                   border-zinc-300 px-3 py-2"
-                        >
-                            <option value="">
-                                -- Pilih --
-                            </option>
-
-                            @foreach ($scoutUnits as $unit)
-                                <option value="{{ $unit->id }}">
-                                    {{ $unit->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-
                 @endif
 
 
