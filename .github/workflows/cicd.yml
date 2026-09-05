@@ -47,20 +47,59 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
         run: |
           set -euo pipefail
+
           : "${SSH_PRIVATE_KEY:?Set STAGING_SSH_PRIVATE_KEY}"
           : "${SSH_HOST:?Set STAGING_SSH_HOST}"
           : "${SSH_USER:?Set STAGING_SSH_USER}"
           : "${APP_DIR:?Set STAGING_APP_DIR}"
-          [[ "$SSH_HOST" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]]
-          [[ "$SSH_USER" =~ ^[a-zA-Z_][a-zA-Z0-9_-]*$ ]]
-          [[ "${SSH_PORT:-22}" =~ ^[0-9]+$ ]]
-          [[ "$APP_DIR" =~ ^/[a-zA-Z0-9_./-]+$ && "$APP_DIR" != "/" ]]
+
+          if ! [[ "$SSH_HOST" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]]; then
+              echo "::error::STAGING_SSH_HOST tidak valid"
+              exit 1
+          fi
+
+          if ! [[ "$SSH_USER" =~ ^[a-zA-Z_][a-zA-Z0-9_-]*$ ]]; then
+              echo "::error::STAGING_SSH_USER tidak valid"
+              exit 1
+          fi
+
+          if ! [[ "${SSH_PORT:-22}" =~ ^[0-9]+$ ]]; then
+              echo "::error::STAGING_SSH_PORT harus berupa angka"
+              exit 1
+          fi
+
+          if ! [[ "$APP_DIR" =~ ^/[a-zA-Z0-9_./-]+$ ]] || [[ "$APP_DIR" == "/" ]]; then
+              echo "::error::STAGING_APP_DIR tidak valid"
+              exit 1
+          fi
+
+          echo "SSH configuration validation passed"
+          echo "Testing SSH host availability..."
+
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
+
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -T 10 -p "${SSH_PORT:-22}" "$SSH_HOST" > ~/.ssh/known_hosts
-          test -s ~/.ssh/known_hosts
+
+          if ! ssh-keyscan \
+              -T 10 \
+              -p "${SSH_PORT:-22}" \
+              "$SSH_HOST" > ~/.ssh/known_hosts; then
+
+              echo "::error::Tidak dapat mengambil SSH host key dari server staging."
+              echo "::error::Periksa STAGING_SSH_HOST, STAGING_SSH_PORT, firewall VPS, dan sshd."
+              exit 1
+          fi
+
+          if ! test -s ~/.ssh/known_hosts; then
+              echo "::error::SSH known_hosts kosong. Server tidak memberikan host key."
+              exit 1
+          fi
+
+          chmod 600 ~/.ssh/known_hosts
+
+          echo "SSH host key successfully added"
 
       - name: Upload release
         run: |
