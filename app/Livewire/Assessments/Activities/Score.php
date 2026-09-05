@@ -226,6 +226,23 @@ class Score extends Component
         );
     }
 
+    public function syncMembers(ActivityAssessmentService $service): void
+    {
+        $this->authorizeScoring();
+        $this->assessment();
+        $target = $this->target();
+
+        if (! $target) {
+            throw ValidationException::withMessages(['members' => 'Pilih regu yang akan diperbarui.']);
+        }
+
+        $added = $service->syncTeamMembers($target);
+        $this->resetValidation();
+
+        session()->flash('status', "{$added} anggota baru ditambahkan ke penerima nilai. "
+            .'Rekap faktor diperbarui; jalankan sinkronisasi nilai akhir.');
+    }
+
     protected function authorizeScoring(): void
     {
         abort_unless(
