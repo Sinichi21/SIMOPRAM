@@ -74,6 +74,10 @@
 
     @endif
 
+    @error('semester')
+        <p class="text-sm text-red-600">{{ $message }}</p>
+    @enderror
+
     <div
         class="rounded-xl border
             border-blue-200
@@ -485,6 +489,25 @@
                                 >
                                     Snapshot Anggota Regu
                                 </div>
+
+                                <p class="mt-3 text-sm text-zinc-500">
+                                    Tambahkan anggota aktif dari master regu ke penerima nilai kegiatan ini.
+                                    Penerima sebelumnya tetap disimpan. Pastikan anggota tambahan memang mengikuti kegiatan.
+                                </p>
+                                <button
+                                    type="button"
+                                    wire:click="syncMembers"
+                                    wire:confirm="Tambahkan anggota aktif regu yang belum tercantum sebagai penerima nilai kegiatan ini? Pastikan mereka memang mengikuti kegiatan. Nilai yang sudah disimpan tetap dipertahankan."
+                                    wire:loading.attr="disabled"
+                                    wire:target="syncMembers"
+                                    class="mt-3 rounded-lg border border-zinc-300 px-3 py-2 text-sm disabled:opacity-50 dark:border-zinc-700"
+                                >
+                                    <span wire:loading.remove wire:target="syncMembers">Perbarui Anggota Penerima Nilai</span>
+                                    <span wire:loading wire:target="syncMembers">Memperbarui anggota...</span>
+                                </button>
+                                @error('members')
+                                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
 
 
                                 <div

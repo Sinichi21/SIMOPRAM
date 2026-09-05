@@ -16,6 +16,70 @@ use Illuminate\Validation\ValidationException;
 
 class ActivityAssessmentService
 {
+    public function syncTeamMembers(ActivityAssessmentTarget $target): int
+    {
+        abort_unless(app(SchoolContext::class)->hasSchool(), 409, 'Pilih sekolah aktif terlebih dahulu.');
+
+        return DB::transaction(function () use ($target): int {
+            $target = ActivityAssessmentTarget::query()->lockForUpdate()->findOrFail($target->id);
+            $assessment = ActivityAssessment::query()->with('activity')->findOrFail($target->activity_assessment_id);
+
+            $this->assertPeriodOpen($assessment);
+
+            if (! $assessment->isPublished() || $assessment->mode !== 'team' || ! $target->scout_unit_id) {
+                throw ValidationException::withMessages([
+                    'members' => 'Pembaruan anggota hanya tersedia untuk penilaian regu yang sudah dipublikasikan.',
+                ]);
+            }
+
+            $unit = ScoutUnit::query()
+                ->where('academic_year_id', $assessment->activity->academic_year_id)
+                ->where('is_active', true)
+                ->findOrFail($target->scout_unit_id);
+
+            if (! $this->resolveAssessmentConfig($assessment)) {
+                throw ValidationException::withMessages([
+                    'members' => 'Siapkan konfigurasi penilaian aktif dengan faktor kegiatan ini sebelum memperbarui anggota.',
+                ]);
+            }
+
+            $memberIds = $unit->memberships()
+                ->whereNull('left_at')
+                ->whereHas('student')
+                ->pluck('student_id')
+                ->unique();
+
+            if ($memberIds->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'members' => 'Lengkapi anggota aktif regu di Master Regu / Barung terlebih dahulu.',
+                ]);
+            }
+
+            $previousIds = $target->members()->pluck('student_id');
+            $addedIds = $memberIds->diff($previousIds)->values();
+
+            foreach ($addedIds as $studentId) {
+                $target->members()->create(['student_id' => $studentId]);
+            }
+
+            $this->syncToStudentScores($assessment);
+
+            if ($addedIds->isNotEmpty()) {
+                app(AssessmentAuditService::class)->record(
+                    action: 'activity_assessment.members_synced',
+                    subject: $target,
+                    description: 'Anggota regu ditambahkan ke penerima nilai kegiatan.',
+                    oldValues: ['student_ids' => $previousIds->all()],
+                    newValues: ['student_ids' => $previousIds->merge($addedIds)->all()],
+                    metadata: ['activity_assessment_id' => $assessment->id, 'added_student_ids' => $addedIds->all()],
+                    module: 'activity_assessment',
+                );
+            }
+
+            return $addedIds->count();
+        });
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Validasi Publish
