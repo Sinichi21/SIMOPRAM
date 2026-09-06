@@ -50,7 +50,7 @@ test('semester LPJ has one cover and approval page and includes all semester mon
 
     expect($data['activities'])->toHaveCount(2)
         ->and(substr_count($html, 'LEMBAR PENGESAHAN'))->toBe(1)
-        ->and($html)->toContain('LAPORAN PERTANGGUNGJAWABAN', 'Latihan Juli', 'Latihan November');
+        ->and($html)->toContain('LAPORAN PERTANGGUNG JAWABAN', 'Latihan Juli', 'Latihan November');
 });
 
 test('monthly LPJ rejects a month outside the semester', function () {

@@ -1,0 +1,73 @@
+diff -ruN lpj_orig/SIMOPRAM-LPJ-template-v1/README-LPJ.md lpjv1/SIMOPRAM-LPJ-template-v1/README-LPJ.md
+--- lpj_orig/SIMOPRAM-LPJ-template-v1/README-LPJ.md	2026-09-06 03:11:40.000000000 +0000
++++ lpjv1/SIMOPRAM-LPJ-template-v1/README-LPJ.md	2026-09-06 04:36:18.729618504 +0000
+@@ -51,7 +51,7 @@
+ - Jam mulai dan selesai.
+ - Tempat pelaksanaan.
+ 
+-Untuk NTA pembina, versi ini menggunakan field `certificate_number` pada data pembina. Bila field itu selama ini dipakai untuk nomor lain, jangan dipaksa; tambahkan field NTA khusus pada pengembangan berikutnya.
++Untuk NTA pembina, versi ini menggunakan field `nip` pada model `Coach`, karena pada implementasi SIMOPRAM saat ini field tersebut memang diisi dengan NTA. Output LPJ menampilkan label `NTA.` untuk nilai tersebut. Field `certificate_number` tidak digunakan sebagai NTA pada LPJ.
+ 
+ ## Cara kerja absensi siswa
+ 
+diff -ruN lpj_orig/SIMOPRAM-LPJ-template-v1/app/Services/LpjReportService.php lpjv1/SIMOPRAM-LPJ-template-v1/app/Services/LpjReportService.php
+--- lpj_orig/SIMOPRAM-LPJ-template-v1/app/Services/LpjReportService.php	2026-09-06 03:11:40.000000000 +0000
++++ lpjv1/SIMOPRAM-LPJ-template-v1/app/Services/LpjReportService.php	2026-09-06 04:36:18.729280364 +0000
+@@ -55,7 +55,7 @@
+             ])
+             ->whereBetween('start_at', [$periodStart, $periodEnd])
+             ->with([
+-                'coaches:id,name,nip,phone,certificate_number',
++                'coaches:id,name,nip,phone',
+                 'scoutLevels:id,name',
+                 'journal.attachments',
+                 'attendanceSessions' => fn ($query) => $query
+diff -ruN lpj_orig/SIMOPRAM-LPJ-template-v1/resources/views/livewire/settings/school-documents.blade.php lpjv1/SIMOPRAM-LPJ-template-v1/resources/views/livewire/settings/school-documents.blade.php
+--- lpj_orig/SIMOPRAM-LPJ-template-v1/resources/views/livewire/settings/school-documents.blade.php	2026-09-06 03:11:40.000000000 +0000
++++ lpjv1/SIMOPRAM-LPJ-template-v1/resources/views/livewire/settings/school-documents.blade.php	2026-09-06 04:36:18.729572666 +0000
+@@ -46,7 +46,7 @@
+ 
+         <section class="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+             <h2 class="text-lg font-semibold">Pembina Penanggung Jawab</h2>
+-            <p class="mt-1 text-sm text-zinc-500">Nama, nomor HP, NIP, dan nomor sertifikat/NTA pembina diambil dari data pembina yang dipilih.</p>
++            <p class="mt-1 text-sm text-zinc-500">Nama, nomor HP, dan NTA pembina diambil dari data pembina yang dipilih. Pada model Coach saat ini NTA disimpan pada field nip.</p>
+ 
+             <div class="mt-5">
+                 <label class="mb-1 block text-sm font-medium">Pembina Pramuka</label>
+@@ -54,7 +54,7 @@
+                     <option value="">-- Pilih Pembina --</option>
+                     @foreach ($coaches as $coach)
+                         <option value="{{ $coach->id }}">
+-                            {{ $coach->name }}{{ $coach->nip ? ' - NIP '.$coach->nip : '' }}
++                            {{ $coach->name }}{{ $coach->nip ? ' - NTA '.$coach->nip : '' }}
+                         </option>
+                     @endforeach
+                 </select>
+diff -ruN lpj_orig/SIMOPRAM-LPJ-template-v1/resources/views/reports/pdf/lpj/partials/approval.blade.php lpjv1/SIMOPRAM-LPJ-template-v1/resources/views/reports/pdf/lpj/partials/approval.blade.php
+--- lpj_orig/SIMOPRAM-LPJ-template-v1/resources/views/reports/pdf/lpj/partials/approval.blade.php	2026-09-06 03:11:40.000000000 +0000
++++ lpjv1/SIMOPRAM-LPJ-template-v1/resources/views/reports/pdf/lpj/partials/approval.blade.php	2026-09-06 04:36:34.533508489 +0000
+@@ -8,7 +8,7 @@
+     <table class="approval-meta">
+         <tr><td>Nama Ekstrakurikuler</td><td>: Pramuka</td></tr>
+         <tr><td>Nama Pembina</td><td>: {{ $coachName }}</td></tr>
+-        <tr><td>NTA / Identitas Pembina</td><td>: {{ $responsibleCoach?->certificate_number ?: ($responsibleCoach?->nip ?: '-') }}</td></tr>
++        <tr><td>NTA</td><td>: {{ $responsibleCoach?->nip ?: '-' }}</td></tr>
+         <tr><td>Hari dan waktu Pelaksanaan</td><td>: {{ $schedule['dayName'] }}, {{ $schedule['startTime'] ?: '-' }}{{ $schedule['endTime'] ? ' - '.$schedule['endTime'].' WITA' : '' }}</td></tr>
+         <tr><td>Tempat Pelaksanaan</td><td>: {{ $schedule['location'] }}</td></tr>
+         <tr><td>Tahun Ajaran</td><td>: {{ $academicYear->name }}</td></tr>
+diff -ruN lpj_orig/SIMOPRAM-LPJ-template-v1/resources/views/reports/pdf/lpj.blade.php lpjv1/SIMOPRAM-LPJ-template-v1/resources/views/reports/pdf/lpj.blade.php
+--- lpj_orig/SIMOPRAM-LPJ-template-v1/resources/views/reports/pdf/lpj.blade.php	2026-09-06 03:11:40.000000000 +0000
++++ lpjv1/SIMOPRAM-LPJ-template-v1/resources/views/reports/pdf/lpj.blade.php	2026-09-06 04:36:18.729515642 +0000
+@@ -155,9 +155,9 @@
+     $principalName = $documentSetting?->principal_name ?: $scoutGroup?->kamabigus_name ?: '........................';
+     $principalNip = $documentSetting?->principal_nip ?: '........................';
+     $coachName = $responsibleCoach?->name ?: $scoutGroup?->head_coach_name ?: '........................';
+-    $coachIdentifier = $responsibleCoach?->certificate_number
+-        ? 'NTA. '.$responsibleCoach->certificate_number
+-        : ($responsibleCoach?->nip ? 'NIP. '.$responsibleCoach->nip : '');
++    $coachIdentifier = $responsibleCoach?->nip
++        ? 'NTA. '.$responsibleCoach->nip
++        : '';
+     $signingCity = $documentSetting?->signing_city ?: ($school->city ?: '................');
+ @endphp
+ 

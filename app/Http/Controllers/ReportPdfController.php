@@ -322,7 +322,7 @@ class ReportPdfController extends Controller
             )
                 ->setPaper(
                     'a4',
-                    'landscape'
+                    'portrait'
                 );
 
         /*
