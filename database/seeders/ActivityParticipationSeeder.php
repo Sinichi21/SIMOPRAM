@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\ActivityParticipation;
 use Illuminate\Database\Seeder;
 
 class ActivityParticipationSeeder extends Seeder
@@ -11,6 +12,6 @@ class ActivityParticipationSeeder extends Seeder
      */
     public function run(): void
     {
-        \App\Models\ActivityParticipation::factory()->create();
+        ActivityParticipation::factory()->create();
     }
 }

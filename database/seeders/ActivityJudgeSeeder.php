@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\ActivityJudge;
 use Illuminate\Database\Seeder;
 
 class ActivityJudgeSeeder extends Seeder
@@ -11,6 +12,6 @@ class ActivityJudgeSeeder extends Seeder
      */
     public function run(): void
     {
-        \App\Models\ActivityJudge::factory()->create();
+        ActivityJudge::factory()->create();
     }
 }

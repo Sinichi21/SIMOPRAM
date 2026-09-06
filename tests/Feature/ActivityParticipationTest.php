@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Assessments\Activities\Participation;
+use App\Livewire\Assessments\Scores;
 use App\Models\Activity;
 use App\Models\AssessmentConfig;
 use App\Models\AssessmentFactor;
@@ -126,7 +127,7 @@ test('saving semester scores preserves the automatic participation source', func
     extract(participationContext());
     app(ActivityParticipationService::class)->save($activity, $config, $factor->id, 100, [$student->id => ['points' => 20]]);
 
-    Livewire::test(\App\Livewire\Assessments\Scores::class)->set('scores.'.$student->id.'.'.$factor->id, 99)
+    Livewire::test(Scores::class)->set('scores.'.$student->id.'.'.$factor->id, 99)
         ->call('saveStudent', $student->id)->assertHasNoErrors();
 
     $this->assertDatabaseHas('student_scores', ['student_id' => $student->id, 'score' => 20, 'source' => 'participation']);

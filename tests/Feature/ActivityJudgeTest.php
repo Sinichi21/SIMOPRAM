@@ -4,13 +4,15 @@ use App\Livewire\Assessments\Activities\Index;
 use App\Livewire\Assessments\Activities\Judges;
 use App\Models\Activity;
 use App\Models\ActivityAssessment;
-use App\Models\ActivityJudge;
+use App\Models\AssessmentConfig;
+use App\Models\AssessmentFactor;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\User;
 use App\Services\ActivityAssessmentService;
 use App\Services\ActivityJudgeService;
 use App\Support\SchoolContext;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 
@@ -150,7 +152,7 @@ test('judging panel requires permission and cannot open an assessment from anoth
     session(['active_school_id' => $otherSchool->id]);
 
     expect(fn () => Livewire::test(Judges::class, ['assessmentId' => $assessment->id]))
-        ->toThrow(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+        ->toThrow(ModelNotFoundException::class);
 });
 
 test('guest judging link uses its own school even when a different school is selected', function () {
@@ -174,8 +176,8 @@ test('special assessment management page renders without a semester factor', fun
 
 test('regular activity rekap excludes special assessments even when they share a factor', function () {
     extract(judgeContext());
-    $factor = \App\Models\AssessmentFactor::factory()->create(['school_id' => $school->id, 'source_type' => 'manual']);
-    $config = \App\Models\AssessmentConfig::query()->create(['academic_year_id' => $activity->academic_year_id, 'name' => 'Semester', 'is_active' => true]);
+    $factor = AssessmentFactor::factory()->create(['school_id' => $school->id, 'source_type' => 'manual']);
+    $config = AssessmentConfig::query()->create(['academic_year_id' => $activity->academic_year_id, 'name' => 'Semester', 'is_active' => true]);
     $config->items()->create(['assessment_factor_id' => $factor->id, 'weight' => 100, 'sort_order' => 1]);
     $assessment->update(['assessment_factor_id' => $factor->id]);
     $target->update(['normalized_score' => 100, 'assessed_at' => now()]);
