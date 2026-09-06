@@ -19,6 +19,8 @@ class Index extends Component
 
     public string $mode = 'individual';
 
+    public bool $isSpecial = false;
+
     public string $description = '';
 
     public string $search = '';
@@ -44,7 +46,8 @@ class Index extends Component
                 ],
 
                 'assessmentFactorId' => [
-                    'required',
+                    Rule::requiredIf(! $this->isSpecial),
+                    'nullable',
                     'integer',
                 ],
 
@@ -82,17 +85,19 @@ class Index extends Component
                 ]
             );
 
-        AssessmentFactor::query()
-            ->where(
-                'source_type',
-                '!=',
-                'attendance'
-            )
-            ->findOrFail(
-                $validated[
-                    'assessmentFactorId'
-                ]
-            );
+        if (! $this->isSpecial) {
+            AssessmentFactor::query()
+                ->where(
+                    'source_type',
+                    '!=',
+                    'attendance'
+                )
+                ->findOrFail(
+                    $validated[
+                        'assessmentFactorId'
+                    ]
+                );
+        }
 
         $assessment =
             ActivityAssessment::query()
@@ -101,7 +106,8 @@ class Index extends Component
                             'activityId'
                         ],
 
-                    'assessment_factor_id' => $validated[
+                    'is_special' => $this->isSpecial,
+                    'assessment_factor_id' => $this->isSpecial ? null : $validated[
                             'assessmentFactorId'
                         ],
 

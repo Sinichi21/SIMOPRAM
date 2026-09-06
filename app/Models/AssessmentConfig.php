@@ -14,6 +14,8 @@ class AssessmentConfig extends Model
     use SoftDeletes;
 
     protected $fillable = [
+        'participation_factor_id',
+        'participation_target_points',
         'academic_year_id',
         'semester_id',
         'name',
@@ -23,6 +25,7 @@ class AssessmentConfig extends Model
     protected function casts(): array
     {
         return [
+            'participation_target_points' => 'float',
             'is_active' => 'boolean',
         ];
     }

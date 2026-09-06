@@ -31,6 +31,12 @@ class Score extends Component
         $assessment =
             $this->assessment();
 
+        if ($assessment->is_special) {
+            $this->redirectRoute('activity-assessments.edit', ['assessment' => $assessment->id]);
+
+            return;
+        }
+
         if (
             $assessment->status
             !== 'published'

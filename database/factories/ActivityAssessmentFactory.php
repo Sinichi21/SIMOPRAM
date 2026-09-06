@@ -65,6 +65,11 @@ class ActivityAssessmentFactory extends Factory
         );
     }
 
+    public function special(): static
+    {
+        return $this->state(fn (): array => ['is_special' => true, 'assessment_factor_id' => null]);
+    }
+
     public function team(): static
     {
         return $this->state(

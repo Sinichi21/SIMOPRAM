@@ -101,7 +101,7 @@ class ActivityAssessmentService
             ]);
         }
 
-        if (! $assessment->factor) {
+        if (! $assessment->is_special && ! $assessment->factor) {
             throw ValidationException::withMessages([
                 'assessment_factor_id' => 'Faktor penilaian tidak ditemukan.',
             ]);
@@ -1019,6 +1019,9 @@ class ActivityAssessmentService
     public function resolveAssessmentConfig(
         ActivityAssessment $assessment
     ): ?AssessmentConfig {
+        if ($assessment->is_special) {
+            return null;
+        }
         $assessment->loadMissing(
             'activity'
         );
@@ -1031,6 +1034,8 @@ class ActivityAssessmentService
         }
 
         return AssessmentConfig::query()
+            ->where(fn ($query) => $query->whereNull('participation_factor_id')
+                ->orWhere('participation_factor_id', '!=', $assessment->assessment_factor_id))
             ->where(
                 'academic_year_id',
                 $activity
@@ -1092,6 +1097,7 @@ class ActivityAssessmentService
 
         $forms =
             ActivityAssessment::query()
+                ->where('is_special', false)
                 ->where(
                     'assessment_factor_id',
                     $assessment
@@ -1405,6 +1411,13 @@ class ActivityAssessmentService
     protected function assertPeriodOpen(
         ActivityAssessment $assessment
     ): void {
+        if ($assessment->is_special) {
+            if ($assessment->judges()->exists()) {
+                throw ValidationException::withMessages(['assessment' => 'Form dan peserta dikunci setelah link juri diterbitkan.']);
+            }
+
+            return;
+        }
         $assessment->loadMissing(
             'activity'
         );

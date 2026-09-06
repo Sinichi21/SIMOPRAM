@@ -11,6 +11,15 @@
         </p>
     </div>
 
+    <details class="rounded-xl border p-4">
+        <summary class="cursor-pointer font-semibold">Input Poin Keaktifan per Kegiatan</summary>
+        <div class="mt-3 grid gap-2 md:grid-cols-2">
+            @foreach($activities as $activity)
+                <a wire:key="participation-link-{{ $activity->id }}" wire:navigate href="{{ route('activity-participation.show', $activity->id) }}" class="rounded-lg border p-3 text-amber-700">{{ $activity->title }} — Poin Keaktifan</a>
+            @endforeach
+        </div>
+    </details>
+
 
     @if (session('status'))
 
@@ -45,6 +54,11 @@
             <h2 class="text-lg font-semibold">
                 Buat Form Penilaian
             </h2>
+
+            <label class="mt-4 flex items-center gap-2">
+                <input type="checkbox" wire:model.live="isSpecial">
+                Kegiatan khusus / lomba — dinilai juri, tidak masuk nilai semester
+            </label>
 
 
             <div
@@ -94,11 +108,12 @@
 
                 <div>
                     <label class="mb-1 block text-sm font-medium">
-                        Faktor Tujuan
+                        Faktor Tujuan (hanya untuk nilai semester)
                     </label>
 
                     <select
                         wire:model="assessmentFactorId"
+                        @disabled($isSpecial)
                         class="w-full rounded-lg
                                border border-zinc-300
                                bg-white px-3 py-2
@@ -347,7 +362,7 @@
                             </td>
 
                             <td class="px-4 py-3">
-                                {{ $assessment->factor?->name ?? '-' }}
+                                {{ $assessment->is_special ? 'Kegiatan khusus — tidak masuk semester' : ($assessment->factor?->name ?? '-') }}
                             </td>
 
                             <td class="px-4 py-3 text-center">
@@ -420,7 +435,7 @@
 
                                             <a
                                                 href="{{ route(
-                                                    'activity-assessments.score',
+                                                    $assessment->is_special ? 'activity-assessments.edit' : 'activity-assessments.score',
                                                     $assessment->id
                                                 ) }}"
                                                 wire:navigate

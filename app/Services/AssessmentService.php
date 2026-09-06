@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ActivityAssessment;
 use App\Models\AssessmentConfig;
 use App\Models\FinalGrade;
 use App\Models\GradeScaleConfig;
@@ -182,6 +183,9 @@ class AssessmentService
         float $score,
         ?string $notes = null
     ): StudentScore {
+        if ((int) $config->participation_factor_id === $factorId) {
+            throw ValidationException::withMessages(['scores' => 'Nilai keaktifan dihitung dari poin kegiatan.']);
+        }
         if (
             $score < 0
             ||
@@ -1041,10 +1045,29 @@ class AssessmentService
                 function () use (
                     $config
                 ): array {
+                    $activityService = app(ActivityAssessmentService::class);
+                    $assessments = ActivityAssessment::query()
+                        ->where('status', 'published')
+                        ->whereIn('assessment_factor_id', $config->items()->pluck('assessment_factor_id'))
+                        ->whereHas('activity', fn ($query) => $query
+                            ->where('academic_year_id', $config->academic_year_id)
+                            ->when($config->semester_id, fn ($query) => $query->where('semester_id', $config->semester_id)))
+                        ->with('activity')
+                        ->get()
+                        ->unique(fn ($assessment) => $assessment->assessment_factor_id.':'.$assessment->activity->semester_id);
+
+                    foreach ($assessments as $assessment) {
+                        if ($activityService->resolveAssessmentConfig($assessment)?->id === $config->id) {
+                            $activityService->syncToStudentScores($assessment);
+                        }
+                    }
+
                     $attendanceUpdated =
                         $this->syncAttendanceScores(
                             $config
                         );
+
+                    app(ActivityParticipationService::class)->sync($config);
 
                     $finalGradesUpdated =
                         $this->syncFinalGrades(
