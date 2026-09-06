@@ -1,9 +1,11 @@
 <?php
 
 use App\Livewire\Assessments\Activities\Score;
+use App\Livewire\Assessments\Scores;
 use App\Models\AcademicYear;
 use App\Models\ActivityAssessment;
 use App\Models\AssessmentConfig;
+use App\Models\Classroom;
 use App\Models\School;
 use App\Models\ScoutLevel;
 use App\Models\ScoutUnit;
@@ -13,6 +15,7 @@ use App\Models\Student;
 use App\Models\StudentScore;
 use App\Models\User;
 use App\Services\ActivityAssessmentService;
+use App\Services\AssessmentService;
 use App\Support\SchoolContext;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;
@@ -93,6 +96,37 @@ test('adding members preserves historical recipients and manual score overrides'
     expect($target->members()->pluck('student_id')->all())->toBe([$old->id, $new->id]);
     $this->assertDatabaseHas('student_scores', ['student_id' => $old->id, 'score' => 70]);
     $this->assertDatabaseHas('student_scores', ['student_id' => $new->id, 'score' => 95, 'source' => 'manual']);
+});
+
+test('full synchronization restores saved team scores without adding new recipients or overwriting manual scores', function () {
+    ['assessment' => $assessment, 'unit' => $unit, 'config' => $config] = memberSyncAssessment();
+    $target = $assessment->targets()->create(['scout_unit_id' => $unit->id, 'normalized_score' => 80, 'total_score' => 80, 'assessed_at' => now()]);
+    $student = memberSyncStudent($unit, 'SYNC');
+    $manual = memberSyncStudent($unit, 'MANUAL');
+    $late = memberSyncStudent($unit, 'LATE');
+    $target->members()->createMany([['student_id' => $student->id], ['student_id' => $manual->id]]);
+    StudentScore::query()->create(['assessment_config_id' => $config->id, 'assessment_factor_id' => $assessment->assessment_factor_id, 'student_id' => $manual->id, 'score' => 95, 'source' => 'manual']);
+
+    app(AssessmentService::class)->syncAllScores($config);
+
+    $this->assertDatabaseHas('student_scores', ['assessment_config_id' => $config->id, 'student_id' => $student->id, 'assessment_factor_id' => $assessment->assessment_factor_id, 'score' => 80, 'source' => 'activity_assessment']);
+    $this->assertDatabaseHas('student_scores', ['student_id' => $manual->id, 'score' => 95, 'source' => 'manual']);
+    $this->assertDatabaseMissing('student_scores', ['student_id' => $late->id]);
+});
+
+test('student score inputs bind to saved activity scores', function () {
+    $this->actingAs(User::factory()->create(['system_role' => 'super_admin', 'is_active' => true]));
+    ['assessment' => $assessment, 'unit' => $unit, 'config' => $config] = memberSyncAssessment();
+    $student = memberSyncStudent($unit, 'DISPLAY');
+    $classroom = Classroom::query()->create(['name' => 'Kelas 1', 'grade' => 1, 'is_active' => true]);
+    $student->enrollments()->create(['academic_year_id' => $config->academic_year_id, 'classroom_id' => $classroom->id, 'status' => 'active']);
+    $target = $assessment->targets()->create(['scout_unit_id' => $unit->id, 'normalized_score' => 82, 'total_score' => 82, 'assessed_at' => now()]);
+    $target->members()->create(['student_id' => $student->id]);
+    app(ActivityAssessmentService::class)->syncToStudentScores($assessment);
+
+    Livewire::test(Scores::class)
+        ->assertSet("scores.{$student->id}.{$assessment->assessment_factor_id}", 82.0)
+        ->assertSeeHtml('wire:model="scores.'.$student->id.'.'.$assessment->assessment_factor_id.'"');
 });
 
 test('member synchronization rejects an empty team', function () {

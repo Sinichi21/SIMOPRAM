@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ActivityJudgeController;
 use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\LpjReportController;
 use App\Http\Controllers\PublishedDocumentController;
@@ -640,5 +641,14 @@ Route::middleware([
 | Starter Kit
 |--------------------------------------------------------------------------
 */
+
+Route::get('/juri/{token}', [ActivityJudgeController::class, 'show'])
+    ->where('token', '[a-zA-Z0-9]{64}')->middleware('throttle:60,1')->name('activity-judges.show');
+Route::post('/juri/{token}', [ActivityJudgeController::class, 'store'])
+    ->where('token', '[a-zA-Z0-9]{64}')->middleware('throttle:30,1')->name('activity-judges.store');
+
+Route::view('/kegiatan/{activityId}/keaktifan', 'assessments.activity-participation')
+    ->whereNumber('activityId')->middleware(['auth', 'school', 'school.required', 'can:activity_assessments.view'])
+    ->name('activity-participation.show');
 
 require __DIR__.'/settings.php';

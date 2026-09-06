@@ -1,5 +1,9 @@
 <div class="space-y-6">
 
+    @if ($assessment->is_special)
+        <livewire:assessments.activities.judges :assessment-id="$assessment->id" :key="'judges-'.$assessment->id" />
+    @endif
+
     {{-- HEADER --}}
 
     <div
@@ -60,7 +64,7 @@
 
                 <a
                     href="{{ route(
-                        'activity-assessments.score',
+                        $assessment->is_special ? 'activity-assessments.edit' : 'activity-assessments.score',
                         $assessment->id
                     ) }}"
                     wire:navigate
@@ -72,7 +76,7 @@
                            dark:bg-white
                            dark:text-zinc-900"
                 >
-                    Input Nilai
+                    {{ $assessment->is_special ? 'Juri & Peringkat' : 'Input Nilai' }}
                 </a>
 
             @endif
@@ -292,13 +296,13 @@
                     class="mb-1 block
                            text-sm font-medium"
                 >
-                    Faktor Tujuan
+                    {{ $assessment->is_special ? 'Kegiatan khusus — tidak masuk semester' : 'Faktor Tujuan' }}
                 </label>
 
                 <select
                     wire:model="assessmentFactorId"
                     @disabled(
-                        $assessment->status
+                        $assessment->is_special || $assessment->status
                         !== 'draft'
                     )
                     class="w-full rounded-lg

@@ -528,6 +528,10 @@
 
                                     @endcan
 
+                                    @can('activity_assessments.view')
+                                        <a href="{{ route('activity-participation.show', $activity->id) }}" wire:navigate class="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm">Poin Keaktifan</a>
+                                    @endcan
+
                                     @can('journals.view')
 
                                         <a

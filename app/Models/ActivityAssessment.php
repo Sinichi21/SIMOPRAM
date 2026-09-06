@@ -13,6 +13,7 @@ class ActivityAssessment extends Model
     use BelongsToSchool, HasFactory;
 
     protected $fillable = [
+        'is_special',
         'activity_id',
         'assessment_factor_id',
         'title',
@@ -27,6 +28,7 @@ class ActivityAssessment extends Model
     protected function casts(): array
     {
         return [
+            'is_special' => 'boolean',
             'published_at' => 'datetime',
         ];
     }
@@ -36,6 +38,11 @@ class ActivityAssessment extends Model
         return $this->belongsTo(
             Activity::class
         );
+    }
+
+    public function judges(): HasMany
+    {
+        return $this->hasMany(ActivityJudge::class);
     }
 
     public function factor(): BelongsTo

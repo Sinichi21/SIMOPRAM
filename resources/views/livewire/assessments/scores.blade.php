@@ -201,7 +201,7 @@
 
                                     ·
 
-                                    {{ $item->factor->source_type === 'attendance'
+                                    {{ ($item->factor->source_type === 'attendance' || (int) $selectedConfig->participation_factor_id === (int) $item->assessment_factor_id)
                                         ? 'Otomatis'
                                         : 'Manual'
                                     }}
@@ -271,7 +271,7 @@
                                     @if (
                                         $item->factor->source_type
                                         ===
-                                        'attendance'
+                                        'attendance' || (int) $selectedConfig->participation_factor_id === (int) $item->assessment_factor_id
                                     )
 
                                         <div
@@ -294,9 +294,7 @@
                                     @else
 
                                         <input
-                                            wire:model="
-                                                scores.{{ $student->id }}.{{ $item->assessment_factor_id }}
-                                            "
+                                            wire:model="scores.{{ $student->id }}.{{ $item->assessment_factor_id }}"
                                             type="number"
                                             min="0"
                                             max="100"

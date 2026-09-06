@@ -121,7 +121,8 @@ class Edit extends Component
                 ],
 
                 'assessmentFactorId' => [
-                    'required',
+                    Rule::requiredIf(! $assessment->is_special),
+                    'nullable',
                     'integer',
                 ],
 
@@ -140,7 +141,7 @@ class Edit extends Component
                 ],
             ]);
 
-        $factor =
+        $factor = $assessment->is_special ? null :
             AssessmentFactor::query()
                 ->findOrFail(
                     $validated[
@@ -149,7 +150,7 @@ class Edit extends Component
                 );
 
         if (
-            $factor->source_type
+            $factor?->source_type
             === 'attendance'
         ) {
             throw ValidationException::withMessages([
@@ -189,7 +190,7 @@ class Edit extends Component
                 $validated['title']
             ),
 
-            'assessment_factor_id' => $factor->id,
+            'assessment_factor_id' => $factor?->id,
 
             'mode' => $validated['mode'],
 

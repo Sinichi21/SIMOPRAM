@@ -140,6 +140,10 @@ class Scores extends Component
             $config->items as $item
         ) {
 
+            if ((int) $config->participation_factor_id === (int) $item->assessment_factor_id) {
+                continue;
+            }
+
             if (
                 $item->factor
                     ->source_type !==
