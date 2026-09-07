@@ -251,25 +251,13 @@
     </div>
 
 
-    {{-- WHATSAPP PLACEHOLDER --}}
-
-    <div
-        class="rounded-xl border
-               border-zinc-200 bg-white
-               p-6 opacity-60
-               dark:border-zinc-800
-               dark:bg-zinc-900"
-    >
-
-        <h2 class="text-lg font-semibold">
-            WhatsApp
-        </h2>
-
-        <p class="mt-2 text-sm text-zinc-500">
-            Integrasi WhatsApp akan tersedia
-            setelah konfigurasi Telegram selesai.
-        </p>
-
-    </div>
+    <form wire:submit="savePreferences" class="space-y-4 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+        <flux:heading>WhatsApp dan Email</flux:heading>
+        <flux:input wire:model="whatsappNumber" label="Nomor WhatsApp saya" placeholder="081234567890" />
+        <flux:switch wire:model="whatsappEnabled" label="Saya ingin menerima pengumuman melalui WhatsApp" />
+        <flux:switch wire:model="emailEnabled" label="Saya ingin menerima pengumuman melalui email akun" />
+        <flux:text>Pesan dikirim langsung oleh server setelah pengelola mengaktifkan integrasi. Pilihan ini berlaku untuk sekolah aktif.</flux:text>
+        <flux:button type="submit" variant="primary" wire:loading.attr="disabled">Simpan pilihan notifikasi</flux:button>
+    </form>
 
 </div>

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\MessagingSetting;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -10,7 +11,11 @@ class TelegramService
 {
     protected function token(): string
     {
-        $token = config(
+        $setting = MessagingSetting::forChannel('telegram');
+        if ($setting && ! $setting->enabled) {
+            throw new RuntimeException('Pengiriman Telegram dinonaktifkan.');
+        }
+        $token = $setting?->options['token'] ?? config(
             'services.telegram.bot_token'
         );
 
@@ -39,11 +44,7 @@ class TelegramService
             4096
         );
 
-        $response = Http::timeout(15)
-            ->retry(
-                2,
-                500
-            )
+        $response = Http::connectTimeout(5)->timeout(15)
             ->post(
                 'https://api.telegram.org/bot'
                 .$this->token()
@@ -67,8 +68,6 @@ class TelegramService
             throw new RuntimeException(
                 'Telegram HTTP error: '
                 .$response->status()
-                .' - '
-                .$response->body()
             );
         }
 
@@ -82,7 +81,6 @@ class TelegramService
         ) {
             throw new RuntimeException(
                 'Telegram menolak pengiriman: '
-                .json_encode($payload)
             );
         }
 
@@ -107,7 +105,7 @@ class TelegramService
         }
 
         $response =
-            Http::timeout(
+            Http::connectTimeout(5)->timeout(
                 $timeout + 5
             )
                 ->get(

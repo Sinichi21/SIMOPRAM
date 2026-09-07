@@ -72,7 +72,7 @@ class AccountActivationService
         });
     }
 
-    public function sendLink(User $user, string $channel = 'email'): ?string
+    public function sendLink(User $user, string $channel = 'email', string $destination = ''): ?string
     {
         $schoolId = app(SchoolContext::class)->id();
         abort_unless($schoolId && $user->schoolMemberships()->where('school_id', $schoolId)
@@ -87,22 +87,34 @@ class AccountActivationService
         if ($user->approval_status !== 'approved' || (! $user->is_active && ! $user->activation_pending)) {
             throw ValidationException::withMessages(['activation' => 'Akun belum disetujui atau telah dinonaktifkan.']);
         }
-        if (! in_array($channel, ['email', 'share'], true)) {
+        if (! in_array($channel, ['email', 'share', 'whatsapp', 'telegram'], true)) {
             throw ValidationException::withMessages(['activation' => 'Saluran pengiriman tidak valid.']);
         }
 
         $url = null;
+        $tokenIssued = false;
         try {
-            $status = Password::broker()->sendResetLink(['email' => $user->email], function (User $recipient, string $token) use ($channel, &$url): void {
+            if (in_array($channel, ['whatsapp', 'telegram'], true)) {
+                $destination = $destination ?: ($channel === 'whatsapp' ? ($user->phone ?? '') :
+                    ($user->notificationChannels()->where('channel', 'telegram')->where('is_active', true)->where('is_verified', true)->value('destination') ?? ''));
+                $destination = app(MessagingService::class)->destination($channel, $destination);
+            }
+            $status = Password::broker()->sendResetLink(['email' => $user->email], function (User $recipient, string $token) use ($channel, $destination, &$url, &$tokenIssued): void {
+                $tokenIssued = true;
                 if ($channel === 'email') {
                     $recipient->sendPasswordResetNotification($token);
-                } else {
+                } elseif ($channel === 'share') {
                     $url = route('password.reset', ['token' => $token, 'email' => $recipient->email]);
+                } else {
+                    $link = route('password.reset', ['token' => $token, 'email' => $recipient->email]);
+                    app(MessagingService::class)->send($channel, $destination, 'Silakan atur password akun Anda: '.$link);
                 }
             });
         } catch (Throwable) {
-            Password::broker()->deleteToken($user);
-            throw ValidationException::withMessages(['activation' => 'Tautan belum terkirim. Periksa konfigurasi email atau gunakan tombol berbagi tautan.']);
+            if ($tokenIssued) {
+                Password::broker()->deleteToken($user);
+            }
+            throw ValidationException::withMessages(['activation' => 'Tautan belum terkirim. Periksa tujuan, konfigurasi pengiriman, dan koneksi bot. Untuk Telegram, penerima harus sudah terhubung.']);
         }
         if ($status !== Password::ResetLinkSent) {
             throw ValidationException::withMessages(['activation' => __($status)]);

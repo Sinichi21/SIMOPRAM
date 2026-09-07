@@ -3,6 +3,7 @@
 use App\Livewire\CoachAccounts\Manage;
 use App\Livewire\UserApprovals\Index;
 use App\Models\Coach;
+use App\Models\MessagingSetting;
 use App\Models\School;
 use App\Models\SchoolUserMembership;
 use App\Models\Student;
@@ -12,6 +13,7 @@ use App\Support\SchoolContext;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
 use Livewire\Livewire;
@@ -80,7 +82,7 @@ test('share link includes token and email and issuance is throttled', function (
     parse_str(parse_url($url, PHP_URL_QUERY), $query);
     expect($query['email'])->toBe($user->email)
         ->and(Password::broker()->tokenExists($user, basename(parse_url($url, PHP_URL_PATH))))->toBeTrue();
-    $component->assertSee('Bagikan ke WhatsApp')->assertSee('Bagikan ke Telegram')
+    $component->assertSee('Kirim via WhatsApp')->assertSee('Kirim via Telegram')
         ->call('sendLink', 'share')->assertHasErrors('activation');
 });
 
@@ -134,7 +136,7 @@ test('student account directory and activation actions work without admin passwo
     Livewire::test(App\Livewire\StudentAccounts\Manage::class, ['studentId' => $student->id])
         ->assertDontSee('Konfirmasi Password')
         ->set('email', 'siswa-aktivasi@example.com')->call('createAccount')->assertHasNoErrors()
-        ->call('sendLink', 'share')->assertHasNoErrors()->assertSee('Bagikan ke WhatsApp');
+        ->call('sendLink', 'share')->assertHasNoErrors()->assertSee('Kirim via WhatsApp');
     expect($student->fresh()->user->activation_pending)->toBeTrue();
 });
 
@@ -144,6 +146,56 @@ test('approving registration keeps account inactive until activation link is use
     Livewire::test(Index::class)->call('approve', $user->id)->assertHasNoErrors()
         ->assertSee('Menunggu aktivasi')->call('sendLink', $user->id, 'share')->assertHasNoErrors();
     expect($user->fresh()->is_active)->toBeFalse()->and($user->fresh()->activation_pending)->toBeTrue();
+});
+
+test('activation links are sent directly through fonnte without exposing the token in the page', function () {
+    Http::preventStrayRequests();
+    Http::fake(['https://api.fonnte.com/send' => Http::response(['status' => true])]);
+    MessagingSetting::factory()->create(['enabled' => true, 'options' => ['token' => 'secret']]);
+    $coach = Coach::query()->create(['name' => 'Pembina WA', 'is_active' => true]);
+    $user = app(CoachAccountService::class)->createAccount($coach, 'coach-wa@example.com');
+
+    Livewire::test(Manage::class, ['coachId' => $coach->id])->set('activationDestination', '081234567890')
+        ->call('sendLink', 'whatsapp')->assertHasNoErrors()->assertSet('activationLink', null)
+        ->assertDontSee('https://wa.me');
+
+    Http::assertSent(function ($request) use ($user): bool {
+        $url = substr($request['message'], strlen('Silakan atur password akun Anda: '));
+
+        return $request['target'] === '6281234567890'
+            && Password::broker()->tokenExists($user, basename(parse_url($url, PHP_URL_PATH)));
+    });
+});
+
+test('activation uses the linked telegram recipient and configured bot', function () {
+    Http::preventStrayRequests();
+    Http::fake(['https://api.telegram.org/bot123:secret/sendMessage' => Http::response(['ok' => true, 'result' => ['message_id' => 1]])]);
+    MessagingSetting::factory()->create(['channel' => 'telegram', 'enabled' => true, 'options' => ['token' => '123:secret']]);
+    $coach = Coach::query()->create(['name' => 'Pembina TG', 'is_active' => true]);
+    $user = app(CoachAccountService::class)->createAccount($coach, 'coach-tg@example.com');
+    $user->notificationChannels()->create(['channel' => 'telegram', 'destination' => '1234567', 'is_active' => true, 'is_verified' => true]);
+
+    Livewire::test(Manage::class, ['coachId' => $coach->id])->call('sendLink', 'telegram')
+        ->assertHasNoErrors()->assertSet('activationLink', null);
+
+    Http::assertSent(fn ($request) => $request['chat_id'] === '1234567' && str_contains($request['text'], 'coach-tg'));
+});
+
+test('failed activation delivery invalidates only a newly issued token', function () {
+    Http::preventStrayRequests();
+    Http::fake(['https://api.fonnte.com/send' => Http::response(['status' => false])]);
+    MessagingSetting::factory()->create(['enabled' => true, 'options' => ['token' => 'secret']]);
+    $coach = Coach::query()->create(['name' => 'Pembina Gagal', 'is_active' => true]);
+    $user = app(CoachAccountService::class)->createAccount($coach, 'failed@example.com');
+    Livewire::test(Manage::class, ['coachId' => $coach->id])->set('activationDestination', '081234567890')
+        ->call('sendLink', 'whatsapp')->assertHasErrors('activation');
+    $this->assertDatabaseCount('password_reset_tokens', 0);
+    Http::assertSentCount(1);
+
+    $existing = Password::broker()->createToken($user);
+    Livewire::test(Manage::class, ['coachId' => $coach->id])->set('activationDestination', 'invalid')
+        ->call('sendLink', 'whatsapp')->assertHasErrors('activation');
+    expect(Password::broker()->tokenExists($user, $existing))->toBeTrue();
 });
 
 test('expired activation token cannot activate account', function () {

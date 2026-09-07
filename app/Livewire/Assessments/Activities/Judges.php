@@ -4,7 +4,10 @@ namespace App\Livewire\Assessments\Activities;
 
 use App\Models\ActivityAssessment;
 use App\Services\ActivityJudgeService;
+use App\Services\MessagingService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 
@@ -15,7 +18,35 @@ class Judges extends Component
 
     public string $judgeName = '';
 
+    #[Locked]
     public string $invitationUrl = '';
+
+    public string $messageChannel = 'whatsapp';
+
+    public string $messageDestination = '';
+
+    public function sendInvitation(MessagingService $messaging): void
+    {
+        $assessment = $this->assessment();
+        abort_unless(auth()->user()?->can('activity_assessments.publish'), 403);
+        $this->validate(['messageChannel' => ['required', 'in:whatsapp,telegram,email'],
+            'messageDestination' => ['required', 'string', 'max:255']]);
+        $token = basename(parse_url($this->invitationUrl, PHP_URL_PATH) ?: '');
+        $judge = $assessment->judges()->where('token_hash', hash('sha256', $token))->firstOrFail();
+        abort_if($judge->revoked_at || $judge->finalized_at || now()->gte($judge->expires_at), 410);
+        $key = 'judge-message:'.auth()->id().':'.$judge->id;
+        if (RateLimiter::tooManyAttempts($key, 3)) {
+            throw ValidationException::withMessages(['messageDestination' => 'Tunggu satu menit sebelum mengirim lagi.']);
+        }
+        RateLimiter::hit($key, 60);
+        try {
+            $messaging->send($this->messageChannel, $this->messageDestination,
+                'Undangan penilaian untuk '.$judge->name.': '.$this->invitationUrl, 'Undangan Juri SIMPRAM');
+        } catch (\Throwable) {
+            throw ValidationException::withMessages(['messageDestination' => 'Undangan belum terkirim. Periksa tujuan dan konfigurasi pengiriman.']);
+        }
+        session()->flash('judge_message', 'Undangan diterima layanan pengiriman.');
+    }
 
     public function mount(int $assessmentId): void
     {

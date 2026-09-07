@@ -7,17 +7,18 @@ use App\Models\NotificationLog;
 use App\Models\School;
 use App\Models\User;
 use App\Models\UserNotificationChannel;
-use App\Services\TelegramService;
+use App\Services\MessagingService;
 use App\Support\SchoolContext;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Cache;
 use Throwable;
 
 class SendAnnouncementNotification implements ShouldQueue
 {
     use Queueable;
 
-    public int $tries = 3;
+    public int $tries = 1;
 
     public int $timeout = 30;
 
@@ -28,182 +29,49 @@ class SendAnnouncementNotification implements ShouldQueue
         public string $channel,
     ) {}
 
-    public function handle(
-        TelegramService $telegram
-    ): void {
-        /*
-        |--------------------------------------------------------------------------
-        | Queue tidak membawa session browser.
-        |
-        | Jadi SchoolContext harus dipasang manual berdasarkan schoolId job.
-        |--------------------------------------------------------------------------
-        */
-
-        $school =
-            School::query()
-                ->withoutGlobalScopes()
-                ->findOrFail(
-                    $this->schoolId
-                );
-
-        app(SchoolContext::class)
-            ->set($school);
-
-        $announcement =
-            Announcement::query()
-                ->findOrFail(
-                    $this->announcementId
-                );
-
-        $user =
-            User::query()
-                ->findOrFail(
-                    $this->userId
-                );
-
-        $log =
-            NotificationLog::query()
-                ->firstOrCreate(
-                    [
-                        'announcement_id' => $announcement->id,
-
-                        'user_id' => $user->id,
-
-                        'channel' => $this->channel,
-                    ],
-                    [
-                        'status' => 'pending',
-                    ]
-                );
-
-        try {
-
-            match ($this->channel) {
-
-                'telegram' => $this->sendTelegram(
-                    $telegram,
-                    $announcement,
-                    $user,
-                    $log
-                ),
-
-                default => throw new \RuntimeException(
-                    "Channel [{$this->channel}] tidak didukung."
-                ),
-            };
-
-        } catch (Throwable $exception) {
-
-            $log->update([
-                'status' => 'failed',
-
-                'error_message' => mb_substr(
-                    $exception->getMessage(),
-                    0,
-                    5000
-                ),
-            ]);
-
-            throw $exception;
-        }
-    }
-
-    protected function sendTelegram(
-        TelegramService $telegram,
-        Announcement $announcement,
-        User $user,
-        NotificationLog $log
-    ): void {
-        $channel =
-            UserNotificationChannel::query()
-                ->where(
-                    'user_id',
-                    $user->id
-                )
-                ->where(
-                    'channel',
-                    'telegram'
-                )
-                ->where(
-                    'is_verified',
-                    true
-                )
-                ->where(
-                    'is_active',
-                    true
-                )
-                ->first();
-
-        if (! $channel) {
-            /*
-            |--------------------------------------------------------------------------
-            | Bukan error teknis.
-            | User memang belum menghubungkan Telegram.
-            |--------------------------------------------------------------------------
-            */
-
-            $log->update([
-                'status' => 'failed',
-
-                'error_message' => 'Akun Telegram pengguna belum terhubung.',
-            ]);
-
+    public function handle(MessagingService $messaging): void
+    {
+        $context = app(SchoolContext::class);
+        $previous = $context->school();
+        $lock = Cache::lock("announcement-message:{$this->schoolId}:{$this->announcementId}:{$this->userId}:{$this->channel}", 60);
+        if (! $lock->get()) {
             return;
         }
+        try {
+            $context->set(School::query()->findOrFail($this->schoolId));
+            $announcement = Announcement::query()->findOrFail($this->announcementId);
+            $user = User::query()->findOrFail($this->userId);
+            $log = NotificationLog::query()->firstOrCreate([
+                'announcement_id' => $this->announcementId, 'user_id' => $this->userId, 'channel' => $this->channel,
+            ], ['status' => 'pending']);
+            if (in_array($log->status, ['sent', 'accepted', 'processing', 'failed'], true)) {
+                return;
+            }
+            $recipient = UserNotificationChannel::query()->where('user_id', $user->id)
+                ->where('channel', $this->channel)->where('is_active', true)
+                ->when($this->channel === 'telegram', fn ($query) => $query->where('is_verified', true))->first();
+            if (! $user->is_active || ! $recipient || ! $messaging->enabled($this->channel)) {
+                $log->update(['status' => 'skipped', 'error_message' => 'Saluran tidak aktif atau penerima belum terhubung.']);
 
-        $message =
-            $this->formatTelegramMessage(
-                $announcement
-            );
-
-        $response =
-            $telegram->sendMessage(
-                $channel->destination,
-                $message
-            );
-
-        $telegramMessageId =
-            data_get(
-                $response,
-                'result.message_id'
-            );
-
-        $log->update([
-            'status' => 'sent',
-
-            'recipient' => $channel->destination,
-
-            'response' => $telegramMessageId
-                    ? 'message_id='
-                        .$telegramMessageId
-                    : 'sent',
-
-            'error_message' => null,
-
-            'sent_at' => now(),
-        ]);
-    }
-
-    protected function formatTelegramMessage(
-        Announcement $announcement
-    ): string {
-        $schoolName =
-            $announcement
-                ->school
-                ?->name
-            ?? 'SIMPRAM';
-
-        return implode(
-            PHP_EOL,
-            [
-                '📢 PENGUMUMAN PRAMUKA',
-                '',
-                $schoolName,
-                '',
-                $announcement->title,
-                '',
-                $announcement->body,
-            ]
-        );
+                return;
+            }
+            $destination = $this->channel === 'email' ? $user->email : $recipient->destination;
+            $log->update(['status' => 'processing', 'recipient' => $destination]);
+            try {
+                $body = strip_tags($announcement->body);
+                if ($this->channel === 'telegram') {
+                    $body = mb_substr($body, 0, 3000);
+                }
+                $response = $messaging->send($this->channel, $destination,
+                    $context->school()->name."\n\n".$announcement->title."\n\n".$body."\n\n".route('announcements.my'),
+                    $announcement->title);
+                $log->update(['status' => 'sent', 'response' => $response, 'sent_at' => now(), 'error_message' => null]);
+            } catch (Throwable) {
+                $log->update(['status' => 'failed', 'error_message' => 'Pengiriman belum terkonfirmasi. Periksa konfigurasi dan riwayat penyedia sebelum mengirim ulang.']);
+            }
+        } finally {
+            $previous ? $context->set($previous) : $context->clear();
+            $lock->release();
+        }
     }
 }

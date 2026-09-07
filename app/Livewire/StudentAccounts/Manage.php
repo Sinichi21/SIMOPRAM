@@ -16,6 +16,8 @@ class Manage extends Component
 
     public string $email = '';
 
+    public string $activationDestination = '';
+
     #[Locked]
     public ?string $activationLink = null;
 
@@ -40,9 +42,9 @@ class Manage extends Component
         abort_unless(auth()->user()->can('student_accounts.manage'), 403);
         $this->activationLink = null;
         $this->activationLink = $service->sendLink(
-            Student::query()->findOrFail($this->studentId)->user()->firstOrFail(), $channel
+            Student::query()->findOrFail($this->studentId)->user()->firstOrFail(), $channel, $this->activationDestination
         );
-        session()->flash('success', $channel === 'email' ? 'Tautan pengaturan password telah dikirim melalui email.' : 'Tautan siap dibagikan kepada pemilik akun.');
+        session()->flash('success', $channel === 'share' ? 'Tautan siap disalin.' : 'Tautan diterima layanan pengiriman.');
     }
 
     public function render(): View

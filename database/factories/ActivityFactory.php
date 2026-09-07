@@ -28,6 +28,7 @@ class ActivityFactory extends Factory
             'created_by' => User::factory(),
             'title' => fake()->sentence(4),
             'activity_type' => 'regular',
+            'routine_session_no' => 1,
             'start_at' => now()->addDay(),
             'end_at' => now()->addDay()->addHours(2),
             'status' => 'draft',

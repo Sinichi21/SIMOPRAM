@@ -84,6 +84,12 @@
             text-align: center;
         }
         .month-label { font-size: 10px; font-weight: bold; margin-top: 2mm; text-align: center; }
+        .report-session + .report-session { border-top: 0.5px dashed #777; margin-top: 2mm; padding-top: 2mm; }
+        .session-heading { font-size: 8.5px; font-weight: bold; }
+        .session-time { font-size: 7px; margin-top: 0.5mm; }
+        .attendance-session-heading { font-size: 9px; font-weight: bold; margin-top: 2mm; text-align: center; }
+        .attendance-session-time { font-size: 7.5px; margin-top: 1mm; text-align: center; }
+        .documentation-session-heading { font-size: 9px; font-weight: bold; margin: 2mm 0 4mm; text-align: center; }
 
         table { border-collapse: collapse; width: 100%; }
         .data-table td { padding: 1.2mm 1mm; vertical-align: top; }
@@ -117,7 +123,7 @@
         .attendance-table th { background: #dcebcf; }
         .attendance-table .col-no { width: 5mm; }
         .attendance-table .col-name { text-align: left; width: 65mm; }
-        .attendance-table .col-class { width: 1%; white-space: n0owrap; }
+        .attendance-table .col-class { width: 1%; white-space: nowrap; }
         .attendance-table th.date-column,
         .attendance-table td.date-column { white-space: nowrap; }
         .attendance-table .holiday { background: #a7a7a7; font-size: 6.5px; font-weight: bold; line-height: 1.1; }
@@ -176,21 +182,29 @@
     @include('reports.pdf.lpj.partials.monthly-activities', ['reportMonth' => $reportMonth])
     @include('reports.pdf.lpj.partials.coach-attendance', ['reportMonth' => $reportMonth])
 
-    @foreach ($reportMonth['attendanceClasses'] as $classData)
-        @foreach ($classData['students']->chunk(24) as $studentChunk)
-            @include('reports.pdf.lpj.partials.student-attendance', [
-                'reportMonth' => $reportMonth,
-                'classData' => $classData,
-                'studentChunk' => $studentChunk,
-                'isLastChunk' => $loop->last,
-                'chunkIndex' => $loop->index,
-            ])
+    @foreach ($reportMonth['routineSessions'] as $routineSession)
+        @foreach ($routineSession['attendanceClasses'] as $classData)
+            @foreach ($classData['students']->chunk(24) as $studentChunk)
+                @include('reports.pdf.lpj.partials.student-attendance', [
+                    'reportMonth' => $reportMonth,
+                    'routineSession' => $routineSession,
+                    'classData' => $classData,
+                    'studentChunk' => $studentChunk,
+                    'isLastChunk' => $loop->last,
+                    'chunkIndex' => $loop->index,
+                ])
+            @endforeach
         @endforeach
     @endforeach
 
-    @if ($reportMonth['documentation']->isNotEmpty())
-        @include('reports.pdf.lpj.partials.documentation', ['reportMonth' => $reportMonth])
-    @endif
+    @foreach ($reportMonth['routineSessions'] as $routineSession)
+        @if ($routineSession['documentation']->isNotEmpty())
+            @include('reports.pdf.lpj.partials.documentation', [
+                'reportMonth' => $reportMonth,
+                'routineSession' => $routineSession,
+            ])
+        @endif
+    @endforeach
 @empty
     @include('reports.pdf.lpj.partials.letterhead')
     <div class="empty-box">Belum ada kegiatan pada periode ini.</div>

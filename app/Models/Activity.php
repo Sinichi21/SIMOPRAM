@@ -21,6 +21,7 @@ class Activity extends Model
         'created_by',
         'title',
         'activity_type',
+        'routine_session_no',
         'description',
         'location',
         'latitude',
@@ -39,6 +40,7 @@ class Activity extends Model
             'end_at' => 'datetime',
             'published_at' => 'datetime',
             'is_public' => 'boolean',
+            'routine_session_no' => 'integer',
             'latitude' => 'decimal:7',
             'longitude' => 'decimal:7',
         ];
