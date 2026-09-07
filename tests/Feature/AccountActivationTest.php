@@ -140,12 +140,25 @@ test('student account directory and activation actions work without admin passwo
     expect($student->fresh()->user->activation_pending)->toBeTrue();
 });
 
-test('approving registration keeps account inactive until activation link is used', function () {
-    $user = User::factory()->create(['requested_school_id' => $this->school->id,
-        'requested_role' => 'coach', 'approval_status' => 'pending', 'is_active' => false]);
-    Livewire::test(Index::class)->call('approve', $user->id)->assertHasNoErrors()
-        ->assertSee('Menunggu aktivasi')->call('sendLink', $user->id, 'share')->assertHasNoErrors();
-    expect($user->fresh()->is_active)->toBeFalse()->and($user->fresh()->activation_pending)->toBeTrue();
+test('approving self registration activates account without activation link', function () {
+    $user = User::factory()->create([
+        'requested_school_id' => $this->school->id,
+        'requested_role' => 'coach',
+        'approval_status' => 'pending',
+        'is_active' => false,
+        'activation_pending' => false,
+    ]);
+
+    Livewire::test(Index::class)
+        ->call('approve', $user->id)
+        ->assertHasNoErrors()
+        ->assertSee('Aktif')
+        ->call('sendLink', $user->id, 'share')
+        ->assertHasErrors('activation');
+
+    expect($user->fresh()->is_active)->toBeTrue()
+        ->and($user->fresh()->activation_pending)->toBeFalse()
+        ->and($user->fresh()->approval_status)->toBe('approved');
 });
 
 test('activation links are sent directly through fonnte without exposing the token in the page', function () {

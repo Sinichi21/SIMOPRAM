@@ -52,6 +52,14 @@ class Index extends Component
 
     public string $search = '';
 
+    public function mount(): void
+    {
+        abort_unless(
+            auth()->user()?->isSuperAdmin(),
+            403
+        );
+    }
+
     public function updatedSearch(): void
     {
         $this->resetPage();
@@ -165,11 +173,7 @@ class Index extends Component
     public function save(): void
     {
         abort_unless(
-            auth()->user()->can(
-                $this->editingId
-                    ? 'schools.update'
-                    : 'schools.create'
-            ),
+            auth()->user()?->isSuperAdmin(),
             403
         );
 
@@ -214,7 +218,7 @@ class Index extends Component
     public function edit(int $id): void
     {
         abort_unless(
-            auth()->user()->can('schools.update'),
+            auth()->user()?->isSuperAdmin(),
             403
         );
 
@@ -266,7 +270,7 @@ class Index extends Component
     public function toggleStatus(int $id): void
     {
         abort_unless(
-            auth()->user()->can('schools.toggle'),
+            auth()->user()?->isSuperAdmin(),
             403
         );
 

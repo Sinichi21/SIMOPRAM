@@ -65,7 +65,7 @@ class Index extends Component
 
         $this->status = 'approved';
         $this->resetPage();
-        session()->flash('success', 'Akun disetujui. Kirim tautan aktivasi agar pengguna dapat mengatur password dan login.');
+        session()->flash('success', 'Pendaftaran disetujui. Akun sudah aktif dan pengguna dapat login menggunakan password yang dibuat saat registrasi.');
     }
 
     public function reject(int $userId, UserApprovalService $service): void

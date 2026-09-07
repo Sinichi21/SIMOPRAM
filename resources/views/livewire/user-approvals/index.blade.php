@@ -5,7 +5,7 @@
 
     <div>
         <flux:heading size="xl">Manajemen User</flux:heading>
-        <flux:text>Satu akun dapat digunakan di beberapa sekolah. Setujui pendaftaran, lalu kirim tautan agar pengguna mengatur password sendiri.</flux:text>
+        <flux:text>Satu akun dapat digunakan di beberapa sekolah. User yang mendaftar mandiri langsung aktif setelah disetujui. Tautan aktivasi hanya digunakan untuk akun yang dibuat oleh admin.</flux:text>
     </div>
 
     <div class="grid gap-3 md:grid-cols-2">
@@ -43,7 +43,7 @@
                             <flux:button size="sm" variant="primary" wire:click="approve({{ $user->id }})" wire:confirm="Setujui akun ini?">Setujui</flux:button>
                             <flux:button size="sm" variant="danger" wire:click="reject({{ $user->id }})" wire:confirm="Tolak pendaftaran ini?">Tolak</flux:button>
                         </div>
-                        @elseif (! $user->isSystemAdmin() && ($user->system_role !== 'school_admin' || auth()->user()->isSuperAdmin()) && ($user->is_active || $user->activation_pending))
+                        @elseif (! $user->isSystemAdmin() && ($user->system_role !== 'school_admin' || auth()->user()->isSuperAdmin()) && $user->activation_pending && ! $user->is_active)
                             @include('livewire.user-approvals.activation-link', ['linkAction' => $user->id.', ', 'activationLink' => $selectedUserId === $user->id ? $activationLink : null])
                         @endif
                     </flux:table.cell>

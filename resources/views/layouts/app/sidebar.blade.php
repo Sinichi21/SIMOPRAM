@@ -1,4 +1,4 @@
-@can('schools.view')
+@can('schools.manage')
 
     <div class="mb-4 space-y-1">
 
