@@ -34,8 +34,11 @@ class UserApprovalService
                 'approval_status' => 'approved',
                 'approved_by' => $approver->id,
                 'approved_at' => now(),
-                'is_active' => false,
-                'activation_pending' => true,
+                // User registrasi mandiri sudah membuat password saat mendaftar.
+                // Setelah disetujui admin, akun langsung aktif dan tidak perlu
+                // melewati alur aktivasi/set-password milik akun buatan admin.
+                'is_active' => true,
+                'activation_pending' => false,
             ]);
 
             SchoolUserMembership::query()->updateOrCreate(

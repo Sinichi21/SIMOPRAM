@@ -84,8 +84,13 @@ class AccountActivationService
         };
         abort_unless(auth()->user()?->can($permission), 403);
         abort_if($user->isSystemAdmin() || ($user->system_role === 'school_admin' && ! auth()->user()->isSuperAdmin()), 403);
-        if ($user->approval_status !== 'approved' || (! $user->is_active && ! $user->activation_pending)) {
-            throw ValidationException::withMessages(['activation' => 'Akun belum disetujui atau telah dinonaktifkan.']);
+        // Tautan aktivasi/set-password hanya untuk akun yang dibuat/dihubungkan
+        // oleh admin dan memang masih menunggu aktivasi. User registrasi mandiri
+        // menjadi aktif langsung setelah approval dan tidak boleh masuk alur ini.
+        if ($user->approval_status !== 'approved' || ! $user->activation_pending || $user->is_active) {
+            throw ValidationException::withMessages([
+                'activation' => 'Akun ini tidak sedang menunggu aktivasi.',
+            ]);
         }
         if (! in_array($channel, ['email', 'share', 'whatsapp', 'telegram'], true)) {
             throw ValidationException::withMessages(['activation' => 'Saluran pengiriman tidak valid.']);

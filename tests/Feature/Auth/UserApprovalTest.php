@@ -30,8 +30,8 @@ test('pending student registration can be approved', function () {
 
     $pendingUser->refresh();
 
-    expect($pendingUser->is_active)->toBeFalse()
-        ->and($pendingUser->activation_pending)->toBeTrue()
+    expect($pendingUser->is_active)->toBeTrue()
+        ->and($pendingUser->activation_pending)->toBeFalse()
         ->and($pendingUser->approval_status)->toBe('approved')
         ->and($pendingUser->student)->not->toBeNull();
     $this->assertDatabaseHas('school_user_memberships', [

@@ -38,6 +38,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
 
         Gate::define('messaging.manage', fn (User $user): bool => $user->isSuperAdmin());
+        Gate::define('schools.manage', fn (User $user): bool => $user->isSuperAdmin());
 
         Livewire::addPersistentMiddleware([
             SetCurrentSchool::class,
