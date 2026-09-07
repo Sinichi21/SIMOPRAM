@@ -35,11 +35,11 @@ class NotificationService
 
         /*
         |--------------------------------------------------------------------------
-        | Telegram via Queue
+        | Pesan eksternal via Queue
         |--------------------------------------------------------------------------
         */
 
-        $this->dispatchTelegram(
+        $this->dispatchMessages(
             $announcement,
             $users
         );
@@ -71,7 +71,7 @@ class NotificationService
         }
     }
 
-    protected function dispatchTelegram(
+    protected function dispatchMessages(
         Announcement $announcement,
         Collection $users
     ): void {
@@ -85,28 +85,35 @@ class NotificationService
             'SchoolContext tidak tersedia.'
         );
 
+        $channels = array_filter(['telegram', 'whatsapp', 'email'],
+            fn (string $channel): bool => app(MessagingService::class)->enabled($channel));
         foreach ($users as $user) {
+            foreach ($channels as $channel) {
 
-            NotificationLog::query()
-                ->firstOrCreate(
-                    [
-                        'announcement_id' => $announcement->id,
+                $log = NotificationLog::query()
+                    ->firstOrCreate(
+                        [
+                            'announcement_id' => $announcement->id,
 
-                        'user_id' => $user->id,
+                            'user_id' => $user->id,
 
-                        'channel' => 'telegram',
-                    ],
-                    [
-                        'status' => 'pending',
-                    ]
-                );
+                            'channel' => $channel,
+                        ],
+                        [
+                            'status' => 'pending',
+                        ]
+                    );
 
-            SendAnnouncementNotification::dispatch(
-                $schoolId,
-                $announcement->id,
-                $user->id,
-                'telegram'
-            );
+                if (! $log->wasRecentlyCreated) {
+                    continue;
+                }
+                SendAnnouncementNotification::dispatch(
+                    $schoolId,
+                    $announcement->id,
+                    $user->id,
+                    $channel
+                )->afterCommit();
+            }
         }
     }
 }

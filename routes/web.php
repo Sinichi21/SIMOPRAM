@@ -59,6 +59,9 @@ Route::middleware([
     'school',
 ])->group(function () {
 
+    Route::view('/pengaturan/integrasi-pesan', 'settings.messaging')
+        ->middleware('can:messaging.manage')->name('settings.messaging');
+
     /*
     |--------------------------------------------------------------------------
     | Global Admin

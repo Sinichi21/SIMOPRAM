@@ -16,6 +16,8 @@ class Index extends Component
 
     public string $search = '';
 
+    public string $activationDestination = '';
+
     public string $role = '';
 
     public string $status = 'pending';
@@ -36,9 +38,9 @@ class Index extends Component
     {
         abort_unless(auth()->user()->can('user_approvals.manage'), 403);
         $this->reset('activationLink', 'selectedUserId');
-        $this->activationLink = $service->sendLink(User::query()->findOrFail($userId), $channel);
+        $this->activationLink = $service->sendLink(User::query()->findOrFail($userId), $channel, $this->activationDestination);
         $this->selectedUserId = $userId;
-        session()->flash('success', $channel === 'email' ? 'Tautan telah dikirim melalui email.' : 'Tautan siap dibagikan kepada pemilik akun.');
+        session()->flash('success', $channel === 'share' ? 'Tautan siap disalin.' : 'Tautan diterima layanan pengiriman.');
     }
 
     public function updatedSearch(): void

@@ -9,6 +9,16 @@
             <button wire:loading.attr="disabled" class="rounded-lg bg-amber-700 px-4 py-2 text-white">Buat Link Juri</button>
         </form>
         @if($invitationUrl)
+            <form wire:submit="sendInvitation" class="space-y-3">
+                <flux:select wire:model="messageChannel" label="Kirim undangan melalui">
+                    <flux:select.option value="whatsapp">WhatsApp</flux:select.option>
+                    <flux:select.option value="telegram">Telegram</flux:select.option>
+                    <flux:select.option value="email">Email</flux:select.option>
+                </flux:select>
+                <flux:input wire:model="messageDestination" label="Nomor HP, username / chat ID Telegram, atau email" />
+                <flux:button type="submit" wire:loading.attr="disabled">Kirim undangan</flux:button>
+                @if(session('judge_message'))<flux:text>{{ session('judge_message') }}</flux:text>@endif
+            </form>
             <div class="rounded-lg bg-amber-50 p-3 text-zinc-900"><p>Salin dan berikan link ini kepada juri. Link hanya ditampilkan saat dibuat; jika hilang, cabut akses lama dan buat link baru sebelum ada finalisasi.</p>
                 <input aria-label="Link juri" readonly value="{{ $invitationUrl }}" onclick="this.select()" class="mt-2 w-full rounded border p-2"></div>
         @endif

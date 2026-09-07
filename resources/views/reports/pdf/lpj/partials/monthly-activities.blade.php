@@ -21,14 +21,36 @@
                     <td class="number">{{ $loop->iteration }}</td>
                     <td>{{ $row['date']->translatedFormat('l, d F Y') }}</td>
                     <td>
-                        @if ($row['isHoliday'])
-                            <strong>{{ $row['holidayLabel'] }}</strong>
+                        @if ($row['sessions']->isEmpty())
+                            <strong>{{ $row['holidayLabel'] ?: 'LIBUR / TIDAK ADA KEGIATAN' }}</strong>
                         @else
-                            <ul>
-                                @foreach ($row['materials'] as $material)
-                                    <li>{{ $material }}</li>
-                                @endforeach
-                            </ul>
+                            @foreach ($row['sessions'] as $session)
+                                <div class="report-session">
+                                    <div class="session-heading">
+                                        {{ $session['label'] }}
+                                    </div>
+
+                                    @if ($session['startTime'] || $session['endTime'])
+                                        <div class="session-time">
+                                            {{ $session['startTime'] ?: '--:--' }}
+                                            -
+                                            {{ $session['endTime'] ?: '--:--' }} WITA
+                                        </div>
+                                    @endif
+
+                                    @if ($session['isCancelled'])
+                                        <div style="margin-top: 1mm;">
+                                            <strong>{{ $session['holidayLabel'] }}</strong>
+                                        </div>
+                                    @elseif ($session['materials']->isNotEmpty())
+                                        <ul>
+                                            @foreach ($session['materials'] as $material)
+                                                <li>{{ $material }}</li>
+                                            @endforeach
+                                        </ul>
+                                    @endif
+                                </div>
+                            @endforeach
                         @endif
                     </td>
                 </tr>

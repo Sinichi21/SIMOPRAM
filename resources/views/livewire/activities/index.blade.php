@@ -74,7 +74,7 @@
                     </label>
 
                     <select
-                        wire:model="activity_type"
+                        wire:model.live="activity_type"
                         class="w-full rounded-lg border
                                border-zinc-300 px-3 py-2
                                dark:border-zinc-700
@@ -109,6 +109,39 @@
                         </option>
                     </select>
                 </div>
+
+
+                @if ($activity_type === 'regular')
+                    <div>
+                        <label class="mb-1 block text-sm font-medium">
+                            Sesi Rutin
+                        </label>
+
+                        <select
+                            wire:model="routine_session_no"
+                            class="w-full rounded-lg border
+                                   border-zinc-300 px-3 py-2
+                                   dark:border-zinc-700
+                                   dark:bg-zinc-800"
+                        >
+                            @for ($sessionNo = 1; $sessionNo <= 10; $sessionNo++)
+                                <option value="{{ $sessionNo }}">
+                                    Sesi {{ $sessionNo }}
+                                </option>
+                            @endfor
+                        </select>
+
+                        <p class="mt-1 text-xs text-zinc-500">
+                            Gunakan nomor sesi yang sama untuk jadwal rutin yang berulang setiap minggu.
+                        </p>
+
+                        @error('routine_session_no')
+                            <p class="mt-1 text-sm text-red-500">
+                                {{ $message }}
+                            </p>
+                        @enderror
+                    </div>
+                @endif
 
 
                 <div>
@@ -479,6 +512,12 @@
                                 <div class="text-xs text-zinc-500">
                                     {{ $activity->academicYear?->name }}
                                 </div>
+
+                                @if ($activity->activity_type === 'regular')
+                                    <div class="text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                                        Sesi {{ $activity->routine_session_no ?? 1 }}
+                                    </div>
+                                @endif
 
                                 <div class="text-xs text-zinc-500">
                                     {{ $activity->scoutLevels->pluck('name')->join(', ') ?: 'Semua Golongan' }}

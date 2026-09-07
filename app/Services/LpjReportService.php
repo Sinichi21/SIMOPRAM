@@ -48,6 +48,7 @@ class LpjReportService
         $activities = Activity::query()
             ->where('academic_year_id', $academicYear->id)
             ->where('semester_id', $semester->id)
+            ->where('activity_type', 'regular')
             ->whereIn('status', [
                 'published',
                 'completed',
@@ -181,11 +182,12 @@ class LpjReportService
             );
 
             $dateRows = $this->activityRows($dates, $monthActivities);
-            $attendance = $this->attendanceMatrix(
+            $routineSessions = $this->routineSessionRows(
                 $academicYear,
-                $dates,
+                $monthStart,
+                $monthEnd,
                 $monthActivities,
-                $dateRows
+                $documentSetting?->extracurricular_weekday
             );
 
             $months->push([
@@ -196,14 +198,12 @@ class LpjReportService
                 'activities' => $monthActivities,
                 'dates' => $dates,
                 'dateRows' => $dateRows,
-                'attendanceClasses' => $attendance['classes'],
-                'dateMeta' => $attendance['dateMeta'],
+                'routineSessions' => $routineSessions,
                 'coachRows' => $this->coachRows(
                     $dates,
                     $monthActivities,
                     $documentSetting?->responsibleCoach
                 ),
-                'documentation' => $this->documentationRows($monthActivities),
             ]);
 
             $cursor = $cursor->addMonth();
@@ -263,60 +263,181 @@ class LpjReportService
         return $dates->map(function (CarbonImmutable $date) use ($activities): array {
             $dayActivities = $activities
                 ->filter(fn (Activity $activity): bool => $activity->start_at->isSameDay($date))
+                ->sortBy('start_at')
                 ->values();
 
-            $active = $dayActivities->where('status', '!=', 'cancelled')->values();
-            $cancelled = $dayActivities->where('status', 'cancelled')->values();
-            $isHoliday = $active->isEmpty();
+            $sessionRows = $dayActivities
+                ->groupBy(fn (Activity $activity): int => (int) ($activity->routine_session_no ?: 1))
+                ->sortKeys()
+                ->map(function (Collection $sessionActivities, int|string $sessionNo): array {
+                    $active = $sessionActivities
+                        ->where('status', '!=', 'cancelled')
+                        ->sortBy('start_at')
+                        ->values();
+                    $cancelled = $sessionActivities
+                        ->where('status', 'cancelled')
+                        ->values();
+                    $isCancelled = $active->isEmpty();
+                    $referenceActivity = $active->first() ?: $sessionActivities->first();
 
-            $materials = $active
-                ->flatMap(function (Activity $activity): array {
-                    $material = trim((string) ($activity->journal?->material ?? ''));
+                    $materials = $active
+                        ->flatMap(fn (Activity $activity): Collection => $this->activityMaterials($activity))
+                        ->prepend('Doa')
+                        ->filter()
+                        ->unique()
+                        ->values();
 
-                    if ($material !== '') {
-                        return collect(preg_split('/\R+/', $material) ?: [])
-                            ->map(fn (string $line): string => trim($line))
+                    $holidayLabel = null;
+
+                    if ($isCancelled) {
+                        $reason = $cancelled
+                            ->map(function (Activity $activity): string {
+                                $description = trim((string) $activity->description);
+
+                                return $description !== ''
+                                    ? $description
+                                    : $activity->title;
+                            })
                             ->filter()
-                            ->values()
-                            ->all();
+                            ->implode(' / ');
+
+                        $holidayLabel = $reason !== ''
+                            ? 'LIBUR - '.$reason
+                            : 'LIBUR / TIDAK ADA KEGIATAN';
                     }
 
-                    $description = trim((string) $activity->description);
-
-                    return [$description !== '' ? $description : $activity->title];
+                    return [
+                        'number' => (int) $sessionNo,
+                        'label' => $this->routineSessionLabel((int) $sessionNo, $sessionActivities),
+                        'startTime' => $referenceActivity?->start_at?->format('H:i'),
+                        'endTime' => $referenceActivity?->end_at?->format('H:i'),
+                        'activities' => $sessionActivities,
+                        'isCancelled' => $isCancelled,
+                        'holidayLabel' => $holidayLabel,
+                        'materials' => $materials,
+                    ];
                 })
-                ->prepend('Doa')
-                ->filter()
-                ->unique()
                 ->values();
+
+            $isHoliday = $sessionRows->isEmpty()
+                || $sessionRows->every(fn (array $session): bool => $session['isCancelled']);
 
             $holidayLabel = null;
 
             if ($isHoliday) {
-                $holidayLabel = $cancelled
-                    ->map(function (Activity $activity): string {
-                        $description = trim((string) $activity->description);
-
-                        return $description !== ''
-                            ? $description
-                            : $activity->title;
-                    })
+                $holidayLabel = $sessionRows
+                    ->pluck('holidayLabel')
                     ->filter()
+                    ->unique()
                     ->implode(' / ');
 
-                $holidayLabel = $holidayLabel !== ''
-                    ? 'LIBUR - '.$holidayLabel
-                    : 'LIBUR / TIDAK ADA KEGIATAN';
+                if ($holidayLabel === '') {
+                    $holidayLabel = 'LIBUR / TIDAK ADA KEGIATAN';
+                }
             }
 
             return [
                 'date' => $date,
                 'activities' => $dayActivities,
+                'sessions' => $sessionRows,
                 'isHoliday' => $isHoliday,
                 'holidayLabel' => $holidayLabel,
-                'materials' => $materials,
             ];
         });
+    }
+
+    /**
+     * @param  Collection<int, Activity>  $activities
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function routineSessionRows(
+        AcademicYear $academicYear,
+        CarbonImmutable $monthStart,
+        CarbonImmutable $monthEnd,
+        Collection $activities,
+        ?int $weekday
+    ): Collection {
+        return $activities
+            ->groupBy(fn (Activity $activity): int => (int) ($activity->routine_session_no ?: 1))
+            ->sortKeys()
+            ->map(function (Collection $sessionActivities, int|string $sessionNo) use (
+                $academicYear,
+                $monthStart,
+                $monthEnd,
+                $weekday
+            ): array {
+                $sessionActivities = $sessionActivities
+                    ->sortBy('start_at')
+                    ->values();
+                $dates = $this->reportDates(
+                    $monthStart,
+                    $monthEnd,
+                    $sessionActivities,
+                    $weekday
+                );
+                $dateRows = $this->activityRows($dates, $sessionActivities);
+                $attendance = $this->attendanceMatrix(
+                    $academicYear,
+                    $dates,
+                    $sessionActivities,
+                    $dateRows
+                );
+                $referenceActivity = $sessionActivities
+                    ->firstWhere('status', '!=', 'cancelled')
+                    ?: $sessionActivities->first();
+
+                return [
+                    'number' => (int) $sessionNo,
+                    'label' => $this->routineSessionLabel((int) $sessionNo, $sessionActivities),
+                    'startTime' => $referenceActivity?->start_at?->format('H:i'),
+                    'endTime' => $referenceActivity?->end_at?->format('H:i'),
+                    'activities' => $sessionActivities,
+                    'dates' => $dates,
+                    'dateMeta' => $attendance['dateMeta'],
+                    'attendanceClasses' => $attendance['classes'],
+                    'documentation' => $this->documentationRows($sessionActivities),
+                ];
+            })
+            ->values();
+    }
+
+    /**
+     * @param  Collection<int, Activity>  $activities
+     */
+    private function routineSessionLabel(int $sessionNo, Collection $activities): string
+    {
+        $scoutLevels = $activities
+            ->flatMap(fn (Activity $activity) => $activity->scoutLevels->pluck('name'))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $label = 'Sesi '.$sessionNo;
+
+        if ($scoutLevels->isNotEmpty()) {
+            $label .= ' - '.$scoutLevels->implode(' / ');
+        }
+
+        return $label;
+    }
+
+    /** @return Collection<int, string> */
+    private function activityMaterials(Activity $activity): Collection
+    {
+        $material = trim((string) ($activity->journal?->material ?? ''));
+
+        if ($material !== '') {
+            return collect(preg_split('/\R+/', $material) ?: [])
+                ->map(fn (string $line): string => trim($line))
+                ->filter()
+                ->values();
+        }
+
+        $description = trim((string) $activity->description);
+
+        return collect([
+            $description !== '' ? $description : $activity->title,
+        ])->filter();
     }
 
     /**
@@ -359,8 +480,10 @@ class LpjReportService
             ->where('academic_year_id', $academicYear->id)
             ->where('status', 'active');
 
-        if ($hasAllScope) {
-            // Seluruh siswa aktif tahun ajaran menjadi matriks absensi.
+        if ($participantIds->isNotEmpty()) {
+            $enrollmentQuery->whereIn('student_id', $participantIds);
+        } elseif ($hasAllScope) {
+            // Fallback untuk data lama yang belum mempunyai snapshot peserta.
         } elseif ($classroomScopeIds->isNotEmpty()) {
             $enrollmentQuery->whereIn('classroom_id', $classroomScopeIds);
         } else {

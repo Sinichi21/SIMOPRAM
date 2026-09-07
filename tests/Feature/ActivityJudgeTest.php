@@ -6,6 +6,7 @@ use App\Models\Activity;
 use App\Models\ActivityAssessment;
 use App\Models\AssessmentConfig;
 use App\Models\AssessmentFactor;
+use App\Models\MessagingSetting;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\User;
@@ -13,6 +14,7 @@ use App\Services\ActivityAssessmentService;
 use App\Services\ActivityJudgeService;
 use App\Support\SchoolContext;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 
@@ -30,6 +32,21 @@ function judgeContext(): array
 
     return compact('school', 'activity', 'assessment', 'criterion', 'target');
 }
+
+test('judge invitations can be sent by whatsapp and revoked invitations cannot be sent again', function () {
+    extract(judgeContext());
+    MessagingSetting::factory()->create(['enabled' => true, 'options' => ['token' => 'secret']]);
+    Http::preventStrayRequests();
+    Http::fake(['https://api.fonnte.com/send' => Http::response(['status' => true])]);
+    $component = Livewire::test(Judges::class, ['assessmentId' => $assessment->id])
+        ->set('judgeName', 'Juri Undangan')->call('invite')->assertHasNoErrors()
+        ->set('messageDestination', '081234567890')->call('sendInvitation')->assertHasNoErrors();
+    $url = $component->get('invitationUrl');
+    Http::assertSent(fn ($request) => $request['target'] === '6281234567890' && str_contains($request['message'], $url));
+    $assessment->judges()->first()->update(['revoked_at' => now()]);
+    $component->call('sendInvitation')->assertStatus(410);
+    Http::assertSentCount(1);
+});
 
 test('special assessments can be created without a semester factor', function () {
     extract(judgeContext());

@@ -5,6 +5,19 @@
         DAFTAR HADIR PESERTA/SISWA EKSTRA / PENGEMBANGAN DIRI<br>
         EKSTRA KURIKULER PRAMUKA
     </div>
+
+    <div class="attendance-session-heading">
+        {{ strtoupper($routineSession['label']) }}
+    </div>
+
+    @if ($routineSession['startTime'] || $routineSession['endTime'])
+        <div class="attendance-session-time">
+            {{ $routineSession['startTime'] ?: '--:--' }}
+            -
+            {{ $routineSession['endTime'] ?: '--:--' }} WITA
+        </div>
+    @endif
+
     <div class="month-label">
         KELAS {{ strtoupper($classData['classroom']->name) }} - {{ strtoupper($reportMonth['label']) }}
     </div>
@@ -15,11 +28,11 @@
                 <th class="col-no" rowspan="2">No.</th>
                 <th class="col-name" rowspan="2">Nama Siswa / Peserta</th>
                 <th class="col-class" rowspan="2">Kelas</th>
-                <th colspan="{{ max(1, $reportMonth['dates']->count()) }}">Tanggal dan Kehadiran</th>
+                <th colspan="{{ max(1, $routineSession['dates']->count()) }}">Tanggal dan Kehadiran</th>
             </tr>
             <tr>
-                @forelse ($reportMonth['dates'] as $date)
-                    <th>{{ $date->format('d/m/Y') }}</th>
+                @forelse ($routineSession['dates'] as $date)
+                    <th class="date-column">{{ $date->format('d/m') }}</th>
                 @empty
                     <th>-</th>
                 @endforelse
@@ -33,20 +46,20 @@
                 <tr>
                     <td>{{ ($chunkIndex * 24) + $loop->iteration }}</td>
                     <td class="col-name">{{ $student['name'] }}</td>
-                    <td>{{ $student['className'] }}</td>
-                    @foreach ($reportMonth['dates'] as $date)
+                    <td class="col-class">{{ $student['className'] }}</td>
+                    @foreach ($routineSession['dates'] as $date)
                         @php
                             $dateKey = $date->format('Y-m-d');
-                            $meta = $reportMonth['dateMeta'][$dateKey] ?? null;
+                            $meta = $routineSession['dateMeta'][$dateKey] ?? null;
                         @endphp
                         @if ($meta && $meta['isHoliday'])
                             @if ($studentRowIndex === 0)
-                                <td class="holiday" rowspan="{{ $studentChunk->count() }}">
+                                <td class="holiday date-column" rowspan="{{ $studentChunk->count() }}">
                                     {{ strtoupper($meta['holidayLabel'] ?: 'LIBUR') }}
                                 </td>
                             @endif
                         @else
-                            <td class="status">{{ $student['statuses'][$dateKey] ?? '-' }}</td>
+                            <td class="status date-column">{{ $student['statuses'][$dateKey] ?? '-' }}</td>
                         @endif
                     @endforeach
                 </tr>

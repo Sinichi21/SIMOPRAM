@@ -27,6 +27,8 @@ class Index extends Component
 
     public string $activity_type = 'regular';
 
+    public ?int $routine_session_no = 1;
+
     public string $description = '';
 
     public string $location = '';
@@ -138,6 +140,14 @@ class Index extends Component
                 ]),
             ],
 
+            'routine_session_no' => [
+                Rule::requiredIf($this->activity_type === 'regular'),
+                'nullable',
+                'integer',
+                'min:1',
+                'max:10',
+            ],
+
             'description' => [
                 'nullable',
                 'string',
@@ -240,6 +250,10 @@ class Index extends Component
 
                     'activity_type' => $validated['activity_type'],
 
+                    'routine_session_no' => $validated['activity_type'] === 'regular'
+                        ? (int) $validated['routine_session_no']
+                        : null,
+
                     'description' => filled($validated['description'])
                             ? trim($validated['description'])
                             : null,
@@ -339,6 +353,9 @@ class Index extends Component
         $this->activity_type =
             $activity->activity_type;
 
+        $this->routine_session_no =
+            $activity->routine_session_no;
+
         $this->description =
             $activity->description ?? '';
 
@@ -435,6 +452,8 @@ class Index extends Component
         $this->activity_type =
             'regular';
 
+        $this->routine_session_no = 1;
+
         $this->status =
             'draft';
 
@@ -446,6 +465,13 @@ class Index extends Component
         $this->end_at = '';
 
         $this->resetValidation();
+    }
+
+    public function updatedActivityType(string $activityType): void
+    {
+        $this->routine_session_no = $activityType === 'regular'
+            ? ($this->routine_session_no ?? 1)
+            : null;
     }
 
     public function updatedSearch(): void

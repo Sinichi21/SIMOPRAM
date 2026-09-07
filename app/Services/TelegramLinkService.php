@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\MessagingSetting;
 use App\Models\TelegramLinkToken;
 use App\Models\User;
 use App\Models\UserNotificationChannel;
@@ -30,7 +31,11 @@ class TelegramLinkService
             'Pilih sekolah aktif terlebih dahulu.'
         );
 
-        $botUsername =
+        $setting = MessagingSetting::forChannel('telegram');
+        if ($setting && ! $setting->enabled) {
+            throw ValidationException::withMessages(['telegram' => 'Bot Telegram belum aktif.']);
+        }
+        $botUsername = $setting?->options['username'] ??
             config(
                 'services.telegram.bot_username'
             );

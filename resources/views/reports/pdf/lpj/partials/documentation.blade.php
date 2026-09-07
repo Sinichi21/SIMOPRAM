@@ -6,7 +6,19 @@
         EKSTRA KURIKULER PRAMUKA
     </div>
 
-    @foreach ($reportMonth['documentation'] as $documentation)
+    <div class="documentation-session-heading">
+        {{ strtoupper($routineSession['label']) }} - {{ strtoupper($reportMonth['label']) }}
+        @if ($routineSession['startTime'] || $routineSession['endTime'])
+            <br>
+            <span class="session-time">
+                {{ $routineSession['startTime'] ?: '--:--' }}
+                -
+                {{ $routineSession['endTime'] ?: '--:--' }} WITA
+            </span>
+        @endif
+    </div>
+
+    @foreach ($routineSession['documentation'] as $documentation)
         <div class="documentation-item">
             <div class="documentation-date">
                 {{ $loop->iteration }}. {{ $documentation['activity']->start_at->translatedFormat('l, d F Y') }}

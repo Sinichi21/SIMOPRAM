@@ -66,6 +66,12 @@
 
         <flux:sidebar.nav>
 
+            @if ($currentUser?->isSuperAdmin())
+                <flux:sidebar.item :href="route('settings.messaging')" :current="request()->routeIs('settings.messaging')" wire:navigate>
+                    Integrasi Pesan
+                </flux:sidebar.item>
+            @endif
+
             <flux:sidebar.group
                 :heading="__('Menu Utama')"
                 class="grid"

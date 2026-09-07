@@ -470,7 +470,7 @@
 
                 <p class="mt-1 text-xs text-zinc-500">
                     Maksimal 10 file,
-                    masing-masing maksimal 5 MB.
+                    masing-masing maksimal 8 MB.
                 </p>
 
                 @error('attachments.*')

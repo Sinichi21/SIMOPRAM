@@ -154,7 +154,7 @@ class Manage extends Component
             'attachments.*' => [
                 'file',
                 'mimes:jpg,jpeg,png,pdf,doc,docx',
-                'max:5120',
+                'max:8192',
             ],
         ];
     }
