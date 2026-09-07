@@ -14,11 +14,25 @@ class SchoolDocumentSetting extends Model
         'responsible_coach_id',
         'principal_name',
         'principal_nip',
+        'coordinator_name',
+        'coordinator_nip',
         'gudep_male_number',
         'gudep_female_number',
         'signing_city',
+        'parent_agency',
+        'extracurricular_weekday',
+        'extracurricular_start_time',
+        'extracurricular_end_time',
+        'extracurricular_location',
         'document_note',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'extracurricular_weekday' => 'integer',
+        ];
+    }
 
     public function school(): BelongsTo
     {
