@@ -69,15 +69,17 @@
 
     <div class="attendance-note">Keterangan: H = Hadir, I = Izin, S = Sakit, A = Alpa, - = belum/tidak tercatat.</div>
 
-    <table class="signature-table">
-            <tr>
-                <td>Mengetahui/Menyetujui:<br>Kepala {{ $school->name }}</td>
-                <td>{{ $signingCity }}, {{ $reportMonth['end']->locale('id')->translatedFormat('d F Y') }}<br>Pembina Ekstra / Pengembangan Diri</td>
-            </tr>
-            <tr><td class="signature-space"></td><td></td></tr>
-            <tr>
-                <td><span class="signature-name">{{ $principalName }}</span><br>NIP. {{ $principalNip }}</td>
-                <td><span class="signature-name">{{ $coachName }}</span><br>{{ $coachIdentifier }}</td>
-            </tr>
-    </table>
+    <div class="signature-block">
+        <table class="signature-table">
+                <tr>
+                    <td>Mengetahui/Menyetujui:<br>Kepala {{ $school->name }}</td>
+                    <td>{{ $signingCity }}, {{ $reportMonth['end']->locale('id')->translatedFormat('d F Y') }}<br>Pembina Ekstra / Pengembangan Diri</td>
+                </tr>
+                <tr><td class="signature-space"></td><td></td></tr>
+                <tr>
+                    <td><span class="signature-name">{{ $principalName }}</span><br>NIP. {{ $principalNip }}</td>
+                    <td><span class="signature-name">{{ $coachName }}</span><br>{{ $coachIdentifier }}</td>
+                </tr>
+        </table>
+    </div>
 </section>

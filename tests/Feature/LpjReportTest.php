@@ -44,8 +44,17 @@ test('monthly LPJ only contains activities from the selected month', function ()
     $data = app(LpjReportService::class)->build($this->academicYear->id, $this->semester->id, 'monthly', 8);
     $html = view('reports.pdf.lpj', $data)->render();
 
+    $activityDataPosition = strpos($html, 'DATA KEGIATAN EKSTRA / PENGEMBANGAN DIRI');
+    $monthlyReportPosition = strpos($html, 'LAPORAN PELAKSANAAN KEGIATAN EKSTRA / PENGEMBANGAN DIRI');
+
     expect($data['activities'])->toHaveCount(1)
-        ->and($html)->toContain('Latihan Agustus')->not->toContain('Latihan September')->not->toContain('LEMBAR PENGESAHAN');
+        ->and($html)->toContain('Latihan Agustus')
+        ->not->toContain('Latihan September')
+        ->not->toContain('LEMBAR PENGESAHAN')
+        ->and($activityDataPosition)->not->toBeFalse()
+        ->and($monthlyReportPosition)->not->toBeFalse()
+        ->and($activityDataPosition)->toBeLessThan($monthlyReportPosition)
+        ->and($html)->toContain('class="signature-block"');
 });
 
 test('semester LPJ has one cover and approval page and includes all semester months', function () {

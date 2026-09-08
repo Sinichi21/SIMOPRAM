@@ -18,15 +18,17 @@
         <tr><td>6.</td><td>Tempat Pelaksanaan Ekstra</td><td>: {{ $schedule['location'] }}</td></tr>
     </table>
 
-    <table class="signature-table">
-        <tr>
-            <td>Mengetahui/Menyetujui:<br>Kepala {{ $school->name }}</td>
-            <td>{{ $signingCity }}, {{ $signingDate->locale('id')->translatedFormat('d F Y') }}<br>Pembina Ekstra / Pengembangan Diri</td>
-        </tr>
-        <tr><td class="signature-space"></td><td></td></tr>
-        <tr>
-            <td><span class="signature-name">{{ $principalName }}</span><br>NIP. {{ $principalNip }}</td>
-            <td><span class="signature-name">{{ $coachName }}</span><br>{{ $coachIdentifier }}</td>
-        </tr>
-    </table>
+    <div class="signature-block">
+        <table class="signature-table">
+            <tr>
+                <td>Mengetahui/Menyetujui:<br>Kepala {{ $school->name }}</td>
+                <td>{{ $signingCity }}, {{ $signingDate->locale('id')->translatedFormat('d F Y') }}<br>Pembina Ekstra / Pengembangan Diri</td>
+            </tr>
+            <tr><td class="signature-space"></td><td></td></tr>
+            <tr>
+                <td><span class="signature-name">{{ $principalName }}</span><br>NIP. {{ $principalNip }}</td>
+                <td><span class="signature-name">{{ $coachName }}</span><br>{{ $coachIdentifier }}</td>
+            </tr>
+        </table>
+    </div>
 </section>

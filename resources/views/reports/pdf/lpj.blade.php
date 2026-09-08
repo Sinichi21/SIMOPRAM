@@ -18,7 +18,12 @@
         }
         h1, h2, h3, p { margin-top: 0; }
         .page-break { page-break-after: always; }
-        .avoid-break { page-break-inside: avoid; }
+        .avoid-break,
+        .keep-together,
+        .signature-block {
+            break-inside: avoid;
+            page-break-inside: avoid !important;
+        }
         .center { text-align: center; }
         .right { text-align: right; }
         .bold { font-weight: bold; }
@@ -84,6 +89,7 @@
             text-align: center;
         }
         .month-label { font-size: 10px; font-weight: bold; margin-top: 2mm; text-align: center; }
+        .report-session { page-break-inside: avoid; }
         .report-session + .report-session { border-top: 0.5px dashed #777; margin-top: 2mm; padding-top: 2mm; }
         .session-heading { font-size: 8.5px; font-weight: bold; }
         .session-time { font-size: 7px; margin-top: 0.5mm; }
@@ -92,6 +98,8 @@
         .documentation-session-heading { font-size: 9px; font-weight: bold; margin: 2mm 0 4mm; text-align: center; }
 
         table { border-collapse: collapse; width: 100%; }
+        .data-table { page-break-inside: avoid; }
+        .data-table tr { page-break-inside: avoid; }
         .data-table td { padding: 1.2mm 1mm; vertical-align: top; }
         .data-table td:first-child { width: 8mm; }
         .data-table td:nth-child(2) { width: 49mm; }
@@ -107,6 +115,7 @@
             font-weight: bold;
             text-align: center;
         }
+        .report-table tr { page-break-inside: avoid; }
         .report-table .number { text-align: center; width: 8mm; }
         .report-table .date { width: 38mm; }
         .report-table ul { margin: 0; padding-left: 4mm; }
@@ -139,7 +148,12 @@
         .attendance-table .status { font-weight: bold; }
         .attendance-note { font-size: 6.8px; margin-top: 1.5mm; }
 
-        .signature-table { margin-top: 9mm; }
+        .signature-block {
+            display: block;
+            margin-top: 6mm;
+        }
+        .signature-block .signature-table { margin-top: 0; }
+        .signature-table { margin-top: 9mm; page-break-inside: avoid; }
         .signature-table td { text-align: center; vertical-align: top; width: 50%; }
         .signature-space { height: 18mm; }
         .signature-name { font-weight: bold; text-decoration: underline; }
@@ -153,7 +167,7 @@
         .approval-signatures td { text-align: center; width: 50%; vertical-align: top; }
         .approval-principal { margin: 20mm auto 0; text-align: center; width: 55%; }
 
-        .documentation-item { margin-bottom: 7mm; page-break-inside: auto; }
+        .documentation-item { margin-bottom: 7mm; page-break-inside: avoid; }
         .documentation-date { font-size: 9px; font-weight: bold; margin-bottom: 2mm; }
         .documentation-grid { width: 100%; }
         .documentation-grid tr { page-break-inside: avoid; }
@@ -193,6 +207,8 @@
     @include('reports.pdf.lpj.partials.cover')
     @include('reports.pdf.lpj.partials.activity-data')
     @include('reports.pdf.lpj.partials.approval')
+@elseif ($periodType === 'monthly')
+    @include('reports.pdf.lpj.partials.activity-data')
 @endif
 
 @forelse ($reportMonths as $reportMonth)

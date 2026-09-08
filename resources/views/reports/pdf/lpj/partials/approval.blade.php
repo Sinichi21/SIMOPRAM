@@ -17,26 +17,28 @@
         <tr><td>Tanggal</td><td>: {{ $signingDate->locale('id')->translatedFormat('d F Y') }}</td></tr>
     </table>
 
-    <table class="approval-signatures">
-        <tr>
-            <td>Pembina Ekstra/Pengembangan Diri</td>
-            <td>Koordinator Ekstra/Pengembangan Diri</td>
-        </tr>
-        <tr><td class="signature-space"></td><td></td></tr>
-        <tr>
-            <td><span class="signature-name">{{ $coachName }}</span><br>{{ $coachIdentifier }}</td>
-            <td>
-                <span class="signature-name">{{ $documentSetting?->coordinator_name ?: '........................' }}</span><br>
-                @if ($documentSetting?->coordinator_nip) NIP. {{ $documentSetting->coordinator_nip }} @endif
-            </td>
-        </tr>
-    </table>
+    <div class="signature-block approval-signature-block">
+        <table class="approval-signatures">
+            <tr>
+                <td>Pembina Ekstra/Pengembangan Diri</td>
+                <td>Koordinator Ekstra/Pengembangan Diri</td>
+            </tr>
+            <tr><td class="signature-space"></td><td></td></tr>
+            <tr>
+                <td><span class="signature-name">{{ $coachName }}</span><br>{{ $coachIdentifier }}</td>
+                <td>
+                    <span class="signature-name">{{ $documentSetting?->coordinator_name ?: '........................' }}</span><br>
+                    @if ($documentSetting?->coordinator_nip) NIP. {{ $documentSetting->coordinator_nip }} @endif
+                </td>
+            </tr>
+        </table>
 
-    <div class="approval-principal">
-        Mengetahui/Menyetujui:<br>
-        Kepala {{ $school->name }}
-        <div class="signature-space"></div>
-        <span class="signature-name">{{ $principalName }}</span><br>
-        NIP. {{ $principalNip }}
+        <div class="approval-principal">
+            Mengetahui/Menyetujui:<br>
+            Kepala {{ $school->name }}
+            <div class="signature-space"></div>
+            <span class="signature-name">{{ $principalName }}</span><br>
+            NIP. {{ $principalNip }}
+        </div>
     </div>
 </section>
