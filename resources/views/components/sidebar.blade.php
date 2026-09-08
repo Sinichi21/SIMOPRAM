@@ -10,7 +10,7 @@
 </head>
 
 <body
-    class="min-h-screen bg-white dark:bg-zinc-800"
+    class="simpram-app min-h-screen bg-[#f7f5ee] text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100"
 >
 
     @php
@@ -65,6 +65,10 @@
         ================================================== --}}
 
         <flux:sidebar.nav>
+
+            <flux:sidebar.item :href="route('complaints.index')" :current="request()->routeIs('complaints.index', 'complaints.show')" wire:navigate>
+                Pengaduan
+            </flux:sidebar.item>
 
             @if ($currentUser?->isSuperAdmin())
                 <flux:sidebar.item :href="route('settings.messaging')" :current="request()->routeIs('settings.messaging')" wire:navigate>

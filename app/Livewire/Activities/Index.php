@@ -27,7 +27,7 @@ class Index extends Component
 
     public string $activity_type = 'regular';
 
-    public ?int $routine_session_no = 1;
+    public ?int $routine_session_no = null;
 
     public string $description = '';
 
@@ -452,7 +452,7 @@ class Index extends Component
         $this->activity_type =
             'regular';
 
-        $this->routine_session_no = 1;
+        $this->routine_session_no = null;
 
         $this->status =
             'draft';
@@ -469,9 +469,10 @@ class Index extends Component
 
     public function updatedActivityType(string $activityType): void
     {
-        $this->routine_session_no = $activityType === 'regular'
-            ? ($this->routine_session_no ?? 1)
-            : null;
+        if ($activityType !== 'regular') {
+            $this->routine_session_no = null;
+        }
+
     }
 
     public function updatedSearch(): void

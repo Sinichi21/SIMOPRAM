@@ -569,7 +569,7 @@
 
                         @can('journals.attachments')
 
-                            <button
+                            <button data-action-tone="danger"
                                 type="button"
                                 wire:click="
                                     deleteAttachment(

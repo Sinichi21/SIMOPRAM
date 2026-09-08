@@ -229,14 +229,14 @@
 
                                 @can('semesters.manage')
 
-                                    <button
+                                    <button data-action-tone="edit"
                                         wire:click="edit({{ $semester->id }})"
                                         class="mr-2 rounded border px-3 py-1"
                                     >
                                         Edit
                                     </button>
 
-                                    <button
+                                    <button data-action-tone="danger"
                                         wire:click="delete({{ $semester->id }})"
                                         wire:confirm="Hapus semester ini?"
                                         class="rounded border px-3 py-1 text-red-600"

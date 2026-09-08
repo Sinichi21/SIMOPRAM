@@ -423,7 +423,7 @@
 
                                 <div class="flex flex-wrap gap-2">
 
-                                    <button
+                                    <button data-action-tone="view"
                                         type="button"
                                         wire:click="selectUnit({{ $unit->id }})"
                                         class="rounded-lg bg-zinc-900
@@ -437,7 +437,7 @@
 
                                     @can('scout_units.manage')
 
-                                        <button
+                                        <button data-action-tone="edit"
                                             type="button"
                                             wire:click="editUnit({{ $unit->id }})"
                                             class="rounded-lg border

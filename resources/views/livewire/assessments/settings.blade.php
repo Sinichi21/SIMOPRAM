@@ -262,7 +262,7 @@
 
                                     <div class="flex gap-2">
 
-                                        <button
+                                        <button data-action-tone="edit"
                                             wire:click="
                                                 editFactor(
                                                     {{ $factor->id }}
@@ -502,7 +502,7 @@
 
                         @can('assessments.manage')
 
-                            <button
+                            <button data-action-tone="edit"
                                 wire:click="
                                     editConfig(
                                         {{ $config->id }}

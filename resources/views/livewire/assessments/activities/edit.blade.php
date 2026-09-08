@@ -749,7 +749,7 @@
                                     === 'draft'
                                 )
 
-                                    <button
+                                    <button data-action-tone="edit"
                                         type="button"
                                         wire:click="editCriterion({{ $criterion->id }})"
                                         class="mr-3
@@ -759,7 +759,7 @@
                                     </button>
 
 
-                                    <button
+                                    <button data-action-tone="danger"
                                         type="button"
                                         wire:click="deleteCriterion({{ $criterion->id }})"
                                         wire:confirm="Hapus kriteria ini?"

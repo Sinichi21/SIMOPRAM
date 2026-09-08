@@ -310,7 +310,7 @@
 
                                     <div class="flex gap-2">
 
-                                        <button
+                                        <button data-action-tone="edit"
                                             type="button"
                                             wire:click="edit({{ $academicYear->id }})"
                                             class="rounded
@@ -320,7 +320,7 @@
                                             Edit
                                         </button>
 
-                                        <button
+                                        <button data-action-tone="danger"
                                             type="button"
                                             onclick="
                                                 if (

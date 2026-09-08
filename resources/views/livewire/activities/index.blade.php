@@ -555,7 +555,7 @@
 
                                     @can('activities.update')
 
-                                        <button
+                                        <button data-action-tone="edit"
                                             type="button"
                                             wire:click="edit({{ $activity->id }})"
                                             class="rounded-lg border

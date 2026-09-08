@@ -174,14 +174,14 @@
 
                                 @can('classrooms.manage')
 
-                                    <button
+                                    <button data-action-tone="edit"
                                         wire:click="edit({{ $classroom->id }})"
                                         class="mr-2 rounded border px-3 py-1"
                                     >
                                         Edit
                                     </button>
 
-                                    <button
+                                    <button data-action-tone="status"
                                         wire:click="toggleStatus({{ $classroom->id }})"
                                         class="rounded border px-3 py-1"
                                     >

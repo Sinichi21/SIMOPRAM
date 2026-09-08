@@ -5,6 +5,8 @@ namespace App\Livewire\Attendances;
 use App\Models\AttendanceSession;
 use App\Models\Student;
 use App\Services\AttendanceService;
+use App\Support\SchoolContext;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Validator;
 use Livewire\Component;
 
@@ -12,9 +14,10 @@ class SelfCheckin extends Component
 {
     public ?string $successMessage = null;
 
-    protected function student(): Student
+    protected function student(): ?Student
     {
         return Student::query()
+            ->where('school_id', app(SchoolContext::class)->id())
             ->where(
                 'user_id',
                 auth()->id()
@@ -23,7 +26,7 @@ class SelfCheckin extends Component
                 'status',
                 'active'
             )
-            ->firstOrFail();
+            ->first();
     }
 
     public function checkIn(
@@ -80,6 +83,8 @@ class SelfCheckin extends Component
         $student =
             $this->student();
 
+        abort_unless($student, 403, 'Akun belum terhubung ke siswa aktif di sekolah yang dipilih.');
+
         /*
         |--------------------------------------------------------------------------
         | Session harus memang milik siswa
@@ -128,10 +133,17 @@ class SelfCheckin extends Component
                 : 'Absensi berhasil. Status: Hadir.';
     }
 
-    public function render()
+    public function render(): View
     {
         $student =
             $this->student();
+
+        if (! $student) {
+            return view('livewire.attendances.self-checkin', [
+                'student' => null,
+                'sessions' => collect(),
+            ]);
+        }
 
         $sessions =
             AttendanceSession::query()

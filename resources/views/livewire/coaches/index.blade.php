@@ -536,7 +536,7 @@
                                 <div class="flex gap-2">
 
                                     @can('coach_accounts.manage')
-                                        <a
+                                        <a data-action-tone="account"
                                             href="{{ route('coach-accounts.manage', $coach->id) }}"
                                             wire:navigate
                                             class="rounded-lg border border-zinc-300 px-3 py-1.5 dark:border-zinc-700"
@@ -547,7 +547,7 @@
 
                                     @can('coaches.update')
 
-                                        <button
+                                        <button data-action-tone="edit"
                                             type="button"
                                             wire:click="edit({{ $coach->id }})"
                                             class="rounded-lg border
@@ -563,7 +563,7 @@
 
                                     @can('coaches.toggle')
 
-                                        <button
+                                        <button data-action-tone="status"
                                             type="button"
                                             wire:click="
                                                 toggleStatus(

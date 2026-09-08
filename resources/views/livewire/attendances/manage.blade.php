@@ -374,7 +374,7 @@
 
                     <div class="flex gap-2">
 
-                        <button
+                        <button data-action-tone="view"
                             type="button"
                             wire:click="selectSession({{ $session->id }})"
                             class="rounded-lg bg-zinc-900
@@ -385,7 +385,7 @@
 
                         @can('attendance_sessions.manage')
 
-                            <button
+                            <button data-action-tone="status"
                                 type="button"
                                 wire:click="toggleSession({{ $session->id }})"
                                 wire:confirm="{{ $session->is_active
@@ -399,7 +399,7 @@
                                 {{ $session->is_active ? 'Nonaktifkan' : 'Aktifkan' }}
                             </button>
 
-                            <button
+                            <button data-action-tone="edit"
                                 type="button"
                                 wire:click="editSession({{ $session->id }})"
                                 class="rounded-lg border
@@ -539,7 +539,7 @@
 
                                         <div class="flex flex-wrap gap-1">
 
-                                            <button
+                                            <button data-action-tone="present"
                                                 wire:click="mark(
                                                     {{ $participant->student_id }},
                                                     'present'
@@ -549,7 +549,7 @@
                                                 Hadir
                                             </button>
 
-                                            <button
+                                            <button data-action-tone="late"
                                                 wire:click="mark(
                                                     {{ $participant->student_id }},
                                                     'late'
@@ -559,7 +559,7 @@
                                                 Terlambat
                                             </button>
 
-                                            <button
+                                            <button data-action-tone="sick"
                                                 wire:click="mark(
                                                     {{ $participant->student_id }},
                                                     'sick'
@@ -569,7 +569,7 @@
                                                 Sakit
                                             </button>
 
-                                            <button
+                                            <button data-action-tone="excused"
                                                 wire:click="mark(
                                                     {{ $participant->student_id }},
                                                     'excused'
@@ -579,7 +579,7 @@
                                                 Izin
                                             </button>
 
-                                            <button
+                                            <button data-action-tone="absent"
                                                 wire:click="mark(
                                                     {{ $participant->student_id }},
                                                     'absent'

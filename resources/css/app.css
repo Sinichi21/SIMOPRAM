@@ -61,6 +61,271 @@ select:focus[data-flux-control] {
     @apply outline-hidden ring-2 ring-accent ring-offset-2 ring-offset-accent-foreground;
 }
 
-/* \[:where(&)\]:size-4 {
-    @apply size-4;
-} */
+/* Shared internal palette also themes existing zinc-based forms and tables. */
+.simpram-app {
+    --color-zinc-50: #f7f8f2;
+    --color-zinc-100: #edf2e9;
+    --color-zinc-200: #d8e4d9;
+    --color-zinc-300: #b7cbbf;
+    --color-zinc-400: #839d90;
+    --color-zinc-500: #587366;
+    --color-zinc-600: #405f50;
+    --color-zinc-700: #2d5040;
+    --color-zinc-800: #164432;
+    --color-zinc-900: #063d2c;
+    --color-zinc-950: #022c22;
+    --color-accent: var(--color-emerald-800);
+    --color-accent-content: var(--color-emerald-800);
+    --color-accent-foreground: var(--color-white);
+    accent-color: var(--color-emerald-700);
+}
+
+.dark .simpram-app {
+    --color-zinc-50: #f0f7f3;
+    --color-zinc-100: #dfede5;
+    --color-zinc-200: #c7ddcf;
+    --color-zinc-300: #a9c9b7;
+    --color-zinc-400: #8ead9c;
+    --color-zinc-500: #7d9e8b;
+    --color-zinc-600: #4e7260;
+    --color-zinc-700: #2d5040;
+    --color-zinc-800: #1b3c2f;
+    --color-zinc-900: #112d23;
+    --color-zinc-950: #091e17;
+    --color-accent: var(--color-amber-300);
+    --color-accent-content: var(--color-amber-300);
+    --color-accent-foreground: var(--color-emerald-950);
+}
+
+.simpram-app [data-flux-sidebar] {
+    border-color: var(--color-zinc-200);
+}
+
+.dark .simpram-app [data-flux-sidebar] {
+    border-color: var(--color-zinc-800);
+}
+
+.simpram-app [data-flux-sidebar-item][data-current] {
+    background: var(--color-emerald-800);
+    color: white;
+    box-shadow: inset 3px 0 var(--color-amber-300);
+}
+
+.simpram-app [data-flux-sidebar-item][data-current] [data-flux-icon] {
+    color: var(--color-amber-300);
+}
+
+.dark .simpram-app [data-flux-sidebar-item][data-current] {
+    background: var(--color-emerald-900);
+}
+
+.simpram-app .app-page-heading {
+    padding: clamp(1.25rem, 3vw, 2rem);
+    border: 1px solid var(--color-emerald-800);
+    border-radius: 1.5rem;
+    background: var(--color-emerald-950);
+    color: white;
+    box-shadow: 0 12px 24px -16px #022c2266;
+}
+
+.simpram-app .app-page-heading h1 {
+    color: white;
+    font-weight: 800;
+    letter-spacing: -.035em;
+}
+
+.simpram-app .app-page-heading p {
+    color: var(--color-emerald-100);
+}
+
+.simpram-app .app-page-heading .rounded-full {
+    background: var(--color-amber-300);
+    color: var(--color-emerald-950);
+    font-weight: 700;
+}
+
+.simpram-app .app-page-heading button {
+    border-color: var(--color-amber-300);
+    background: var(--color-amber-300);
+    color: var(--color-emerald-950);
+}
+
+.simpram-app .app-page-heading button:hover {
+    background: var(--color-amber-200);
+}
+
+.simpram-app :where(input, select, textarea):focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+}
+
+/* Action colors are shared across lists; labels still identify each action. */
+.simpram-app [data-action-tone] {
+    border: 1px solid var(--action-border);
+    background-color: var(--action-background);
+    color: var(--action-text);
+    font-weight: 600;
+    transition: background-color 150ms, border-color 150ms;
+}
+
+.simpram-app [data-action-tone]:hover:not(:disabled):not([aria-disabled="true"]) {
+    background-color: var(--action-hover);
+    border-color: var(--action-text);
+}
+
+.simpram-app [data-action-tone]:focus-visible {
+    outline: 2px solid var(--action-text);
+    outline-offset: 3px;
+}
+
+.simpram-app [data-action-tone]:disabled,
+.simpram-app [data-action-tone][aria-disabled="true"] {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .simpram-app [data-action-tone] {
+        transition: none;
+    }
+}
+
+.simpram-app [data-action-tone="edit"] {
+    --action-background: var(--color-blue-50);
+    --action-border: var(--color-blue-300);
+    --action-text: var(--color-blue-800);
+    --action-hover: var(--color-blue-100);
+}
+
+.dark .simpram-app [data-action-tone="edit"] {
+    --action-background: var(--color-blue-950);
+    --action-border: var(--color-blue-700);
+    --action-text: var(--color-blue-200);
+    --action-hover: var(--color-blue-900);
+}
+
+.simpram-app [data-action-tone="account"] {
+    --action-background: var(--color-violet-50);
+    --action-border: var(--color-violet-300);
+    --action-text: var(--color-violet-800);
+    --action-hover: var(--color-violet-100);
+}
+
+.dark .simpram-app [data-action-tone="account"] {
+    --action-background: var(--color-violet-950);
+    --action-border: var(--color-violet-700);
+    --action-text: var(--color-violet-200);
+    --action-hover: var(--color-violet-900);
+}
+
+.simpram-app [data-action-tone="present"] {
+    --action-background: var(--color-emerald-50);
+    --action-border: var(--color-emerald-300);
+    --action-text: var(--color-emerald-800);
+    --action-hover: var(--color-emerald-100);
+}
+
+.dark .simpram-app [data-action-tone="present"] {
+    --action-background: var(--color-emerald-950);
+    --action-border: var(--color-emerald-700);
+    --action-text: var(--color-emerald-200);
+    --action-hover: var(--color-emerald-900);
+}
+
+.simpram-app [data-action-tone="sick"] {
+    --action-background: var(--color-amber-50);
+    --action-border: var(--color-amber-300);
+    --action-text: var(--color-amber-800);
+    --action-hover: var(--color-amber-100);
+}
+
+.dark .simpram-app [data-action-tone="sick"] {
+    --action-background: var(--color-amber-950);
+    --action-border: var(--color-amber-700);
+    --action-text: var(--color-amber-200);
+    --action-hover: var(--color-amber-900);
+}
+
+.simpram-app [data-action-tone="excused"] {
+    --action-background: var(--color-cyan-50);
+    --action-border: var(--color-cyan-300);
+    --action-text: var(--color-cyan-800);
+    --action-hover: var(--color-cyan-100);
+}
+
+.dark .simpram-app [data-action-tone="excused"] {
+    --action-background: var(--color-cyan-950);
+    --action-border: var(--color-cyan-700);
+    --action-text: var(--color-cyan-200);
+    --action-hover: var(--color-cyan-900);
+}
+
+.simpram-app [data-action-tone="late"] {
+    --action-background: var(--color-orange-50);
+    --action-border: var(--color-orange-300);
+    --action-text: var(--color-orange-800);
+    --action-hover: var(--color-orange-100);
+}
+
+.dark .simpram-app [data-action-tone="late"] {
+    --action-background: var(--color-orange-950);
+    --action-border: var(--color-orange-700);
+    --action-text: var(--color-orange-200);
+    --action-hover: var(--color-orange-900);
+}
+
+.simpram-app [data-action-tone="absent"] {
+    --action-background: var(--color-red-50);
+    --action-border: var(--color-red-300);
+    --action-text: var(--color-red-800);
+    --action-hover: var(--color-red-100);
+}
+
+.dark .simpram-app [data-action-tone="absent"] {
+    --action-background: var(--color-red-950);
+    --action-border: var(--color-red-700);
+    --action-text: var(--color-red-200);
+    --action-hover: var(--color-red-900);
+}
+
+.simpram-app [data-action-tone="danger"] {
+    --action-background: var(--color-red-50);
+    --action-border: var(--color-red-300);
+    --action-text: var(--color-red-800);
+    --action-hover: var(--color-red-100);
+}
+
+.dark .simpram-app [data-action-tone="danger"] {
+    --action-background: var(--color-red-950);
+    --action-border: var(--color-red-700);
+    --action-text: var(--color-red-200);
+    --action-hover: var(--color-red-900);
+}
+
+.simpram-app [data-action-tone="status"] {
+    --action-background: var(--color-orange-50);
+    --action-border: var(--color-orange-300);
+    --action-text: var(--color-orange-800);
+    --action-hover: var(--color-orange-100);
+}
+
+.dark .simpram-app [data-action-tone="status"] {
+    --action-background: var(--color-orange-950);
+    --action-border: var(--color-orange-700);
+    --action-text: var(--color-orange-200);
+    --action-hover: var(--color-orange-900);
+}
+
+.simpram-app [data-action-tone="view"] {
+    --action-background: var(--color-teal-50);
+    --action-border: var(--color-teal-300);
+    --action-text: var(--color-teal-800);
+    --action-hover: var(--color-teal-100);
+}
+
+.dark .simpram-app [data-action-tone="view"] {
+    --action-background: var(--color-teal-950);
+    --action-border: var(--color-teal-700);
+    --action-text: var(--color-teal-200);
+    --action-hover: var(--color-teal-900);
+}

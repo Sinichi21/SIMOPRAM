@@ -1135,7 +1135,7 @@
                                 >
 
                                     @can('student_accounts.manage')
-                                        <a
+                                        <a data-action-tone="account"
                                             href="{{ route('student-accounts.manage', $student->id) }}"
                                             wire:navigate
                                             class="rounded-lg border border-zinc-300 px-3 py-1.5 dark:border-zinc-700"
@@ -1148,7 +1148,7 @@
                                         'students.update'
                                     )
 
-                                        <button
+                                        <button data-action-tone="edit"
                                             type="button"
                                             wire:click="
                                                 edit(
@@ -1182,7 +1182,7 @@
                                             )
                                         )
 
-                                            <button
+                                            <button data-action-tone="status"
                                                 type="button"
                                                 wire:click="
                                                     toggleStatus(

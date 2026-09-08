@@ -3,7 +3,7 @@ HEADER
 ========================================================== --}}
 
 <div
-    class="flex flex-col gap-4
+    class="app-page-heading flex flex-col gap-4
            lg:flex-row
            lg:items-center
            lg:justify-between"

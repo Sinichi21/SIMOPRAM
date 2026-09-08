@@ -1,7 +1,7 @@
 <div class="space-y-6">
 
     {{-- HEADER --}}
-    <div class="flex items-start justify-between gap-4">
+    <div class="app-page-heading flex items-start justify-between gap-4">
 
         <div>
             <h1 class="text-2xl font-semibold text-zinc-900 dark:text-white">
@@ -660,7 +660,7 @@
                                     {{-- EDIT --}}
                                     @can('schools.update')
 
-                                        <button
+                                        <button data-action-tone="edit"
                                             type="button"
                                             wire:click="edit({{ $school->id }})"
                                             class="rounded-lg border
@@ -678,7 +678,7 @@
                                     {{-- STATUS --}}
                                     @can('schools.toggle')
 
-                                        <button
+                                        <button data-action-tone="status"
                                             type="button"
                                             wire:click="toggleStatus({{ $school->id }})"
                                             wire:confirm="

@@ -12,6 +12,7 @@
                 <span><strong class="block tracking-tight">SIMPRAM</strong><span class="block text-[10px] font-semibold tracking-[.18em] text-emerald-800">PRAMUKA DIGITAL</span></span>
             </a>
             <nav class="hidden items-center gap-7 text-sm font-semibold md:flex">
+                <a href="{{ route('complaints.public') }}" class="hover:text-emerald-700">Pengaduan</a>
                 <a href="#fitur" class="hover:text-emerald-700">Fitur</a><a href="#sekolah" class="hover:text-emerald-700">Sekolah</a><a href="#kontak" class="hover:text-emerald-700">Kontak</a>
             </nav>
             <a href="{{ route('login') }}" class="rounded-full border border-emerald-800 px-5 py-2.5 text-sm font-bold text-emerald-900 transition hover:bg-emerald-800 hover:text-white">Masuk Pengelola</a>
@@ -83,7 +84,7 @@
             </form>
         </div></section>
     </main>
-    <footer id="kontak" class="border-t border-slate-200 bg-white px-5 py-10 lg:px-8"><div class="mx-auto flex max-w-7xl flex-col justify-between gap-5 text-sm text-slate-500 sm:flex-row"><p>© {{ date('Y') }} SIMPRAM. Bersama membina generasi.</p><div class="flex gap-5"><a href="mailto:halo@simpram.id" class="hover:text-emerald-700">halo@simpram.id</a><a href="{{ route('login') }}" class="font-bold text-emerald-800">Login pengelola</a></div></div></footer>
+    <footer id="kontak" class="border-t border-slate-200 bg-white px-5 py-10 lg:px-8"><div class="mx-auto flex max-w-7xl flex-col justify-between gap-5 text-sm text-slate-500 sm:flex-row"><p>© {{ date('Y') }} SIMPRAM. Bersama membina generasi.</p><div class="flex gap-5"><a href="{{ route('complaints.public') }}" class="hover:text-emerald-700">Pengaduan</a><a href="mailto:halo@simpram.id" class="hover:text-emerald-700">halo@simpram.id</a><a href="{{ route('login') }}" class="font-bold text-emerald-800">Login pengelola</a></div></div></footer>
     @fluxScripts
 </body>
 </html>

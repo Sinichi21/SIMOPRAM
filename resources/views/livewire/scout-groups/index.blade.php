@@ -244,14 +244,14 @@
 
                                 @can('gudep.manage')
 
-                                    <button
+                                    <button data-action-tone="edit"
                                         wire:click="edit({{ $gudep->id }})"
                                         class="mr-2 rounded border px-3 py-1"
                                     >
                                         Edit
                                     </button>
 
-                                    <button
+                                    <button data-action-tone="status"
                                         wire:click="toggleStatus({{ $gudep->id }})"
                                         class="rounded border px-3 py-1"
                                     >

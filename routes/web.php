@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ActivityJudgeController;
+use App\Http\Controllers\ComplaintController;
 use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\LpjReportController;
 use App\Http\Controllers\PublishedDocumentController;
@@ -17,6 +18,9 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', [LandingPageController::class, 'index'])->name('home');
+Route::get('/pengaduan', [ComplaintController::class, 'publicForm'])->name('complaints.public');
+Route::post('/pengaduan', [ComplaintController::class, 'publicStore'])->middleware('throttle:5,1')->name('complaints.public.store');
+Route::post('/pengaduan/lacak', [ComplaintController::class, 'track'])->middleware('throttle:10,1')->name('complaints.track');
 Route::get('/s/{school:slug}', [LandingPageController::class, 'school'])->name('schools.landing');
 Route::post('/pendaftaran-sekolah', [SchoolRegistrationController::class, 'store'])
     ->middleware('throttle:5,1')
@@ -58,6 +62,12 @@ Route::middleware([
     'auth',
     'school',
 ])->group(function () {
+
+    Route::get('/pengaduan-saya', [ComplaintController::class, 'index'])->name('complaints.index');
+    Route::post('/pengaduan-saya', [ComplaintController::class, 'store'])->middleware('throttle:5,1')->name('complaints.store');
+    Route::get('/pengaduan-saya/{complaint}', [ComplaintController::class, 'show'])->whereNumber('complaint')->name('complaints.show');
+    Route::patch('/pengaduan-saya/{complaint}', [ComplaintController::class, 'update'])->whereNumber('complaint')->name('complaints.update');
+    Route::get('/pengaduan-saya/{complaint}/lampiran', [ComplaintController::class, 'attachment'])->whereNumber('complaint')->name('complaints.attachment');
 
     Route::view('/pengaturan/integrasi-pesan', 'settings.messaging')
         ->middleware('can:messaging.manage')->name('settings.messaging');

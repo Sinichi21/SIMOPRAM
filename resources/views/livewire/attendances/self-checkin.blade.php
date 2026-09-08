@@ -71,10 +71,21 @@
         </h1>
 
         <p class="mt-1 text-sm text-zinc-500">
-            {{ $student->name }}
+            {{ $student?->name ?? 'Absensi mandiri untuk siswa di sekolah aktif.' }}
         </p>
     </div>
 
+
+    @if (! $student)
+        <div class="rounded-xl border border-amber-300 bg-amber-50 p-6 text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+            <h2 class="font-semibold">Akun belum terhubung ke siswa aktif</h2>
+            <p class="mt-2 text-sm leading-6">
+                Absensi Saya digunakan oleh siswa. Pastikan sekolah yang dipilih sudah benar,
+                lalu minta pengelola menghubungkan akun Anda dengan data siswa yang berstatus aktif.
+                Untuk mencatat kehadiran sebagai pengelola, gunakan menu Absensi.
+            </p>
+        </div>
+    @else
 
     @if ($successMessage)
 
@@ -257,4 +268,5 @@
 
     </div>
 
+    @endif
 </div>
