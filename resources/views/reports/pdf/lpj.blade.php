@@ -12,7 +12,7 @@
         body {
             color: #000;
             font-family: "DejaVu Serif", serif;
-            font-size: 9px;
+            font-size: 11px;
             line-height: 1.25;
             margin: 0;
         }
@@ -28,7 +28,7 @@
         .right { text-align: right; }
         .bold { font-weight: bold; }
         .uppercase { text-transform: uppercase; }
-        .small { font-size: 7.5px; }
+        .small { font-size: 9px; }
         .muted { color: #555; }
 
         .letterhead {
@@ -41,8 +41,8 @@
         }
         .letterhead-logo-left,
         .letterhead-logo-right {
-            height: 17mm;
-            max-width: 20mm;
+            height: 22mm;
+            max-width: 24mm;
             object-fit: contain;
             position: absolute;
             top: 0;
@@ -50,13 +50,13 @@
         .letterhead-logo-left { left: 1mm; }
         .letterhead-logo-right { right: 1mm; }
         .letterhead-title {
-            font-size: 10px;
+            font-size: 13px;
             font-weight: bold;
             line-height: 1.15;
             margin: 0 23mm;
         }
         .letterhead-address {
-            font-size: 7.5px;
+            font-size: 9px;
             margin: 1mm 23mm 0;
         }
 
@@ -82,7 +82,7 @@
         .cover-school { font-size: 12px; font-weight: bold; line-height: 1.35; margin-top: 42mm; }
 
         .document-title {
-            font-size: 11px;
+            font-size: 13px;
             font-weight: bold;
             line-height: 1.2;
             margin: 3mm 0 4mm;
@@ -100,7 +100,7 @@
         table { border-collapse: collapse; width: 100%; }
         .data-table { page-break-inside: avoid; }
         .data-table tr { page-break-inside: avoid; }
-        .data-table td { padding: 1.2mm 1mm; vertical-align: top; }
+        .data-table td { font-size: 11px; padding: 1.2mm 1mm; vertical-align: top; }
         .data-table td:first-child { width: 8mm; }
         .data-table td:nth-child(2) { width: 49mm; }
 
@@ -109,6 +109,7 @@
             border: 0.7px solid #333;
             padding: 1.2mm 1.3mm;
             vertical-align: top;
+            font-size: 11px;
         }
         .report-table th {
             background: #dcebcf;
@@ -122,7 +123,7 @@
         .report-table li { margin: 0 0 .5mm; }
 
         .attendance-table {
-            font-size: 7.2px;
+            font-size: 10px;
             page-break-inside: auto;
             table-layout: auto;
         }
@@ -146,14 +147,14 @@
         .attendance-table td.date-column { white-space: nowrap; }
         .attendance-table .holiday { background: #a7a7a7; font-size: 6.5px; font-weight: bold; line-height: 1.1; }
         .attendance-table .status { font-weight: bold; }
-        .attendance-note { font-size: 6.8px; margin-top: 1.5mm; }
+        .attendance-note { font-size: 9px; margin-top: 1.5mm; }
 
         .signature-block {
             display: block;
             margin-top: 6mm;
         }
         .signature-block .signature-table { margin-top: 0; }
-        .signature-table { margin-top: 9mm; page-break-inside: avoid; }
+        .signature-table { font-size: 11px; margin-top: 9mm; page-break-inside: avoid; }
         .signature-table td { text-align: center; vertical-align: top; width: 50%; }
         .signature-space { height: 18mm; }
         .signature-name { font-weight: bold; text-decoration: underline; }
@@ -168,7 +169,7 @@
         .approval-principal { margin: 20mm auto 0; text-align: center; width: 55%; }
 
         .documentation-item { margin-bottom: 7mm; page-break-inside: avoid; }
-        .documentation-date { font-size: 9px; font-weight: bold; margin-bottom: 2mm; }
+        .documentation-date { font-size: 11px; font-weight: bold; margin-bottom: 2mm; }
         .documentation-grid { width: 100%; }
         .documentation-grid tr { page-break-inside: avoid; }
         .documentation-grid td { padding: 1.5mm; text-align: center; vertical-align: top; width: 50%; }
@@ -180,7 +181,7 @@
             max-width: 82mm;
             width: auto;
         }
-        .documentation-caption { font-size: 6.5px; margin-top: 1mm; }
+        .documentation-caption { font-size: 9px; margin-top: 1mm; }
 
         .empty-box {
             border: 0.7px dashed #777;
