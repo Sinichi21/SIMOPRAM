@@ -19,7 +19,7 @@
             @forelse ($reportMonth['dateRows'] as $row)
                 <tr>
                     <td class="number">{{ $loop->iteration }}</td>
-                    <td>{{ $row['date']->translatedFormat('l, d F Y') }}</td>
+                    <td>{{ $row['date']->locale('id')->translatedFormat('l, d F Y') }}</td>
                     <td>
                         @if ($row['sessions']->isEmpty())
                             <strong>{{ $row['holidayLabel'] ?: 'LIBUR / TIDAK ADA KEGIATAN' }}</strong>
@@ -27,7 +27,7 @@
                             @foreach ($row['sessions'] as $session)
                                 <div class="report-session">
                                     <div class="session-heading">
-                                        {{ $session['label'] }}
+                                        {{ strtoupper($session['label']) }}
                                     </div>
 
                                     @if ($session['startTime'] || $session['endTime'])
@@ -63,7 +63,7 @@
     <table class="signature-table">
         <tr>
             <td>Mengetahui/Menyetujui:<br>Kepala {{ $school->name }}</td>
-            <td>{{ $signingCity }}, {{ $reportMonth['end']->translatedFormat('d F Y') }}<br>Pembina Ekstra / Pengembangan Diri</td>
+            <td>{{ $signingCity }}, {{ $reportMonth['end']->locale('id')->translatedFormat('d F Y') }}<br>Pembina Ekstra / Pengembangan Diri</td>
         </tr>
         <tr><td class="signature-space"></td><td></td></tr>
         <tr>

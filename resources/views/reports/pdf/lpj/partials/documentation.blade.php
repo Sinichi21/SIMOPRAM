@@ -21,7 +21,7 @@
     @foreach ($routineSession['documentation'] as $documentation)
         <div class="documentation-item">
             <div class="documentation-date">
-                {{ $loop->iteration }}. {{ $documentation['activity']->start_at->translatedFormat('l, d F Y') }}
+                {{ $loop->iteration }}. {{ $documentation['activity']->start_at->locale('id')->translatedFormat('l, d F Y') }}
                 @if ($documentation['activity']->title)
                     - {{ $documentation['activity']->title }}
                 @endif
@@ -32,7 +32,7 @@
                     <tr>
                         @foreach ($attachmentRow as $attachment)
                             <td>
-                                <img src="{{ $attachment->pdf_path }}" alt="Dokumentasi">
+                                <img src="{{ $attachment->pdf_src }}" alt="Dokumentasi">
                                 <div class="documentation-caption">{{ $attachment->original_name }}</div>
                             </td>
                         @endforeach

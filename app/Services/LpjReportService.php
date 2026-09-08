@@ -181,18 +181,24 @@ class LpjReportService
                 $documentSetting?->extracurricular_weekday
             );
 
-            $dateRows = $this->activityRows($dates, $monthActivities);
+            $routineSessionAssignments = $this->routineSessionAssignments($monthActivities);
+            $dateRows = $this->activityRows(
+                $dates,
+                $monthActivities,
+                $routineSessionAssignments
+            );
             $routineSessions = $this->routineSessionRows(
                 $academicYear,
                 $monthStart,
                 $monthEnd,
                 $monthActivities,
-                $documentSetting?->extracurricular_weekday
+                $documentSetting?->extracurricular_weekday,
+                $routineSessionAssignments
             );
 
             $months->push([
                 'key' => $cursor->format('Y-m'),
-                'label' => $cursor->translatedFormat('F Y'),
+                'label' => $cursor->locale('id')->translatedFormat('F Y'),
                 'start' => $monthStart,
                 'end' => $monthEnd,
                 'activities' => $monthActivities,
@@ -258,16 +264,20 @@ class LpjReportService
      */
     private function activityRows(
         Collection $dates,
-        Collection $activities
+        Collection $activities,
+        array $routineSessionAssignments = []
     ): Collection {
-        return $dates->map(function (CarbonImmutable $date) use ($activities): array {
+        return $dates->map(function (CarbonImmutable $date) use ($activities, $routineSessionAssignments): array {
             $dayActivities = $activities
                 ->filter(fn (Activity $activity): bool => $activity->start_at->isSameDay($date))
                 ->sortBy('start_at')
                 ->values();
 
             $sessionRows = $dayActivities
-                ->groupBy(fn (Activity $activity): int => (int) ($activity->routine_session_no ?: 1))
+                ->groupBy(
+                    fn (Activity $activity): int => $routineSessionAssignments[$activity->id]
+                        ?? (int) ($activity->routine_session_no ?: 1)
+                )
                 ->sortKeys()
                 ->map(function (Collection $sessionActivities, int|string $sessionNo): array {
                     $active = $sessionActivities
@@ -355,16 +365,21 @@ class LpjReportService
         CarbonImmutable $monthStart,
         CarbonImmutable $monthEnd,
         Collection $activities,
-        ?int $weekday
+        ?int $weekday,
+        array $routineSessionAssignments
     ): Collection {
         return $activities
-            ->groupBy(fn (Activity $activity): int => (int) ($activity->routine_session_no ?: 1))
+            ->groupBy(
+                fn (Activity $activity): int => $routineSessionAssignments[$activity->id]
+                    ?? (int) ($activity->routine_session_no ?: 1)
+            )
             ->sortKeys()
             ->map(function (Collection $sessionActivities, int|string $sessionNo) use (
                 $academicYear,
                 $monthStart,
                 $monthEnd,
-                $weekday
+                $weekday,
+                $routineSessionAssignments
             ): array {
                 $sessionActivities = $sessionActivities
                     ->sortBy('start_at')
@@ -375,7 +390,11 @@ class LpjReportService
                     $sessionActivities,
                     $weekday
                 );
-                $dateRows = $this->activityRows($dates, $sessionActivities);
+                $dateRows = $this->activityRows(
+                    $dates,
+                    $sessionActivities,
+                    $routineSessionAssignments
+                );
                 $attendance = $this->attendanceMatrix(
                     $academicYear,
                     $dates,
@@ -399,6 +418,84 @@ class LpjReportService
                 ];
             })
             ->values();
+    }
+
+    /**
+     * Resolve session numbers for a monthly set of routine activities.
+     *
+     * Legacy routine activities were migrated to session 1. When the same
+     * calendar day contains multiple distinct time slots but every activity
+     * still has the same session number, infer stable session numbers from
+     * the ordered time slots. Explicitly differentiated session numbers take
+     * precedence.
+     *
+     * @param  Collection<int, Activity>  $activities
+     * @return array<int, int>
+     */
+    private function routineSessionAssignments(Collection $activities): array
+    {
+        if ($activities->isEmpty()) {
+            return [];
+        }
+
+        $explicitNumbers = $activities
+            ->map(fn (Activity $activity): int => (int) ($activity->routine_session_no ?: 1))
+            ->unique()
+            ->values();
+
+        if ($explicitNumbers->count() > 1) {
+            return $activities
+                ->mapWithKeys(fn (Activity $activity): array => [
+                    $activity->id => (int) ($activity->routine_session_no ?: 1),
+                ])
+                ->all();
+        }
+
+        $hasMultipleSlotsOnSameDay = $activities
+            ->groupBy(fn (Activity $activity): string => $activity->start_at->format('Y-m-d'))
+            ->contains(function (Collection $dayActivities): bool {
+                return $dayActivities
+                    ->map(fn (Activity $activity): string => $this->routineTimeSlotKey($activity))
+                    ->unique()
+                    ->count() > 1;
+            });
+
+        if (! $hasMultipleSlotsOnSameDay) {
+            return $activities
+                ->mapWithKeys(fn (Activity $activity): array => [
+                    $activity->id => (int) ($activity->routine_session_no ?: 1),
+                ])
+                ->all();
+        }
+
+        $timeSlotNumbers = $activities
+            ->map(fn (Activity $activity): array => [
+                'key' => $this->routineTimeSlotKey($activity),
+                'start' => $activity->start_at?->format('H:i:s') ?? '',
+                'end' => $activity->end_at?->format('H:i:s') ?? '',
+            ])
+            ->unique('key')
+            ->sortBy(fn (array $slot): string => $slot['start'].'|'.$slot['end'])
+            ->values()
+            ->mapWithKeys(fn (array $slot, int $index): array => [
+                $slot['key'] => $index + 1,
+            ]);
+
+        return $activities
+            ->mapWithKeys(fn (Activity $activity): array => [
+                $activity->id => (int) $timeSlotNumbers->get(
+                    $this->routineTimeSlotKey($activity),
+                    1
+                ),
+            ])
+            ->all();
+    }
+
+    private function routineTimeSlotKey(Activity $activity): string
+    {
+        return ($activity->start_at?->format('H:i:s') ?? '')
+            .'|'
+            .($activity->end_at?->format('H:i:s') ?? '');
     }
 
     /**
@@ -659,7 +756,7 @@ class LpjReportService
             ->where('status', '!=', 'cancelled')
             ->map(function (Activity $activity): array {
                 $attachments = $activity->journal?->attachments
-                    ?->filter(fn ($attachment): bool => (bool) $attachment->pdf_path)
+                    ?->filter(fn ($attachment): bool => (bool) $attachment->pdf_src)
                     ->values() ?? collect();
 
                 return [
@@ -753,14 +850,47 @@ class LpjReportService
     {
         $activities->each(function (Activity $activity): void {
             $activity->journal?->attachments->each(function ($attachment): void {
+                $isImage = str_starts_with((string) $attachment->mime_type, 'image/');
+                $localPath = $isImage
+                    ? $this->localImagePath($attachment->path)
+                    : null;
+
+                $attachment->setAttribute('pdf_path', $localPath);
                 $attachment->setAttribute(
-                    'pdf_path',
-                    str_starts_with((string) $attachment->mime_type, 'image/')
-                        ? $this->localImagePath($attachment->path)
+                    'pdf_src',
+                    $localPath
+                        ? $this->imageDataUri($localPath, $attachment->mime_type)
                         : null
                 );
             });
         });
+    }
+
+    private function imageDataUri(string $path, ?string $mimeType): ?string
+    {
+        if (! is_file($path) || ! is_readable($path)) {
+            return null;
+        }
+
+        $contents = file_get_contents($path);
+
+        if ($contents === false) {
+            return null;
+        }
+
+        $resolvedMimeType = $mimeType;
+
+        if (! $resolvedMimeType || ! str_starts_with($resolvedMimeType, 'image/')) {
+            $resolvedMimeType = function_exists('mime_content_type')
+                ? mime_content_type($path)
+                : null;
+        }
+
+        if (! is_string($resolvedMimeType) || ! str_starts_with($resolvedMimeType, 'image/')) {
+            $resolvedMimeType = 'image/jpeg';
+        }
+
+        return 'data:'.$resolvedMimeType.';base64,'.base64_encode($contents);
     }
 
     private function localImagePath(?string $path): ?string

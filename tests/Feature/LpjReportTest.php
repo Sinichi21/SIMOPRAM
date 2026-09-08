@@ -210,6 +210,8 @@ test('routine LPJ groups monthly attendance and documentation by routine session
         ->and($sessionTwo['attendanceClasses']->first()['students']->first()['statuses']['2026-09-11'])->toBe('H')
         ->and($sessionOne['documentation'])->toHaveCount(1)
         ->and($sessionTwo['documentation'])->toHaveCount(1)
+        ->and($sessionOne['documentation']->first()['attachments']->first()->pdf_src)
+        ->toContain('data:image/png;base64,')
         ->and($html)->toContain(
             'SESI 1 - SIAGA LPJ',
             'SESI 2 - PENGGALANG LPJ',
@@ -244,4 +246,122 @@ test('routine LPJ excludes special activities from the monthly report', function
 
     expect($data['activities'])->toHaveCount(0)
         ->and($html)->not->toContain('Perkemahan Khusus');
+});
+
+test('legacy routine activities with the same session number are separated by time slot', function () {
+    $siaga = ScoutLevel::query()->create([
+        'code' => 'siaga-legacy-session-lpj',
+        'name' => 'Siaga',
+        'sort_order' => 1,
+    ]);
+    $penggalang = ScoutLevel::query()->create([
+        'code' => 'penggalang-legacy-session-lpj',
+        'name' => 'Penggalang',
+        'sort_order' => 2,
+    ]);
+
+    foreach ([
+        [$siaga, '2026-08-07 12:00:00', '2026-08-07 13:30:00', 'Materi Siaga'],
+        [$penggalang, '2026-08-07 12:30:00', '2026-08-07 15:00:00', 'Materi Penggalang'],
+        [$siaga, '2026-08-14 12:00:00', '2026-08-14 13:30:00', 'Siaga Minggu Kedua'],
+        [$penggalang, '2026-08-14 12:30:00', '2026-08-14 15:00:00', 'Penggalang Minggu Kedua'],
+    ] as [$scoutLevel, $startAt, $endAt, $title]) {
+        $activity = Activity::factory()->create([
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester_id' => $this->semester->id,
+            'created_by' => $this->user->id,
+            'title' => $title,
+            'activity_type' => 'regular',
+            'routine_session_no' => 1,
+            'start_at' => $startAt,
+            'end_at' => $endAt,
+            'status' => 'completed',
+        ]);
+
+        $activity->scoutLevels()->sync([$scoutLevel->id]);
+    }
+
+    $data = app(LpjReportService::class)->build(
+        $this->academicYear->id,
+        $this->semester->id,
+        'monthly',
+        8
+    );
+    $reportMonth = $data['reportMonths']->first();
+    $html = view('reports.pdf.lpj', $data)->render();
+
+    expect($reportMonth['routineSessions'])->toHaveCount(2)
+        ->and($reportMonth['dateRows']->first()['sessions'])->toHaveCount(2)
+        ->and($reportMonth['routineSessions']->first()['startTime'])->toBe('12:00')
+        ->and($reportMonth['routineSessions']->first()['endTime'])->toBe('13:30')
+        ->and($reportMonth['routineSessions']->get(1)['startTime'])->toBe('12:30')
+        ->and($reportMonth['routineSessions']->get(1)['endTime'])->toBe('15:00')
+        ->and($html)->toContain(
+            'SESI 1 - SIAGA',
+            'SESI 2 - PENGGALANG',
+            '12:00',
+            '13:30',
+            '12:30',
+            '15:00'
+        );
+});
+
+test('student attendance renders the class document heading only once for a long class', function () {
+    $classroom = Classroom::query()->create([
+        'name' => 'V A',
+        'grade' => 5,
+        'is_active' => true,
+    ]);
+
+    $activity = Activity::factory()->create([
+        'school_id' => $this->school->id,
+        'academic_year_id' => $this->academicYear->id,
+        'semester_id' => $this->semester->id,
+        'created_by' => $this->user->id,
+        'title' => 'Latihan Rutin',
+        'activity_type' => 'regular',
+        'routine_session_no' => 1,
+        'start_at' => '2026-09-04 12:00:00',
+        'end_at' => '2026-09-04 13:30:00',
+        'status' => 'completed',
+    ]);
+
+    $attendanceSession = AttendanceSession::query()->create([
+        'activity_id' => $activity->id,
+        'created_by' => $this->user->id,
+        'name' => 'Absensi',
+        'participant_scope' => 'all',
+        'open_at' => '2026-09-04 12:00:00',
+        'close_at' => '2026-09-04 13:30:00',
+        'is_active' => true,
+    ]);
+
+    Student::factory()
+        ->count(25)
+        ->create(['school_id' => $this->school->id])
+        ->each(function (Student $student) use ($classroom, $attendanceSession): void {
+            StudentEnrollment::query()->create([
+                'student_id' => $student->id,
+                'academic_year_id' => $this->academicYear->id,
+                'classroom_id' => $classroom->id,
+                'status' => 'active',
+            ]);
+
+            AttendanceSessionParticipant::query()->create([
+                'attendance_session_id' => $attendanceSession->id,
+                'student_id' => $student->id,
+            ]);
+        });
+
+    $data = app(LpjReportService::class)->build(
+        $this->academicYear->id,
+        $this->semester->id,
+        'monthly',
+        9
+    );
+    $html = view('reports.pdf.lpj', $data)->render();
+
+    expect(substr_count($html, 'KELAS V A - SEPTEMBER 2026'))->toBe(1)
+        ->and(substr_count($html, 'DAFTAR HADIR PESERTA/SISWA EKSTRA / PENGEMBANGAN DIRI'))->toBe(1);
 });

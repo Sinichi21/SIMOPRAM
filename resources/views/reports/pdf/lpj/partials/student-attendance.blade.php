@@ -39,12 +39,12 @@
             </tr>
         </thead>
         <tbody>
-            @foreach ($studentChunk as $student)
+            @foreach ($classData['students'] as $student)
                 @php
                     $studentRowIndex = $loop->index;
                 @endphp
                 <tr>
-                    <td>{{ ($chunkIndex * 24) + $loop->iteration }}</td>
+                    <td>{{ $loop->iteration }}</td>
                     <td class="col-name">{{ $student['name'] }}</td>
                     <td class="col-class">{{ $student['className'] }}</td>
                     @foreach ($routineSession['dates'] as $date)
@@ -54,7 +54,7 @@
                         @endphp
                         @if ($meta && $meta['isHoliday'])
                             @if ($studentRowIndex === 0)
-                                <td class="holiday date-column" rowspan="{{ $studentChunk->count() }}">
+                                <td class="holiday date-column" rowspan="{{ $classData['students']->count() }}">
                                     {{ strtoupper($meta['holidayLabel'] ?: 'LIBUR') }}
                                 </td>
                             @endif
@@ -69,17 +69,15 @@
 
     <div class="attendance-note">Keterangan: H = Hadir, I = Izin, S = Sakit, A = Alpa, - = belum/tidak tercatat.</div>
 
-    @if ($isLastChunk)
-        <table class="signature-table">
+    <table class="signature-table">
             <tr>
                 <td>Mengetahui/Menyetujui:<br>Kepala {{ $school->name }}</td>
-                <td>{{ $signingCity }}, {{ $reportMonth['end']->translatedFormat('d F Y') }}<br>Pembina Ekstra / Pengembangan Diri</td>
+                <td>{{ $signingCity }}, {{ $reportMonth['end']->locale('id')->translatedFormat('d F Y') }}<br>Pembina Ekstra / Pengembangan Diri</td>
             </tr>
             <tr><td class="signature-space"></td><td></td></tr>
             <tr>
                 <td><span class="signature-name">{{ $principalName }}</span><br>NIP. {{ $principalNip }}</td>
                 <td><span class="signature-name">{{ $coachName }}</span><br>{{ $coachIdentifier }}</td>
             </tr>
-        </table>
-    @endif
+    </table>
 </section>

@@ -21,7 +21,7 @@
     <table class="signature-table">
         <tr>
             <td>Mengetahui/Menyetujui:<br>Kepala {{ $school->name }}</td>
-            <td>{{ $signingCity }}, {{ $signingDate->translatedFormat('d F Y') }}<br>Pembina Ekstra / Pengembangan Diri</td>
+            <td>{{ $signingCity }}, {{ $signingDate->locale('id')->translatedFormat('d F Y') }}<br>Pembina Ekstra / Pengembangan Diri</td>
         </tr>
         <tr><td class="signature-space"></td><td></td></tr>
         <tr>

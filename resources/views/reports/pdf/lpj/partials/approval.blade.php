@@ -14,7 +14,7 @@
         <tr><td>Tahun Ajaran</td><td>: {{ $academicYear->name }}</td></tr>
         <tr><td>Semester</td><td>: {{ $semester->name }}</td></tr>
         <tr><td>Tempat</td><td>: {{ $signingCity }}</td></tr>
-        <tr><td>Tanggal</td><td>: {{ $signingDate->translatedFormat('d F Y') }}</td></tr>
+        <tr><td>Tanggal</td><td>: {{ $signingDate->locale('id')->translatedFormat('d F Y') }}</td></tr>
     </table>
 
     <table class="approval-signatures">

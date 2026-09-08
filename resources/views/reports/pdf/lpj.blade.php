@@ -112,7 +112,16 @@
         .report-table ul { margin: 0; padding-left: 4mm; }
         .report-table li { margin: 0 0 .5mm; }
 
-        .attendance-table { font-size: 7.2px; table-layout: auto; }
+        .attendance-table {
+            font-size: 7.2px;
+            page-break-inside: auto;
+            table-layout: auto;
+        }
+        .attendance-table thead { display: table-header-group; }
+        .attendance-table tr {
+            page-break-after: auto;
+            page-break-inside: avoid;
+        }
         .attendance-table th,
         .attendance-table td {
             border: 0.65px solid #333;
@@ -144,11 +153,19 @@
         .approval-signatures td { text-align: center; width: 50%; vertical-align: top; }
         .approval-principal { margin: 20mm auto 0; text-align: center; width: 55%; }
 
-        .documentation-item { margin-bottom: 7mm; page-break-inside: avoid; }
+        .documentation-item { margin-bottom: 7mm; page-break-inside: auto; }
         .documentation-date { font-size: 9px; font-weight: bold; margin-bottom: 2mm; }
         .documentation-grid { width: 100%; }
+        .documentation-grid tr { page-break-inside: avoid; }
         .documentation-grid td { padding: 1.5mm; text-align: center; vertical-align: top; width: 50%; }
-        .documentation-grid img { height: 52mm; max-width: 78mm; object-fit: contain; }
+        .documentation-grid img {
+            display: block;
+            height: auto;
+            margin: 0 auto;
+            max-height: 45mm;
+            max-width: 82mm;
+            width: auto;
+        }
         .documentation-caption { font-size: 6.5px; margin-top: 1mm; }
 
         .empty-box {
@@ -184,16 +201,11 @@
 
     @foreach ($reportMonth['routineSessions'] as $routineSession)
         @foreach ($routineSession['attendanceClasses'] as $classData)
-            @foreach ($classData['students']->chunk(24) as $studentChunk)
-                @include('reports.pdf.lpj.partials.student-attendance', [
-                    'reportMonth' => $reportMonth,
-                    'routineSession' => $routineSession,
-                    'classData' => $classData,
-                    'studentChunk' => $studentChunk,
-                    'isLastChunk' => $loop->last,
-                    'chunkIndex' => $loop->index,
-                ])
-            @endforeach
+            @include('reports.pdf.lpj.partials.student-attendance', [
+                'reportMonth' => $reportMonth,
+                'routineSession' => $routineSession,
+                'classData' => $classData,
+            ])
         @endforeach
     @endforeach
 
