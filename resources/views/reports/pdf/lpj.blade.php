@@ -6,7 +6,7 @@
     <style>
         @page { 
             size: A4 portrait;
-            margin: 12mm 14mm 12mm 14mm; 
+            margin: 12mm 14mm 24mm 14mm; 
         }
         * { box-sizing: border-box; }
         body {
@@ -193,6 +193,7 @@
     </style>
 </head>
 <body>
+@include('reports.pdf.partials.verification-footer')
 @php
     $responsibleCoach = $documentSetting?->responsibleCoach;
     $principalName = $documentSetting?->principal_name ?: $scoutGroup?->kamabigus_name ?: '........................';

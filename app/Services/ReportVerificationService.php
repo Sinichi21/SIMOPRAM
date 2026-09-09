@@ -135,6 +135,76 @@ class ReportVerificationService
         ]);
     }
 
+    /**
+     * Terbitkan satu export laporan sebagai dokumen resmi baru.
+     *
+     * Berbeda dari issueDocument(), method ini sengaja selalu membuat record
+     * baru karena setiap binary export merupakan artefak resmi yang berbeda.
+     *
+     * @param  array<string, mixed>  $metadata
+     */
+    public function issueReportDocument(
+        int $schoolId,
+        string $documentType,
+        string $snapshotChecksum,
+        ?string $title = null,
+        array $metadata = [],
+        ?string $sourceType = null,
+        ?int $sourceId = null,
+        ?int $issuedBy = null
+    ): ReportVerification {
+        $activeSchoolId = app(SchoolContext::class)->id();
+
+        abort_unless(
+            $activeSchoolId,
+            409,
+            'Pilih sekolah aktif terlebih dahulu.'
+        );
+
+        abort_unless(
+            (int) $activeSchoolId === (int) $schoolId,
+            404
+        );
+
+        return ReportVerification::query()->create([
+            'school_id' => $schoolId,
+            'semester_closure_id' => null,
+            'source_type' => $sourceType,
+            'source_id' => $sourceId,
+            'code' => $this->generateUniqueCode(),
+            'document_type' => $documentType,
+            'document_number' => null,
+            'title' => $title,
+            'snapshot_checksum' => $snapshotChecksum,
+            'metadata' => $metadata,
+            'file_disk' => 'local',
+            'issued_by' => $issuedBy,
+            'issued_at' => now(),
+            'verification_count' => 0,
+        ]);
+    }
+
+    /**
+     * Checksum data sumber sebelum QR ditambahkan ke PDF.
+     * file_sha256 tetap menjadi hash authoritative binary PDF final.
+     */
+    public function contentChecksum(mixed $payload): string
+    {
+        $json = json_encode(
+            $payload,
+            JSON_UNESCAPED_UNICODE
+            | JSON_UNESCAPED_SLASHES
+            | JSON_INVALID_UTF8_SUBSTITUTE
+            | JSON_PARTIAL_OUTPUT_ON_ERROR
+        );
+
+        if (! is_string($json)) {
+            $json = serialize($payload);
+        }
+
+        return hash('sha256', $json);
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Arsipkan Binary PDF

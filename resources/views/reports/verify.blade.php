@@ -32,11 +32,24 @@
                 <div class="item"><div class="label">Tahun Ajaran</div><div class="value">{{ $closure->academicYear?->name ?? '-' }}</div></div>
                 <div class="item"><div class="label">Semester</div><div class="value">{{ $closure->semester?->name ?? '-' }}</div></div>
                 <div class="item"><div class="label">Versi Snapshot</div><div class="value">v{{ $closure->version ?? '-' }}</div></div>
+            @else
+                @if (data_get($verification->metadata, 'academic_year'))
+                    <div class="item"><div class="label">Tahun Ajaran</div><div class="value">{{ data_get($verification->metadata, 'academic_year') }}</div></div>
+                @endif
+                @if (data_get($verification->metadata, 'semester'))
+                    <div class="item"><div class="label">Semester</div><div class="value">{{ data_get($verification->metadata, 'semester') }}</div></div>
+                @endif
+                @if (data_get($verification->metadata, 'period'))
+                    <div class="item"><div class="label">Periode</div><div class="value">{{ data_get($verification->metadata, 'period') }}</div></div>
+                @endif
+                @if (data_get($verification->metadata, 'classroom'))
+                    <div class="item"><div class="label">Kelas</div><div class="value">{{ data_get($verification->metadata, 'classroom') }}</div></div>
+                @endif
             @endif
             <div class="item"><div class="label">Diterbitkan</div><div class="value">{{ $verification->issued_at?->format('d/m/Y H:i:s') ?? '-' }}</div></div>
             <div class="item"><div class="label">Kode Verifikasi</div><div class="value">{{ $verification->code }}</div></div>
         </div>
-        <div class="checksum-wrap"><div class="label">Snapshot Checksum SHA-256</div><div class="checksum">{{ $verification->snapshot_checksum ?? '-' }}</div></div>
+        <div class="checksum-wrap"><div class="label">Checksum Data Sumber SHA-256</div><div class="checksum">{{ $verification->snapshot_checksum ?? '-' }}</div></div>
         <p class="privacy">Halaman publik tidak menampilkan isi surat, data siswa, nilai individu, atau informasi privat lainnya. Untuk dokumen berklasifikasi Terbatas/Rahasia, judul asli juga disembunyikan.</p>
     </section>
     <footer class="footer">SIMPRAM · Sistem Informasi Pramuka</footer>

@@ -234,45 +234,53 @@ class ReportPdfController extends Controller
         |
         */
 
-        $verification =
-            null;
-
-        $verificationUrl =
-            null;
-
-        $verificationQrDataUri =
-            null;
-
         if (
-            $reportSource
-                === 'snapshot'
+            $reportSource === 'snapshot'
             &&
             $selectedClosure
         ) {
-            $verification =
-                $reportVerificationService
-                    ->issue(
-                        closure: $selectedClosure,
+            $verification = $reportVerificationService->issue(
+                closure: $selectedClosure,
+                documentType: 'grades',
+                issuedBy: $request->user()?->id
+            );
 
-                        documentType: 'grades',
-
-                        issuedBy: $request
-                            ->user()
-                            ?->id
-                    );
-
-            $verificationUrl =
-                $reportVerificationService
-                    ->publicUrl(
-                        $verification
-                    );
-
-            $verificationQrDataUri =
-                $reportVerificationService
-                    ->qrDataUri(
-                        $verification
-                    );
+            $verification->forceFill([
+                'title' => 'Rekap Nilai Ekstrakurikuler Pramuka',
+                'metadata' => [
+                    'report_source' => 'snapshot',
+                    'academic_year' => $academicYear->name,
+                    'semester' => $semester->name,
+                    'classroom' => $classroom?->name ?: 'Semua Kelas',
+                    'closure_version' => $selectedClosure->version,
+                ],
+            ])->save();
+        } else {
+            $verification = $reportVerificationService->issueReportDocument(
+                schoolId: (int) $school->id,
+                documentType: 'grades',
+                snapshotChecksum: $reportVerificationService->contentChecksum([
+                    'report' => 'grades',
+                    'academic_year_id' => $academicYear->id,
+                    'semester_id' => $semester->id,
+                    'classroom_id' => $classroom?->id,
+                    'data' => $data,
+                ]),
+                title: 'Rekap Nilai Ekstrakurikuler Pramuka (Data Berjalan)',
+                metadata: [
+                    'report_source' => 'live',
+                    'academic_year' => $academicYear->name,
+                    'semester' => $semester->name,
+                    'classroom' => $classroom?->name ?: 'Semua Kelas',
+                ],
+                sourceType: Semester::class,
+                sourceId: (int) $semester->id,
+                issuedBy: $request->user()?->id
+            );
         }
+
+        $verificationUrl = $reportVerificationService->publicUrl($verification);
+        $verificationQrDataUri = $reportVerificationService->qrDataUri($verification);
 
         $pdfData =
             array_merge(
@@ -371,61 +379,31 @@ class ReportPdfController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        if ($verification) {
-            try {
-                $binary =
-                    $pdf->output();
+        try {
+            $binary = $pdf->output();
 
-                $reportVerificationService
-                    ->archivePdf(
-                        verification: $verification,
-
-                        binary: $binary,
-
-                        filename: $filename
-                    );
-            } catch (
-                Throwable $exception
-            ) {
-                $reportVerificationService
-                    ->discardFailedIssue(
-                        $verification
-                    );
-
-                throw $exception;
-            }
-
-            return response(
-                $binary,
-                200,
-                [
-                    'Content-Type' => 'application/pdf',
-
-                    'Content-Disposition' => 'attachment; filename="'
-                        .addslashes(
-                            $filename
-                        )
-                        .'"',
-
-                    'Content-Length' => (string) strlen(
-                        $binary
-                    ),
-
-                    'X-Content-Type-Options' => 'nosniff',
-
-                    'Cache-Control' => 'private, no-store, max-age=0',
-                ]
+            $reportVerificationService->archivePdf(
+                verification: $verification,
+                binary: $binary,
+                filename: $filename
             );
+        } catch (Throwable $exception) {
+            $reportVerificationService->discardFailedIssue($verification);
+            throw $exception;
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Data Berjalan
-        |--------------------------------------------------------------------------
-        */
-
-        return $pdf->download(
-            $filename
+        return response(
+            $binary,
+            200,
+            [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="'
+                    .addslashes($filename)
+                    .'"',
+                'Content-Length' => (string) strlen($binary),
+                'X-Content-Type-Options' => 'nosniff',
+                'Cache-Control' => 'private, no-store, max-age=0',
+            ]
         );
     }
 
@@ -437,7 +415,8 @@ class ReportPdfController extends Controller
 
     public function attendance(
         Request $request,
-        SchoolContext $schoolContext
+        SchoolContext $schoolContext,
+        ReportVerificationService $reportVerificationService
     ): Response {
         abort_unless(
             $request->user()?->can(
@@ -754,49 +733,84 @@ class ReportPdfController extends Controller
 
         $documentSetting =
             SchoolDocumentSetting::query()
-                ->with(
-                    'responsibleCoach'
-                )
+                ->with('responsibleCoach')
                 ->first();
 
-        $pdf =
-            Pdf::loadView(
-                'reports.pdf.attendance',
-                [
-                    'school' => $school,
+        $verification = $reportVerificationService->issueReportDocument(
+            schoolId: (int) $school->id,
+            documentType: 'attendance',
+            snapshotChecksum: $reportVerificationService->contentChecksum([
+                'report' => 'attendance',
+                'academic_year_id' => $academicYear->id,
+                'semester_id' => $semester?->id,
+                'classroom_id' => $classroom?->id,
+                'session_ids' => $sessionIds->values()->all(),
+                'rows' => $rows,
+            ]),
+            title: 'Rekap Absensi Ekstrakurikuler Pramuka',
+            metadata: [
+                'academic_year' => $academicYear->name,
+                'semester' => $semester?->name ?: 'Semua Semester',
+                'classroom' => $classroom?->name ?: 'Semua Kelas',
+                'session_count' => $sessionIds->count(),
+            ],
+            sourceType: $semester ? Semester::class : AcademicYear::class,
+            sourceId: (int) ($semester?->id ?: $academicYear->id),
+            issuedBy: $request->user()?->id
+        );
 
-                    'academicYear' => $academicYear,
+        $verificationUrl = $reportVerificationService->publicUrl($verification);
+        $verificationQrDataUri = $reportVerificationService->qrDataUri($verification);
 
-                    'semester' => $semester,
+        $pdf = Pdf::loadView(
+            'reports.pdf.attendance',
+            [
+                'school' => $school,
+                'academicYear' => $academicYear,
+                'semester' => $semester,
+                'classroom' => $classroom,
+                'rows' => $rows,
+                'sessionCount' => $sessionIds->count(),
+                'documentSetting' => $documentSetting,
+                'verification' => $verification,
+                'verificationUrl' => $verificationUrl,
+                'verificationQrDataUri' => $verificationQrDataUri,
+            ]
+        )->setPaper('a4', 'landscape');
 
-                    'classroom' => $classroom,
-
-                    'rows' => $rows,
-
-                    'sessionCount' => $sessionIds->count(),
-
-                    'documentSetting' => $documentSetting,
-                ]
-            )
-                ->setPaper(
-                    'a4',
-                    'landscape'
-                );
-
-        $filename =
-            'rekap-absensi-'
-            .Str::slug(
-                $school->name
-            )
+        $filename = 'rekap-absensi-'
+            .Str::slug($school->name)
             .'-'
-            .now()->format(
-                'Ymd-His'
-            )
+            .$verification->issued_at->format('Ymd-His')
             .'.pdf';
 
-        return $pdf->download(
-            $filename
+        try {
+            $binary = $pdf->output();
+
+            $reportVerificationService->archivePdf(
+                verification: $verification,
+                binary: $binary,
+                filename: $filename
+            );
+        } catch (Throwable $exception) {
+            $reportVerificationService->discardFailedIssue($verification);
+            throw $exception;
+        }
+
+        return response(
+            $binary,
+            200,
+            [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="'
+                    .addslashes($filename)
+                    .'"',
+                'Content-Length' => (string) strlen($binary),
+                'X-Content-Type-Options' => 'nosniff',
+                'Cache-Control' => 'private, no-store, max-age=0',
+            ]
         );
+
     }
 
     /*

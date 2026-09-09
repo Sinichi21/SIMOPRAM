@@ -9,7 +9,7 @@
 
     <style>
         @page {
-            margin: 18mm 12mm 18mm 12mm;
+            margin: 18mm 12mm 24mm 12mm;
         }
 
         body {
@@ -95,6 +95,7 @@
 </head>
 
 <body>
+@include('reports.pdf.partials.verification-footer')
 
     <div class="header">
 

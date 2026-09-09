@@ -9,6 +9,8 @@ use App\Http\Controllers\ReportPdfController;
 use App\Http\Controllers\ReportVerificationController;
 use App\Http\Controllers\SchoolRegistrationController;
 use App\Http\Controllers\SchoolSwitchController;
+use App\Livewire\Auth\Register;
+use App\Livewire\Settings\LandingContent;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -18,10 +20,18 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', [LandingPageController::class, 'index'])->name('home');
+Route::livewire('/settings/landing-content', LandingContent::class)
+    ->middleware('auth')->name('settings.landing-content');
+Route::livewire('/settings/schools/{school:slug}/landing-content', LandingContent::class)
+    ->middleware('auth')->name('settings.tenant-content');
+Route::livewire('/register', Register::class)->middleware('guest')->name('register');
 Route::get('/pengaduan', [ComplaintController::class, 'publicForm'])->name('complaints.public');
 Route::post('/pengaduan', [ComplaintController::class, 'publicStore'])->middleware('throttle:5,1')->name('complaints.public.store');
 Route::post('/pengaduan/lacak', [ComplaintController::class, 'track'])->middleware('throttle:10,1')->name('complaints.track');
 Route::get('/s/{school:slug}', [LandingPageController::class, 'school'])->name('schools.landing');
+Route::get('/s/{school:slug}/pengumuman/{announcementId}', [LandingPageController::class, 'announcement'])->whereNumber('announcementId')->name('schools.announcements.show');
+Route::get('/s/{school:slug}/kegiatan/{activityId}', [LandingPageController::class, 'activity'])->whereNumber('activityId')->name('schools.activities.show');
+Route::get('/s/{school:slug}/dokumentasi/{activityId}', [LandingPageController::class, 'documentation'])->whereNumber('activityId')->name('schools.documentation.show');
 Route::post('/pendaftaran-sekolah', [SchoolRegistrationController::class, 'store'])
     ->middleware('throttle:5,1')
     ->name('school-registrations.store');

@@ -9,7 +9,7 @@
 
     <style>
         @page {
-            margin: 18mm 12mm 16mm 12mm;
+            margin: 18mm 12mm 24mm 12mm;
         }
 
         * {
@@ -218,6 +218,7 @@
 </head>
 
 <body>
+@include('reports.pdf.partials.verification-footer')
 @php
     $items =
         $selectedConfig?->items
@@ -497,47 +498,7 @@
     </div>
 @endif
 
-@if (
-    ($reportSource ?? null) === 'snapshot'
-    &&
-    $selectedClosure
-    &&
-    $verification
-    &&
-    $verificationQrDataUri
-)
-    <table class="verification-box">
-        <tr>
-            <td class="verification-qr">
-                <img
-                    src="{{ $verificationQrDataUri }}"
-                    alt="QR Verifikasi Laporan"
-                >
-            </td>
 
-            <td>
-                <div style="font-weight: 700; font-size: 9px;">
-                    Verifikasi Dokumen Resmi
-                </div>
-
-                <div style="margin-top: 3px; font-size: 8px; line-height: 1.4;">
-                    Pindai QR untuk memeriksa sekolah,
-                    periode, versi snapshot, status dokumen,
-                    dan checksum tanpa menampilkan data pribadi siswa.
-                </div>
-
-                <div class="verification-code">
-                    Kode:
-                    {{ $verification->code }}
-                </div>
-
-                <div class="verification-url">
-                    {{ $verificationUrl }}
-                </div>
-            </td>
-        </tr>
-    </table>
-@endif
 
 <table class="grade-table">
     <thead>
