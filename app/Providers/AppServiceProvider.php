@@ -37,6 +37,15 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
 
+        Gate::define('landing.manage', fn (User $user): bool => $user->isSuperAdmin());
+        Gate::define('school-landing.manage', function (User $user, School $school): bool {
+            return $user->schoolMemberships()->where('school_id', $school->id)
+                ->where('is_active', true)->whereNull('left_at')->exists()
+                && DB::table('model_has_roles')->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+                    ->where('model_id', $user->id)->where('model_type', $user->getMorphClass())
+                    ->where('model_has_roles.school_id', $school->id)->where('roles.name', 'school_admin')->exists();
+        });
+
         Gate::define('messaging.manage', fn (User $user): bool => $user->isSuperAdmin());
         Gate::define('schools.manage', fn (User $user): bool => $user->isSuperAdmin());
 

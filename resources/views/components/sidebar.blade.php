@@ -2,7 +2,6 @@
 
 <html
     lang="{{ str_replace('_', '-', app()->getLocale()) }}"
-    class="dark"
 >
 
 <head>
@@ -17,6 +16,9 @@
         $currentSchoolId = app(\App\Support\SchoolContext::class)->id();
         $currentUser = auth()->user();
         $hasActiveSchool = $currentSchoolId !== null;
+        $contentSchool = request()->route('school') instanceof \App\Models\School
+            ? request()->route('school')
+            : ($activeSchool ?? $schools->firstWhere('id', session('active_school_id')));
     @endphp
 
     {{-- =====================================================
@@ -66,16 +68,6 @@
 
         <flux:sidebar.nav>
 
-            <flux:sidebar.item :href="route('complaints.index')" :current="request()->routeIs('complaints.index', 'complaints.show')" wire:navigate>
-                Pengaduan
-            </flux:sidebar.item>
-
-            @if ($currentUser?->isSuperAdmin())
-                <flux:sidebar.item :href="route('settings.messaging')" :current="request()->routeIs('settings.messaging')" wire:navigate>
-                    Integrasi Pesan
-                </flux:sidebar.item>
-            @endif
-
             <flux:sidebar.group
                 :heading="__('Menu Utama')"
                 class="grid"
@@ -89,6 +81,39 @@
                 >
                     Dashboard
                 </flux:sidebar.item>
+
+                <flux:sidebar.item
+                    icon="chat-bubble-left-right" 
+                    :href="route('complaints.index')" 
+                    :current="request()->routeIs('complaints.index', 'complaints.show')" 
+                    wire:navigate
+                >
+                    Pengaduan
+                </flux:sidebar.item>
+
+                @can('landing.manage')
+                    <flux:sidebar.item
+                        icon="wrench-screwdriver"
+                        :href="route('settings.landing-content')"
+                        :current="request()->routeIs('settings.landing-content')"
+                        wire:navigate
+                    >
+                        Edit landing page
+                    </flux:sidebar.item>
+                @endcan
+
+                @if ($contentSchool)
+                    @can('school-landing.manage', $contentSchool)
+                        <flux:sidebar.item
+                            icon="wrench-screwdriver"
+                            :href="route('settings.tenant-content', $contentSchool)"
+                            :current="request()->routeIs('settings.tenant-content')"
+                            wire:navigate
+                        >
+                            Edit halaman tenant
+                        </flux:sidebar.item>
+                    @endcan
+                @endif
 
             </flux:sidebar.group>
 
@@ -790,7 +815,7 @@
                 >
 
                     <flux:sidebar.item
-                        icon="cog-6-tooth"
+                        icon="bell-alert"
                         :href="route(
                             'notification-settings.manage'
                         )"
@@ -803,6 +828,22 @@
                     >
                         Pengaturan Notifikasi
                     </flux:sidebar.item>
+
+                    @if ($currentUser?->isSuperAdmin())
+                        <flux:sidebar.item
+                            icon="chat-bubble-left-ellipsis"
+                            :href="route(
+                                'settings.messaging'
+                            )" 
+                            :current="
+                                request()->routeIs(
+                                    'settings.messaging'
+                                )
+                            "
+                            wire:navigate>
+                            Integrasi Pesan
+                        </flux:sidebar.item>
+                    @endif
 
                     @can('school_documents.view')
 

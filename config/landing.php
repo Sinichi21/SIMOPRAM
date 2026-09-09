@@ -1,0 +1,33 @@
+<?php
+
+return [
+    'fields' => [
+        'hero_badge' => ['label' => 'Label pembuka', 'default' => 'Satu platform, seluruh kegiatan Pramuka'],
+        'hero_title' => ['label' => 'Judul utama', 'default' => 'Pramuka tertata.'],
+        'hero_highlight' => ['label' => 'Judul sorotan', 'default' => 'Karakter terbina.'],
+        'hero_description' => ['label' => 'Deskripsi utama', 'default' => 'SIMPRAM membantu sekolah mengelola anggota, presensi, kegiatan, penilaian, pengumuman, dan laporan dalam satu ruang kerja yang rapi.', 'type' => 'textarea'],
+        'primary_button' => ['label' => 'Tombol direktori sekolah', 'default' => 'Temukan sekolah'],
+        'secondary_button' => ['label' => 'Tombol pendaftaran sekolah', 'default' => 'Daftarkan sekolah'],
+        'features_label' => ['label' => 'Label fitur', 'default' => 'Dari latihan hingga laporan'],
+        'features_title' => ['label' => 'Judul fitur', 'default' => 'Semua yang dibutuhkan gugus depan.'],
+        'directory_label' => ['label' => 'Label direktori', 'default' => 'Direktori SIMPRAM'],
+        'directory_title' => ['label' => 'Judul direktori', 'default' => 'Temukan sekolahmu'],
+        'registration_label' => ['label' => 'Label pendaftaran', 'default' => 'Bergabung bersama kami'],
+        'registration_title' => ['label' => 'Judul pendaftaran', 'default' => 'Bawa SIMPRAM ke sekolah Anda.'],
+        'registration_description' => ['label' => 'Deskripsi pendaftaran', 'default' => 'Kirim data singkat. Tim kami akan memverifikasi dan membantu menyiapkan ruang kerja sekolah.', 'type' => 'textarea'],
+        'footer_text' => ['label' => 'Teks footer', 'default' => 'SIMPRAM. Bersama membina generasi.'],
+        'contact_email' => ['label' => 'Email kontak', 'default' => 'halo@simpram.id', 'type' => 'email'],
+        'feature_1_title' => ['label' => 'Fitur 1 — judul', 'default' => 'Data anggota'],
+        'feature_1_description' => ['label' => 'Fitur 1 — deskripsi', 'default' => 'Kelola siswa, pembina, regu, dan tingkatan secara terpusat.'],
+        'feature_2_title' => ['label' => 'Fitur 2 — judul', 'default' => 'Presensi cerdas'],
+        'feature_2_description' => ['label' => 'Fitur 2 — deskripsi', 'default' => 'Catat kehadiran kegiatan dengan cepat dan akurat.'],
+        'feature_3_title' => ['label' => 'Fitur 3 — judul', 'default' => 'Agenda kegiatan'],
+        'feature_3_description' => ['label' => 'Fitur 3 — deskripsi', 'default' => 'Susun latihan, acara, lokasi, serta target peserta.'],
+        'feature_4_title' => ['label' => 'Fitur 4 — judul', 'default' => 'Penilaian'],
+        'feature_4_description' => ['label' => 'Fitur 4 — deskripsi', 'default' => 'Pantau capaian, nilai, dan perkembangan setiap anggota.'],
+        'feature_5_title' => ['label' => 'Fitur 5 — judul', 'default' => 'Jurnal & LPJ'],
+        'feature_5_description' => ['label' => 'Fitur 5 — deskripsi', 'default' => 'Dokumentasi kegiatan dan laporan siap pakai.'],
+        'feature_6_title' => ['label' => 'Fitur 6 — judul', 'default' => 'Pengumuman'],
+        'feature_6_description' => ['label' => 'Fitur 6 — deskripsi', 'default' => 'Sampaikan informasi tepat kepada komunitas sekolah.'],
+    ],
+];
