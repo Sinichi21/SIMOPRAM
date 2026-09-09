@@ -11,63 +11,19 @@ use Symfony\Component\HttpFoundation\Response;
 
 class PublishedDocumentController extends Controller
 {
-    /*
-    |--------------------------------------------------------------------------
-    | Detail Dokumen
-    |--------------------------------------------------------------------------
-    */
+    public function show(Request $request, string $code, SchoolContext $schoolContext): View
+    {
+        abort_unless($request->user()?->can('report_verifications.view'), 403);
+        abort_unless($schoolContext->hasSchool(), 409, 'Pilih sekolah aktif terlebih dahulu.');
 
-    public function show(
-        Request $request,
-        string $code,
-        SchoolContext $schoolContext
-    ): View {
-        abort_unless(
-            $request
-                ->user()
-                ?->can(
-                    'report_verifications.view'
-                ),
-            403
-        );
+        $verification = $this->findTenantDocument($code, $schoolContext);
 
-        abort_unless(
-            $schoolContext
-                ->hasSchool(),
-            409,
-            'Pilih sekolah aktif terlebih dahulu.'
-        );
-
-        $verification =
-            $this->findTenantDocument(
-                $code,
-                $schoolContext
-            );
-
-        return view(
-            'reports.published-document-show',
-            [
-                'verification' => $verification,
-
-                'publicUrl' => route(
-                    'reports.verify',
-                    [
-                        'code' => $verification
-                            ->code,
-                    ]
-                ),
-
-                'status' => $verification
-                    ->publicStatus(),
-            ]
-        );
+        return view('reports.published-document-show', [
+            'verification' => $verification,
+            'publicUrl' => route('reports.verify', ['code' => $verification->code]),
+            'status' => $verification->publicStatus(),
+        ]);
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Download Ulang Binary yang Sama
-    |--------------------------------------------------------------------------
-    */
 
     public function download(
         Request $request,
@@ -76,110 +32,32 @@ class PublishedDocumentController extends Controller
         ReportVerificationService $service
     ): Response {
         abort_unless(
-            $request
-                ->user()
-                ?->can(
-                    'report_verifications.view'
-                )
-            &&
-            $request
-                ->user()
-                ?->can(
-                    'reports.export'
-                ),
+            $request->user()?->can('report_verifications.view')
+            && $request->user()?->can('reports.export'),
             403
         );
+        abort_unless($schoolContext->hasSchool(), 409, 'Pilih sekolah aktif terlebih dahulu.');
 
-        abort_unless(
-            $schoolContext
-                ->hasSchool(),
-            409,
-            'Pilih sekolah aktif terlebih dahulu.'
-        );
+        $verification = $this->findTenantDocument($code, $schoolContext);
+        abort_if($verification->isRevoked(), 409, 'Dokumen telah dicabut dan tidak dapat diunduh ulang.');
 
-        $verification =
-            $this->findTenantDocument(
-                $code,
-                $schoolContext
-            );
+        $binary = $service->archivedPdfBinary($verification);
+        $service->recordRedownload($verification);
+        $filename = $verification->file_name ?: 'dokumen-'.$verification->code.'.pdf';
 
-        /*
-        |--------------------------------------------------------------------------
-        | Dokumen revoked tetap dapat diverifikasi, tetapi tidak dapat lagi
-        | diunduh sebagai dokumen resmi dari panel admin.
-        |--------------------------------------------------------------------------
-        */
-
-        abort_if(
-            $verification
-                ->isRevoked(),
-            409,
-            'Dokumen telah dicabut dan tidak dapat diunduh ulang.'
-        );
-
-        $binary =
-            $service
-                ->archivedPdfBinary(
-                    $verification
-                );
-
-        $service
-            ->recordRedownload(
-                $verification
-            );
-
-        $filename =
-            $verification
-                ->file_name
-            ?: (
-                'rekap-nilai-'
-                .$verification
-                    ->code
-                .'.pdf'
-            );
-
-        return response(
-            $binary,
-            200,
-            [
-                'Content-Type' => 'application/pdf',
-
-                'Content-Disposition' => 'attachment; filename="'
-                    .addslashes(
-                        $filename
-                    )
-                    .'"',
-
-                'Content-Length' => (string) strlen(
-                    $binary
-                ),
-
-                'X-Content-Type-Options' => 'nosniff',
-
-                'Cache-Control' => 'private, no-store, max-age=0',
-            ]
-        );
+        return response($binary, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.addslashes($filename).'"',
+            'Content-Length' => (string) strlen($binary),
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, no-store, max-age=0',
+        ]);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Find Tenant Document
-    |--------------------------------------------------------------------------
-    */
-
-    protected function findTenantDocument(
-        string $code,
-        SchoolContext $schoolContext
-    ): ReportVerification {
-        abort_unless(
-            preg_match(
-                '/^[a-f0-9]{48}$/',
-                strtolower(
-                    $code
-                )
-            ) === 1,
-            404
-        );
+    protected function findTenantDocument(string $code, SchoolContext $schoolContext): ReportVerification
+    {
+        $code = strtolower($code);
+        abort_unless(preg_match('/^[a-f0-9]{48}$/', $code) === 1, 404);
 
         return ReportVerification::query()
             ->with([
@@ -188,18 +66,10 @@ class PublishedDocumentController extends Controller
                 'closure.semester',
                 'issuer',
                 'revoker',
+                'source',
             ])
-            ->where(
-                'school_id',
-                $schoolContext
-                    ->id()
-            )
-            ->where(
-                'code',
-                strtolower(
-                    $code
-                )
-            )
+            ->where('school_id', $schoolContext->id())
+            ->where('code', $code)
             ->firstOrFail();
     }
 }

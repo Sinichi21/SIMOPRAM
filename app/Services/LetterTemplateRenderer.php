@@ -6,21 +6,34 @@ use App\Models\LetterTemplate;
 
 class LetterTemplateRenderer
 {
-    /**
-     * Placeholder yang disediakan oleh Template Builder.
-     * Key disimpan di body template dengan format {{ key }}.
-     *
-     * @return array<string, string>
-     */
-    public function catalog(): array
+    public function __construct(
+        private readonly LetterTemplateHtmlSanitizer $sanitizer
+    ) {}
+
+    /** @return array<string, string> */
+    public function systemCatalog(): array
     {
         return [
-            'recipient' => 'Penerima',
-            'recipient_location' => 'Lokasi penerima',
-            'subject' => 'Perihal',
-            'letter_date' => 'Tanggal surat',
-            'city' => 'Kota penerbitan',
-            'gudep' => 'Kode gugusdepan',
+            'letter_number' => 'Nomor Surat',
+            'letter_date' => 'Tanggal Surat',
+            'published_date' => 'Tanggal Terbit',
+            'subject' => 'Perihal / Judul',
+            'recipient' => 'Tujuan Surat',
+            'recipient_location' => 'Lokasi Tujuan',
+            'attachment_label' => 'Keterangan Lampiran',
+            'attachment_count' => 'Jumlah Lampiran',
+            'city' => 'Kota Penerbitan',
+            'gudep' => 'Kode Gugusdepan',
+            'signatory_name' => 'Nama Penandatangan',
+            'signatory_position' => 'Jabatan Penandatangan',
+            'signatory_identity' => 'NTA / Identitas Penandatangan',
+        ];
+    }
+
+    /** @return array<string, string> */
+    public function contentCatalog(): array
+    {
+        return [
             'activity_name' => 'Nama kegiatan',
             'activity_date' => 'Hari / tanggal kegiatan',
             'activity_time' => 'Waktu kegiatan',
@@ -46,10 +59,19 @@ class LetterTemplateRenderer
             'activity_execution' => 'Pelaksanaan kegiatan',
             'evaluation' => 'Hasil / evaluasi',
             'closing' => 'Penutup laporan',
-            'signatory_name' => 'Nama penandatangan',
-            'signatory_position' => 'Jabatan penandatangan',
-            'signatory_identity' => 'NTA / identitas penandatangan',
         ];
+    }
+
+    /** @return array<string, string> */
+    public function catalog(): array
+    {
+        return $this->systemCatalog() + $this->contentCatalog();
+    }
+
+    /** @return array<int, string> */
+    public function systemKeys(): array
+    {
+        return array_keys($this->systemCatalog());
     }
 
     public function label(string $placeholder): string
@@ -59,18 +81,32 @@ class LetterTemplateRenderer
 
     public function render(LetterTemplate $template, array $data, bool $markMissing = false): string
     {
-        $body = $template->body_template;
+        $body = $this->sanitizer->sanitize($template->body_template);
 
-        return preg_replace_callback('/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/', function (array $match) use ($data, $markMissing): string {
-            $key = $match[1];
-            $value = $data[$key] ?? null;
+        $rendered = preg_replace_callback(
+            '/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/',
+            function (array $match) use ($data, $markMissing): string {
+                $key = $match[1];
+                $value = $data[$key] ?? null;
 
-            if ($value !== null && trim((string) $value) !== '') {
-                return (string) $value;
-            }
+                if ($value !== null && trim((string) $value) !== '') {
+                    return $this->sanitizer->escapePlaceholderValue($value);
+                }
 
-            return $markMissing ? '[Belum diisi: '.$this->label($key).']' : $match[0];
-        }, $body) ?? $body;
+                if (in_array($key, $this->systemKeys(), true)) {
+                    return $markMissing
+                        ? '<span style="color:#777">['.htmlspecialchars($this->label($key), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').']</span>'
+                        : '';
+                }
+
+                return $markMissing
+                    ? '<span>[Belum diisi: '.htmlspecialchars($this->label($key), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').']</span>'
+                    : $match[0];
+            },
+            $body
+        ) ?? $body;
+
+        return $this->sanitizer->sanitize($rendered);
     }
 
     /** @return array<int, string> */
@@ -84,9 +120,28 @@ class LetterTemplateRenderer
     /** @return array<int, string> */
     public function missingPlaceholders(LetterTemplate $template, array $data): array
     {
+        $systemKeys = $this->systemKeys();
+
         return array_values(array_filter(
             $this->placeholders($template->body_template),
-            fn (string $key): bool => trim((string) ($data[$key] ?? '')) === ''
+            function (string $key) use ($template, $data, $systemKeys): bool {
+                if ($key === 'recipient' && $template->requires_recipient) {
+                    return trim((string) ($data[$key] ?? '')) === '';
+                }
+
+                if (in_array($key, $systemKeys, true)) {
+                    return false;
+                }
+
+                return trim((string) ($data[$key] ?? '')) === '';
+            }
         ));
+    }
+
+    public function containsAny(string $body, array $keys): bool
+    {
+        $used = $this->placeholders($body);
+
+        return count(array_intersect($used, $keys)) > 0;
     }
 }

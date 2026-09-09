@@ -7,9 +7,13 @@ use App\Models\LetterAttachment;
 use App\Models\LetterField;
 use App\Models\LetterTemplate;
 use App\Models\LetterType;
+use App\Models\School;
+use App\Models\SchoolDocumentSetting;
 use App\Models\SchoolLetterSetting;
+use App\Models\ScoutGroup;
 use App\Services\LetterAdministrationBootstrapService;
 use App\Services\LetterNumberService;
+use App\Services\LetterPublicationService;
 use App\Services\LetterTemplateRenderer;
 use App\Support\SchoolContext;
 use Carbon\Carbon;
@@ -127,7 +131,8 @@ class Index extends Component
             }
         }
 
-        $this->templatePlaceholders = $renderer->placeholders($template->body_template);
+        $allPlaceholders = $renderer->placeholders($template->body_template);
+        $this->templatePlaceholders = array_values(array_diff($allPlaceholders, ['letter_number', 'letter_date', 'published_date', 'subject', 'recipient', 'attachment_label', 'attachment_count', 'city', 'gudep', 'signatory_name', 'signatory_position', 'signatory_identity']));
         $defaults = $this->templateContext();
         $current = $this->templateData;
         $this->templateData = [];
@@ -163,7 +168,7 @@ class Index extends Component
             'letter_date' => ['required', 'date'],
             'received_date' => [$this->direction === 'incoming' ? 'required' : 'nullable', 'date'],
             'sender' => [$this->direction === 'incoming' ? 'required' : 'nullable', 'string', 'max:200'],
-            'recipient' => [$this->direction === 'outgoing' ? 'required' : 'nullable', 'string', 'max:200'],
+            'recipient' => ['nullable', 'string', 'max:200'],
             'subject' => ['required', 'string', 'max:255'],
             'classification' => ['nullable', 'string', 'max:100'],
             'security_classification' => ['required', Rule::in(['Biasa', 'Terbatas', 'Rahasia'])],
@@ -184,8 +189,11 @@ class Index extends Component
         ];
     }
 
-    public function save(LetterNumberService $numberService, LetterTemplateRenderer $renderer): void
-    {
+    public function save(
+        LetterNumberService $numberService,
+        LetterTemplateRenderer $renderer,
+        LetterPublicationService $publicationService
+    ): void {
         abort_unless(auth()->user()->can($this->editingId ? 'letters.update' : 'letters.create'), 403);
         if ($this->direction === 'outgoing' && $this->status === 'published') {
             abort_unless(auth()->user()->can('letters.publish'), 403);
@@ -196,40 +204,61 @@ class Index extends Component
         $templateData = $validated['templateData'] ?? [];
         unset($validated['templateData']);
 
+        $schoolId = $this->schoolId();
+        $userId = auth()->id();
+
         $template = null;
         if ($this->direction === 'outgoing' && $this->template_id) {
             $template = LetterTemplate::query()->findOrFail($this->template_id);
-            $context = array_merge($this->templateContext(), $templateData);
 
-            if ($this->status === 'published') {
-                $missing = $renderer->missingPlaceholders($template, $context);
-                if ($missing !== []) {
-                    $messages = [];
-                    foreach ($missing as $placeholder) {
-                        $messages['templateData.'.$placeholder] = 'Kolom '.$renderer->label($placeholder).' wajib diisi sebelum surat diterbitkan.';
-                    }
-                    throw ValidationException::withMessages($messages);
-                }
+            if ($template->requires_recipient && blank($validated['recipient'] ?? null)) {
+                throw ValidationException::withMessages([
+                    'recipient' => 'Tujuan surat wajib diisi untuk template ini.',
+                ]);
             }
+        }
+
+        // Validasi variabel template dilakukan sebelum nomor resmi diambil agar
+        // kegagalan form tidak menghabiskan nomor urut surat.
+        if ($template && $this->status === 'published') {
+            $preflightContext = array_merge($this->templateContext(), $templateData);
+            $missing = $renderer->missingPlaceholders($template, $preflightContext);
+            if ($missing !== []) {
+                $messages = [];
+                foreach ($missing as $placeholder) {
+                    $messages['templateData.'.$placeholder] = 'Kolom '.$renderer->label($placeholder).' wajib diisi sebelum surat diterbitkan.';
+                }
+                throw ValidationException::withMessages($messages);
+            }
+        }
+
+        /*
+         * Nomor dialokasikan sesudah preflight valid, tetapi sebelum template
+         * dirender karena {{ letter_number }} boleh ditempatkan di mana pun.
+         */
+        if ($this->direction === 'outgoing' && $this->status === 'published' && blank($validated['letter_number'] ?? null)) {
+            $date = Carbon::parse($this->letter_date);
+            $type = LetterType::query()->findOrFail($this->letter_type_id);
+            $field = LetterField::query()->findOrFail($this->letter_field_id);
+            $validated['letter_number'] = $numberService->nextOutgoing($schoolId, $date, $type, $field);
+            $this->letter_number = $validated['letter_number'];
+        }
+
+        if ($template) {
+            $context = array_merge($this->templateContext(), $templateData, [
+                'letter_number' => (string) ($validated['letter_number'] ?? $this->letter_number),
+            ]);
 
             $validated['body'] = $renderer->render($template, $context, false);
             $validated['metadata'] = [
                 'template_data' => $templateData,
                 'template_slug' => $template->slug,
                 'template_name' => $template->name,
+                'requires_recipient' => (bool) $template->requires_recipient,
             ];
         }
 
-        $schoolId = $this->schoolId();
-        $userId = auth()->id();
         $payload = array_merge($validated, ['direction' => $this->direction, 'school_id' => $schoolId, 'updated_by' => $userId]);
-
-        if ($this->direction === 'outgoing' && $this->status === 'published' && blank($payload['letter_number'])) {
-            $date = Carbon::parse($this->letter_date);
-            $type = LetterType::query()->findOrFail($this->letter_type_id);
-            $field = LetterField::query()->findOrFail($this->letter_field_id);
-            $payload['letter_number'] = $numberService->nextOutgoing($schoolId, $date, $type, $field);
-        }
 
         if ($this->direction === 'outgoing') {
             $payload['received_date'] = null;
@@ -256,6 +285,7 @@ class Index extends Component
 
         if ($this->editingId) {
             $letter = Letter::query()->where('direction', $this->direction)->findOrFail($this->editingId);
+            abort_if($letter->status === 'published' && $letter->publication()->exists(), 409, 'Surat yang sudah diterbitkan tidak dapat diubah. Cabut dokumen terbit dan buat surat pengganti bila diperlukan.');
             if ($letter->status === 'published' && blank($letter->letter_number) === false) {
                 $payload['letter_number'] = $letter->letter_number;
                 $payload['published_at'] = $letter->published_at;
@@ -274,6 +304,11 @@ class Index extends Component
         }
 
         $this->storeAttachments($letter);
+
+        if ($this->direction === 'outgoing' && $letter->status === 'published') {
+            $publicationService->publish($letter->fresh());
+        }
+
         $this->resetForm();
         session()->flash('success', $message);
     }
@@ -282,6 +317,7 @@ class Index extends Component
     {
         abort_unless(auth()->user()->can('letters.update'), 403);
         $letter = Letter::query()->where('direction', $this->direction)->findOrFail($id);
+        abort_if($letter->status === 'published' && $letter->publication()->exists(), 409, 'Surat yang sudah diterbitkan bersifat final dan tidak dapat diedit.');
         $this->editingId = $letter->id;
 
         foreach ([
@@ -305,7 +341,8 @@ class Index extends Component
         if ($letter->template_id) {
             $template = LetterTemplate::query()->find($letter->template_id);
             if ($template) {
-                $this->templatePlaceholders = $renderer->placeholders($template->body_template);
+                $allPlaceholders = $renderer->placeholders($template->body_template);
+                $this->templatePlaceholders = array_values(array_diff($allPlaceholders, ['letter_number', 'letter_date', 'published_date', 'subject', 'recipient', 'attachment_label', 'attachment_count', 'city', 'gudep', 'signatory_name', 'signatory_position', 'signatory_identity']));
                 $defaults = $this->templateContext();
                 foreach ($this->templatePlaceholders as $placeholder) {
                     $this->templateData[$placeholder] = (string) ($this->templateData[$placeholder] ?? $defaults[$placeholder] ?? '');
@@ -324,6 +361,7 @@ class Index extends Component
     {
         abort_unless(auth()->user()->can('letters.delete'), 403);
         $letter = Letter::query()->where('direction', $this->direction)->with('attachments')->findOrFail($id);
+        abort_if($letter->status === 'published' && $letter->publication()->exists(), 409, 'Surat yang sudah diterbitkan tidak dapat dihapus. Gunakan pencabutan Dokumen Terbit.');
         foreach ($letter->attachments as $attachment) {
             Storage::disk($attachment->disk)->delete($attachment->path);
         }
@@ -380,10 +418,22 @@ class Index extends Component
     {
         $setting = SchoolLetterSetting::query()->first();
 
+        $attachmentCount = count($this->attachments);
+        if ($this->editingId) {
+            $attachmentCount += LetterAttachment::query()->where('letter_id', $this->editingId)->count();
+        }
+
+        $recipientLocation = trim((string) ($this->templateData['recipient_location'] ?? ''));
+
         return [
+            'letter_number' => $this->letter_number ?: ($this->status === 'published' ? '' : '(nomor otomatis saat diterbitkan)'),
             'recipient' => $this->recipient,
+            'recipient_location' => $recipientLocation !== '' ? $recipientLocation : 'Tempat',
             'subject' => $this->subject,
             'letter_date' => $this->formatDate($this->letter_date),
+            'published_date' => $this->formatDate($this->letter_date),
+            'attachment_count' => (string) $attachmentCount,
+            'attachment_label' => $attachmentCount > 0 ? $attachmentCount.' berkas' : '-',
             'city' => (string) ($setting?->city ?? ''),
             'gudep' => (string) ($setting?->gudep_code ?? ''),
             'signatory_name' => $this->signatory_name ?: (string) ($setting?->default_signatory_name ?? ''),
@@ -434,7 +484,7 @@ class Index extends Component
     public function render(LetterTemplateRenderer $renderer)
     {
         $letters = Letter::query()
-            ->with(['attachments', 'creator', 'letterType', 'letterField'])
+            ->with(['attachments', 'creator', 'letterType', 'letterField', 'publication'])
             ->where('direction', $this->direction)
             ->when($this->search, function ($query): void {
                 $search = '%'.trim($this->search).'%';
@@ -453,19 +503,57 @@ class Index extends Component
 
         $selectedTemplate = null;
         $previewBody = '';
+        $previewFlexibleLayout = false;
+        $previewSchool = null;
+        $previewDocumentSetting = null;
+        $previewScoutGroup = null;
+
         if ($this->direction === 'outgoing' && $this->template_id) {
-            $selectedTemplate = $templates->firstWhere('id', $this->template_id) ?? LetterTemplate::query()->find($this->template_id);
+            $selectedTemplate = $templates->firstWhere('id', $this->template_id)
+                ?? LetterTemplate::query()->find($this->template_id);
+
             if ($selectedTemplate) {
                 $previewBody = $renderer->render(
                     $selectedTemplate,
                     array_merge($this->templateContext(), $this->templateData),
                     true
                 );
+
+                $previewFlexibleLayout = $renderer->containsAny(
+                    (string) $selectedTemplate->body_template,
+                    [
+                        'letter_number',
+                        'attachment_label',
+                        'attachment_count',
+                        'subject',
+                        'recipient',
+                        'recipient_location',
+                        'signatory_name',
+                        'signatory_position',
+                        'signatory_identity',
+                    ]
+                );
             }
+
+            $schoolId = $this->schoolId();
+            $previewSchool = School::query()->find($schoolId);
+            $previewDocumentSetting = SchoolDocumentSetting::query()->first();
+            $previewScoutGroup = ScoutGroup::query()
+                ->where('is_active', true)
+                ->first();
         }
 
         return view('livewire.letters.index', compact(
-            'letters', 'types', 'fields', 'templates', 'selectedTemplate', 'previewBody'
+            'letters',
+            'types',
+            'fields',
+            'templates',
+            'selectedTemplate',
+            'previewBody',
+            'previewFlexibleLayout',
+            'previewSchool',
+            'previewDocumentSetting',
+            'previewScoutGroup',
         ) + ['placeholderCatalog' => $renderer->catalog()]);
     }
 }

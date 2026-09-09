@@ -41,7 +41,7 @@
 
                 <div><label class="mb-1 block text-sm font-medium">Tanggal Surat *</label><input type="date" wire:model.live="letter_date" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">@error('letter_date')<p class="mt-1 text-sm text-red-500">{{ $message }}</p>@enderror</div>
                 @if ($incoming)<div><label class="mb-1 block text-sm font-medium">Tanggal Diterima *</label><input type="date" wire:model="received_date" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"></div>@endif
-                @if ($incoming)<div><label class="mb-1 block text-sm font-medium">Pengirim *</label><input wire:model="sender" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"></div>@else<div><label class="mb-1 block text-sm font-medium">Tujuan *</label><input wire:model.live.debounce.300ms="recipient" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">@error('recipient')<p class="mt-1 text-sm text-red-500">{{ $message }}</p>@enderror</div>@endif
+                @if ($incoming)<div><label class="mb-1 block text-sm font-medium">Pengirim *</label><input wire:model="sender" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"></div>@else<div><label class="mb-1 block text-sm font-medium">Tujuan {{ $selectedTemplate?->requires_recipient ? "*" : "(opsional)" }}</label><input wire:model.live.debounce.300ms="recipient" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">@error('recipient')<p class="mt-1 text-sm text-red-500">{{ $message }}</p>@enderror</div>@endif
                 <div class="md:col-span-2"><label class="mb-1 block text-sm font-medium">Perihal *</label><input wire:model.live.debounce.300ms="subject" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"></div>
 
                 @unless ($incoming)
@@ -69,15 +69,7 @@
                     @endif
 
                     @if ($selectedTemplate && $showPreview)
-                        <div class="md:col-span-2 rounded-xl border border-zinc-300 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-950">
-                            <div class="mb-4 border-b border-zinc-200 pb-3 text-center dark:border-zinc-800">
-                                <div class="text-xs font-semibold uppercase tracking-wide text-zinc-500">Preview Isi Surat</div>
-                                <div class="mt-1 text-lg font-bold">{{ $selectedTemplate->title ?: $selectedTemplate->name }}</div>
-                                <div class="mt-1 text-xs text-zinc-500">Nomor: {{ $letter_number ?: '(dibuat otomatis saat terbit)' }}</div>
-                            </div>
-                            <div class="whitespace-pre-wrap text-sm leading-7 text-zinc-800 dark:text-zinc-200">{{ $previewBody }}</div>
-                            <p class="mt-4 border-t border-zinc-200 pt-3 text-xs text-zinc-500 dark:border-zinc-800">Preview ini belum berupa PDF final. Kop surat dan tata letak PDF akan ditambahkan pada tahap berikutnya.</p>
-                        </div>
+                        @include('livewire.letters.partials.a4-preview')
                     @endif
                 @endunless
 
@@ -116,7 +108,36 @@
         <div class="grid gap-3 border-b border-zinc-200 p-4 md:grid-cols-2 dark:border-zinc-800"><input type="search" wire:model.live.debounce.300ms="search" placeholder="Cari nomor, perihal, pengirim/tujuan..." class="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"><select wire:model.live="statusFilter" class="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"><option value="">Semua status</option>@foreach ($statuses as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach</select></div>
         <div class="overflow-x-auto"><table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800"><thead class="bg-zinc-50 dark:bg-zinc-950/50"><tr><th class="px-4 py-3 text-left">Nomor</th><th class="px-4 py-3 text-left">Tanggal</th><th class="px-4 py-3 text-left">{{ $incoming ? 'Pengirim' : 'Tujuan' }}</th><th class="px-4 py-3 text-left">Perihal</th><th class="px-4 py-3 text-left">Jenis/Bidang</th><th class="px-4 py-3 text-left">Status</th><th class="px-4 py-3 text-right">Aksi</th></tr></thead><tbody class="divide-y divide-zinc-200 dark:divide-zinc-800">
             @forelse ($letters as $letter)
-                <tr><td class="px-4 py-3 align-top"><div class="font-medium">{{ $letter->letter_number ?: '-' }}</div>@if ($letter->agenda_number)<div class="text-xs text-zinc-500">Agenda: {{ $letter->agenda_number }}</div>@endif<div class="text-xs text-zinc-500">{{ $letter->security_classification ?: 'Biasa' }}</div></td><td class="px-4 py-3 align-top">{{ $letter->letter_date->format('d/m/Y') }}</td><td class="px-4 py-3 align-top">{{ $incoming ? $letter->sender : $letter->recipient }}</td><td class="px-4 py-3 align-top"><div class="max-w-xs font-medium">{{ $letter->subject }}</div>@if ($letter->archive_code)<div class="text-xs text-zinc-500">Arsip: {{ $letter->archive_code }}</div>@endif</td><td class="px-4 py-3 align-top">{{ $letter->letterType?->code ?: '-' }} / {{ $letter->letterField?->code ?: '-' }}</td><td class="px-4 py-3 align-top">{{ $statuses[$letter->status] ?? $letter->status }}</td><td class="whitespace-nowrap px-4 py-3 text-right">@can('letters.update')<button type="button" wire:click="edit({{ $letter->id }})" class="mr-2 text-blue-600">Edit</button>@endcan @can('letters.delete')<button type="button" wire:click="delete({{ $letter->id }})" wire:confirm="Hapus surat ini?" class="text-red-600">Hapus</button>@endcan</td></tr>
+                <tr><td class="px-4 py-3 align-top"><div class="font-medium">{{ $letter->letter_number ?: '-' }}</div>@if ($letter->agenda_number)<div class="text-xs text-zinc-500">Agenda: {{ $letter->agenda_number }}</div>@endif<div class="text-xs text-zinc-500">{{ $letter->security_classification ?: 'Biasa' }}</div></td><td class="px-4 py-3 align-top">{{ $letter->letter_date->format('d/m/Y') }}</td><td class="px-4 py-3 align-top">{{ $incoming ? $letter->sender : ($letter->recipient ?: '-') }}</td><td class="px-4 py-3 align-top"><div class="max-w-xs font-medium">{{ $letter->subject }}</div>@if ($letter->archive_code)<div class="text-xs text-zinc-500">Arsip: {{ $letter->archive_code }}</div>@endif</td><td class="px-4 py-3 align-top">{{ $letter->letterType?->code ?: '-' }} / {{ $letter->letterField?->code ?: '-' }}</td><td class="px-4 py-3 align-top">{{ $statuses[$letter->status] ?? $letter->status }}</td><td class="whitespace-nowrap px-4 py-3 text-right">
+    @if (! $incoming && $letter->publication)
+        <a
+            href="{{ route('reports.published-documents.show', ['code' => $letter->publication->code]) }}"
+            wire:navigate
+            class="mr-2 text-blue-600"
+        >Detail</a>
+        @if (! $letter->publication->isRevoked() && $letter->publication->hasArchivedPdf())
+            @can('reports.export')
+                <a
+                    href="{{ route('reports.published-documents.download', ['code' => $letter->publication->code]) }}"
+                    class="mr-2 text-emerald-600"
+                >PDF</a>
+            @endcan
+        @endif
+        <a
+            href="{{ route('reports.verify', ['code' => $letter->publication->code]) }}"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-zinc-600"
+        >Verifikasi</a>
+    @else
+        @can('letters.update')
+            <button type="button" wire:click="edit({{ $letter->id }})" class="mr-2 text-blue-600">Edit</button>
+        @endcan
+        @can('letters.delete')
+            <button type="button" wire:click="delete({{ $letter->id }})" wire:confirm="Hapus surat ini?" class="text-red-600">Hapus</button>
+        @endcan
+    @endif
+</td></tr>
             @empty
                 <tr><td colspan="7" class="px-4 py-10 text-center text-zinc-500">Belum ada data.</td></tr>
             @endforelse

@@ -54,45 +54,15 @@ class Index extends Component
 
     public function resetFilters(): void
     {
-        $this->reset([
-            'search',
-            'status',
-            'documentType',
-            'dateFrom',
-            'dateTo',
-        ]);
-
+        $this->reset(['search', 'status', 'documentType', 'dateFrom', 'dateTo']);
         $this->resetPage();
     }
 
-    public function startRevoke(
-        int $verificationId
-    ): void {
-        abort_unless(
-            auth()->user()?->can(
-                'report_verifications.manage'
-            ),
-            403
-        );
-
-        $schoolId = app(SchoolContext::class)->id();
-
-        abort_unless(
-            $schoolId,
-            409,
-            'Pilih sekolah aktif terlebih dahulu.'
-        );
-
-        $verification = ReportVerification::query()
-            ->where('school_id', $schoolId)
-            ->findOrFail($verificationId);
-
-        abort_if(
-            $verification->isRevoked(),
-            409,
-            'Dokumen ini sudah dicabut.'
-        );
-
+    public function startRevoke(int $verificationId): void
+    {
+        abort_unless(auth()->user()?->can('report_verifications.manage'), 403);
+        $verification = $this->baseQuery()->findOrFail($verificationId);
+        abort_if($verification->isRevoked(), 409, 'Dokumen ini sudah dicabut.');
         $this->revokeId = $verification->id;
         $this->revocationReason = '';
         $this->resetValidation();
@@ -105,75 +75,36 @@ class Index extends Component
         $this->resetValidation();
     }
 
-    public function revoke(
-        ReportVerificationService $service
-    ): void {
-        abort_unless(
-            auth()->user()?->can(
-                'report_verifications.manage'
-            ),
-            403
-        );
+    public function revoke(ReportVerificationService $service): void
+    {
+        abort_unless(auth()->user()?->can('report_verifications.manage'), 403);
 
         $this->validate([
-            'revocationReason' => [
-                'required',
-                'string',
-                'min:5',
-                'max:2000',
-            ],
+            'revocationReason' => ['required', 'string', 'min:5', 'max:2000'],
         ]);
 
-        $schoolId = app(SchoolContext::class)->id();
+        abort_unless($this->revokeId, 422, 'Dokumen yang akan dicabut belum dipilih.');
 
-        abort_unless(
-            $schoolId,
-            409,
-            'Pilih sekolah aktif terlebih dahulu.'
-        );
-
-        abort_unless(
-            $this->revokeId,
-            422,
-            'Dokumen yang akan dicabut belum dipilih.'
-        );
-
-        $verification = ReportVerification::query()
-            ->where('school_id', $schoolId)
-            ->findOrFail($this->revokeId);
-
-        $service->revoke(
-            verification: $verification,
-            reason: $this->revocationReason,
-            revokedBy: auth()->id()
-        );
-
+        $verification = $this->baseQuery()->findOrFail($this->revokeId);
+        $service->revoke($verification, $this->revocationReason, auth()->id());
         $this->cancelRevoke();
 
         session()->flash(
             'status',
-            'Dokumen berhasil dicabut. QR lama tetap dapat dipindai, '
-            .'tetapi halaman verifikasi akan menampilkan status Dicabut.'
+            'Dokumen berhasil dicabut. QR lama tetap dapat dipindai dan akan menampilkan status Dicabut.'
         );
     }
 
     protected function baseQuery()
     {
         $schoolId = app(SchoolContext::class)->id();
+        abort_unless($schoolId, 409, 'Pilih sekolah aktif terlebih dahulu.');
 
-        abort_unless(
-            $schoolId,
-            409,
-            'Pilih sekolah aktif terlebih dahulu.'
-        );
-
-        return ReportVerification::query()
-            ->where('school_id', $schoolId);
+        return ReportVerification::query()->where('school_id', $schoolId);
     }
 
-    protected function applyStatusFilter(
-        $query
-    ): void {
+    protected function applyStatusFilter($query): void
+    {
         if ($this->status === 'revoked') {
             $query->whereNotNull('revoked_at');
 
@@ -181,29 +112,19 @@ class Index extends Component
         }
 
         if ($this->status === 'superseded') {
-            $query
-                ->whereNull('revoked_at')
-                ->whereHas(
-                    'closure',
-                    fn ($query) => $query->where(
-                        'status',
-                        'reopened'
-                    )
-                );
+            $query->whereNull('revoked_at')->whereHas(
+                'closure',
+                fn ($q) => $q->where('status', 'reopened')
+            );
 
             return;
         }
 
         if ($this->status === 'valid') {
-            $query
-                ->whereNull('revoked_at')
-                ->whereHas(
-                    'closure',
-                    fn ($query) => $query->where(
-                        'status',
-                        'locked'
-                    )
-                );
+            $query->whereNull('revoked_at')->where(function ($q): void {
+                $q->whereNull('semester_closure_id')
+                    ->orWhereHas('closure', fn ($closure) => $closure->where('status', 'locked'));
+            });
         }
     }
 
@@ -213,114 +134,68 @@ class Index extends Component
 
         return [
             'total' => (clone $base)->count(),
-
             'valid' => (clone $base)
                 ->whereNull('revoked_at')
-                ->whereHas(
-                    'closure',
-                    fn ($query) => $query->where(
-                        'status',
-                        'locked'
-                    )
-                )
+                ->where(function ($q): void {
+                    $q->whereNull('semester_closure_id')
+                        ->orWhereHas('closure', fn ($closure) => $closure->where('status', 'locked'));
+                })
                 ->count(),
-
             'superseded' => (clone $base)
                 ->whereNull('revoked_at')
-                ->whereHas(
-                    'closure',
-                    fn ($query) => $query->where(
-                        'status',
-                        'reopened'
-                    )
-                )
+                ->whereHas('closure', fn ($q) => $q->where('status', 'reopened'))
                 ->count(),
-
-            'revoked' => (clone $base)
-                ->whereNotNull('revoked_at')
-                ->count(),
-
-            'verification_count' => (int) (clone $base)
-                ->sum('verification_count'),
+            'revoked' => (clone $base)->whereNotNull('revoked_at')->count(),
+            'verification_count' => (int) (clone $base)->sum('verification_count'),
         ];
     }
 
     public function render(): View
     {
-        $query = $this->baseQuery()
-            ->with([
-                'closure.academicYear',
-                'closure.semester',
-                'issuer',
-                'revoker',
-            ]);
+        $query = $this->baseQuery()->with([
+            'closure.academicYear',
+            'closure.semester',
+            'issuer',
+            'revoker',
+            'source',
+        ]);
 
         if (trim($this->search) !== '') {
             $term = '%'.trim($this->search).'%';
-
-            $query->where(
-                function ($query) use ($term): void {
-                    $query
-                        ->where('code', 'like', $term)
-                        ->orWhere(
-                            'snapshot_checksum',
-                            'like',
-                            $term
-                        )
-                        ->orWhereHas(
-                            'issuer',
-                            fn ($query) => $query->where(
-                                'name',
-                                'like',
-                                $term
-                            )
-                        );
-                }
-            );
+            $query->where(function ($q) use ($term): void {
+                $q->where('code', 'like', $term)
+                    ->orWhere('snapshot_checksum', 'like', $term)
+                    ->orWhere('document_number', 'like', $term)
+                    ->orWhere('title', 'like', $term)
+                    ->orWhereHas('issuer', fn ($issuer) => $issuer->where('name', 'like', $term));
+            });
         }
 
         if ($this->documentType !== '') {
-            $query->where(
-                'document_type',
-                $this->documentType
-            );
+            $query->where('document_type', $this->documentType);
         }
 
         if ($this->dateFrom !== '') {
-            $query->whereDate(
-                'issued_at',
-                '>=',
-                $this->dateFrom
-            );
+            $query->whereDate('issued_at', '>=', $this->dateFrom);
         }
 
         if ($this->dateTo !== '') {
-            $query->whereDate(
-                'issued_at',
-                '<=',
-                $this->dateTo
-            );
+            $query->whereDate('issued_at', '<=', $this->dateTo);
         }
 
         $this->applyStatusFilter($query);
 
-        $documents = $query
-            ->orderByDesc('issued_at')
-            ->paginate(20);
-
+        $documents = $query->orderByDesc('issued_at')->paginate(20);
         $documentTypes = $this->baseQuery()
             ->select('document_type')
             ->distinct()
             ->orderBy('document_type')
             ->pluck('document_type');
 
-        return view(
-            'livewire.reports.published-documents.index',
-            [
-                'documents' => $documents,
-                'statistics' => $this->statistics(),
-                'documentTypes' => $documentTypes,
-            ]
-        );
+        return view('livewire.reports.published-documents.index', [
+            'documents' => $documents,
+            'statistics' => $this->statistics(),
+            'documentTypes' => $documentTypes,
+        ]);
     }
 }

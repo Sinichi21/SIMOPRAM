@@ -9,6 +9,14 @@
     $wosmLogo = file_exists($wosmLogoFile)
         ? 'data:image/png;base64,'.base64_encode(file_get_contents($wosmLogoFile))
         : null;
+
+    $letterheadAddress = trim((string) ($scoutGroup?->secretariat_address ?: $school->address));
+    $postalCode = trim((string) $school->postal_code);
+
+    // Hindari kode pos ganda bila alamat sekretariat/sekolah sudah memuat kode pos.
+    if ($postalCode !== '' && ! preg_match('/(?:^|\D)'.preg_quote($postalCode, '/').'(?:\D|$)/u', $letterheadAddress)) {
+        $letterheadAddress = trim($letterheadAddress.' '.$postalCode);
+    }
 @endphp
 
 <header class="letterhead">
@@ -45,10 +53,6 @@
     </div>
 
     <div class="letterhead-address">
-        {{ $scoutGroup?->secretariat_address ?: $school->address }}
-
-        @if ($school->postal_code)
-            {{ $school->postal_code }}
-        @endif
+        {{ $letterheadAddress }}
     </div>
 </header>
