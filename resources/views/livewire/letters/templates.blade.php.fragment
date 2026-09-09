@@ -1,0 +1,117 @@
+{{-- Hotfix v2.7.2: editor table visibility helpers
+     Merge these styles into your existing templates.blade.php <style> block
+     and keep PDF rendering unchanged unless you intentionally want printed borders. --}}
+
+<style>
+    /*
+     * Rich template editor table visibility.
+     *
+     * The editor always shows a dashed guide border so cells are easy to edit.
+     * This is editor-only styling and does not force borders into the final PDF.
+     */
+    [data-letter-template-editor] table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: auto;
+        margin: .75rem 0;
+    }
+
+    [data-letter-template-editor] table td,
+    [data-letter-template-editor] table th {
+        min-width: 3rem;
+        min-height: 1.5rem;
+        padding: .35rem .5rem;
+        vertical-align: top;
+        border: 1px dashed rgb(161 161 170);
+    }
+
+    [data-letter-template-editor] table th {
+        font-weight: 700;
+        background: rgba(161, 161, 170, .08);
+    }
+
+    [data-letter-template-editor] table td:empty::before,
+    [data-letter-template-editor] table th:empty::before {
+        content: "\00a0";
+    }
+
+    /*
+     * Optional explicit "printed border" class.
+     * When the editor inserts this class, the PDF renderer may keep the border.
+     */
+    [data-letter-template-editor] table.table-bordered td,
+    [data-letter-template-editor] table.table-bordered th {
+        border-style: solid;
+    }
+
+    /*
+     * Optional explicit "borderless" class.
+     * Keep faint dashed guides while editing only.
+     */
+    [data-letter-template-editor] table.table-borderless td,
+    [data-letter-template-editor] table.table-borderless th {
+        border: 1px dashed rgb(212 212 216);
+    }
+</style>
+
+<script>
+document.addEventListener('alpine:init', () => {
+    window.simopramLetterTableEditor = {
+        selectedTable() {
+            const selection = window.getSelection();
+
+            if (!selection || selection.rangeCount === 0) {
+                return null;
+            }
+
+            let node = selection.anchorNode;
+
+            if (!node) {
+                return null;
+            }
+
+            if (node.nodeType === Node.TEXT_NODE) {
+                node = node.parentElement;
+            }
+
+            return node?.closest?.('table') ?? null;
+        },
+
+        setBorderMode(mode) {
+            const table = this.selectedTable();
+
+            if (!table) {
+                return false;
+            }
+
+            table.classList.remove('table-bordered', 'table-borderless');
+
+            if (mode === 'bordered') {
+                table.classList.add('table-bordered');
+            }
+
+            if (mode === 'borderless') {
+                table.classList.add('table-borderless');
+            }
+
+            table.dispatchEvent(new Event('input', { bubbles: true }));
+
+            return true;
+        },
+    };
+});
+</script>
+
+{{-- Suggested toolbar buttons to place near existing table controls:
+
+<button type="button"
+    onclick="window.simopramLetterTableEditor?.setBorderMode('bordered')">
+    Garis tabel
+</button>
+
+<button type="button"
+    onclick="window.simopramLetterTableEditor?.setBorderMode('borderless')">
+    Tanpa garis
+</button>
+
+--}}

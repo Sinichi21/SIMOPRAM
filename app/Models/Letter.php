@@ -6,6 +6,7 @@ use App\Models\Concerns\BelongsToSchool;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Letter extends Model
@@ -71,5 +72,12 @@ class Letter extends Model
     public function dispositions(): HasMany
     {
         return $this->hasMany(LetterDisposition::class);
+    }
+
+    public function publication(): HasOne
+    {
+        return $this->hasOne(ReportVerification::class, 'source_id')
+            ->where('source_type', self::class)
+            ->where('document_type', 'letter');
     }
 }

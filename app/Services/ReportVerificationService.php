@@ -63,6 +63,10 @@ class ReportVerificationService
 
                 'semester_closure_id' => $closure->id,
 
+                'source_type' => SemesterClosure::class,
+
+                'source_id' => $closure->id,
+
                 'code' => $this->generateUniqueCode(),
 
                 'document_type' => $documentType,
@@ -78,6 +82,57 @@ class ReportVerificationService
 
                 'verification_count' => 0,
             ]);
+    }
+
+    /**
+     * Terbitkan identitas dokumen generic yang tidak bergantung pada semester.
+     * Existing report flow tetap memakai issue().
+     *
+     * @param  array<string, mixed>  $metadata
+     */
+    public function issueDocument(
+        int $schoolId,
+        string $documentType,
+        string $sourceType,
+        int $sourceId,
+        string $snapshotChecksum,
+        ?string $documentNumber = null,
+        ?string $title = null,
+        array $metadata = [],
+        ?int $issuedBy = null
+    ): ReportVerification {
+        $activeSchoolId = app(SchoolContext::class)->id();
+
+        abort_unless($activeSchoolId, 409, 'Pilih sekolah aktif terlebih dahulu.');
+        abort_unless((int) $activeSchoolId === $schoolId, 404);
+
+        $existing = ReportVerification::query()
+            ->where('school_id', $schoolId)
+            ->where('source_type', $sourceType)
+            ->where('source_id', $sourceId)
+            ->where('document_type', $documentType)
+            ->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
+        return ReportVerification::query()->create([
+            'school_id' => $schoolId,
+            'semester_closure_id' => null,
+            'source_type' => $sourceType,
+            'source_id' => $sourceId,
+            'code' => $this->generateUniqueCode(),
+            'document_type' => $documentType,
+            'document_number' => $documentNumber,
+            'title' => $title,
+            'snapshot_checksum' => $snapshotChecksum,
+            'metadata' => $metadata,
+            'file_disk' => 'local',
+            'issued_by' => $issuedBy,
+            'issued_at' => now(),
+            'verification_count' => 0,
+        ]);
     }
 
     /*
@@ -159,7 +214,7 @@ class ReportVerificationService
 
                 subject: $verification,
 
-                description: 'PDF rekap nilai snapshot diterbitkan dan diarsipkan.',
+                description: 'PDF dokumen resmi diterbitkan dan diarsipkan.',
 
                 newValues: [
                     'document_type' => $verification
@@ -341,29 +396,25 @@ class ReportVerificationService
                 ? new PngWriter
                 : new SvgWriter;
 
-        $builder =
-            new Builder(
-                writer: $writer,
-
-                writerOptions: [],
-
-                validateResult: false,
-
-                data: $this->publicUrl(
+        $builder = Builder::create()
+            ->writer($writer)
+            ->writerOptions([])
+            ->validateResult(false)
+            ->data(
+                $this->publicUrl(
                     $verification
-                ),
-
-                encoding: new Encoding(
-                    'UTF-8'
-                ),
-
-                errorCorrectionLevel: ErrorCorrectionLevel::Medium,
-
-                size: 220,
-
-                margin: 8,
-
-                roundBlockSizeMode: RoundBlockSizeMode::Margin
+                )
+            )
+            ->encoding(
+                new Encoding('UTF-8')
+            )
+            ->errorCorrectionLevel(
+                ErrorCorrectionLevel::Medium
+            )
+            ->size(220)
+            ->margin(8)
+            ->roundBlockSizeMode(
+                RoundBlockSizeMode::Margin
             );
 
         return $builder
@@ -394,6 +445,7 @@ class ReportVerificationService
                     'school',
                     'closure.academicYear',
                     'closure.semester',
+                    'source',
                 ])
                 ->where(
                     'code',
@@ -413,6 +465,7 @@ class ReportVerificationService
             'school',
             'closure.academicYear',
             'closure.semester',
+            'source',
         ]);
     }
 

@@ -255,7 +255,7 @@
                 <flux:sidebar.group
                     heading="Persuratan"
                     expandable
-                    :expanded="request()->routeIs('letters.*')"
+                    :expanded="request()->routeIs('letters.*', 'reports.published-documents.*')"
                     class="grid"
                 >
                     <flux:sidebar.item
@@ -275,6 +275,17 @@
                     >
                         Surat Keluar
                     </flux:sidebar.item>
+
+                    @can('report_verifications.view')
+                        <flux:sidebar.item
+                            icon="document-check"
+                            :href="route('reports.published-documents.index')"
+                            :current="request()->routeIs('reports.published-documents.*')"
+                            wire:navigate
+                        >
+                            Dokumen Terbit
+                        </flux:sidebar.item>
+                    @endcan
 
                     @can('letters.templates')
                         <flux:sidebar.item
@@ -578,7 +589,7 @@
                 <flux:sidebar.group
                     heading="Laporan"
                     expandable
-                    :expanded="request()->routeIs('reports.*')"
+                    :expanded="request()->routeIs('reports.grades', 'reports.attendance', 'reports.lpj*')"
                     class="grid"
                 >
 
@@ -627,21 +638,6 @@
                             LPJ Kegiatan
                         </flux:sidebar.item>
 
-                    @endcan
-
-                    @can('report_verifications.view')
-                        <flux:sidebar.item
-                            icon="document-check"
-                            :href="route(
-                                'reports.published-documents.index'
-                            )"
-                            :current="request()->routeIs(
-                                'reports.published-documents.*'
-                            )"
-                            wire:navigate
-                        >
-                            Dokumen Terbit
-                        </flux:sidebar.item>
                     @endcan
 
 

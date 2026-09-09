@@ -622,7 +622,7 @@ Route::middleware([
             );
 
         Route::view(
-            '/laporan/dokumen-terbit',
+            '/persuratan/dokumen-terbit',
             'reports.published-documents'
         )
             ->middleware(
@@ -633,7 +633,7 @@ Route::middleware([
             );
 
         Route::get(
-            '/laporan/dokumen-terbit/{code}',
+            '/persuratan/dokumen-terbit/{code}',
             [
                 PublishedDocumentController::class,
                 'show',
@@ -651,7 +651,7 @@ Route::middleware([
             );
 
         Route::get(
-            '/laporan/dokumen-terbit/{code}/download',
+            '/persuratan/dokumen-terbit/{code}/download',
             [
                 PublishedDocumentController::class,
                 'download',
