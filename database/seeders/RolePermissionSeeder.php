@@ -65,6 +65,16 @@ class RolePermissionSeeder extends Seeder
             'journals.publish',
             'journals.attachments',
 
+            'letters.view',
+            'letters.create',
+            'letters.update',
+            'letters.delete',
+            'letters.publish',
+            'letters.attachments',
+            'letters.templates',
+            'letters.settings',
+            'letters.dispositions',
+
             'announcements.view',
             'announcements.create',
             'announcements.update',
@@ -226,6 +236,11 @@ class RolePermissionSeeder extends Seeder
             'journals.submit',
             'journals.publish',
             'journals.attachments',
+
+            'letters.view',
+            'letters.create',
+            'letters.update',
+            'letters.attachments',
 
             'announcements.view',
             'announcements.create',

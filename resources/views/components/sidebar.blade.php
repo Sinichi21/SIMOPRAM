@@ -99,7 +99,7 @@
         ADMINISTRASI
         ================================================== --}}
 
-        @can('schools.view')
+        @can('schools.manage')
 
             <flux:sidebar.nav
                 data-school-menu
@@ -240,6 +240,66 @@
                 </div>
 
             @endif
+
+        {{-- =================================================
+        PERSURATAN
+        ================================================== --}}
+
+        @can('letters.view')
+            <flux:sidebar.nav
+                data-school-menu
+                @class([
+                    'opacity-60 [&_*]:cursor-not-allowed' => ! $hasActiveSchool,
+                ])
+            >
+                <flux:sidebar.group
+                    heading="Persuratan"
+                    expandable
+                    :expanded="request()->routeIs('letters.*')"
+                    class="grid"
+                >
+                    <flux:sidebar.item
+                        icon="inbox-arrow-down"
+                        :href="route('letters.incoming')"
+                        :current="request()->routeIs('letters.incoming')"
+                        wire:navigate
+                    >
+                        Surat Masuk
+                    </flux:sidebar.item>
+
+                    <flux:sidebar.item
+                        icon="paper-airplane"
+                        :href="route('letters.outgoing')"
+                        :current="request()->routeIs('letters.outgoing')"
+                        wire:navigate
+                    >
+                        Surat Keluar
+                    </flux:sidebar.item>
+
+                    @can('letters.templates')
+                        <flux:sidebar.item
+                            icon="document-text"
+                            :href="route('letters.templates')"
+                            :current="request()->routeIs('letters.templates')"
+                            wire:navigate
+                        >
+                            Template Surat
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('letters.settings')
+                        <flux:sidebar.item
+                            icon="cog-6-tooth"
+                            :href="route('letters.settings')"
+                            :current="request()->routeIs('letters.settings')"
+                            wire:navigate
+                        >
+                            Pengaturan Persuratan
+                        </flux:sidebar.item>
+                    @endcan
+                </flux:sidebar.group>
+            </flux:sidebar.nav>
+        @endcan
 
         {{-- =================================================
         MASTER DATA

@@ -120,7 +120,7 @@ Route::middleware([
         'admin.schools'
     )
         ->middleware(
-            'can:schools.view'
+            'can:schools.manage'
         )
         ->name(
             'schools.index'
@@ -298,6 +298,28 @@ Route::middleware([
             ->name(
                 'attendances.self'
             );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Persuratan
+        |--------------------------------------------------------------------------
+        */
+
+        Route::view('/persuratan/surat-masuk', 'letters.incoming')
+            ->middleware('can:letters.view')
+            ->name('letters.incoming');
+
+        Route::view('/persuratan/surat-keluar', 'letters.outgoing')
+            ->middleware('can:letters.view')
+            ->name('letters.outgoing');
+
+        Route::view('/persuratan/template', 'letters.templates')
+            ->middleware('can:letters.templates')
+            ->name('letters.templates');
+
+        Route::view('/persuratan/pengaturan', 'letters.settings')
+            ->middleware('can:letters.settings')
+            ->name('letters.settings');
 
         /*
         |--------------------------------------------------------------------------
