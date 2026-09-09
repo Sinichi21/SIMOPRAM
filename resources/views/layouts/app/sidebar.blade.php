@@ -127,6 +127,59 @@ INFORMASI SEKOLAH AKTIF
 
 @endif
 
+
+{{-- =========================
+MENU PERSURATAN
+========================= --}}
+
+@can('letters.view')
+    <div class="mb-4 space-y-1">
+        <div class="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            Persuratan
+        </div>
+
+        <a
+            href="{{ route('letters.incoming') }}"
+            wire:navigate
+            @class([
+                'block rounded-lg px-3 py-2 text-sm font-medium transition',
+                'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' => request()->routeIs('letters.incoming'),
+                'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800' => ! request()->routeIs('letters.incoming'),
+            ])
+        >
+            Surat Masuk
+        </a>
+
+        <a
+            href="{{ route('letters.outgoing') }}"
+            wire:navigate
+            @class([
+                'block rounded-lg px-3 py-2 text-sm font-medium transition',
+                'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' => request()->routeIs('letters.outgoing'),
+                'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800' => ! request()->routeIs('letters.outgoing'),
+            ])
+        >
+            Surat Keluar
+        </a>
+
+        @can('letters.templates')
+            <a href="{{ route('letters.templates') }}" wire:navigate @class([
+                'block rounded-lg px-3 py-2 text-sm font-medium transition',
+                'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' => request()->routeIs('letters.templates'),
+                'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800' => ! request()->routeIs('letters.templates'),
+            ])>Template Surat</a>
+        @endcan
+
+        @can('letters.settings')
+            <a href="{{ route('letters.settings') }}" wire:navigate @class([
+                'block rounded-lg px-3 py-2 text-sm font-medium transition',
+                'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' => request()->routeIs('letters.settings'),
+                'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800' => ! request()->routeIs('letters.settings'),
+            ])>Pengaturan Persuratan</a>
+        @endcan
+    </div>
+@endcan
+
 {{-- =========================
 MENU MASTER DATA
 ========================= --}}

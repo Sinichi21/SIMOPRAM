@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class AcademicYearFactory extends Factory
 {
+    protected $model = AcademicYear::class;
+
     /**
      * Define the model's default state.
      *
@@ -18,13 +20,33 @@ class AcademicYearFactory extends Factory
      */
     public function definition(): array
     {
-        $startYear = (int) fake()->numberBetween(2020, 2040);
+        /*
+         * Gunakan rentang khusus factory/test yang tidak berbenturan
+         * dengan tahun ajaran eksplisit yang digunakan pada feature test
+         * seperti 2025/2026 dan 2026/2027.
+         *
+         * unique() juga mencegah factory menghasilkan tahun yang sama
+         * berulang kali selama satu proses test.
+         */
+        $startYear = fake()
+            ->unique()
+            ->numberBetween(2100, 2299);
 
         return [
             'school_id' => School::factory(),
+
             'name' => $startYear.'/'.($startYear + 1),
-            'start_date' => $startYear.'-07-01',
-            'end_date' => ($startYear + 1).'-06-30',
+
+            'start_date' => sprintf(
+                '%d-07-01',
+                $startYear
+            ),
+
+            'end_date' => sprintf(
+                '%d-06-30',
+                $startYear + 1
+            ),
+
             'is_active' => true,
         ];
     }

@@ -1,0 +1,838 @@
+--- a/app/Providers/AppServiceProvider.php
++++ b/app/Providers/AppServiceProvider.php
+@@ -38,6 +38,7 @@
+         $this->configureDefaults();
+ 
+         Gate::define('messaging.manage', fn (User $user): bool => $user->isSuperAdmin());
++        Gate::define('schools.manage', fn (User $user): bool => $user->isSuperAdmin());
+ 
+         Livewire::addPersistentMiddleware([
+             SetCurrentSchool::class,
+--- a/app/Livewire/Schools/Index.php
++++ b/app/Livewire/Schools/Index.php
+@@ -52,6 +52,14 @@
+ 
+     public string $search = '';
+ 
++    public function mount(): void
++    {
++        abort_unless(
++            auth()->user()?->isSuperAdmin(),
++            403
++        );
++    }
++
+     public function updatedSearch(): void
+     {
+         $this->resetPage();
+@@ -165,11 +173,7 @@
+     public function save(): void
+     {
+         abort_unless(
+-            auth()->user()->can(
+-                $this->editingId
+-                    ? 'schools.update'
+-                    : 'schools.create'
+-            ),
++            auth()->user()?->isSuperAdmin(),
+             403
+         );
+ 
+@@ -214,7 +218,7 @@
+     public function edit(int $id): void
+     {
+         abort_unless(
+-            auth()->user()->can('schools.update'),
++            auth()->user()?->isSuperAdmin(),
+             403
+         );
+ 
+@@ -266,7 +270,7 @@
+     public function toggleStatus(int $id): void
+     {
+         abort_unless(
+-            auth()->user()->can('schools.toggle'),
++            auth()->user()?->isSuperAdmin(),
+             403
+         );
+ 
+--- a/routes/web.php
++++ b/routes/web.php
+@@ -110,7 +110,7 @@
+         'admin.schools'
+     )
+         ->middleware(
+-            'can:schools.view'
++            'can:schools.manage'
+         )
+         ->name(
+             'schools.index'
+@@ -291,6 +291,20 @@
+ 
+         /*
+         |--------------------------------------------------------------------------
++        | Persuratan
++        |--------------------------------------------------------------------------
++        */
++
++        Route::view('/persuratan/surat-masuk', 'letters.incoming')
++            ->middleware('can:letters.view')
++            ->name('letters.incoming');
++
++        Route::view('/persuratan/surat-keluar', 'letters.outgoing')
++            ->middleware('can:letters.view')
++            ->name('letters.outgoing');
++
++        /*
++        |--------------------------------------------------------------------------
+         | Jurnal Kegiatan
+         |--------------------------------------------------------------------------
+         */
+--- a/database/seeders/RolePermissionSeeder.php
++++ b/database/seeders/RolePermissionSeeder.php
+@@ -65,6 +65,13 @@
+             'journals.publish',
+             'journals.attachments',
+ 
++            'letters.view',
++            'letters.create',
++            'letters.update',
++            'letters.delete',
++            'letters.publish',
++            'letters.attachments',
++
+             'announcements.view',
+             'announcements.create',
+             'announcements.update',
+@@ -227,6 +234,11 @@
+             'journals.publish',
+             'journals.attachments',
+ 
++            'letters.view',
++            'letters.create',
++            'letters.update',
++            'letters.attachments',
++
+             'announcements.view',
+             'announcements.create',
+             'announcements.update',
+--- a/resources/views/layouts/app/sidebar.blade.php
++++ b/resources/views/layouts/app/sidebar.blade.php
+@@ -1,4 +1,4 @@
+-@can('schools.view')
++@can('schools.manage')
+ 
+     <div class="mb-4 space-y-1">
+ 
+@@ -127,6 +127,43 @@
+ 
+ @endif
+ 
++
++{{-- =========================
++MENU PERSURATAN
++========================= --}}
++
++@can('letters.view')
++    <div class="mb-4 space-y-1">
++        <div class="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
++            Persuratan
++        </div>
++
++        <a
++            href="{{ route('letters.incoming') }}"
++            wire:navigate
++            @class([
++                'block rounded-lg px-3 py-2 text-sm font-medium transition',
++                'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' => request()->routeIs('letters.incoming'),
++                'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800' => ! request()->routeIs('letters.incoming'),
++            ])
++        >
++            Surat Masuk
++        </a>
++
++        <a
++            href="{{ route('letters.outgoing') }}"
++            wire:navigate
++            @class([
++                'block rounded-lg px-3 py-2 text-sm font-medium transition',
++                'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' => request()->routeIs('letters.outgoing'),
++                'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800' => ! request()->routeIs('letters.outgoing'),
++            ])
++        >
++            Surat Keluar
++        </a>
++    </div>
++@endcan
++
+ {{-- =========================
+ MENU MASTER DATA
+ ========================= --}}
+--- /dev/null
++++ b/database/migrations/2026_09_08_000001_create_letters_tables.php
+@@ -0,0 +1,70 @@
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Database\Schema\Blueprint;
++use Illuminate\Support\Facades\Schema;
++
++return new class extends Migration
++{
++    public function up(): void
++    {
++        Schema::create('letter_number_sequences', function (Blueprint $table) {
++            $table->id();
++            $table->foreignId('school_id')->constrained()->cascadeOnDelete();
++            $table->string('direction', 20);
++            $table->unsignedSmallInteger('year');
++            $table->unsignedInteger('last_number')->default(0);
++            $table->timestamps();
++
++            $table->unique(['school_id', 'direction', 'year'], 'letter_seq_school_direction_year_unique');
++        });
++
++        Schema::create('letters', function (Blueprint $table) {
++            $table->id();
++            $table->foreignId('school_id')->constrained()->cascadeOnDelete();
++            $table->string('direction', 20);
++            $table->string('agenda_number', 100)->nullable();
++            $table->string('letter_number', 150)->nullable();
++            $table->date('letter_date');
++            $table->date('received_date')->nullable();
++            $table->string('sender', 200)->nullable();
++            $table->string('recipient', 200)->nullable();
++            $table->string('subject', 255);
++            $table->string('classification', 100)->nullable();
++            $table->longText('body')->nullable();
++            $table->string('signatory_name', 150)->nullable();
++            $table->string('signatory_position', 150)->nullable();
++            $table->string('status', 30)->default('draft');
++            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
++            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
++            $table->timestamp('published_at')->nullable();
++            $table->timestamps();
++            $table->softDeletes();
++
++            $table->index(['school_id', 'direction', 'status'], 'letters_school_direction_status_idx');
++            $table->index(['school_id', 'letter_date'], 'letters_school_date_idx');
++            $table->index('letter_number');
++            $table->index('agenda_number');
++            $table->index('subject');
++        });
++
++        Schema::create('letter_attachments', function (Blueprint $table) {
++            $table->id();
++            $table->foreignId('letter_id')->constrained()->cascadeOnDelete();
++            $table->string('disk', 30)->default('public');
++            $table->string('path');
++            $table->string('original_name');
++            $table->string('mime_type', 120)->nullable();
++            $table->unsignedBigInteger('size')->nullable();
++            $table->foreignId('uploaded_by')->nullable()->constrained('users')->nullOnDelete();
++            $table->timestamps();
++        });
++    }
++
++    public function down(): void
++    {
++        Schema::dropIfExists('letter_attachments');
++        Schema::dropIfExists('letters');
++        Schema::dropIfExists('letter_number_sequences');
++    }
++};
+--- /dev/null
++++ b/app/Models/Letter.php
+@@ -0,0 +1,50 @@
++<?php
++
++namespace App\Models;
++
++use App\Models\Concerns\BelongsToSchool;
++use Illuminate\Database\Eloquent\Model;
++use Illuminate\Database\Eloquent\Relations\BelongsTo;
++use Illuminate\Database\Eloquent\Relations\HasMany;
++use Illuminate\Database\Eloquent\SoftDeletes;
++
++class Letter extends Model
++{
++    use BelongsToSchool, SoftDeletes;
++
++    protected $fillable = [
++        'school_id', 'direction', 'agenda_number', 'letter_number',
++        'letter_date', 'received_date', 'sender', 'recipient', 'subject',
++        'classification', 'body', 'signatory_name', 'signatory_position',
++        'status', 'created_by', 'updated_by', 'published_at',
++    ];
++
++    protected function casts(): array
++    {
++        return [
++            'letter_date' => 'date',
++            'received_date' => 'date',
++            'published_at' => 'datetime',
++        ];
++    }
++
++    public function school(): BelongsTo
++    {
++        return $this->belongsTo(School::class);
++    }
++
++    public function creator(): BelongsTo
++    {
++        return $this->belongsTo(User::class, 'created_by');
++    }
++
++    public function updater(): BelongsTo
++    {
++        return $this->belongsTo(User::class, 'updated_by');
++    }
++
++    public function attachments(): HasMany
++    {
++        return $this->hasMany(LetterAttachment::class);
++    }
++}
+--- /dev/null
++++ b/app/Models/LetterAttachment.php
+@@ -0,0 +1,23 @@
++<?php
++
++namespace App\Models;
++
++use Illuminate\Database\Eloquent\Model;
++use Illuminate\Database\Eloquent\Relations\BelongsTo;
++
++class LetterAttachment extends Model
++{
++    protected $fillable = [
++        'letter_id', 'disk', 'path', 'original_name', 'mime_type', 'size', 'uploaded_by',
++    ];
++
++    public function letter(): BelongsTo
++    {
++        return $this->belongsTo(Letter::class);
++    }
++
++    public function uploader(): BelongsTo
++    {
++        return $this->belongsTo(User::class, 'uploaded_by');
++    }
++}
+--- /dev/null
++++ b/app/Models/LetterNumberSequence.php
+@@ -0,0 +1,13 @@
++<?php
++
++namespace App\Models;
++
++use App\Models\Concerns\BelongsToSchool;
++use Illuminate\Database\Eloquent\Model;
++
++class LetterNumberSequence extends Model
++{
++    use BelongsToSchool;
++
++    protected $fillable = ['school_id', 'direction', 'year', 'last_number'];
++}
+--- /dev/null
++++ b/app/Services/LetterNumberService.php
+@@ -0,0 +1,47 @@
++<?php
++
++namespace App\Services;
++
++use App\Models\LetterNumberSequence;
++use Illuminate\Support\Facades\DB;
++
++class LetterNumberService
++{
++    public function next(string $direction, int $schoolId, int $year, int $month): string
++    {
++        return DB::transaction(function () use ($direction, $schoolId, $year, $month): string {
++            $sequence = LetterNumberSequence::withoutGlobalScope('school')
++                ->where('school_id', $schoolId)
++                ->where('direction', $direction)
++                ->where('year', $year)
++                ->lockForUpdate()
++                ->first();
++
++            if (! $sequence) {
++                $sequence = LetterNumberSequence::withoutGlobalScope('school')->create([
++                    'school_id' => $schoolId,
++                    'direction' => $direction,
++                    'year' => $year,
++                    'last_number' => 0,
++                ]);
++            }
++
++            $sequence->increment('last_number');
++            $number = $sequence->fresh()->last_number;
++
++            if ($direction === 'incoming') {
++                return sprintf('%04d/SM/%d', $number, $year);
++            }
++
++            return sprintf('%03d/PRAMUKA/%s/%d', $number, $this->romanMonth($month), $year);
++        }, 3);
++    }
++
++    private function romanMonth(int $month): string
++    {
++        return [
++            1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V', 6 => 'VI',
++            7 => 'VII', 8 => 'VIII', 9 => 'IX', 10 => 'X', 11 => 'XI', 12 => 'XII',
++        ][$month] ?? (string) $month;
++    }
++}
+--- /dev/null
++++ b/app/Livewire/Letters/Index.php
+@@ -0,0 +1,247 @@
++<?php
++
++namespace App\Livewire\Letters;
++
++use App\Models\Letter;
++use App\Models\LetterAttachment;
++use App\Services\LetterNumberService;
++use App\Support\SchoolContext;
++use Illuminate\Support\Facades\Storage;
++use Illuminate\Validation\Rule;
++use Livewire\Component;
++use Livewire\WithFileUploads;
++use Livewire\WithPagination;
++
++class Index extends Component
++{
++    use WithFileUploads, WithPagination;
++
++    public string $direction = 'incoming';
++    public ?int $editingId = null;
++    public string $letter_number = '';
++    public string $letter_date = '';
++    public string $received_date = '';
++    public string $sender = '';
++    public string $recipient = '';
++    public string $subject = '';
++    public string $classification = '';
++    public string $body = '';
++    public string $signatory_name = '';
++    public string $signatory_position = '';
++    public string $status = 'draft';
++    public string $search = '';
++    public string $statusFilter = '';
++    public array $attachments = [];
++
++    public function mount(string $direction = 'incoming'): void
++    {
++        abort_unless(in_array($direction, ['incoming', 'outgoing'], true), 404);
++        $this->direction = $direction;
++        $this->letter_date = now()->toDateString();
++        $this->received_date = $direction === 'incoming' ? now()->toDateString() : '';
++        $this->status = $direction === 'incoming' ? 'recorded' : 'draft';
++    }
++
++    public function updatedSearch(): void
++    {
++        $this->resetPage();
++    }
++
++    public function updatedStatusFilter(): void
++    {
++        $this->resetPage();
++    }
++
++    protected function schoolId(): int
++    {
++        $schoolId = app(SchoolContext::class)->id();
++        abort_unless($schoolId, 409, 'Pilih sekolah aktif terlebih dahulu.');
++
++        return $schoolId;
++    }
++
++    protected function rules(): array
++    {
++        $statuses = $this->direction === 'incoming'
++            ? ['recorded', 'disposed', 'archived']
++            : ['draft', 'published', 'cancelled'];
++
++        return [
++            'letter_number' => ['nullable', 'string', 'max:150'],
++            'letter_date' => ['required', 'date'],
++            'received_date' => [$this->direction === 'incoming' ? 'required' : 'nullable', 'date'],
++            'sender' => [$this->direction === 'incoming' ? 'required' : 'nullable', 'string', 'max:200'],
++            'recipient' => [$this->direction === 'outgoing' ? 'required' : 'nullable', 'string', 'max:200'],
++            'subject' => ['required', 'string', 'max:255'],
++            'classification' => ['nullable', 'string', 'max:100'],
++            'body' => ['nullable', 'string'],
++            'signatory_name' => ['nullable', 'string', 'max:150'],
++            'signatory_position' => ['nullable', 'string', 'max:150'],
++            'status' => ['required', Rule::in($statuses)],
++            'attachments.*' => ['file', 'mimes:pdf,jpg,jpeg,png,doc,docx', 'max:5120'],
++        ];
++    }
++
++    public function save(LetterNumberService $numberService): void
++    {
++        abort_unless(auth()->user()->can($this->editingId ? 'letters.update' : 'letters.create'), 403);
++
++        $validated = $this->validate();
++        unset($validated['attachments']);
++
++        $schoolId = $this->schoolId();
++        $userId = auth()->id();
++
++        $payload = array_merge($validated, [
++            'direction' => $this->direction,
++            'school_id' => $schoolId,
++            'updated_by' => $userId,
++        ]);
++
++        if ($this->direction === 'outgoing' && $this->status === 'published' && blank($payload['letter_number'])) {
++            $date = \Carbon\Carbon::parse($this->letter_date);
++            $payload['letter_number'] = $numberService->next('outgoing', $schoolId, (int) $date->year, (int) $date->month);
++        }
++
++        if ($this->direction === 'outgoing') {
++            $payload['received_date'] = null;
++            $payload['sender'] = null;
++            $payload['published_at'] = $this->status === 'published' ? now() : null;
++        } else {
++            $payload['recipient'] = null;
++            $payload['signatory_name'] = null;
++            $payload['signatory_position'] = null;
++            $payload['published_at'] = null;
++        }
++
++        if ($this->editingId) {
++            $letter = Letter::query()->where('direction', $this->direction)->findOrFail($this->editingId);
++            $letter->update($payload);
++            $message = 'Surat berhasil diperbarui.';
++        } else {
++            if ($this->direction === 'incoming') {
++                $date = \Carbon\Carbon::parse($this->received_date ?: $this->letter_date);
++                $payload['agenda_number'] = $numberService->next('incoming', $schoolId, (int) $date->year, (int) $date->month);
++            }
++
++            $payload['created_by'] = $userId;
++            $letter = Letter::query()->create($payload);
++            $message = 'Surat berhasil ditambahkan.';
++        }
++
++        $this->storeAttachments($letter);
++        $this->resetForm();
++        session()->flash('success', $message);
++    }
++
++    public function edit(int $id): void
++    {
++        abort_unless(auth()->user()->can('letters.update'), 403);
++
++        $letter = Letter::query()->where('direction', $this->direction)->findOrFail($id);
++        $this->editingId = $letter->id;
++        $this->letter_number = (string) ($letter->letter_number ?? '');
++        $this->letter_date = $letter->letter_date->toDateString();
++        $this->received_date = $letter->received_date?->toDateString() ?? '';
++        $this->sender = (string) ($letter->sender ?? '');
++        $this->recipient = (string) ($letter->recipient ?? '');
++        $this->subject = $letter->subject;
++        $this->classification = (string) ($letter->classification ?? '');
++        $this->body = (string) ($letter->body ?? '');
++        $this->signatory_name = (string) ($letter->signatory_name ?? '');
++        $this->signatory_position = (string) ($letter->signatory_position ?? '');
++        $this->status = $letter->status;
++        $this->attachments = [];
++    }
++
++    public function cancelEdit(): void
++    {
++        $this->resetForm();
++    }
++
++    public function delete(int $id): void
++    {
++        abort_unless(auth()->user()->can('letters.delete'), 403);
++
++        $letter = Letter::query()->where('direction', $this->direction)->with('attachments')->findOrFail($id);
++        foreach ($letter->attachments as $attachment) {
++            Storage::disk($attachment->disk)->delete($attachment->path);
++        }
++        $letter->delete();
++        session()->flash('success', 'Surat berhasil dihapus.');
++    }
++
++    public function deleteAttachment(int $id): void
++    {
++        abort_unless(auth()->user()->can('letters.attachments'), 403);
++
++        $attachment = LetterAttachment::query()
++            ->whereHas('letter', fn ($query) => $query->where('direction', $this->direction))
++            ->findOrFail($id);
++
++        Storage::disk($attachment->disk)->delete($attachment->path);
++        $attachment->delete();
++        session()->flash('success', 'Lampiran berhasil dihapus.');
++    }
++
++    private function storeAttachments(Letter $letter): void
++    {
++        if (! auth()->user()->can('letters.attachments')) {
++            return;
++        }
++
++        foreach ($this->attachments as $file) {
++            $path = $file->store("letters/{$letter->school_id}/{$letter->id}", 'public');
++
++            $letter->attachments()->create([
++                'disk' => 'public',
++                'path' => $path,
++                'original_name' => $file->getClientOriginalName(),
++                'mime_type' => $file->getMimeType(),
++                'size' => $file->getSize(),
++                'uploaded_by' => auth()->id(),
++            ]);
++        }
++    }
++
++    private function resetForm(): void
++    {
++        $this->editingId = null;
++        $this->letter_number = '';
++        $this->letter_date = now()->toDateString();
++        $this->received_date = $this->direction === 'incoming' ? now()->toDateString() : '';
++        $this->sender = '';
++        $this->recipient = '';
++        $this->subject = '';
++        $this->classification = '';
++        $this->body = '';
++        $this->signatory_name = '';
++        $this->signatory_position = '';
++        $this->status = $this->direction === 'incoming' ? 'recorded' : 'draft';
++        $this->attachments = [];
++        $this->resetValidation();
++    }
++
++    public function render()
++    {
++        $letters = Letter::query()
++            ->with(['attachments', 'creator'])
++            ->where('direction', $this->direction)
++            ->when($this->search, function ($query): void {
++                $search = '%'.trim($this->search).'%';
++                $query->where(function ($query) use ($search): void {
++                    $query->where('subject', 'like', $search)
++                        ->orWhere('letter_number', 'like', $search)
++                        ->orWhere('agenda_number', 'like', $search)
++                        ->orWhere('sender', 'like', $search)
++                        ->orWhere('recipient', 'like', $search);
++                });
++            })
++            ->when($this->statusFilter, fn ($query) => $query->where('status', $this->statusFilter))
++            ->orderByDesc('letter_date')
++            ->orderByDesc('id')
++            ->paginate(10);
++
++        return view('livewire.letters.index', compact('letters'));
++    }
++}
+--- /dev/null
++++ b/resources/views/letters/incoming.blade.php
+@@ -0,0 +1,3 @@
++<x-layouts.app :title="__('Surat Masuk')">
++    <livewire:letters.index direction="incoming" />
++</x-layouts.app>
+--- /dev/null
++++ b/resources/views/letters/outgoing.blade.php
+@@ -0,0 +1,3 @@
++<x-layouts.app :title="__('Surat Keluar')">
++    <livewire:letters.index direction="outgoing" />
++</x-layouts.app>
+--- /dev/null
++++ b/resources/views/livewire/letters/index.blade.php
+@@ -0,0 +1,185 @@
++<div class="space-y-6">
++    @php
++        $incoming = $direction === 'incoming';
++        $title = $incoming ? 'Surat Masuk' : 'Surat Keluar';
++        $statuses = $incoming
++            ? ['recorded' => 'Tercatat', 'disposed' => 'Didisposisi', 'archived' => 'Diarsipkan']
++            : ['draft' => 'Draft', 'published' => 'Terbit', 'cancelled' => 'Dibatalkan'];
++    @endphp
++
++    <div>
++        <h1 class="text-2xl font-semibold text-zinc-900 dark:text-white">{{ $title }}</h1>
++        <p class="mt-1 text-sm text-zinc-500">
++            {{ $incoming ? 'Catat dan arsipkan surat yang diterima sekolah.' : 'Kelola surat yang diterbitkan oleh sekolah.' }}
++        </p>
++    </div>
++
++    @if (session('success'))
++        <div class="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-300">
++            {{ session('success') }}
++        </div>
++    @endif
++
++    @canany(['letters.create', 'letters.update'])
++        <form wire:submit="save" class="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
++            <div class="mb-5 flex items-center justify-between gap-4">
++                <div>
++                    <h2 class="text-lg font-semibold">{{ $editingId ? 'Edit '.$title : 'Tambah '.$title }}</h2>
++                    <p class="mt-1 text-sm text-zinc-500">Kolom bertanda * wajib diisi.</p>
++                </div>
++                @if ($editingId)
++                    <button type="button" wire:click="cancelEdit" class="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700">Batal edit</button>
++                @endif
++            </div>
++
++            <div class="grid gap-4 md:grid-cols-2">
++                <div>
++                    <label class="mb-1 block text-sm font-medium">Nomor Surat {{ $incoming ? '' : '(otomatis saat terbit jika kosong)' }}</label>
++                    <input type="text" wire:model="letter_number" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800" placeholder="{{ $incoming ? 'Nomor dari surat pengirim' : 'Kosongkan untuk nomor otomatis' }}">
++                    @error('letter_number') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
++                </div>
++
++                <div>
++                    <label class="mb-1 block text-sm font-medium">Tanggal Surat *</label>
++                    <input type="date" wire:model="letter_date" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
++                    @error('letter_date') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
++                </div>
++
++                @if ($incoming)
++                    <div>
++                        <label class="mb-1 block text-sm font-medium">Tanggal Diterima *</label>
++                        <input type="date" wire:model="received_date" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
++                        @error('received_date') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
++                    </div>
++                    <div>
++                        <label class="mb-1 block text-sm font-medium">Pengirim *</label>
++                        <input type="text" wire:model="sender" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800" placeholder="Instansi / nama pengirim">
++                        @error('sender') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
++                    </div>
++                @else
++                    <div>
++                        <label class="mb-1 block text-sm font-medium">Tujuan *</label>
++                        <input type="text" wire:model="recipient" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800" placeholder="Instansi / nama tujuan">
++                        @error('recipient') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
++                    </div>
++                    <div>
++                        <label class="mb-1 block text-sm font-medium">Nama Penandatangan</label>
++                        <input type="text" wire:model="signatory_name" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
++                    </div>
++                    <div>
++                        <label class="mb-1 block text-sm font-medium">Jabatan Penandatangan</label>
++                        <input type="text" wire:model="signatory_position" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
++                    </div>
++                @endif
++
++                <div class="md:col-span-2">
++                    <label class="mb-1 block text-sm font-medium">Perihal *</label>
++                    <input type="text" wire:model="subject" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800" placeholder="Perihal surat">
++                    @error('subject') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
++                </div>
++
++                <div>
++                    <label class="mb-1 block text-sm font-medium">Klasifikasi</label>
++                    <input type="text" wire:model="classification" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800" placeholder="Contoh: Undangan, Pemberitahuan">
++                </div>
++
++                <div>
++                    <label class="mb-1 block text-sm font-medium">Status *</label>
++                    <select wire:model="status" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
++                        @foreach ($statuses as $value => $label)
++                            <option value="{{ $value }}">{{ $label }}</option>
++                        @endforeach
++                    </select>
++                </div>
++
++                <div class="md:col-span-2">
++                    <label class="mb-1 block text-sm font-medium">Isi / Catatan Surat</label>
++                    <textarea wire:model="body" rows="5" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800" placeholder="Isi ringkas atau catatan administrasi"></textarea>
++                </div>
++
++                @can('letters.attachments')
++                    <div class="md:col-span-2">
++                        <label class="mb-1 block text-sm font-medium">Lampiran</label>
++                        <input type="file" wire:model="attachments" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" class="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800">
++                        <p class="mt-1 text-xs text-zinc-500">PDF, JPG, PNG, DOC, DOCX. Maksimal 5 MB per file.</p>
++                        @error('attachments.*') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
++                    </div>
++                @endcan
++            </div>
++
++            <div class="mt-5">
++                <button type="submit" class="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-zinc-900">
++                    {{ $editingId ? 'Simpan Perubahan' : 'Simpan Surat' }}
++                </button>
++            </div>
++        </form>
++    @endcanany
++
++    <div class="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
++        <div class="grid gap-3 border-b border-zinc-200 p-4 md:grid-cols-2 dark:border-zinc-800">
++            <input type="search" wire:model.live.debounce.300ms="search" placeholder="Cari nomor, perihal, pengirim/tujuan..." class="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800">
++            <select wire:model.live="statusFilter" class="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800">
++                <option value="">Semua status</option>
++                @foreach ($statuses as $value => $label)
++                    <option value="{{ $value }}">{{ $label }}</option>
++                @endforeach
++            </select>
++        </div>
++
++        <div class="overflow-x-auto">
++            <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
++                <thead class="bg-zinc-50 dark:bg-zinc-950/50">
++                    <tr>
++                        <th class="px-4 py-3 text-left font-medium">Nomor</th>
++                        <th class="px-4 py-3 text-left font-medium">Tanggal</th>
++                        <th class="px-4 py-3 text-left font-medium">{{ $incoming ? 'Pengirim' : 'Tujuan' }}</th>
++                        <th class="px-4 py-3 text-left font-medium">Perihal</th>
++                        <th class="px-4 py-3 text-left font-medium">Status</th>
++                        <th class="px-4 py-3 text-left font-medium">Lampiran</th>
++                        <th class="px-4 py-3 text-right font-medium">Aksi</th>
++                    </tr>
++                </thead>
++                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-800">
++                    @forelse ($letters as $letter)
++                        <tr>
++                            <td class="px-4 py-3 align-top">
++                                <div class="font-medium">{{ $letter->letter_number ?: '-' }}</div>
++                                @if ($letter->agenda_number)
++                                    <div class="mt-1 text-xs text-zinc-500">Agenda: {{ $letter->agenda_number }}</div>
++                                @endif
++                            </td>
++                            <td class="px-4 py-3 align-top">{{ $letter->letter_date->format('d/m/Y') }}</td>
++                            <td class="px-4 py-3 align-top">{{ $incoming ? $letter->sender : $letter->recipient }}</td>
++                            <td class="px-4 py-3 align-top"><div class="max-w-xs font-medium">{{ $letter->subject }}</div></td>
++                            <td class="px-4 py-3 align-top">{{ $statuses[$letter->status] ?? $letter->status }}</td>
++                            <td class="px-4 py-3 align-top">
++                                @forelse ($letter->attachments as $attachment)
++                                    <div class="mb-1 flex items-center gap-2">
++                                        <a href="{{ Storage::disk($attachment->disk)->url($attachment->path) }}" target="_blank" class="max-w-40 truncate text-blue-600 hover:underline">{{ $attachment->original_name }}</a>
++                                        @can('letters.attachments')
++                                            <button type="button" wire:click="deleteAttachment({{ $attachment->id }})" wire:confirm="Hapus lampiran ini?" class="text-xs text-red-600">Hapus</button>
++                                        @endcan
++                                    </div>
++                                @empty
++                                    <span class="text-zinc-400">-</span>
++                                @endforelse
++                            </td>
++                            <td class="px-4 py-3 align-top text-right whitespace-nowrap">
++                                @can('letters.update')
++                                    <button type="button" wire:click="edit({{ $letter->id }})" class="mr-2 text-blue-600 hover:underline">Edit</button>
++                                @endcan
++                                @can('letters.delete')
++                                    <button type="button" wire:click="delete({{ $letter->id }})" wire:confirm="Hapus surat ini?" class="text-red-600 hover:underline">Hapus</button>
++                                @endcan
++                            </td>
++                        </tr>
++                    @empty
++                        <tr><td colspan="7" class="px-4 py-10 text-center text-zinc-500">Belum ada data {{ strtolower($title) }}.</td></tr>
++                    @endforelse
++                </tbody>
++            </table>
++        </div>
++
++        <div class="p-4">{{ $letters->links() }}</div>
++    </div>
++</div>
