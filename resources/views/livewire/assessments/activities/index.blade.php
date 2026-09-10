@@ -54,6 +54,7 @@
             <h2 class="text-lg font-semibold">
                 Buat Form Penilaian
             </h2>
+            <p class="mt-2 text-sm text-zinc-500">Untuk memasukkan nilai kegiatan khusus ke semester, pilih kegiatan dan faktor tujuan tanpa mencentang mode juri di bawah. Pastikan faktor tersebut memiliki bobot pada Pengaturan Penilaian. Absensi kegiatan khusus tidak digabung ke faktor kehadiran latihan rutin.</p>
 
             <label class="mt-4 flex items-center gap-2">
                 <input type="checkbox" wire:model.live="isSpecial">

@@ -1,4 +1,14 @@
 <div class="space-y-6">
+    <flux:modal wire:model="showDescriptionEditor">
+        <form wire:submit="saveDescription">
+            <flux:heading>Edit Deskripsi Siswa</flux:heading>
+            <flux:text>Saran sesuai predikat: {{ $suggestedDescription ?: 'Belum tersedia. Atur rentang predikat lalu hitung ulang nilai.' }}</flux:text>
+            <flux:textarea wire:model="descriptionText" label="Deskripsi siswa" rows="5" />
+            <flux:error name="semester" />
+            <flux:button type="submit" variant="primary">Simpan Deskripsi Khusus</flux:button>
+            <flux:button type="button" wire:click="saveDescription(true)">Gunakan Saran Predikat</flux:button>
+        </form>
+    </flux:modal>
 
     @if (session('success'))
         <div
@@ -355,6 +365,12 @@
                                     <div class="text-xs text-zinc-500">
                                         {{ $final->description }}
                                     </div>
+                                    @can('assessments.scores.manage')
+                                        <flux:button size="sm" wire:click="editDescription({{ $student->id }})">Edit Deskripsi</flux:button>
+                                        @if ($final->manual_description !== null)
+                                            <flux:text>Deskripsi khusus siswa</flux:text>
+                                        @endif
+                                    @endcan
 
                                 @else
 

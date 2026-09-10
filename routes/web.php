@@ -515,6 +515,9 @@ Route::middleware([
                 'reports.attendance'
             );
 
+        Route::view('/laporan/absensi/detail', 'reports.attendance-detail')
+            ->middleware('can:reports.attendance.view')->name('reports.attendance.detail');
+
         Route::get(
             '/laporan/absensi/pdf',
             [

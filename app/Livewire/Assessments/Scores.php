@@ -8,6 +8,8 @@ use App\Models\ScoutLevel;
 use App\Models\Student;
 use App\Models\StudentScore;
 use App\Services\AssessmentService;
+use App\Services\SemesterClosureService;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 class Scores extends Component
@@ -19,6 +21,42 @@ class Scores extends Component
     public string $scoutLevelId = '';
 
     public array $scores = [];
+
+    #[Locked]
+    public ?int $descriptionGradeId = null;
+
+    public bool $showDescriptionEditor = false;
+
+    public string $descriptionText = '';
+
+    public string $suggestedDescription = '';
+
+    public function editDescription(int $studentId): void
+    {
+        abort_unless(auth()->user()?->can('assessments.scores.manage'), 403);
+        $grade = FinalGrade::query()->where('assessment_config_id', $this->configId)->where('student_id', $studentId)->first();
+        abort_unless($grade, 404);
+        $this->descriptionGradeId = $grade->id;
+        $this->descriptionText = $grade->description ?? '';
+        $this->suggestedDescription = $grade->getRawOriginal('description') ?? '';
+        $this->resetValidation();
+        $this->showDescriptionEditor = true;
+    }
+
+    public function saveDescription(bool $useSuggestion = false): void
+    {
+        abort_unless(auth()->user()?->can('assessments.scores.manage'), 403);
+        $grade = FinalGrade::query()->where('assessment_config_id', $this->configId)->find($this->descriptionGradeId);
+        abort_unless($grade, 404);
+        app(SemesterClosureService::class)->assertOpen($grade->config->academic_year_id, $grade->config->semester_id);
+        if (! $useSuggestion) {
+            $this->descriptionText = trim($this->descriptionText);
+            $this->validate(['descriptionText' => ['required', 'string', 'max:2000']]);
+        }
+        $grade->update(['manual_description' => $useSuggestion ? null : $this->descriptionText]);
+        $this->showDescriptionEditor = false;
+        session()->flash('success', $useSuggestion ? 'Deskripsi kembali mengikuti predikat.' : 'Deskripsi khusus siswa berhasil disimpan.');
+    }
 
     public function mount(): void
     {

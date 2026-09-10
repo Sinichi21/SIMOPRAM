@@ -52,6 +52,7 @@ class AssessmentService
                     function ($query) use (
                         $config
                     ): void {
+                        $query->where('activity_type', 'regular');
                         $query->where(
                             'academic_year_id',
                             $config
@@ -1266,6 +1267,7 @@ class AssessmentService
         */
 
         $payload = [
+            'attendance_activity_type' => 'regular',
             'assessment_config_id' => (int) $config->id,
 
             'academic_year_id' => (int) $config
