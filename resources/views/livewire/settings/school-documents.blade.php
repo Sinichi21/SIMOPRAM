@@ -16,8 +16,8 @@
     <section class="rounded-xl border border-blue-200 bg-blue-50 p-5 dark:border-blue-900 dark:bg-blue-950/20">
         <h2 class="font-semibold text-blue-950 dark:text-blue-100">Sumber Data Penandatangan</h2>
         <p class="mt-1 text-sm text-blue-800 dark:text-blue-300">
-            Nama berasal dari user aktif sekolah. Jabatan dan NIP/NTA disimpan per sekolah.
-            Role tidak dibatasi: user mana pun yang aktif di sekolah dapat dipilih.
+            Pilih akun aktif sekolah atau isi data penandatangan secara manual.
+            Penandatangan manual tidak memerlukan akun dan tidak memiliki permintaan persetujuan pengguna.
         </p>
     </section>
 
@@ -25,7 +25,7 @@
         <div>
             <h2 class="text-lg font-semibold">Profil Penandatangan User</h2>
             <p class="mt-1 text-sm text-zinc-500">
-                Pilih user dari master data, lalu isi jabatan dan NIP/NTA satu kali.
+                Bagian ini melengkapi jabatan dan NIP/NTA untuk akun pengguna, bukan memilih posisi tanda tangan pada dokumen. Data pembina tanpa akun mengikuti Master Data Pembina.
             </p>
         </div>
 
@@ -75,7 +75,7 @@
         <section class="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <h2 class="text-lg font-semibold">Penandatangan Default Dokumen</h2>
             <p class="mt-1 text-sm text-zinc-500">
-                Nama, jabatan, dan NIP/NTA diambil otomatis dari profil user yang dipilih.
+                Tentukan siapa yang otomatis mengisi setiap posisi tanda tangan. Pilih akun, pembina dari master data tanpa akun, atau input manual.
             </p>
 
             <div class="mt-5 grid gap-4 md:grid-cols-2">
@@ -89,8 +89,28 @@
                 @endphp
 
                 @foreach ($slots as $model => $label)
-                    <div>
+                    @php($slot = array_search($model, \App\Services\DocumentSignatoryService::SLOTS, true))
+                    <div wire:key="signatory-slot-{{ $slot }}">
                         <label class="mb-1 block text-sm font-medium">{{ $label }}</label>
+                        <flux:select wire:model.live="signatorySources.{{ $slot }}" label="Sumber penandatangan">
+                            <option value="user">Pilih akun pengguna</option>
+                            <option value="coach">Pilih Master Data Pembina (tanpa akun)</option>
+                            <option value="manual">Input manual (tanpa akun)</option>
+                        </flux:select>
+                        @if ($signatorySources[$slot] === 'coach')
+                            <flux:select wire:model="coachSignatories.{{ $slot }}" label="Pembina dari master data">
+                                <option value="">Pilih pembina</option>
+                                @foreach ($signatoryCoaches as $coach)
+                                    <option value="{{ $coach->id }}">{{ $coach->name }} — {{ $coach->position ?: 'Pembina Pramuka' }}</option>
+                                @endforeach
+                            </flux:select>
+                            <flux:text>Nama, jabatan, dan NTA mengikuti Master Data Pembina. Tidak memerlukan approval akun.</flux:text>
+                        @elseif ($signatorySources[$slot] === 'manual')
+                            <flux:input wire:model="manualSignatories.{{ $slot }}.name" label="Nama penandatangan" />
+                            <flux:input wire:model="manualSignatories.{{ $slot }}.position" label="Jabatan" />
+                            <flux:select wire:model="manualSignatories.{{ $slot }}.identifier_type" label="Jenis identitas"><option value="NIP">NIP</option><option value="NTA">NTA</option></flux:select>
+                            <flux:input wire:model="manualSignatories.{{ $slot }}.identifier_number" label="Nomor identitas (opsional)" />
+                        @else
                         <select wire:model="{{ $model }}" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950">
                             <option value="">-- Tidak ditentukan --</option>
                             @foreach ($signatoryUsers as $user)
@@ -103,6 +123,7 @@
                             @endforeach
                         </select>
                         @error($model) <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
+                        @endif
                     </div>
                 @endforeach
             </div>

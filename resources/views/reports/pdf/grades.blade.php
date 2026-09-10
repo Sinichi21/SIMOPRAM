@@ -233,19 +233,9 @@
 
     $signatoryService = app(\App\Services\DocumentSignatoryService::class);
 
-    $principal = data_get($documentSetting, 'principal_signatory_user_id')
-        ? $signatoryService->resolve(
-            (int) data_get($documentSetting, 'principal_signatory_user_id'),
-            (int) $school->id
-        )
-        : null;
+    $principal = $signatoryService->configured($documentSetting, 'principal', (int) $school->id);
 
-    $responsible = data_get($documentSetting, 'responsible_signatory_user_id')
-        ? $signatoryService->resolve(
-            (int) data_get($documentSetting, 'responsible_signatory_user_id'),
-            (int) $school->id
-        )
-        : null;
+    $responsible = $signatoryService->configured($documentSetting, 'responsible', (int) $school->id);
 
     $responsibleCoach = data_get($documentSetting, 'responsibleCoach');
 

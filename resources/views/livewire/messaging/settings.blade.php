@@ -26,7 +26,7 @@
                 <flux:input wire:model="host" label="Host SMTP" placeholder="smtp.example.com" />
                 <flux:input wire:model="port" type="number" label="Port" />
                 <flux:select wire:model="scheme" label="Keamanan">
-                    <flux:select.option value="">Tanpa enkripsi (localhost / port 25)</flux:select.option>
+                    <flux:select.option value="none">Tanpa enkripsi (localhost / port 25)</flux:select.option>
                     <flux:select.option value="smtp">STARTTLS (biasanya 587)</flux:select.option>
                     <flux:select.option value="smtps">TLS (biasanya 465)</flux:select.option>
                 </flux:select>

@@ -495,13 +495,9 @@ class Index extends Component
 
         $documentSetting = SchoolDocumentSetting::query()->first();
 
-        if ($documentSetting?->default_letter_signatory_user_id) {
-            $resolved = app(DocumentSignatoryService::class)->resolve(
-                (int) $documentSetting->default_letter_signatory_user_id,
-                $this->schoolId()
-            );
-
-            $this->signatory_source = 'master';
+        $resolved = app(DocumentSignatoryService::class)->configured($documentSetting, 'default_letter', $this->schoolId());
+        if ($resolved) {
+            $this->signatory_source = $resolved['user_id'] ? 'master' : 'manual';
             $this->signatory_user_id = $resolved['user_id'];
             $this->signatory_name = $resolved['name'];
             $this->signatory_position = $resolved['position'];
