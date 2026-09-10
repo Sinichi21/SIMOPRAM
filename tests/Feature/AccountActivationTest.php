@@ -28,6 +28,10 @@ beforeEach(function () {
 
 test('admin invites coach without providing a password and owner activates using emailed link', function () {
     Notification::fake();
+    MessagingSetting::factory()->create([
+        'channel' => 'email', 'enabled' => true,
+        'options' => ['host' => 'smtp.example.test', 'port' => 587, 'scheme' => 'smtp', 'from_address' => 'noreply@example.test'],
+    ]);
     $coach = Coach::query()->create(['name' => 'Pembina Baru', 'is_active' => true]);
     Livewire::test(Manage::class, ['coachId' => $coach->id])
         ->assertDontSee('Konfirmasi Password')
@@ -228,6 +232,10 @@ test('system accounts cannot receive reset links from school account management'
 });
 
 test('failed email delivery leaves activation pending and allows sharing a replacement link', function () {
+    MessagingSetting::factory()->create([
+        'channel' => 'email', 'enabled' => true,
+        'options' => ['host' => 'smtp.example.test', 'port' => 587, 'scheme' => 'smtp', 'from_address' => 'noreply@example.test'],
+    ]);
     $coach = Coach::query()->create(['name' => 'Pembina Email', 'is_active' => true]);
     $user = app(CoachAccountService::class)->createAccount($coach, 'gagal-kirim@example.com');
     Notification::shouldReceive('send')->once()->andThrow(new RuntimeException('Mail unavailable'));
