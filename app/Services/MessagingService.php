@@ -21,7 +21,7 @@ class MessagingService
 
         return $setting ? $setting->enabled : match ($channel) {
             'telegram' => filled(config('services.telegram.bot_token')),
-            'email' => ! in_array(config('mail.default'), ['log', 'array'], true),
+            // 'email' => ! in_array(config('mail.default'), ['log', 'array'], true),
             default => false,
         };
     }
@@ -100,21 +100,13 @@ class MessagingService
     public function configureMail(): void
     {
         $setting = MessagingSetting::forChannel('email');
+
         if (! $setting) {
-            return;
+            throw new RuntimeException(
+                'Konfigurasi SMTP belum tersedia.'
+            );
         }
-        if (! $setting->enabled) {
-            throw new RuntimeException('Pengiriman email dinonaktifkan oleh Super Admin.');
-        }
-        $options = $setting->options;
-        if (empty($options['host']) || empty($options['port']) || empty($options['from_address'])) {
-            throw new RuntimeException('Konfigurasi SMTP belum lengkap.');
-        }
-        config(['mail.default' => 'messaging', 'mail.mailers.messaging' => [
-            'transport' => 'smtp', 'host' => $options['host'], 'port' => (int) $options['port'],
-            'scheme' => $options['scheme'] ?? 'smtp', 'username' => ($options['username'] ?? '') ?: null,
-            'password' => $options['password'] ?? null, 'timeout' => 15,
-        ], 'mail.from' => ['address' => $options['from_address'], 'name' => $options['from_name'] ?? 'SIMPRAM']]);
-        Mail::purge('messaging');
+
+        app(MailConfigurationService::class)->apply($setting);
     }
 }

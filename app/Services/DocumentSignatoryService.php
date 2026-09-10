@@ -2,13 +2,62 @@
 
 namespace App\Services;
 
+use App\Models\Coach;
 use App\Models\DocumentSignatoryProfile;
+use App\Models\SchoolDocumentSetting;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
 class DocumentSignatoryService
 {
+    public const SLOTS = ['principal' => 'principalSignatoryUserId', 'responsible' => 'responsibleSignatoryUserId', 'coordinator' => 'coordinatorSignatoryUserId', 'default_letter' => 'defaultLetterSignatoryUserId'];
+
+    public function configured(?SchoolDocumentSetting $setting, string $slot, int $schoolId): ?array
+    {
+        abort_unless(array_key_exists($slot, self::SLOTS), 422);
+        if (! $setting) {
+            return null;
+        }
+        abort_unless((int) $setting->school_id === $schoolId, 404);
+        $userId = $setting->getAttribute($slot.'_signatory_user_id');
+        if ($userId) {
+            return $this->resolve((int) $userId, $schoolId);
+        }
+        $manual = $setting->manual_signatories[$slot] ?? null;
+        if (! empty($manual['coach_id'])) {
+            return $this->resolveCoach((int) $manual['coach_id'], $schoolId);
+        }
+        if (! $manual || ! filled($manual['name'] ?? null)) {
+            return null;
+        }
+        $number = trim((string) ($manual['identifier_number'] ?? ''));
+        $type = $manual['identifier_type'] ?? 'NIP';
+
+        return ['user_id' => null, 'name' => $manual['name'], 'position' => $manual['position'],
+            'identifier_type' => $type, 'identifier_number' => $number,
+            'identity' => $number !== '' ? $type.'. '.$number : ''];
+    }
+
+    /** @return Collection<int, User> */
+    public function coachesForSchool(int $schoolId): Collection
+    {
+        return Coach::query()->where('school_id', $schoolId)->where('is_active', true)
+            ->whereNull('user_id')->orderBy('name')->get();
+    }
+
+    public function resolveCoach(int $coachId, int $schoolId): array
+    {
+        $coach = $this->coachesForSchool($schoolId)->firstWhere('id', $coachId);
+        if (! $coach) {
+            throw ValidationException::withMessages(['signatory' => 'Pembina tidak tersedia. Pilih pembina aktif sekolah ini; jika sudah memiliki akun, gunakan pilihan akun pengguna.']);
+        }
+        $number = trim((string) $coach->nip);
+
+        return ['user_id' => null, 'name' => $coach->name, 'position' => $coach->position ?: 'Pembina Pramuka',
+            'identifier_type' => 'NTA', 'identifier_number' => $number, 'identity' => $number !== '' ? 'NTA. '.$number : ''];
+    }
+
     /** @return Collection<int, User> */
     public function usersForSchool(int $schoolId): Collection
     {

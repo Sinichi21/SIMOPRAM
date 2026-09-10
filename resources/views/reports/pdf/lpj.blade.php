@@ -196,15 +196,9 @@
 @php
     $signatoryService = app(\App\Services\DocumentSignatoryService::class);
 
-    $principal = $documentSetting?->principal_signatory_user_id
-        ? $signatoryService->resolve((int) $documentSetting->principal_signatory_user_id, (int) $school->id)
-        : null;
-    $responsible = $documentSetting?->responsible_signatory_user_id
-        ? $signatoryService->resolve((int) $documentSetting->responsible_signatory_user_id, (int) $school->id)
-        : null;
-    $coordinator = $documentSetting?->coordinator_signatory_user_id
-        ? $signatoryService->resolve((int) $documentSetting->coordinator_signatory_user_id, (int) $school->id)
-        : null;
+    $principal = $signatoryService->configured($documentSetting, 'principal', (int) $school->id);
+    $responsible = $signatoryService->configured($documentSetting, 'responsible', (int) $school->id);
+    $coordinator = $signatoryService->configured($documentSetting, 'coordinator', (int) $school->id);
 
     $responsibleCoach = $documentSetting?->responsibleCoach;
 

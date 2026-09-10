@@ -12,6 +12,12 @@ use Livewire\Component;
 
 class SchoolDocuments extends Component
 {
+    public array $signatorySources = ['principal' => 'user', 'responsible' => 'user', 'coordinator' => 'user', 'default_letter' => 'user'];
+
+    public array $manualSignatories = [];
+
+    public array $coachSignatories = [];
+
     public ?int $principalSignatoryUserId = null;
 
     public ?int $coordinatorSignatoryUserId = null;
@@ -60,6 +66,16 @@ class SchoolDocuments extends Component
     public function mount(): void
     {
         $setting = SchoolDocumentSetting::query()->first();
+        foreach (DocumentSignatoryService::SLOTS as $slot => $property) {
+            $manual = $setting?->manual_signatories[$slot] ?? null;
+            $this->manualSignatories[$slot] = $manual ?? ['name' => '', 'position' => '', 'identifier_type' => 'NIP', 'identifier_number' => ''];
+            $this->signatorySources[$slot] = $manual && ! $setting->getAttribute($slot.'_signatory_user_id') ? 'manual' : 'user';
+            $this->coachSignatories[$slot] = $manual['coach_id'] ?? null;
+            if ($this->coachSignatories[$slot] && ! $setting->getAttribute($slot.'_signatory_user_id')) {
+                $this->signatorySources[$slot] = 'coach';
+                $this->manualSignatories[$slot] = ['name' => '', 'position' => '', 'identifier_type' => 'NIP', 'identifier_number' => ''];
+            }
+        }
 
         if (! $setting) {
             return;
@@ -130,6 +146,27 @@ class SchoolDocuments extends Component
     {
         abort_unless(auth()->user()->can('school_documents.manage'), 403);
 
+        $manual = [];
+        foreach (DocumentSignatoryService::SLOTS as $slot => $property) {
+            $this->validate(['signatorySources.'.$slot => ['required', Rule::in(['user', 'manual', 'coach'])]]);
+            if ($this->signatorySources[$slot] === 'coach') {
+                $this->validate(['coachSignatories.'.$slot => ['required', 'integer']]);
+                $service->resolveCoach((int) $this->coachSignatories[$slot], $this->schoolId());
+                $manual[$slot] = ['coach_id' => (int) $this->coachSignatories[$slot]];
+                $this->{$property} = null;
+            }
+            if ($this->signatorySources[$slot] === 'manual') {
+                $this->validate([
+                    "manualSignatories.$slot.name" => ['required', 'string', 'max:150'],
+                    "manualSignatories.$slot.position" => ['required', 'string', 'max:150'],
+                    "manualSignatories.$slot.identifier_type" => ['required', Rule::in(['NIP', 'NTA'])],
+                    "manualSignatories.$slot.identifier_number" => ['nullable', 'string', 'max:100'],
+                ]);
+                $manual[$slot] = collect($this->manualSignatories[$slot])->only(['name', 'position', 'identifier_type', 'identifier_number'])->map(fn ($value) => trim((string) $value))->all();
+                $this->{$property} = null;
+            }
+        }
+
         $this->validate([
             'principalSignatoryUserId' => ['nullable', 'integer'],
             'coordinatorSignatoryUserId' => ['nullable', 'integer'],
@@ -169,6 +206,7 @@ class SchoolDocuments extends Component
 
         $setting = SchoolDocumentSetting::query()->firstOrNew();
         $setting->fill([
+            'manual_signatories' => $manual,
             'principal_signatory_user_id' => $this->principalSignatoryUserId,
             'coordinator_signatory_user_id' => $this->coordinatorSignatoryUserId,
             'responsible_signatory_user_id' => $this->responsibleSignatoryUserId,
@@ -248,6 +286,7 @@ class SchoolDocuments extends Component
 
         return view('livewire.settings.school-documents', [
             'signatoryUsers' => $users,
+            'signatoryCoaches' => $service->coachesForSchool($this->schoolId()),
             'resolvedSignatories' => $resolved,
             'weekdays' => [
                 1 => 'Senin',

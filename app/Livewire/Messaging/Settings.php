@@ -76,7 +76,7 @@ class Settings extends Component
             'telegramUsername' => ['nullable', 'required_if:telegramEnabled,true', 'regex:/^[a-zA-Z0-9_]{5,32}$/'],
             'host' => ['nullable', 'required_if:emailEnabled,true', 'regex:/^[a-zA-Z0-9.-]+$/', 'max:255'],
             'port' => ['required', 'integer', 'between:1,65535'],
-            'scheme' => ['required', 'in:smtp,smtps'],
+            'scheme' => ['required', 'in:smtp,smtps,none'],
             'username' => ['nullable', 'string', 'max:255'],
             'password' => ['nullable', 'string', 'max:1000'],
             'fromAddress' => ['nullable', 'required_if:emailEnabled,true', 'email', 'max:255'],

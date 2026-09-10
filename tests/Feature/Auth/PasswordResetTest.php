@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\MessagingSetting;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\Notification;
@@ -7,6 +8,10 @@ use Laravel\Fortify\Features;
 
 beforeEach(function () {
     $this->skipUnlessFortifyHas(Features::resetPasswords());
+    MessagingSetting::factory()->create([
+        'channel' => 'email', 'enabled' => true,
+        'options' => ['host' => 'smtp.example.test', 'port' => 587, 'scheme' => 'smtp', 'from_address' => 'noreply@example.test'],
+    ]);
 });
 
 test('reset password link screen can be rendered', function () {

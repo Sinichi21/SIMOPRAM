@@ -12,6 +12,7 @@ class SchoolDocumentSetting extends Model
 
     protected $fillable = [
         'responsible_coach_id',
+        'manual_signatories',
         'principal_signatory_user_id',
         'coordinator_signatory_user_id',
         'responsible_signatory_user_id',
@@ -34,6 +35,7 @@ class SchoolDocumentSetting extends Model
     protected function casts(): array
     {
         return [
+            'manual_signatories' => 'array',
             'extracurricular_weekday' => 'integer',
         ];
     }
