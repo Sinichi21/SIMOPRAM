@@ -8,6 +8,7 @@ use App\Models\AttendanceSession;
 use App\Models\AttendanceSessionParticipant;
 use App\Models\Classroom;
 use App\Models\SchoolDocumentSetting;
+use App\Models\ScoutGroup;
 use App\Models\Semester;
 use App\Models\Student;
 use App\Services\GradeReportService;
@@ -206,6 +207,11 @@ class ReportPdfController extends Controller
                 )
                 ->first();
 
+        $scoutGroup =
+            ScoutGroup::query()
+                ->where('is_active', true)
+                ->first();
+
         /*
         |--------------------------------------------------------------------------
         | Metadata Laporan
@@ -295,6 +301,8 @@ class ReportPdfController extends Controller
                     'classroom' => $classroom,
 
                     'documentSetting' => $documentSetting,
+
+                    'scoutGroup' => $scoutGroup,
 
                     'reportGeneratedAt' => $verification
                         ?->issued_at
@@ -740,6 +748,11 @@ class ReportPdfController extends Controller
                 ->with('responsibleCoach')
                 ->first();
 
+        $scoutGroup =
+            ScoutGroup::query()
+                ->where('is_active', true)
+                ->first();
+
         $verification = $reportVerificationService->issueReportDocument(
             schoolId: (int) $school->id,
             documentType: 'attendance',
@@ -776,6 +789,7 @@ class ReportPdfController extends Controller
                 'rows' => $rows,
                 'sessionCount' => $sessionIds->count(),
                 'documentSetting' => $documentSetting,
+                'scoutGroup' => $scoutGroup,
                 'verification' => $verification,
                 'verificationUrl' => $verificationUrl,
                 'verificationQrDataUri' => $verificationQrDataUri,

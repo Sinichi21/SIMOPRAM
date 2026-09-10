@@ -9,7 +9,7 @@
 
     <style>
         @page {
-            margin: 18mm 12mm 16mm 12mm;
+            margin: 12mm 16mm 27mm 16mm;
         }
 
         * {
@@ -18,41 +18,64 @@
 
         body {
             margin: 0;
-            font-family: DejaVu Sans, sans-serif;
-            font-size: 9px;
+            font-family: "Times New Roman", Times, serif;
+            font-size: 9pt;
             line-height: 1.35;
             color: #111827;
         }
 
-        .header {
+        /* Kop resmi: identik dengan kop PDF Persuratan. */
+        .letterhead {
+            border-bottom: 1.6px solid #000;
+            margin-bottom: 4mm;
+            min-height: 22mm;
+            padding: 0 2mm 2.5mm;
+            position: relative;
             text-align: center;
-            margin-bottom: 12px;
         }
 
-        .header h1 {
+        .letterhead-logo-left,
+        .letterhead-logo-right {
+            height: 21mm;
+            max-width: 23mm;
+            object-fit: contain;
+            position: absolute;
+            top: 0;
+        }
+
+        .letterhead-logo-left { left: 1mm; }
+        .letterhead-logo-right { right: 1mm; }
+
+        .letterhead-title {
+            font-family: "Times New Roman", Times, serif;
+            font-size: 14pt !important;
+            font-weight: bold;
+            line-height: 1.05;
+            margin: 0 23mm;
+        }
+
+        .letterhead-address {
+            font-family: "Times New Roman", Times, serif;
+            font-size: 10pt !important;
+            line-height: 1.1;
+            margin: .8mm 23mm 0;
+        }
+
+        .report-title {
+            margin: 0 0 4mm;
+            text-align: center;
+        }
+
+        .report-title h1 {
+            font-size: 13pt;
+            font-weight: 700;
             margin: 0;
-            font-size: 15px;
-            font-weight: 700;
             text-transform: uppercase;
         }
 
-        .header h2 {
-            margin: 3px 0 0;
-            font-size: 13px;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-
-        .header p {
-            margin: 3px 0 0;
-            font-size: 9px;
-        }
-
-        .divider {
-            margin: 9px 0 10px;
-            border-top: 2px solid #111827;
-            border-bottom: 1px solid #111827;
-            height: 3px;
+        .report-title p {
+            font-size: 9pt;
+            margin: 1mm 0 0;
         }
 
         .meta-table,
@@ -218,6 +241,7 @@
 </head>
 
 <body>
+@include('reports.pdf.partials.verification-footer')
 @php
     $items =
         $selectedConfig?->items
@@ -274,26 +298,16 @@
         ?? now();
 @endphp
 
-<div class="header">
-    <h1>
-        Rekap Nilai Ekstrakurikuler Pramuka
-    </h1>
+@include('reports.pdf.lpj.partials.letterhead')
 
-    <h2>
-        {{ $school?->name ?? 'Sekolah' }}
-    </h2>
-
+<div class="report-title">
+    <h1>Rekap Nilai Ekstrakurikuler Pramuka</h1>
     <p>
-        Tahun Ajaran
-        {{ $academicYear?->name ?? '-' }}
+        Tahun Ajaran {{ $academicYear?->name ?? '-' }}
         @if ($semester)
-            |
-            Semester
-            {{ $semester->name }}
+            | Semester {{ $semester->name }}
         @endif
     </p>
-
-    <div class="divider"></div>
 </div>
 
 <table class="meta-table">
@@ -456,47 +470,7 @@
     </div>
 @endif
 
-@if (
-    ($reportSource ?? null) === 'snapshot'
-    &&
-    $selectedClosure
-    &&
-    $verification
-    &&
-    $verificationQrDataUri
-)
-    <table class="verification-box">
-        <tr>
-            <td class="verification-qr">
-                <img
-                    src="{{ $verificationQrDataUri }}"
-                    alt="QR Verifikasi Laporan"
-                >
-            </td>
 
-            <td>
-                <div style="font-weight: 700; font-size: 9px;">
-                    Verifikasi Dokumen Resmi
-                </div>
-
-                <div style="margin-top: 3px; font-size: 8px; line-height: 1.4;">
-                    Pindai QR untuk memeriksa sekolah,
-                    periode, versi snapshot, status dokumen,
-                    dan checksum tanpa menampilkan data pribadi siswa.
-                </div>
-
-                <div class="verification-code">
-                    Kode:
-                    {{ $verification->code }}
-                </div>
-
-                <div class="verification-url">
-                    {{ $verificationUrl }}
-                </div>
-            </td>
-        </tr>
-    </table>
-@endif
 
 <table class="grade-table">
     <thead>
