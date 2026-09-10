@@ -9,7 +9,7 @@
 
     <style>
         @page {
-            margin: 18mm 12mm 24mm 12mm;
+            margin: 18mm 12mm 16mm 12mm;
         }
 
         * {
@@ -218,7 +218,6 @@
 </head>
 
 <body>
-@include('reports.pdf.partials.verification-footer')
 @php
     $items =
         $selectedConfig?->items
@@ -232,83 +231,52 @@
     |--------------------------------------------------------------------------
     */
 
-    $principalName =
-        data_get(
-            $documentSetting,
-            'principal_name'
-        )
-        ?? data_get(
-            $documentSetting,
-            'headmaster_name'
-        )
-        ?? data_get(
-            $school,
-            'principal_name'
-        )
-        ?? 'Kepala Sekolah';
+    $signatoryService = app(\App\Services\DocumentSignatoryService::class);
 
-    $principalIdentifier =
-        data_get(
-            $documentSetting,
-            'principal_nip'
+    $principal = data_get($documentSetting, 'principal_signatory_user_id')
+        ? $signatoryService->resolve(
+            (int) data_get($documentSetting, 'principal_signatory_user_id'),
+            (int) $school->id
         )
-        ?? data_get(
-            $documentSetting,
-            'headmaster_nip'
+        : null;
+
+    $responsible = data_get($documentSetting, 'responsible_signatory_user_id')
+        ? $signatoryService->resolve(
+            (int) data_get($documentSetting, 'responsible_signatory_user_id'),
+            (int) $school->id
         )
-        ?? data_get(
-            $school,
-            'principal_nip'
+        : null;
+
+    $responsibleCoach = data_get($documentSetting, 'responsibleCoach');
+
+    $principalName = $principal['name']
+        ?? data_get($documentSetting, 'principal_name')
+        ?? '........................';
+
+    $principalIdentifier = $principal['identity']
+        ?? (
+            data_get($documentSetting, 'principal_nip')
+                ? 'NIP. '.data_get($documentSetting, 'principal_nip')
+                : ''
         );
 
-    $responsibleCoach =
-        data_get(
-            $documentSetting,
-            'responsibleCoach'
+    $principalPosition = $principal['position'] ?? 'Kepala Sekolah';
+
+    $coachName = $responsible['name']
+        ?? data_get($responsibleCoach, 'name')
+        ?? '........................';
+
+    $coachIdentifier = $responsible['identity']
+        ?? (
+            data_get($responsibleCoach, 'nip')
+                ? 'NTA. '.data_get($responsibleCoach, 'nip')
+                : ''
         );
 
-    $coachName =
-        data_get(
-            $responsibleCoach,
-            'name'
-        )
-        ?? data_get(
-            $documentSetting,
-            'responsible_coach_name'
-        )
-        ?? 'Pembina Pramuka';
+    $responsiblePosition = $responsible['position'] ?? 'Pembina Pramuka';
 
-    $coachIdentifier =
-        data_get(
-            $responsibleCoach,
-            'nip'
-        )
-        ?? data_get(
-            $responsibleCoach,
-            'nta'
-        )
-        ?? data_get(
-            $documentSetting,
-            'responsible_coach_nip'
-        )
-        ?? data_get(
-            $documentSetting,
-            'responsible_coach_nta'
-        );
-
-    $signingCity =
-        data_get(
-            $documentSetting,
-            'signing_city'
-        )
-        ?? data_get(
-            $documentSetting,
-            'city'
-        )
-        ?? data_get(
-            $school,
-            'city'
-        )
+    $signingCity = data_get($documentSetting, 'signing_city')
+        ?? data_get($school, 'city')
         ?? 'Denpasar';
 
     $generatedAt =
@@ -498,7 +466,47 @@
     </div>
 @endif
 
+@if (
+    ($reportSource ?? null) === 'snapshot'
+    &&
+    $selectedClosure
+    &&
+    $verification
+    &&
+    $verificationQrDataUri
+)
+    <table class="verification-box">
+        <tr>
+            <td class="verification-qr">
+                <img
+                    src="{{ $verificationQrDataUri }}"
+                    alt="QR Verifikasi Laporan"
+                >
+            </td>
 
+            <td>
+                <div style="font-weight: 700; font-size: 9px;">
+                    Verifikasi Dokumen Resmi
+                </div>
+
+                <div style="margin-top: 3px; font-size: 8px; line-height: 1.4;">
+                    Pindai QR untuk memeriksa sekolah,
+                    periode, versi snapshot, status dokumen,
+                    dan checksum tanpa menampilkan data pribadi siswa.
+                </div>
+
+                <div class="verification-code">
+                    Kode:
+                    {{ $verification->code }}
+                </div>
+
+                <div class="verification-url">
+                    {{ $verificationUrl }}
+                </div>
+            </td>
+        </tr>
+    </table>
+@endif
 
 <table class="grade-table">
     <thead>
@@ -665,7 +673,7 @@
 
             <br>
 
-            Kepala Sekolah
+            {{ $principalPosition }}
 
             <div class="signature-space"></div>
 
@@ -674,9 +682,7 @@
             </div>
 
             @if ($principalIdentifier)
-                <div>
-                    NIP. {{ $principalIdentifier }}
-                </div>
+                <div>{{ $principalIdentifier }}</div>
             @endif
         </td>
 
@@ -686,7 +692,7 @@
 
             <br>
 
-            Pembina Pramuka
+            {{ $responsiblePosition }}
 
             <div class="signature-space"></div>
 
@@ -695,10 +701,7 @@
             </div>
 
             @if ($coachIdentifier)
-                <div>
-                    {{ is_numeric($coachIdentifier) ? 'NIP.' : 'NTA.' }}
-                    {{ $coachIdentifier }}
-                </div>
+                <div>{{ $coachIdentifier }}</div>
             @endif
         </td>
     </tr>

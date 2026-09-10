@@ -87,9 +87,70 @@
                 @endif
 
                 @unless ($incoming)
-                    <div><label class="mb-1 block text-sm font-medium">Penandatangan</label><input wire:model.live.debounce.300ms="signatory_name" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"></div>
-                    <div><label class="mb-1 block text-sm font-medium">Jabatan</label><input wire:model.live.debounce.300ms="signatory_position" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"></div>
-                    <div class="md:col-span-2"><label class="mb-1 block text-sm font-medium">NTA / Identitas</label><input wire:model.live.debounce.300ms="signatory_identity" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"></div>
+                    <div class="md:col-span-2">
+                        <label class="mb-2 block text-sm font-medium">Sumber Penandatangan / TTD</label>
+                        <div class="flex flex-wrap gap-4">
+                            <label class="inline-flex items-center gap-2 text-sm">
+                                <input type="radio" value="master" wire:model.live="signatory_source">
+                                <span>Ambil dari Master Data</span>
+                            </label>
+                            <label class="inline-flex items-center gap-2 text-sm">
+                                <input type="radio" value="manual" wire:model.live="signatory_source">
+                                <span>Input Manual</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    @if ($signatory_source === 'master')
+                        <div class="md:col-span-2">
+                            <label class="mb-1 block text-sm font-medium">Pilih User Penandatangan</label>
+                            <select wire:model.live="signatory_user_id" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
+                                <option value="">-- Pilih User dari Master Data --</option>
+                                @foreach ($signatoryUsers as $user)
+                                    <option value="{{ $user->id }}">{{ $user->name }} — {{ $user->email }}</option>
+                                @endforeach
+                            </select>
+                            <p class="mt-1 text-xs text-zinc-500">
+                                Nama, jabatan, dan NIP/NTA terisi otomatis dari Pengaturan → Pengaturan Dokumen.
+                            </p>
+                            @error('signatory_user_id') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
+                        </div>
+                    @else
+                        <div class="md:col-span-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-300">
+                            Mode manual dipakai untuk penandatangan yang belum terdaftar sebagai user/master data.
+                            Data manual hanya disimpan pada surat ini dan tidak membuat user baru.
+                        </div>
+                    @endif
+
+                    <div>
+                        <label class="mb-1 block text-sm font-medium">Nama Penandatangan</label>
+                        <input
+                            wire:model.live.debounce.300ms="signatory_name"
+                            @readonly($signatory_source === 'master')
+                            class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950 {{ $signatory_source === 'master' ? 'bg-zinc-100 text-zinc-600 dark:bg-zinc-900' : 'bg-white' }}"
+                        >
+                        @error('signatory_name') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div>
+                        <label class="mb-1 block text-sm font-medium">Jabatan</label>
+                        <input
+                            wire:model.live.debounce.300ms="signatory_position"
+                            @readonly($signatory_source === 'master')
+                            class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950 {{ $signatory_source === 'master' ? 'bg-zinc-100 text-zinc-600 dark:bg-zinc-900' : 'bg-white' }}"
+                        >
+                        @error('signatory_position') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="mb-1 block text-sm font-medium">NTA / NIP / Identitas</label>
+                        <input
+                            wire:model.live.debounce.300ms="signatory_identity"
+                            @readonly($signatory_source === 'master')
+                            placeholder="Contoh: NTA. 22.09.03.xxx atau NIP. 1989..."
+                            class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950 {{ $signatory_source === 'master' ? 'bg-zinc-100 text-zinc-600 dark:bg-zinc-900' : 'bg-white' }}"
+                        >
+                    </div>
                 @endunless
 
                 @can('letters.attachments')

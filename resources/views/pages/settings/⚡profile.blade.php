@@ -117,6 +117,10 @@ new #[Title('Profile settings')] class extends Component {
             </div>
         </form>
 
+        @if (auth()->user()->system_role === 'principal')
+            <livewire:settings.principal-profile />
+        @endif
+
         @if ($this->showDeleteUser)
             <livewire:pages::settings.delete-user-form />
         @endif

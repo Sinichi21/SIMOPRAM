@@ -13,25 +13,9 @@ use Livewire\Component;
 
 class Settings extends Component
 {
-    public string $gudep_code = '';
-
     public string $number_format = '';
 
     public string $agenda_format = '';
-
-    public string $letterhead_title = '';
-
-    public string $letterhead_subtitle = '';
-
-    public string $letterhead_address = '';
-
-    public string $city = '';
-
-    public string $default_signatory_name = '';
-
-    public string $default_signatory_position = '';
-
-    public string $default_signatory_identity = '';
 
     public int $sequenceYear;
 
@@ -57,32 +41,47 @@ class Settings extends Component
     public function loadSettings(): void
     {
         $setting = SchoolLetterSetting::query()->firstOrFail();
-        foreach (['gudep_code', 'number_format', 'agenda_format', 'letterhead_title', 'letterhead_subtitle', 'letterhead_address', 'city', 'default_signatory_name', 'default_signatory_position', 'default_signatory_identity'] as $field) {
-            $this->{$field} = (string) ($setting->{$field} ?? '');
-        }
-        $this->lastOutgoingNumber = (int) (LetterNumberSequence::withoutGlobalScope('school')
-            ->where('school_id', $this->schoolId())->where('direction', 'outgoing')->where('year', $this->sequenceYear)->value('last_number') ?? 0);
+        $this->number_format = (string) $setting->number_format;
+        $this->agenda_format = (string) $setting->agenda_format;
+
+        $this->lastOutgoingNumber = (int) (
+            LetterNumberSequence::withoutGlobalScope('school')
+                ->where('school_id', $this->schoolId())
+                ->where('direction', 'outgoing')
+                ->where('year', $this->sequenceYear)
+                ->value('last_number') ?? 0
+        );
     }
 
     public function save(): void
     {
         abort_unless(auth()->user()->can('letters.settings'), 403);
+
         $data = $this->validate([
-            'gudep_code' => ['required', 'string', 'max:80'], 'number_format' => ['required', 'string', 'max:255'],
-            'agenda_format' => ['required', 'string', 'max:120'], 'letterhead_title' => ['nullable', 'string', 'max:255'],
-            'letterhead_subtitle' => ['nullable', 'string', 'max:255'], 'letterhead_address' => ['nullable', 'string'], 'city' => ['nullable', 'string', 'max:120'],
-            'default_signatory_name' => ['nullable', 'string', 'max:160'], 'default_signatory_position' => ['nullable', 'string', 'max:160'],
-            'default_signatory_identity' => ['nullable', 'string', 'max:160'],
+            'number_format' => ['required', 'string', 'max:255'],
+            'agenda_format' => ['required', 'string', 'max:120'],
         ]);
+
         SchoolLetterSetting::query()->firstOrFail()->update($data);
-        session()->flash('success', 'Pengaturan persuratan berhasil disimpan.');
+        session()->flash('success', 'Pengaturan nomor persuratan berhasil disimpan.');
     }
 
     public function saveSequence(LetterNumberService $service): void
     {
         abort_unless(auth()->user()->can('letters.settings'), 403);
-        $this->validate(['sequenceYear' => ['required', 'integer', 'min:2000', 'max:2100'], 'lastOutgoingNumber' => ['required', 'integer', 'min:0']]);
-        $service->setLastNumber('outgoing', $this->schoolId(), $this->sequenceYear, $this->lastOutgoingNumber);
+
+        $this->validate([
+            'sequenceYear' => ['required', 'integer', 'min:2000', 'max:2100'],
+            'lastOutgoingNumber' => ['required', 'integer', 'min:0'],
+        ]);
+
+        $service->setLastNumber(
+            'outgoing',
+            $this->schoolId(),
+            $this->sequenceYear,
+            $this->lastOutgoingNumber
+        );
+
         session()->flash('success', 'Nomor urut terakhir berhasil disetel.');
     }
 

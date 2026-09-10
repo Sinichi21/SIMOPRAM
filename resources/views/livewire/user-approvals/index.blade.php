@@ -5,8 +5,16 @@
 
     <div>
         <flux:heading size="xl">Manajemen User</flux:heading>
-        <flux:text>Satu akun dapat digunakan di beberapa sekolah. User yang mendaftar mandiri langsung aktif setelah disetujui. Tautan aktivasi hanya digunakan untuk akun yang dibuat oleh admin.</flux:text>
+        <flux:text>Siswa hanya memiliki satu sekolah aktif. Akun lainnya dapat memiliki keanggotaan beberapa sekolah. Nonaktif sekolah berbeda dengan nonaktif total akun.</flux:text>
     </div>
+
+    <form wire:submit="createPrincipal" class="space-y-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+        <flux:heading>Tambah Kepala Sekolah</flux:heading>
+        <flux:text>Akun dibuat untuk sekolah aktif. Setelah aktivasi, pilih pengguna ini sebagai penandatangan di pengaturan dokumen atau surat.</flux:text>
+        <flux:input wire:model="principalName" label="Nama Kepala Sekolah" required />
+        <flux:input wire:model="principalEmail" type="email" label="Email Kepala Sekolah" required />
+        <flux:button type="submit" variant="primary">Tambah Kepala Sekolah</flux:button>
+    </form>
 
     <div class="grid gap-3 md:grid-cols-2">
         <flux:select wire:model.live="status" label="Status akun">
@@ -19,6 +27,7 @@
             <flux:select.option value="student">Siswa</flux:select.option>
             <flux:select.option value="coach">Pembina</flux:select.option>
             <flux:select.option value="school_admin">Admin Sekolah</flux:select.option>
+            <flux:select.option value="principal">Kepala Sekolah</flux:select.option>
         </flux:select>
     </div>
 
@@ -35,8 +44,13 @@
                 <flux:table.row wire:key="approval-{{ $user->id }}">
                     <flux:table.cell>{{ $user->name }}</flux:table.cell>
                     <flux:table.cell>{{ $user->email }}</flux:table.cell>
-                    <flux:table.cell>{{ ['student' => 'Siswa', 'coach' => 'Pembina', 'school_admin' => 'Admin Sekolah'][$status === 'approved' ? $user->system_role : $user->requested_role] ?? $user->system_role }}</flux:table.cell>
-                    <flux:table.cell>{{ $user->activation_pending ? 'Menunggu aktivasi' : ($user->is_active ? 'Aktif' : 'Belum aktif') }}</flux:table.cell>
+                    <flux:table.cell>{{ ['student' => 'Siswa', 'coach' => 'Pembina', 'school_admin' => 'Admin Sekolah', 'principal' => 'Kepala Sekolah'][$status === 'approved' ? $user->system_role : $user->requested_role] ?? $user->system_role }}</flux:table.cell>
+                    <flux:table.cell>
+                        {{ $user->activation_pending ? 'Menunggu aktivasi' : ($user->is_active ? 'Login aktif' : 'Login dinonaktifkan') }}
+                        @if ($membership = $user->schoolMemberships->first())
+                            <div class="text-xs text-zinc-500">{{ $membership->is_active && ! $membership->left_at ? 'Aktif di sekolah' : (['graduated' => 'Alumni / lulus', 'retired' => 'Pensiun', 'transferred' => 'Pindah sekolah'][$membership->exit_reason] ?? 'Nonaktif di sekolah') }}</div>
+                        @endif
+                    </flux:table.cell>
                     <flux:table.cell>
                         @if ($user->approval_status === 'pending')
                         <div class="flex gap-2">
@@ -55,4 +69,6 @@
     </flux:table>
 
     {{ $users->links() }}
+
+    <livewire:user-approvals.lifecycle />
 </div>

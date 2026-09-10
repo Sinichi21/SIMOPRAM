@@ -9,9 +9,11 @@ use App\Models\Student;
 use App\Models\StudentEnrollment;
 use App\Models\StudentScoutLevel;
 use App\Services\StudentCsvImporter;
+use App\Services\UserLifecycleService;
 use App\Support\SchoolContext;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
@@ -22,6 +24,12 @@ class Index extends Component
     use WithPagination;
 
     public $csvFile = null;
+
+    #[On('students-progressed')]
+    public function refreshStudents(): void
+    {
+        $this->resetPage();
+    }
 
     public array $importErrors = [];
 
@@ -531,6 +539,8 @@ class Index extends Component
                         $studentData
                     );
 
+                    app(UserLifecycleService::class)->syncStudentMembership($student);
+
                 } else {
 
                     $student = Student::query()
@@ -877,6 +887,8 @@ class Index extends Component
                 $student->update([
                     'status' => $newStatus,
                 ]);
+
+                app(UserLifecycleService::class)->syncStudentMembership($student);
 
                 /*
                 |--------------------------------------------------------------------------

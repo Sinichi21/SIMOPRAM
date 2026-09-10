@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureAccountActive;
 use App\Http\Middleware\RequireCurrentSchool;
 use App\Http\Middleware\SetCurrentSchool;
 use Illuminate\Foundation\Application;
@@ -15,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->web(append: [EnsureAccountActive::class]);
         $middleware->alias([
             'school' => SetCurrentSchool::class,
             'school.required' => RequireCurrentSchool::class,

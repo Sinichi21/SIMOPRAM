@@ -1,4 +1,7 @@
 <div class="space-y-6">
+    @can('students.update')
+        <livewire:students.progression />
+    @endcan
 
     {{-- HEADER --}}
     <div>

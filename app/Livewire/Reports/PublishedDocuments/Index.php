@@ -3,9 +3,11 @@
 namespace App\Livewire\Reports\PublishedDocuments;
 
 use App\Models\ReportVerification;
+use App\Services\DocumentApprovalService;
 use App\Services\ReportVerificationService;
 use App\Support\SchoolContext;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -14,6 +16,12 @@ class Index extends Component
     use WithPagination;
 
     public string $search = '';
+
+    public function approve(int $documentId, DocumentApprovalService $service): void
+    {
+        $service->approve($documentId);
+        session()->flash('status', 'Persetujuan dokumen berhasil dicatat.');
+    }
 
     public string $status = '';
 
@@ -95,16 +103,26 @@ class Index extends Component
         );
     }
 
-    protected function baseQuery()
+    protected function baseQuery(): Builder
     {
+        abort_unless(auth()->user()?->can('report_verifications.view'), 403);
         $schoolId = app(SchoolContext::class)->id();
         abort_unless($schoolId, 409, 'Pilih sekolah aktif terlebih dahulu.');
 
-        return ReportVerification::query()->where('school_id', $schoolId);
+        return ReportVerification::query()->where('school_id', $schoolId)
+            ->when(auth()->user()->system_role === 'principal', fn (Builder $query): Builder => $query->whereJsonContains('required_signatory_ids', auth()->id()));
     }
 
-    protected function applyStatusFilter($query): void
+    protected function applyStatusFilter(Builder $query): void
     {
+        if ($this->status === 'pending') {
+            $query->whereNull('revoked_at')->whereNull('approval_completed_at')
+                ->whereJsonLength('required_signatories', '>', 0)
+                ->whereDoesntHave('closure', fn ($closure) => $closure->where('status', 'reopened'));
+
+            return;
+        }
+
         if ($this->status === 'revoked') {
             $query->whereNotNull('revoked_at');
 
@@ -121,6 +139,7 @@ class Index extends Component
         }
 
         if ($this->status === 'valid') {
+            $this->withoutPendingApprovals($query);
             $query->whereNull('revoked_at')->where(function ($q): void {
                 $q->whereNull('semester_closure_id')
                     ->orWhereHas('closure', fn ($closure) => $closure->where('status', 'locked'));
@@ -131,10 +150,12 @@ class Index extends Component
     protected function statistics(): array
     {
         $base = $this->baseQuery();
+        $valid = clone $base;
+        $this->withoutPendingApprovals($valid);
 
         return [
             'total' => (clone $base)->count(),
-            'valid' => (clone $base)
+            'valid' => $valid
                 ->whereNull('revoked_at')
                 ->where(function ($q): void {
                     $q->whereNull('semester_closure_id')
@@ -148,6 +169,13 @@ class Index extends Component
             'revoked' => (clone $base)->whereNotNull('revoked_at')->count(),
             'verification_count' => (int) (clone $base)->sum('verification_count'),
         ];
+    }
+
+    protected function withoutPendingApprovals(Builder $query): void
+    {
+        $query->where(fn ($query) => $query->whereNull('required_signatories')
+            ->orWhereJsonLength('required_signatories', 0)
+            ->orWhereNotNull('approval_completed_at'));
     }
 
     public function render(): View

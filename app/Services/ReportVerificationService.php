@@ -215,14 +215,20 @@ class ReportVerificationService
     |--------------------------------------------------------------------------
     */
 
+    /** @param array<int, int|null>|null $signatoryUserIds */
     public function archivePdf(
         ReportVerification $verification,
         string $binary,
-        string $filename
+        string $filename,
+        ?array $signatoryUserIds = null
     ): ReportVerification {
         $this->assertTenant(
             $verification
         );
+
+        if ($verification->hasArchivedPdf()) {
+            throw new RuntimeException('Arsip dokumen tidak dapat ditimpa. Terbitkan dokumen baru untuk perubahan.');
+        }
 
         if (
             $binary === ''
@@ -231,6 +237,8 @@ class ReportVerificationService
                 'Binary PDF kosong dan tidak dapat diarsipkan.'
             );
         }
+
+        app(DocumentApprovalService::class)->request($verification, $signatoryUserIds);
 
         $disk =
             $verification->file_disk

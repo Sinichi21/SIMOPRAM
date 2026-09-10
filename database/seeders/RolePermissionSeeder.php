@@ -107,6 +107,7 @@ class RolePermissionSeeder extends Seeder
             'reports.export',
             'report_verifications.view',
             'report_verifications.manage',
+            'documents.approve',
 
             'notifications.telegram',
             'notifications.whatsapp',
@@ -186,6 +187,16 @@ class RolePermissionSeeder extends Seeder
             'name' => 'school_admin',
             'guard_name' => 'web',
             'school_id' => null,
+        ]);
+
+        $principal = Role::firstOrCreate([
+            'name' => 'principal',
+            'guard_name' => 'web',
+            'school_id' => null,
+        ]);
+        $principal->syncPermissions([
+            'dashboard.view', 'report_verifications.view', 'reports.export',
+            'documents.approve', 'announcements.my',
         ]);
 
         $coach = Role::firstOrCreate([

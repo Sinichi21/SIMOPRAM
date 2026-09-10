@@ -18,6 +18,8 @@
     <section class="content">
         @if ($status === 'valid')
             <div class="status valid"><strong>Dokumen Valid</strong>Kode verifikasi terdaftar dan dokumen masih berstatus resmi.</div>
+        @elseif ($status === 'pending')
+            <div class="status superseded"><strong>Menunggu Persetujuan Penandatangan</strong>Dokumen belum disetujui oleh seluruh Kepala Sekolah yang tercantum sebagai penandatangan.</div>
         @elseif ($status === 'superseded')
             <div class="status superseded"><strong>Dokumen Versi Lama</strong>Dokumen pernah diterbitkan resmi, tetapi sumber snapshot kemudian diperbarui.</div>
         @else

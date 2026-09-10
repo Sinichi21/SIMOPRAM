@@ -1,101 +1,58 @@
 @php
-    $principalName =
-        $documentSetting?->principal_name;
+    $signatoryService = app(\App\Services\DocumentSignatoryService::class);
 
-    $principalNip =
-        $documentSetting?->principal_nip;
+    $principal = $documentSetting?->principal_signatory_user_id
+        ? $signatoryService->resolve((int) $documentSetting->principal_signatory_user_id, (int) $school->id)
+        : null;
+    $responsible = $documentSetting?->responsible_signatory_user_id
+        ? $signatoryService->resolve((int) $documentSetting->responsible_signatory_user_id, (int) $school->id)
+        : null;
 
-    $coach =
-        $documentSetting?->responsibleCoach;
+    $legacyCoach = $documentSetting?->responsibleCoach;
 
-    $signingCity =
-        $documentSetting?->signing_city
-        ?: $school->city
-        ?: '................';
+    $principalName = $principal['name'] ?? $documentSetting?->principal_name;
+    $principalPosition = $principal['position'] ?? 'Kepala Sekolah';
+    $principalIdentity = $principal['identity']
+        ?? ($documentSetting?->principal_nip ? 'NIP. '.$documentSetting->principal_nip : '');
+
+    $responsibleName = $responsible['name'] ?? $legacyCoach?->name;
+    $responsiblePosition = $responsible['position'] ?? 'Pembina Pramuka';
+    $responsibleIdentity = $responsible['identity']
+        ?? ($legacyCoach?->nip ? 'NTA. '.$legacyCoach->nip : '');
+
+    $signingCity = $documentSetting?->signing_city ?: $school->city ?: '................';
 @endphp
 
-
 <table class="signature">
-
     <tr>
-
         <td>
-            Mengetahui,
-            <br>
-
-            Kepala Sekolah
-
+            Mengetahui,<br>
+            {{ $principalPosition }}
             <div class="signature-space"></div>
-
 
             @if ($principalName)
-
-                <strong>
-                    {{ $principalName }}
-                </strong>
-
+                <strong>{{ $principalName }}</strong>
             @else
-
                 ______________________________
-
             @endif
-
 
             <br>
-
-
-            @if ($principalNip)
-
-                NIP. {{ $principalNip }}
-
-            @else
-
-                NIP. ________________________
-
-            @endif
+            {{ $principalIdentity ?: '________________________' }}
         </td>
-
 
         <td>
-            {{ $signingCity }},
-            {{ now()->translatedFormat(
-                'd F Y'
-            ) }}
-
-            <br>
-
-            Pembina Pramuka
-
+            {{ $signingCity }}, {{ now()->locale('id')->translatedFormat('d F Y') }}<br>
+            {{ $responsiblePosition }}
             <div class="signature-space"></div>
 
-
-            @if ($coach)
-
-                <strong>
-                    {{ $coach->name }}
-                </strong>
-
+            @if ($responsibleName)
+                <strong>{{ $responsibleName }}</strong>
             @else
-
                 ______________________________
-
             @endif
-
 
             <br>
-
-
-            @if ($coach?->nip)
-
-                NTA. {{ $coach->nip }}
-
-            @else
-
-                NTA. ________________________
-
-            @endif
+            {{ $responsibleIdentity ?: '________________________' }}
         </td>
-
     </tr>
-
 </table>

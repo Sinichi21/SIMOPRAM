@@ -20,25 +20,25 @@
     <div class="signature-block approval-signature-block">
         <table class="approval-signatures">
             <tr>
-                <td>Pembina Ekstra/Pengembangan Diri</td>
-                <td>Koordinator Ekstra/Pengembangan Diri</td>
+                <td>{{ $responsiblePosition }}</td>
+                <td>{{ $coordinatorPosition }}</td>
             </tr>
             <tr><td class="signature-space"></td><td></td></tr>
             <tr>
                 <td><span class="signature-name">{{ $coachName }}</span><br>{{ $coachIdentifier }}</td>
                 <td>
-                    <span class="signature-name">{{ $documentSetting?->coordinator_name ?: '........................' }}</span><br>
-                    @if ($documentSetting?->coordinator_nip) NIP. {{ $documentSetting->coordinator_nip }} @endif
+                    <span class="signature-name">{{ $coordinatorName }}</span><br>
+                    {{ $coordinatorIdentifier }}
                 </td>
             </tr>
         </table>
 
         <div class="approval-principal">
             Mengetahui/Menyetujui:<br>
-            Kepala {{ $school->name }}
+            {{ $principalPosition }}
             <div class="signature-space"></div>
             <span class="signature-name">{{ $principalName }}</span><br>
-            NIP. {{ $principalNip }}
+            {{ $principalIdentifier }}
         </div>
     </div>
 </section>
