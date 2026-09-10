@@ -16,6 +16,7 @@ class FinalGrade extends Model
         'final_score',
         'letter_grade',
         'description',
+        'manual_description',
         'attendance_source_version',
         'assessment_config_signature',
         'calculated_at',
@@ -29,6 +30,11 @@ class FinalGrade extends Model
             'attendance_source_version' => 'integer',
             'calculated_at' => 'datetime',
         ];
+    }
+
+    public function getDescriptionAttribute(?string $value): ?string
+    {
+        return $this->attributes['manual_description'] ?? $value;
     }
 
     public function config(): BelongsTo
