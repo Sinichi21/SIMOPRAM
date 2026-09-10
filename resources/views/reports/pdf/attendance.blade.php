@@ -9,32 +9,61 @@
 
     <style>
         @page {
-            margin: 18mm 12mm 24mm 12mm;
+            margin: 12mm 16mm 27mm 16mm;
         }
 
         body {
-            font-family: DejaVu Sans, sans-serif;
-            font-size: 9px;
+            font-family: "Times New Roman", Times, serif;
+            font-size: 9pt;
             color: #111;
         }
 
-        .header {
+        /* Kop resmi: identik dengan kop PDF Persuratan. */
+        .letterhead {
+            border-bottom: 1.6px solid #000;
+            margin-bottom: 4mm;
+            min-height: 22mm;
+            padding: 0 2mm 2.5mm;
+            position: relative;
             text-align: center;
-            margin-bottom: 14px;
         }
 
-        .header h1 {
-            font-size: 15px;
-            margin: 0 0 4px;
+        .letterhead-logo-left,
+        .letterhead-logo-right {
+            height: 21mm;
+            max-width: 23mm;
+            object-fit: contain;
+            position: absolute;
+            top: 0;
         }
 
-        .header h2 {
-            font-size: 12px;
-            margin: 0 0 4px;
+        .letterhead-logo-left { left: 1mm; }
+        .letterhead-logo-right { right: 1mm; }
+
+        .letterhead-title {
+            font-family: "Times New Roman", Times, serif;
+            font-size: 14pt !important;
+            font-weight: bold;
+            line-height: 1.05;
+            margin: 0 23mm;
         }
 
-        .header p {
-            margin: 2px 0;
+        .letterhead-address {
+            font-family: "Times New Roman", Times, serif;
+            font-size: 10pt !important;
+            line-height: 1.1;
+            margin: .8mm 23mm 0;
+        }
+
+        .report-title {
+            margin: 0 0 4mm;
+            text-align: center;
+        }
+
+        .report-title h1 {
+            font-size: 13pt;
+            margin: 0;
+            text-transform: uppercase;
         }
 
         .meta {
@@ -97,70 +126,10 @@
 <body>
 @include('reports.pdf.partials.verification-footer')
 
-    <div class="header">
+    @include('reports.pdf.lpj.partials.letterhead')
 
-        <h1>
-            REKAP ABSENSI EKSTRAKURIKULER PRAMUKA
-        </h1>
-
-        <h2>
-            {{ $school->name }}
-        </h2>
-
-        @if ($school->npsn)
-            <p>
-                NPSN: {{ $school->npsn }}
-            </p>
-        @endif
-
-        @if (
-            $documentSetting?->gudep_male_number
-            ||
-            $documentSetting?->gudep_female_number
-        )
-
-            <p>
-                Gugus Depan:
-
-                @if (
-                    $documentSetting
-                        ?->gudep_male_number
-                )
-                    Putra
-                    {{ $documentSetting
-                        ->gudep_male_number }}
-                @endif
-
-
-                @if (
-                    $documentSetting
-                        ?->gudep_male_number
-                    &&
-                    $documentSetting
-                        ?->gudep_female_number
-                )
-                    |
-                @endif
-
-
-                @if (
-                    $documentSetting
-                        ?->gudep_female_number
-                )
-                    Putri
-                    {{ $documentSetting
-                        ->gudep_female_number }}
-                @endif
-            </p>
-
-        @endif
-
-        @if ($school->address)
-            <p>
-                {{ $school->address }}
-            </p>
-        @endif
-
+    <div class="report-title">
+        <h1>Rekap Absensi Ekstrakurikuler Pramuka</h1>
     </div>
 
 
