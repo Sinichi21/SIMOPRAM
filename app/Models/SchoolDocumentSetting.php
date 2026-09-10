@@ -12,6 +12,10 @@ class SchoolDocumentSetting extends Model
 
     protected $fillable = [
         'responsible_coach_id',
+        'principal_signatory_user_id',
+        'coordinator_signatory_user_id',
+        'responsible_signatory_user_id',
+        'default_letter_signatory_user_id',
         'principal_name',
         'principal_nip',
         'coordinator_name',
@@ -39,6 +43,26 @@ class SchoolDocumentSetting extends Model
         return $this->belongsTo(
             School::class
         );
+    }
+
+    public function principalSignatory(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'principal_signatory_user_id');
+    }
+
+    public function coordinatorSignatory(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'coordinator_signatory_user_id');
+    }
+
+    public function responsibleSignatory(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'responsible_signatory_user_id');
+    }
+
+    public function defaultLetterSignatory(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'default_letter_signatory_user_id');
     }
 
     public function responsibleCoach(): BelongsTo

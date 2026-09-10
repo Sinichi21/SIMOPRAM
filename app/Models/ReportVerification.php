@@ -38,6 +38,10 @@ class ReportVerification extends Model
     {
         return [
             'metadata' => 'array',
+            'required_signatories' => 'array',
+            'required_signatory_ids' => 'array',
+            'signatory_approvals' => 'array',
+            'approval_completed_at' => 'datetime',
             'file_size' => 'integer',
             'archived_at' => 'datetime',
             'issued_at' => 'datetime',
@@ -93,7 +97,21 @@ class ReportVerification extends Model
             return 'superseded';
         }
 
-        return 'valid';
+        return $this->pendingSignatoryIds() === [] ? 'valid' : 'pending';
+    }
+
+    /** @return array<int, int> */
+    public function pendingSignatoryIds(): array
+    {
+        $approved = collect($this->signatory_approvals ?? [])
+            ->filter(fn (array $approval): bool => $this->file_sha256 !== null
+                && ($approval['file_sha256'] ?? null) === $this->file_sha256)
+            ->pluck('user_id')->all();
+
+        return array_values(array_diff(
+            array_column($this->required_signatories ?? [], 'user_id'),
+            $approved
+        ));
     }
 
     public function documentTypeLabel(): string

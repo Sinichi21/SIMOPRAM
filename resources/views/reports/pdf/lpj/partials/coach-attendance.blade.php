@@ -45,9 +45,9 @@
 
     <div class="signature-block">
         <table class="signature-table">
-            <tr><td></td><td>{{ $signingCity }}, {{ $reportMonth['end']->locale('id')->translatedFormat('d F Y') }}<br>Kepala {{ $school->name }}</td></tr>
+            <tr><td></td><td>{{ $signingCity }}, {{ $reportMonth['end']->locale('id')->translatedFormat('d F Y') }}<br>{{ $principalPosition }}</td></tr>
             <tr><td></td><td class="signature-space"></td></tr>
-            <tr><td></td><td><span class="signature-name">{{ $principalName }}</span><br>NIP. {{ $principalNip }}</td></tr>
+            <tr><td></td><td><span class="signature-name">{{ $principalName }}</span><br>{{ $principalIdentifier }}</td></tr>
         </table>
     </div>
 </section>

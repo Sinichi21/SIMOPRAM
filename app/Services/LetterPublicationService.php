@@ -56,6 +56,7 @@ class LetterPublicationService
             documentNumber: $letter->letter_number,
             title: $letter->subject,
             metadata: [
+                'signatory_user_id' => data_get($letter->metadata, 'signatory_user_id'),
                 'security_classification' => $letter->security_classification ?: 'Biasa',
                 'direction' => 'outgoing',
                 'letter_type' => $letter->letterType?->name,

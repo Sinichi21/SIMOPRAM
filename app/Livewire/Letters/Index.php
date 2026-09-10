@@ -11,6 +11,7 @@ use App\Models\School;
 use App\Models\SchoolDocumentSetting;
 use App\Models\SchoolLetterSetting;
 use App\Models\ScoutGroup;
+use App\Services\DocumentSignatoryService;
 use App\Services\LetterAdministrationBootstrapService;
 use App\Services\LetterNumberService;
 use App\Services\LetterPublicationService;
@@ -55,6 +56,10 @@ class Index extends Component
     public ?int $retention_years = null;
 
     public string $body = '';
+
+    public string $signatory_source = 'master';
+
+    public ?int $signatory_user_id = null;
 
     public string $signatory_name = '';
 
@@ -176,6 +181,8 @@ class Index extends Component
             'archive_category' => ['nullable', 'string', 'max:120'],
             'retention_years' => ['nullable', 'integer', Rule::in([2, 5, 10, 20])],
             'body' => ['nullable', 'string'],
+            'signatory_source' => ['nullable', 'in:master,manual'],
+            'signatory_user_id' => ['nullable', 'integer'],
             'signatory_name' => ['nullable', 'string', 'max:150'],
             'signatory_position' => ['nullable', 'string', 'max:150'],
             'signatory_identity' => ['nullable', 'string', 'max:160'],
@@ -201,6 +208,38 @@ class Index extends Component
 
         $validated = $this->validate();
         unset($validated['attachments']);
+
+        $signatorySource = $validated['signatory_source'] ?? 'master';
+        unset($validated['signatory_source']);
+
+        $signatoryUserId = $signatorySource === 'master'
+            ? ($validated['signatory_user_id'] ?? null)
+            : null;
+
+        unset($validated['signatory_user_id']);
+
+        if ($this->direction === 'outgoing' && $signatorySource === 'master' && ! $signatoryUserId) {
+            throw ValidationException::withMessages([
+                'signatory_user_id' => 'Pilih user penandatangan atau ubah sumber penandatangan menjadi Manual.',
+            ]);
+        }
+
+        if ($this->direction === 'outgoing' && $signatorySource === 'manual') {
+            $manualName = trim((string) ($validated['signatory_name'] ?? ''));
+            $manualPosition = trim((string) ($validated['signatory_position'] ?? ''));
+
+            if ($manualName === '') {
+                throw ValidationException::withMessages([
+                    'signatory_name' => 'Nama penandatangan manual wajib diisi.',
+                ]);
+            }
+
+            if ($manualPosition === '') {
+                throw ValidationException::withMessages([
+                    'signatory_position' => 'Jabatan penandatangan manual wajib diisi.',
+                ]);
+            }
+        }
         $templateData = $validated['templateData'] ?? [];
         unset($validated['templateData']);
 
@@ -255,7 +294,19 @@ class Index extends Component
                 'template_slug' => $template->slug,
                 'template_name' => $template->name,
                 'requires_recipient' => (bool) $template->requires_recipient,
+                'signatory_source' => $signatorySource,
+                'signatory_user_id' => $signatoryUserId,
             ];
+        }
+
+        if ($this->direction === 'outgoing' && ! $template) {
+            $validated['metadata'] = array_merge(
+                (array) ($validated['metadata'] ?? []),
+                [
+                    'signatory_source' => $signatorySource,
+                    'signatory_user_id' => $signatoryUserId,
+                ]
+            );
         }
 
         $payload = array_merge($validated, ['direction' => $this->direction, 'school_id' => $schoolId, 'updated_by' => $userId]);
@@ -334,6 +385,15 @@ class Index extends Component
         $this->letter_field_id = $letter->letter_field_id;
         $this->template_id = $letter->template_id;
         $this->attachments = [];
+        $this->signatory_user_id = data_get($letter->metadata, 'signatory_user_id')
+            ? (int) data_get($letter->metadata, 'signatory_user_id')
+            : null;
+
+        $this->signatory_source = (string) (
+            data_get($letter->metadata, 'signatory_source')
+            ?: ($this->signatory_user_id ? 'master' : 'manual')
+        );
+
         $this->templateData = (array) data_get($letter->metadata, 'template_data', []);
         $this->templatePlaceholders = [];
         $this->showPreview = false;
@@ -397,33 +457,97 @@ class Index extends Component
         }
     }
 
+    public function updatedSignatorySource(string $value): void
+    {
+        if ($value === 'manual') {
+            $this->signatory_user_id = null;
+            $this->signatory_name = '';
+            $this->signatory_position = '';
+            $this->signatory_identity = '';
+        } else {
+            $this->applyLetterSettingDefaults();
+        }
+    }
+
+    public function updatedSignatoryUserId(DocumentSignatoryService $service): void
+    {
+        if (! $this->signatory_user_id || $this->direction !== 'outgoing') {
+            return;
+        }
+
+        $this->signatory_source = 'master';
+
+        $resolved = $service->resolve(
+            $this->signatory_user_id,
+            $this->schoolId()
+        );
+
+        $this->signatory_name = $resolved['name'];
+        $this->signatory_position = $resolved['position'];
+        $this->signatory_identity = $resolved['identity'];
+    }
+
     private function applyLetterSettingDefaults(): void
     {
         if ($this->direction !== 'outgoing') {
             return;
         }
 
-        $setting = SchoolLetterSetting::query()->first();
-        if (! $setting) {
+        $documentSetting = SchoolDocumentSetting::query()->first();
+
+        if ($documentSetting?->default_letter_signatory_user_id) {
+            $resolved = app(DocumentSignatoryService::class)->resolve(
+                (int) $documentSetting->default_letter_signatory_user_id,
+                $this->schoolId()
+            );
+
+            $this->signatory_source = 'master';
+            $this->signatory_user_id = $resolved['user_id'];
+            $this->signatory_name = $resolved['name'];
+            $this->signatory_position = $resolved['position'];
+            $this->signatory_identity = $resolved['identity'];
+
             return;
         }
 
-        $this->signatory_name = (string) ($setting->default_signatory_name ?? '');
-        $this->signatory_position = (string) ($setting->default_signatory_position ?? '');
-        $this->signatory_identity = (string) ($setting->default_signatory_identity ?? '');
+        // Backward compatibility dengan pengaturan Persuratan lama.
+        $legacy = SchoolLetterSetting::query()->first();
+
+        $this->signatory_name = (string) ($legacy?->default_signatory_name ?? '');
+        $this->signatory_position = (string) ($legacy?->default_signatory_position ?? '');
+        $this->signatory_identity = (string) ($legacy?->default_signatory_identity ?? '');
+
+        if ($this->signatory_name !== '') {
+            $this->signatory_source = 'manual';
+        }
     }
 
     /** @return array<string, string> */
     private function templateContext(): array
     {
-        $setting = SchoolLetterSetting::query()->first();
+        $documentSetting = SchoolDocumentSetting::query()->first();
+        $legacy = SchoolLetterSetting::query()->first();
 
         $attachmentCount = count($this->attachments);
         if ($this->editingId) {
-            $attachmentCount += LetterAttachment::query()->where('letter_id', $this->editingId)->count();
+            $attachmentCount += LetterAttachment::query()
+                ->where('letter_id', $this->editingId)
+                ->count();
         }
 
         $recipientLocation = trim((string) ($this->templateData['recipient_location'] ?? ''));
+
+        $maleGudep = trim((string) $documentSetting?->gudep_male_number);
+        $femaleGudep = trim((string) $documentSetting?->gudep_female_number);
+
+        if ($maleGudep !== '' && $femaleGudep !== '') {
+            $femaleSuffix = preg_replace('/^.*\./', '', $femaleGudep);
+            $gudep = $femaleSuffix !== ''
+                ? $maleGudep.'-'.$femaleSuffix
+                : $maleGudep.'-'.$femaleGudep;
+        } else {
+            $gudep = $maleGudep !== '' ? $maleGudep : $femaleGudep;
+        }
 
         return [
             'letter_number' => $this->letter_number ?: ($this->status === 'published' ? '' : '(nomor otomatis saat diterbitkan)'),
@@ -434,11 +558,11 @@ class Index extends Component
             'published_date' => $this->formatDate($this->letter_date),
             'attachment_count' => (string) $attachmentCount,
             'attachment_label' => $attachmentCount > 0 ? $attachmentCount.' berkas' : '-',
-            'city' => (string) ($setting?->city ?? ''),
-            'gudep' => (string) ($setting?->gudep_code ?? ''),
-            'signatory_name' => $this->signatory_name ?: (string) ($setting?->default_signatory_name ?? ''),
-            'signatory_position' => $this->signatory_position ?: (string) ($setting?->default_signatory_position ?? ''),
-            'signatory_identity' => $this->signatory_identity ?: (string) ($setting?->default_signatory_identity ?? ''),
+            'city' => (string) ($documentSetting?->signing_city ?: ($legacy?->city ?? '')),
+            'gudep' => $gudep !== '' ? $gudep : (string) ($legacy?->gudep_code ?? ''),
+            'signatory_name' => $this->signatory_name,
+            'signatory_position' => $this->signatory_position,
+            'signatory_identity' => $this->signatory_identity,
         ];
     }
 
@@ -466,6 +590,8 @@ class Index extends Component
         $this->archive_category = '';
         $this->retention_years = null;
         $this->body = '';
+        $this->signatory_source = 'master';
+        $this->signatory_user_id = null;
         $this->signatory_name = '';
         $this->signatory_position = '';
         $this->signatory_identity = '';
@@ -500,6 +626,9 @@ class Index extends Component
         $types = LetterType::query()->where('is_active', true)->orderBy('sort_order')->get();
         $fields = LetterField::query()->where('is_active', true)->orderBy('sort_order')->get();
         $templates = LetterTemplate::query()->where('is_active', true)->orderBy('sort_order')->get();
+        $signatoryUsers = $this->direction === 'outgoing'
+            ? app(DocumentSignatoryService::class)->usersForSchool($this->schoolId())
+            : collect();
 
         $selectedTemplate = null;
         $previewBody = '';
@@ -554,6 +683,7 @@ class Index extends Component
             'previewSchool',
             'previewDocumentSetting',
             'previewScoutGroup',
+            'signatoryUsers',
         ) + ['placeholderCatalog' => $renderer->catalog()]);
     }
 }

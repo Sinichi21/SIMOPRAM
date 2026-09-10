@@ -270,7 +270,7 @@
         PERSURATAN
         ================================================== --}}
 
-        @can('letters.view')
+        @canany(['letters.view', 'report_verifications.view'])
             <flux:sidebar.nav
                 data-school-menu
                 @class([
@@ -283,6 +283,7 @@
                     :expanded="request()->routeIs('letters.*', 'reports.published-documents.*')"
                     class="grid"
                 >
+                    @can('letters.view')
                     <flux:sidebar.item
                         icon="inbox-arrow-down"
                         :href="route('letters.incoming')"
@@ -300,6 +301,7 @@
                     >
                         Surat Keluar
                     </flux:sidebar.item>
+                    @endcan
 
                     @can('report_verifications.view')
                         <flux:sidebar.item
@@ -335,7 +337,7 @@
                     @endcan
                 </flux:sidebar.group>
             </flux:sidebar.nav>
-        @endcan
+        @endcanany
 
         {{-- =================================================
         MASTER DATA

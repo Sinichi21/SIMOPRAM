@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\LetterField;
 use App\Models\LetterNumberSequence;
 use App\Models\LetterType;
+use App\Models\SchoolDocumentSetting;
 use App\Models\SchoolLetterSetting;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +25,7 @@ class LetterNumberService
             'month_roman' => $this->romanMonth((int) $date->month),
             'year' => (string) $date->year,
             'year_short' => substr((string) $date->year, -2),
-            'gudep' => (string) $settings->gudep_code,
+            'gudep' => $this->gudepCode($schoolId, (string) $settings->gudep_code),
             'field' => $field->code,
         ]);
     }
@@ -79,6 +80,30 @@ class LetterNumberService
 
             return (int) $sequence->fresh()->last_number;
         }, 3);
+    }
+
+    private function gudepCode(int $schoolId, string $fallback): string
+    {
+        $document = SchoolDocumentSetting::withoutGlobalScope('school')
+            ->where('school_id', $schoolId)
+            ->first();
+
+        if (! $document) {
+            return $fallback;
+        }
+
+        $male = trim((string) $document->gudep_male_number);
+        $female = trim((string) $document->gudep_female_number);
+
+        if ($male !== '' && $female !== '') {
+            $femaleSuffix = preg_replace('/^.*\./', '', $female);
+
+            return $femaleSuffix !== ''
+                ? $male.'-'.$femaleSuffix
+                : $male.'-'.$female;
+        }
+
+        return $male !== '' ? $male : ($female !== '' ? $female : $fallback);
     }
 
     private function render(string $format, array $tokens): string

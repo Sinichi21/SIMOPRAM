@@ -1,4 +1,5 @@
 <div class="space-y-6">
+    <flux:error name="document" />
     @if (session('status'))
         <div class="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800 dark:border-green-900 dark:bg-green-950/30 dark:text-green-300">
             {{ session('status') }}
@@ -37,6 +38,7 @@
             <select wire:model.live="status" class="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950">
                 <option value="">Semua status</option>
                 <option value="valid">Valid</option>
+                <option value="pending">Menunggu persetujuan</option>
                 <option value="superseded">Versi Lama</option>
                 <option value="revoked">Dicabut</option>
             </select>
@@ -88,6 +90,8 @@
                             <td class="px-4 py-4 align-top">
                                 @if ($publicStatus === 'valid')
                                     <span class="rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 dark:bg-green-950 dark:text-green-300">Valid</span>
+                                @elseif ($publicStatus === 'pending')
+                                    <span class="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">Menunggu persetujuan</span>
                                 @elseif ($publicStatus === 'superseded')
                                     <span class="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">Versi Lama</span>
                                 @else
@@ -99,6 +103,11 @@
                             </td>
                             <td class="px-4 py-4 text-right align-top">
                                 <div class="flex flex-wrap justify-end gap-2">
+                                    @can('documents.approve')
+                                        @if ($publicStatus === 'pending' && $document->hasArchivedPdf() && in_array(auth()->id(), $document->pendingSignatoryIds(), true))
+                                            <flux:button size="sm" variant="primary" wire:click="approve({{ $document->id }})" wire:confirm="Pastikan Anda telah membaca PDF. Setujui dokumen ini sebagai penandatangan?">Setujui dokumen</flux:button>
+                                        @endif
+                                    @endcan
                                     <a href="{{ route('reports.published-documents.show', ['code' => $document->code]) }}" wire:navigate class="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium dark:border-zinc-700">Detail</a>
                                     @if (! $document->isRevoked() && $document->hasArchivedPdf())
                                         @can('reports.export')

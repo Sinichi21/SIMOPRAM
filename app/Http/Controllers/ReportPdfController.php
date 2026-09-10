@@ -385,7 +385,11 @@ class ReportPdfController extends Controller
             $reportVerificationService->archivePdf(
                 verification: $verification,
                 binary: $binary,
-                filename: $filename
+                filename: $filename,
+                signatoryUserIds: [
+                    $documentSetting?->principal_signatory_user_id,
+                    $documentSetting?->responsible_signatory_user_id,
+                ]
             );
         } catch (Throwable $exception) {
             $reportVerificationService->discardFailedIssue($verification);
@@ -790,7 +794,11 @@ class ReportPdfController extends Controller
             $reportVerificationService->archivePdf(
                 verification: $verification,
                 binary: $binary,
-                filename: $filename
+                filename: $filename,
+                signatoryUserIds: [
+                    $documentSetting?->principal_signatory_user_id,
+                    $documentSetting?->responsible_signatory_user_id,
+                ]
             );
         } catch (Throwable $exception) {
             $reportVerificationService->discardFailedIssue($verification);

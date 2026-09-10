@@ -2,7 +2,8 @@
     <div>
         <h1 class="text-2xl font-semibold">Pengaturan Dokumen Sekolah</h1>
         <p class="mt-1 text-sm text-zinc-500">
-            Informasi ini digunakan untuk kop, lembar pengesahan, jadwal rutin, dan LPJ Pramuka.
+            Satu sumber pengaturan untuk laporan dan persuratan: identitas gugusdepan, penandatangan,
+            jabatan, NIP/NTA, kota, serta informasi dokumen.
         </p>
     </div>
 
@@ -12,65 +13,117 @@
         </div>
     @endif
 
-    <form wire:submit="save" class="space-y-6">
-        <section class="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <h2 class="text-lg font-semibold">Pejabat Penandatangan</h2>
-            <p class="mt-1 text-sm text-zinc-500">Digunakan pada data kegiatan, lembar pengesahan, dan tanda tangan laporan bulanan.</p>
+    <section class="rounded-xl border border-blue-200 bg-blue-50 p-5 dark:border-blue-900 dark:bg-blue-950/20">
+        <h2 class="font-semibold text-blue-950 dark:text-blue-100">Sumber Data Penandatangan</h2>
+        <p class="mt-1 text-sm text-blue-800 dark:text-blue-300">
+            Nama berasal dari user aktif sekolah. Jabatan dan NIP/NTA disimpan per sekolah.
+            Role tidak dibatasi: user mana pun yang aktif di sekolah dapat dipilih.
+        </p>
+    </section>
 
-            <div class="mt-5 grid gap-4 md:grid-cols-2">
-                <div>
-                    <label class="mb-1 block text-sm font-medium">Nama Kepala Sekolah</label>
-                    <input type="text" wire:model="principalName" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950">
-                    @error('principalName') <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
-                </div>
+    <form wire:submit="saveProfile" class="space-y-5 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div>
+            <h2 class="text-lg font-semibold">Profil Penandatangan User</h2>
+            <p class="mt-1 text-sm text-zinc-500">
+                Pilih user dari master data, lalu isi jabatan dan NIP/NTA satu kali.
+            </p>
+        </div>
 
-                <div>
-                    <label class="mb-1 block text-sm font-medium">NIP Kepala Sekolah</label>
-                    <input type="text" wire:model="principalNip" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950">
-                    @error('principalNip') <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
-                </div>
-
-                <div>
-                    <label class="mb-1 block text-sm font-medium">Nama Koordinator Ekstra</label>
-                    <input type="text" wire:model="coordinatorName" placeholder="Contoh: Ida Ayu ..." class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950">
-                    @error('coordinatorName') <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
-                </div>
-
-                <div>
-                    <label class="mb-1 block text-sm font-medium">NIP Koordinator Ekstra</label>
-                    <input type="text" wire:model="coordinatorNip" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950">
-                    @error('coordinatorNip') <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
-                </div>
-            </div>
-        </section>
-
-        <section class="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <h2 class="text-lg font-semibold">Pembina Penanggung Jawab</h2>
-            <p class="mt-1 text-sm text-zinc-500">Nama, nomor HP, dan NTA pembina diambil dari data pembina yang dipilih. Pada model Coach saat ini NTA disimpan pada field nip.</p>
-
-            <div class="mt-5">
-                <label class="mb-1 block text-sm font-medium">Pembina Pramuka</label>
-                <select wire:model="responsibleCoachId" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950">
-                    <option value="">-- Pilih Pembina --</option>
-                    @foreach ($coaches as $coach)
-                        <option value="{{ $coach->id }}">
-                            {{ $coach->name }}{{ $coach->nip ? ' - NTA '.$coach->nip : '' }}
-                        </option>
+        <div class="grid gap-4 md:grid-cols-2">
+            <div class="md:col-span-2">
+                <label class="mb-1 block text-sm font-medium">User</label>
+                <select wire:model.live="profileUserId" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950">
+                    <option value="">-- Pilih User --</option>
+                    @foreach ($signatoryUsers as $user)
+                        <option value="{{ $user->id }}">{{ $user->name }} — {{ $user->email }}</option>
                     @endforeach
                 </select>
-                @error('responsibleCoachId') <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
+                @error('profileUserId') <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
+            </div>
+
+            <div>
+                <label class="mb-1 block text-sm font-medium">Jabatan pada Dokumen</label>
+                <input type="text" wire:model="profilePosition" placeholder="Contoh: Ketua Panitia / Pembina Gugusdepan / Kepala Sekolah" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950">
+                @error('profilePosition') <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
+            </div>
+
+            <div class="grid grid-cols-[110px_1fr] gap-2">
+                <div>
+                    <label class="mb-1 block text-sm font-medium">Jenis</label>
+                    <select wire:model="profileIdentifierType" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950">
+                        <option value="NTA">NTA</option>
+                        <option value="NIP">NIP</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium">Nomor Identitas</label>
+                    <input type="text" wire:model="profileIdentifierNumber" placeholder="Nomor NTA/NIP" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950">
+                </div>
+                @error('profileIdentifierType') <div class="col-span-2 text-sm text-red-600">{{ $message }}</div> @enderror
+                @error('profileIdentifierNumber') <div class="col-span-2 text-sm text-red-600">{{ $message }}</div> @enderror
+            </div>
+        </div>
+
+        <div class="flex justify-end">
+            <button type="submit" class="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600">
+                Simpan Profil Penandatangan
+            </button>
+        </div>
+    </form>
+
+    <form wire:submit="save" class="space-y-6">
+        <section class="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <h2 class="text-lg font-semibold">Penandatangan Default Dokumen</h2>
+            <p class="mt-1 text-sm text-zinc-500">
+                Nama, jabatan, dan NIP/NTA diambil otomatis dari profil user yang dipilih.
+            </p>
+
+            <div class="mt-5 grid gap-4 md:grid-cols-2">
+                @php
+                    $slots = [
+                        'principalSignatoryUserId' => 'Penandatangan Utama Laporan',
+                        'responsibleSignatoryUserId' => 'Penandatangan Penanggung Jawab / Pelaksana',
+                        'coordinatorSignatoryUserId' => 'Penandatangan Koordinator',
+                        'defaultLetterSignatoryUserId' => 'Penandatangan Default Surat',
+                    ];
+                @endphp
+
+                @foreach ($slots as $model => $label)
+                    <div>
+                        <label class="mb-1 block text-sm font-medium">{{ $label }}</label>
+                        <select wire:model="{{ $model }}" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950">
+                            <option value="">-- Tidak ditentukan --</option>
+                            @foreach ($signatoryUsers as $user)
+                                @php($resolved = $resolvedSignatories[$user->id] ?? null)
+                                <option value="{{ $user->id }}">
+                                    {{ $user->name }}
+                                    @if (filled($resolved['position'] ?? null)) — {{ $resolved['position'] }} @endif
+                                    @if (filled($resolved['identity'] ?? null)) — {{ $resolved['identity'] }} @endif
+                                </option>
+                            @endforeach
+                        </select>
+                        @error($model) <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
+                    </div>
+                @endforeach
+            </div>
+
+            <div class="mt-4 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950/40 dark:text-zinc-400">
+                Slot tidak membatasi role. Label hanya menentukan posisi pada layout laporan.
+                Jabatan yang tercetak tetap mengikuti profil user.
             </div>
         </section>
 
         <section class="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <h2 class="text-lg font-semibold">Identitas Gugus Depan</h2>
+            <p class="mt-1 text-sm text-zinc-500">
+                Nilai ini juga menjadi sumber token <code>{gudep}</code> pada nomor surat.
+            </p>
             <div class="mt-5 grid gap-4 md:grid-cols-2">
                 <div>
                     <label class="mb-1 block text-sm font-medium">Nomor Gudep Putra</label>
                     <input type="text" wire:model="gudepMaleNumber" placeholder="Contoh: 04.007" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950">
                     @error('gudepMaleNumber') <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
                 </div>
-
                 <div>
                     <label class="mb-1 block text-sm font-medium">Nomor Gudep Putri</label>
                     <input type="text" wire:model="gudepFemaleNumber" placeholder="Contoh: 04.008" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950">
@@ -81,8 +134,6 @@
 
         <section class="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <h2 class="text-lg font-semibold">Jadwal Ekstrakurikuler</h2>
-            <p class="mt-1 text-sm text-zinc-500">Dipakai untuk menyusun tanggal laporan dan kolom absensi secara otomatis, termasuk tanggal tanpa kegiatan.</p>
-
             <div class="mt-5 grid gap-4 md:grid-cols-2">
                 <div>
                     <label class="mb-1 block text-sm font-medium">Hari Rutin</label>
@@ -94,23 +145,17 @@
                     </select>
                     @error('extracurricularWeekday') <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
                 </div>
-
                 <div>
                     <label class="mb-1 block text-sm font-medium">Tempat Pelaksanaan</label>
-                    <input type="text" wire:model="extracurricularLocation" placeholder="Contoh: Lapangan sekolah" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950">
-                    @error('extracurricularLocation') <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
+                    <input type="text" wire:model="extracurricularLocation" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950">
                 </div>
-
                 <div>
                     <label class="mb-1 block text-sm font-medium">Jam Mulai</label>
                     <input type="time" wire:model="extracurricularStartTime" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950">
-                    @error('extracurricularStartTime') <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
                 </div>
-
                 <div>
                     <label class="mb-1 block text-sm font-medium">Jam Selesai</label>
                     <input type="time" wire:model="extracurricularEndTime" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950">
-                    @error('extracurricularEndTime') <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
                 </div>
             </div>
         </section>
@@ -121,19 +166,14 @@
                 <div>
                     <label class="mb-1 block text-sm font-medium">Kota Penandatanganan</label>
                     <input type="text" wire:model="signingCity" placeholder="Contoh: Denpasar" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950">
-                    @error('signingCity') <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
                 </div>
-
                 <div>
                     <label class="mb-1 block text-sm font-medium">Instansi Induk</label>
-                    <input type="text" wire:model="parentAgency" placeholder="Contoh: Dinas Pendidikan Kepemudaan dan Olahraga Kota Denpasar" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950">
-                    @error('parentAgency') <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
+                    <input type="text" wire:model="parentAgency" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950">
                 </div>
-
                 <div>
                     <label class="mb-1 block text-sm font-medium">Catatan Dokumen</label>
                     <textarea wire:model="documentNote" rows="4" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"></textarea>
-                    @error('documentNote') <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
                 </div>
             </div>
         </section>

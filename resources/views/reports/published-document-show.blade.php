@@ -2,7 +2,7 @@
     <div class="p-6">
         @php
             $closure = $verification->closure;
-            $statusLabel = match ($status) { 'valid' => 'Valid', 'superseded' => 'Versi Lama', 'revoked' => 'Dicabut', default => ucfirst($status) };
+            $statusLabel = match ($status) { 'valid' => 'Valid', 'pending' => 'Menunggu persetujuan', 'superseded' => 'Versi Lama', 'revoked' => 'Dicabut', default => ucfirst($status) };
             $statusClasses = match ($status) { 'valid' => 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300', 'superseded' => 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300', default => 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' };
         @endphp
 
@@ -47,6 +47,14 @@
                         @endif
                         <dt class="text-zinc-500">Diterbitkan</dt><dd>{{ $verification->issued_at?->format('d/m/Y H:i:s') ?? '-' }}</dd>
                         <dt class="text-zinc-500">Penerbit</dt><dd>{{ $verification->issuer?->name ?? '-' }}</dd>
+                        @foreach ($verification->required_signatories ?? [] as $signatory)
+                            <dt class="text-zinc-500">Persetujuan</dt>
+                            <dd>{{ $signatory['name'] }} — {{ in_array($signatory['user_id'], $verification->pendingSignatoryIds(), true) ? 'Menunggu persetujuan' : 'Disetujui' }}</dd>
+                        @endforeach
+                        @foreach ($verification->signatory_approvals ?? [] as $approval)
+                            <dt class="text-zinc-500">Waktu persetujuan</dt>
+                            <dd>{{ $approval['name'] }} — {{ $approval['approved_at'] }}</dd>
+                        @endforeach
                     </dl>
                 </section>
 

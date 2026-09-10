@@ -4,9 +4,11 @@ namespace App\Livewire\UserApprovals;
 
 use App\Models\User;
 use App\Services\AccountActivationService;
+use App\Services\PrincipalAccountService;
 use App\Services\UserApprovalService;
 use App\Support\SchoolContext;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -15,6 +17,26 @@ class Index extends Component
     use WithPagination;
 
     public string $search = '';
+
+    #[On('users-changed')]
+    public function refreshUsers(): void
+    {
+        $this->resetPage();
+    }
+
+    public string $principalName = '';
+
+    public string $principalEmail = '';
+
+    public function createPrincipal(PrincipalAccountService $service): void
+    {
+        $service->create($this->principalName, $this->principalEmail);
+        $this->reset('principalName', 'principalEmail', 'activationLink', 'selectedUserId');
+        $this->status = 'approved';
+        $this->role = 'principal';
+        $this->resetPage();
+        session()->flash('success', 'Akun Kepala Sekolah dibuat. Bagikan tautan aktivasi agar pengguna dapat membuat password dan login.');
+    }
 
     public string $activationDestination = '';
 
@@ -88,7 +110,7 @@ class Index extends Component
         abort_unless($schoolId, 409);
 
         $users = User::query()
-            ->with('requestedSchool')
+            ->with(['requestedSchool', 'schoolMemberships' => fn ($query) => $query->where('school_id', $schoolId)])
             ->where('approval_status', $this->status === 'approved' ? 'approved' : 'pending')
             ->where(function ($query) use ($schoolId): void {
                 if ($this->status === 'approved') {

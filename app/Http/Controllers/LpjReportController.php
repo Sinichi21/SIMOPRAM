@@ -85,7 +85,12 @@ class LpjReportController extends Controller
             $reportVerificationService->archivePdf(
                 verification: $verification,
                 binary: $binary,
-                filename: $filename
+                filename: $filename,
+                signatoryUserIds: [
+                    data_get($data, 'documentSetting.principal_signatory_user_id'),
+                    data_get($data, 'documentSetting.responsible_signatory_user_id'),
+                    data_get($data, 'documentSetting.coordinator_signatory_user_id'),
+                ]
             );
         } catch (Throwable $exception) {
             $reportVerificationService->discardFailedIssue($verification);

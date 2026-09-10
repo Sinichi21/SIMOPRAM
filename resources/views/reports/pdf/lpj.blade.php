@@ -6,7 +6,7 @@
     <style>
         @page { 
             size: A4 portrait;
-            margin: 12mm 14mm 24mm 14mm; 
+            margin: 12mm 14mm 12mm 14mm; 
         }
         * { box-sizing: border-box; }
         body {
@@ -193,15 +193,33 @@
     </style>
 </head>
 <body>
-@include('reports.pdf.partials.verification-footer')
 @php
+    $signatoryService = app(\App\Services\DocumentSignatoryService::class);
+
+    $principal = $documentSetting?->principal_signatory_user_id
+        ? $signatoryService->resolve((int) $documentSetting->principal_signatory_user_id, (int) $school->id)
+        : null;
+    $responsible = $documentSetting?->responsible_signatory_user_id
+        ? $signatoryService->resolve((int) $documentSetting->responsible_signatory_user_id, (int) $school->id)
+        : null;
+    $coordinator = $documentSetting?->coordinator_signatory_user_id
+        ? $signatoryService->resolve((int) $documentSetting->coordinator_signatory_user_id, (int) $school->id)
+        : null;
+
     $responsibleCoach = $documentSetting?->responsibleCoach;
-    $principalName = $documentSetting?->principal_name ?: $scoutGroup?->kamabigus_name ?: '........................';
-    $principalNip = $documentSetting?->principal_nip ?: '........................';
-    $coachName = $responsibleCoach?->name ?: $scoutGroup?->head_coach_name ?: '........................';
-    $coachIdentifier = $responsibleCoach?->nip
-        ? 'NTA. '.$responsibleCoach->nip
-        : '';
+
+    $principalName = $principal['name'] ?? ($documentSetting?->principal_name ?: $scoutGroup?->kamabigus_name ?: '........................');
+    $principalIdentifier = $principal['identity'] ?? ($documentSetting?->principal_nip ? 'NIP. '.$documentSetting->principal_nip : '');
+    $principalPosition = $principal['position'] ?? 'Kepala '.$school->name;
+
+    $coachName = $responsible['name'] ?? ($responsibleCoach?->name ?: $scoutGroup?->head_coach_name ?: '........................');
+    $coachIdentifier = $responsible['identity'] ?? ($responsibleCoach?->nip ? 'NTA. '.$responsibleCoach->nip : '');
+    $responsiblePosition = $responsible['position'] ?? 'Pembina Ekstra / Pengembangan Diri';
+
+    $coordinatorName = $coordinator['name'] ?? ($documentSetting?->coordinator_name ?: '........................');
+    $coordinatorIdentifier = $coordinator['identity'] ?? ($documentSetting?->coordinator_nip ? 'NIP. '.$documentSetting->coordinator_nip : '');
+    $coordinatorPosition = $coordinator['position'] ?? 'Koordinator Ekstra/Pengembangan Diri';
+
     $signingCity = $documentSetting?->signing_city ?: ($school->city ?: '................');
 @endphp
 

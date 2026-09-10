@@ -69,6 +69,7 @@ class PublishedDocumentController extends Controller
                 'source',
             ])
             ->where('school_id', $schoolContext->id())
+            ->when(auth()->user()->system_role === 'principal', fn ($query) => $query->whereJsonContains('required_signatory_ids', auth()->id()))
             ->where('code', $code)
             ->firstOrFail();
     }
