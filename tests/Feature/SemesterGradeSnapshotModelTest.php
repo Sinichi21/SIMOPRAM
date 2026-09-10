@@ -3,7 +3,7 @@
 use App\Models\SemesterGradeSnapshot;
 
 test('semester grade snapshot exposes all fields used by semester closure service', function (): void {
-    $model = new SemesterGradeSnapshot();
+    $model = new SemesterGradeSnapshot;
 
     expect($model->getFillable())->toContain(
         'semester_closure_id',
@@ -27,7 +27,7 @@ test('semester grade snapshot exposes all fields used by semester closure servic
 });
 
 test('semester grade snapshot casts json and date fields', function (): void {
-    $model = new SemesterGradeSnapshot();
+    $model = new SemesterGradeSnapshot;
 
     expect($model->getCasts())
         ->toMatchArray([
