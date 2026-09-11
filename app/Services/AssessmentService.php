@@ -325,7 +325,9 @@ class AssessmentService
 
         $grade =
             $this->resolveGrade(
-                $finalScore
+                $finalScore,
+                $student->scoutLevelHistories()->where('academic_year_id', $config->academic_year_id)
+                    ->where('is_active', true)->latest('id')->value('scout_level_id')
             );
 
         return DB::transaction(
@@ -364,7 +366,8 @@ class AssessmentService
     }
 
     protected function resolveGrade(
-        float $score
+        float $score,
+        ?int $scoutLevelId = null
     ): array {
         $schoolId =
             app(SchoolContext::class)
@@ -377,6 +380,14 @@ class AssessmentService
                     true
                 )
                 ->with('scales')
+                ->where(function ($query) use ($scoutLevelId): void {
+                    $query->whereNull('scout_level_id');
+                    if ($scoutLevelId !== null) {
+                        $query->orWhere('scout_level_id', $scoutLevelId);
+                    }
+                })
+                ->orderByRaw('CASE WHEN scout_level_id IS NULL THEN 1 ELSE 0 END')
+                ->latest('id')
                 ->first();
 
         if (! $config) {
@@ -1288,6 +1299,12 @@ class AssessmentService
                 ->semester_id,
 
             'items' => $items,
+            'grade_ranges' => GradeScaleConfig::where('is_active', true)->with('scales')->orderBy('id')->get()
+                ->map(fn ($scaleConfig): array => [
+                    'id' => $scaleConfig->id,
+                    'scout_level_id' => $scaleConfig->scout_level_id,
+                    'scales' => $scaleConfig->scales->map(fn ($scale): array => $scale->only(['letter_grade', 'min_score', 'max_score', 'description']))->all(),
+                ])->all(),
         ];
 
         return hash(
