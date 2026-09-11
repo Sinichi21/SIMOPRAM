@@ -64,7 +64,7 @@ jobs:
 
       - name: Upload test report
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: test-results
           path: test-results.xml
@@ -84,7 +84,7 @@ jobs:
 
       - name: Upload release
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: simopram-release
           path: ${{ runner.temp }}/simopram-release.tar.gz
