@@ -114,7 +114,7 @@ test('full synchronization restores saved team scores without adding new recipie
     $this->assertDatabaseMissing('student_scores', ['student_id' => $late->id]);
 });
 
-test('student score inputs bind to saved activity scores', function () {
+test('semester scores display saved activity scores as locked values', function () {
     $this->actingAs(User::factory()->create(['system_role' => 'super_admin', 'is_active' => true]));
     ['assessment' => $assessment, 'unit' => $unit, 'config' => $config] = memberSyncAssessment();
     $student = memberSyncStudent($unit, 'DISPLAY');
@@ -126,7 +126,9 @@ test('student score inputs bind to saved activity scores', function () {
 
     Livewire::test(Scores::class)
         ->assertSet("scores.{$student->id}.{$assessment->assessment_factor_id}", 82.0)
-        ->assertSeeHtml('wire:model="scores.'.$student->id.'.'.$assessment->assessment_factor_id.'"');
+        ->assertSee('82.00')
+        ->assertSee('Terkunci · Penilaian kegiatan')
+        ->assertDontSeeHtml('wire:model="scores.'.$student->id.'.'.$assessment->assessment_factor_id.'"');
 });
 
 test('member synchronization rejects an empty team', function () {
