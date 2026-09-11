@@ -65,7 +65,7 @@
         </div>
 
         <div class="flex justify-end">
-            <button type="submit" class="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600">
+            <button type="submit" class="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white">
                 Simpan Profil Penandatangan
             </button>
         </div>

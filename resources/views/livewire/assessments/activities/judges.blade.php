@@ -6,7 +6,7 @@
     @can('activity_assessments.publish')
         <form wire:submit="invite" class="flex flex-wrap items-end gap-3">
             <label>Nama juri<input wire:model="judgeName" required maxlength="150" class="mt-1 block rounded-lg border p-2"></label>
-            <button wire:loading.attr="disabled" class="rounded-lg bg-amber-700 px-4 py-2 text-white">Buat Link Juri</button>
+            <button wire:loading.attr="disabled" class="rounded-lg bg-zinc-900 px-4 py-2 text-white">Buat Link Juri</button>
         </form>
         @if($invitationUrl)
             <form wire:submit="sendInvitation" class="space-y-3">

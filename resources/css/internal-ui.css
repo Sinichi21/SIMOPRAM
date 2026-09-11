@@ -1,0 +1,189 @@
+/* Shared presentation for internal pages, including older native HTML forms. */
+.app-content {
+    --ui-surface: var(--color-white);
+    --ui-field: var(--color-white);
+    --ui-muted: var(--color-zinc-50);
+    --ui-border: var(--color-zinc-200);
+    --ui-field-border: var(--color-zinc-300);
+    --ui-text: var(--color-zinc-900);
+    --ui-secondary: var(--color-zinc-600);
+    --ui-primary: var(--color-emerald-800);
+    --ui-primary-hover: var(--color-emerald-900);
+    --ui-on-primary: var(--color-white);
+    --color-accent: var(--ui-primary);
+    --color-accent-content: var(--ui-primary);
+    --color-accent-foreground: var(--ui-on-primary);
+    min-width: 0;
+}
+
+.dark .app-content {
+    --ui-surface: var(--color-zinc-900);
+    --ui-field: var(--color-zinc-800);
+    --ui-muted: var(--color-zinc-800);
+    --ui-border: var(--color-zinc-800);
+    --ui-field-border: var(--color-zinc-700);
+    --ui-text: var(--color-zinc-100);
+    --ui-secondary: var(--color-zinc-300);
+    --ui-primary: var(--color-emerald-300);
+    --ui-primary-hover: var(--color-emerald-200);
+    --ui-on-primary: var(--color-emerald-950);
+    color-scheme: dark;
+}
+
+/* Cards retain their layout utilities and use the same surface and outline. */
+.app-content :where(section, form, div):where(.rounded-xl, .rounded-2xl).border:where(.bg-white, .border-zinc-200, .border-zinc-300) {
+    border-color: var(--ui-border);
+    border-radius: .75rem;
+    background-color: var(--ui-surface);
+    box-shadow: 0 1px 3px rgb(0 0 0 / .04);
+}
+
+.app-content :where(section, form, div).rounded-xl.border.bg-white:where(.p-5, .p-6) {
+    padding: clamp(1rem, 2.5vw, 1.5rem);
+}
+
+.app-content :where(label):not([data-flux-label]) {
+    font-size: .875rem;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+/* Flux owns its controls, including icons, grouped fields and validation. */
+.app-content :where(
+    input:not([type="checkbox"], [type="radio"], [type="hidden"], [type="range"], [type="color"], [type="button"], [type="submit"], [type="reset"]),
+    select,
+    textarea
+):not([data-flux-control]) {
+    min-height: 2.5rem;
+    max-width: 100%;
+    border: 1px solid var(--ui-field-border);
+    border-radius: .5rem;
+    background-color: var(--ui-field);
+    color: var(--ui-text);
+    padding: .5rem .75rem;
+    font-size: .875rem;
+    line-height: 1.25rem;
+}
+
+.app-content :where(select):not([data-flux-control]) {
+    padding-inline-end: 2rem;
+}
+
+.app-content :where(textarea):not([data-flux-control]) {
+    min-height: 5rem;
+    resize: vertical;
+}
+
+.app-content :where(input[type="checkbox"], input[type="radio"]):not([data-flux-control]) {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    accent-color: var(--ui-primary);
+}
+
+.app-content :where(input, textarea)::placeholder {
+    color: var(--color-zinc-500);
+    opacity: 1;
+}
+
+.app-content :where(input, select, textarea):disabled {
+    cursor: not-allowed;
+    opacity: .6;
+}
+
+.app-content :where(input, textarea)[readonly] {
+    background-color: var(--ui-muted);
+}
+
+.app-content :where(input, select, textarea)[aria-invalid="true"] {
+    border-color: var(--color-red-500);
+    outline-color: var(--color-red-500);
+}
+
+/* Native buttons match Flux sizing; action tones keep their semantic colors. */
+.app-content :where(button, a):where(.rounded, .rounded-lg, .rounded-md):not([data-flux-button], [data-flux-sidebar-item]) {
+    border-radius: .5rem;
+    font-size: .875rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+}
+
+.app-content :where(button, a):where(.rounded, .rounded-lg, .rounded-md):where(.px-3, .px-4, .px-5):not([data-flux-button]) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    min-height: 2.5rem;
+    padding: .5rem 1rem;
+}
+
+.app-content :where(button, a):where(.rounded, .rounded-lg, .rounded-md).text-xs:not([data-flux-button]) {
+    min-height: 2rem;
+    padding: .375rem .75rem;
+    font-size: .75rem;
+    line-height: 1rem;
+}
+
+.app-content :where(button, a).border:where(.rounded, .rounded-lg, .rounded-md):not([data-action-tone], [data-flux-button]):where(.border-zinc-300, .border-zinc-200, :not([class*="border-"])):where(.bg-white, :not([class*="bg-"])) {
+    border-color: var(--ui-field-border);
+    background-color: var(--ui-surface);
+    color: var(--ui-text);
+}
+
+.app-content :where(button, a):where(.bg-zinc-900, .bg-emerald-700, .bg-emerald-800):not([data-action-tone], [data-flux-button]) {
+    border: 1px solid transparent;
+    background-color: var(--ui-primary);
+    color: var(--ui-on-primary);
+}
+
+.app-content :where(button, a):where(.bg-zinc-900, .bg-emerald-700, .bg-emerald-800):not([data-action-tone], [data-flux-button]):hover:not(:disabled, [aria-disabled="true"]) {
+    background-color: var(--ui-primary-hover);
+}
+
+.app-content :where(button, a):focus-visible {
+    outline: 2px solid var(--ui-primary);
+    outline-offset: 3px;
+}
+
+.app-content :where(button):disabled,
+.app-content :where(a)[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: .5;
+}
+
+/* Document previews and rich-text tables keep their print-specific layout. */
+.app-content :where(table):not([style], .letter-preview table, .letter-real-preview table, [contenteditable] table) {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: .875rem;
+    line-height: 1.5;
+}
+
+.app-content :where(table):not([style], .letter-preview table, .letter-real-preview table, [contenteditable] table) > thead > tr > th {
+    border-block: 1px solid var(--ui-border);
+    background-color: var(--ui-muted);
+    color: var(--ui-secondary);
+    padding: .75rem 1rem;
+    font-size: .75rem;
+    font-weight: 600;
+    vertical-align: middle;
+}
+
+.app-content :where(table):not([style], .letter-preview table, .letter-real-preview table, [contenteditable] table) > tbody > tr > td {
+    border-bottom: 1px solid var(--ui-border);
+    padding: .875rem 1rem;
+    vertical-align: middle;
+}
+
+.app-content :where(table):not([style], .letter-preview table, .letter-real-preview table, [contenteditable] table) > tbody > tr:hover > td {
+    background-color: color-mix(in srgb, var(--ui-muted) 45%, var(--ui-surface));
+}
+
+.app-content :where(table):not([style], .letter-preview table, .letter-real-preview table, [contenteditable] table) > tbody > tr:last-child > td {
+    border-bottom: 0;
+}
+
+.app-content .overflow-x-auto {
+    overscroll-behavior-x: contain;
+}

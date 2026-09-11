@@ -65,6 +65,55 @@ test('participation form saves points and exposes the semester recap', function 
     $this->assertDatabaseHas('student_scores', ['assessment_config_id' => $config->id, 'student_id' => $student->id, 'score' => 40]);
 });
 
+test('participation searches eligible students by name or identifier', function (string $search) {
+    extract(participationContext());
+    $student->update(['name' => 'Andi Pramuka', 'nis' => 'NIS-12345', 'nisn' => '9876543210']);
+    Student::factory()->create(['school_id' => $school->id, 'name' => 'Andi Tidak Terdaftar']);
+
+    Livewire::test(Participation::class, ['activityId' => $activity->id])
+        ->set('search', $search)
+        ->assertSee('Andi Pramuka')
+        ->assertDontSee('Andi Tidak Terdaftar')
+        ->set('search', 'tidak cocok')
+        ->assertDontSee('Andi Pramuka')
+        ->assertSee('Tidak ada siswa yang cocok dengan pencarian dan filter.')
+        ->call('resetFilters')
+        ->assertSee('Andi Pramuka');
+})->with(['name' => '  aNDi  ', 'nis' => 'nis-12345', 'nisn' => '987654']);
+
+test('participation filters draft points and saves hidden entries without losing notes', function () {
+    extract(participationContext());
+    $second = Student::factory()->create(['school_id' => $school->id]);
+    $second->enrollments()->create([
+        'academic_year_id' => $activity->academic_year_id,
+        'classroom_id' => $student->enrollments()->first()->classroom_id,
+        'status' => 'active',
+    ]);
+
+    Livewire::test(Participation::class, ['activityId' => $activity->id])
+        ->set('factorId', $factor->id)
+        ->set('entries.'.$student->id.'.points', 20)
+        ->set('entries.'.$student->id.'.notes', 'Membantu persiapan')
+        ->set('pointsFilter', 'zero')
+        ->assertDontSee($student->name)->assertSee($second->name)
+        ->set('pointsFilter', 'positive')
+        ->assertSee($student->name)->assertDontSee($second->name)
+        ->set('search', 'tidak cocok')->assertDontSee($student->name)
+        ->call('resetFilters')
+        ->assertSee($student->name)->assertSee($second->name)
+        ->assertSet('entries.'.$student->id.'.notes', 'Membantu persiapan')
+        ->set('pointsFilter', 'zero')
+        ->call('save')->assertHasNoErrors();
+
+    $this->assertDatabaseHas('activity_participations', [
+        'activity_id' => $activity->id, 'student_id' => $student->id,
+        'points' => 20, 'notes' => 'Membantu persiapan',
+    ]);
+    $this->assertDatabaseHas('activity_participations', [
+        'activity_id' => $activity->id, 'student_id' => $second->id, 'points' => 0,
+    ]);
+});
+
 test('participation rejects invalid point totals without writing data', function ($points, $target) {
     extract(participationContext());
 

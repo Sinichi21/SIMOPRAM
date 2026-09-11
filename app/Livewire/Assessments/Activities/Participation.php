@@ -5,6 +5,7 @@ namespace App\Livewire\Assessments\Activities;
 use App\Models\Activity;
 use App\Models\ActivityParticipation;
 use App\Models\AssessmentConfig;
+use App\Models\Student;
 use App\Services\ActivityParticipationService;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Locked;
@@ -22,6 +23,15 @@ class Participation extends Component
     public float $targetPoints = 100;
 
     public array $entries = [];
+
+    public string $search = '';
+
+    public string $pointsFilter = '';
+
+    public function resetFilters(): void
+    {
+        $this->reset('search', 'pointsFilter');
+    }
 
     public function mount(int $activityId): void
     {
@@ -65,9 +75,24 @@ class Participation extends Component
             ->where('semester_id', $activity->semester_id)->where('is_active', true)->with('items.factor')->get();
         $config = $configs->firstWhere('id', $this->configId);
         $students = app(ActivityParticipationService::class)->students($activity)->orderBy('name')->get();
+        $studentCount = $students->count();
+        $search = mb_strtolower(trim($this->search));
+        $students = $students->filter(function (Student $student) use ($search): bool {
+            $matchesSearch = $search === '' || str_contains(mb_strtolower($student->name), $search)
+                || str_contains(mb_strtolower((string) $student->nis), $search)
+                || str_contains(mb_strtolower((string) $student->nisn), $search);
+            $points = (float) ($this->entries[$student->id]['points'] ?? 0);
+            $matchesPoints = match ($this->pointsFilter) {
+                'zero' => $points === 0.0,
+                'positive' => $points > 0,
+                default => true,
+            };
+
+            return $matchesSearch && $matchesPoints;
+        });
         $totals = $config ? ActivityParticipation::query()->where('assessment_config_id', $config->id)
             ->whereHas('activity')->selectRaw('student_id, SUM(points) AS total_points')->groupBy('student_id')->pluck('total_points', 'student_id') : collect();
 
-        return view('livewire.assessments.activities.participation', compact('activity', 'configs', 'config', 'students', 'totals'));
+        return view('livewire.assessments.activities.participation', compact('activity', 'configs', 'config', 'students', 'studentCount', 'totals'));
     }
 }

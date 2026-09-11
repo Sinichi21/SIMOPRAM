@@ -1,6 +1,6 @@
 <x-sidebar :title="$title ?? null">
 
-    <flux:main>
+    <flux:main class="app-content">
         {{ $slot }}
     </flux:main>
 
