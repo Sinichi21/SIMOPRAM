@@ -184,6 +184,17 @@ class AssessmentService
         float $score,
         ?string $notes = null
     ): StudentScore {
+        if (StudentScore::query()
+            ->where('assessment_config_id', $config->id)
+            ->where('student_id', $student->id)
+            ->where('assessment_factor_id', $factorId)
+            ->where('source', '!=', 'manual')
+            ->exists()) {
+            throw ValidationException::withMessages([
+                'scores' => 'Nilai otomatis terkunci. Ubah nilai melalui form atau rekap sumbernya.',
+            ]);
+        }
+
         if ((int) $config->participation_factor_id === $factorId) {
             throw ValidationException::withMessages(['scores' => 'Nilai keaktifan dihitung dari poin kegiatan.']);
         }

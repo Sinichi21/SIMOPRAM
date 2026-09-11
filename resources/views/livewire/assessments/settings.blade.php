@@ -1,8 +1,5 @@
 <div class="space-y-8">
-    @can('assessments.manage')
-        <livewire:assessments.grade-ranges />
-    @endcan
-
+    
     @if (session('success'))
 
         <div
@@ -654,5 +651,9 @@
         </section>
 
     @endif
+
+    @can('assessments.manage')
+        <livewire:assessments.grade-ranges />
+    @endcan
 
 </div>
