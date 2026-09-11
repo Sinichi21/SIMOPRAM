@@ -5,6 +5,7 @@ use App\Livewire\Assessments\Scores;
 use App\Models\AcademicYear;
 use App\Models\AssessmentConfig;
 use App\Models\FinalGrade;
+use App\Models\GradeScaleConfig;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\User;
@@ -15,10 +16,14 @@ use Livewire\Livewire;
 beforeEach(function () {
     app(SchoolContext::class)->set(School::factory()->create());
     $this->actingAs(User::factory()->create(['system_role' => 'super_admin']));
+    $this->rangeConfig = GradeScaleConfig::create(['name' => 'Umum', 'is_active' => true]);
+    foreach ([['A', 90, 100, 'Sangat baik'], ['B', 80, 89.99, 'Baik'], ['C', 70, 79.99, 'Cukup'], ['D', 0, 69.99, 'Perlu bimbingan']] as [$letter, $min, $max, $description]) {
+        $this->rangeConfig->scales()->create(['letter_grade' => $letter, 'min_score' => $min, 'max_score' => $max, 'description' => $description]);
+    }
 });
 
 test('grade ranges provide suggested descriptions while manual student descriptions survive recalculation', function () {
-    Livewire::test(GradeRanges::class)->call('save')->assertHasNoErrors();
+    Livewire::test(GradeRanges::class)->call('editConfig', $this->rangeConfig->id)->call('save')->assertHasNoErrors();
     $year = AcademicYear::factory()->create(['school_id' => app(SchoolContext::class)->id()]);
     $config = AssessmentConfig::query()->create(['academic_year_id' => $year->id, 'name' => 'Penilaian', 'is_active' => true]);
     $student = Student::factory()->create(['school_id' => app(SchoolContext::class)->id()]);
@@ -28,7 +33,7 @@ test('grade ranges provide suggested descriptions while manual student descripti
     Livewire::test(Scores::class)->call('editDescription', $student->id)
         ->assertSet('suggestedDescription', 'Perlu bimbingan')->set('descriptionText', 'Aktif membantu teman; perlu latihan kedisiplinan.')
         ->call('saveDescription')->assertHasNoErrors();
-    Livewire::test(GradeRanges::class)->set('ranges.3.description', 'Perlu latihan rutin')->call('save')->assertHasNoErrors();
+    Livewire::test(GradeRanges::class)->call('editConfig', $this->rangeConfig->id)->set('ranges.3.description', 'Perlu latihan rutin')->call('save')->assertHasNoErrors();
     $grade = $service->calculateFinalGrade($config, $student);
     expect($grade->description)->toBe('Aktif membantu teman; perlu latihan kedisiplinan.');
     expect($grade->getRawOriginal('description'))->toBe('Perlu latihan rutin');
@@ -38,7 +43,7 @@ test('grade ranges provide suggested descriptions while manual student descripti
 });
 
 test('ranges reject overlaps gaps and duplicate predicates', function (string $case) {
-    $component = Livewire::test(GradeRanges::class);
+    $component = Livewire::test(GradeRanges::class)->call('editConfig', $this->rangeConfig->id);
     if ($case === 'overlap') {
         $component->set('ranges.1.max_score', 90);
     } elseif ($case === 'gap') {
@@ -47,7 +52,8 @@ test('ranges reject overlaps gaps and duplicate predicates', function (string $c
         $component->set('ranges.1.letter_grade', 'A');
     }
     $component->call('save')->assertHasErrors();
-    $this->assertDatabaseCount('grade_scale_configs', 0);
+    $this->assertDatabaseCount('grade_scale_configs', 1);
+    expect($this->rangeConfig->scales()->where('letter_grade', 'B')->first()->max_score)->toBe('89.99');
 })->with(['overlap', 'gap', 'duplicate']);
 
 test('description editing cannot cross schools or bypass permissions', function () {

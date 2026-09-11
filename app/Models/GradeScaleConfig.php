@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\BelongsToSchool;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -14,6 +15,7 @@ class GradeScaleConfig extends Model
 
     protected $fillable = [
         'name',
+        'scout_level_id',
         'is_active',
     ];
 
@@ -29,5 +31,10 @@ class GradeScaleConfig extends Model
         return $this->hasMany(
             GradeScale::class
         )->orderByDesc('min_score');
+    }
+
+    public function scoutLevel(): BelongsTo
+    {
+        return $this->belongsTo(ScoutLevel::class);
     }
 }
