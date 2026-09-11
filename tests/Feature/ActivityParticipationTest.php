@@ -14,6 +14,7 @@ use App\Models\StudentScore;
 use App\Models\User;
 use App\Services\ActivityParticipationService;
 use App\Services\AssessmentService;
+use App\Services\StudentScoreWriter;
 use App\Support\SchoolContext;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -181,4 +182,95 @@ test('saving semester scores preserves the automatic participation source', func
 
     $this->assertDatabaseHas('student_scores', ['student_id' => $student->id, 'score' => 20, 'source' => 'participation']);
     expect(fn () => app(AssessmentService::class)->saveManualScore($config->fresh(), $student, $factor->id, 99))->toThrow(ValidationException::class);
+});
+
+test('semester input locks activity scores while saving other manual factors', function (float $activityScore) {
+    extract(participationContext());
+    $manualFactor = AssessmentFactor::factory()->create(['school_id' => $school->id, 'source_type' => 'manual']);
+    $config->items()->create(['assessment_factor_id' => $manualFactor->id, 'weight' => 0, 'sort_order' => 2]);
+    StudentScore::query()->create([
+        'assessment_config_id' => $config->id, 'student_id' => $student->id,
+        'assessment_factor_id' => $factor->id, 'score' => $activityScore,
+        'source' => 'activity_assessment', 'source_version' => 3, 'notes' => 'Rekap keterampilan',
+    ]);
+
+    Livewire::test(Scores::class)
+        ->assertDontSeeHtml('wire:model="scores.'.$student->id.'.'.$factor->id.'"')
+        ->assertSee('Terkunci · Penilaian kegiatan')
+        ->assertSeeHtml('wire:model="scores.'.$student->id.'.'.$manualFactor->id.'"')
+        ->set('scores.'.$student->id.'.'.$factor->id, 99)
+        ->set('scores.'.$student->id.'.'.$manualFactor->id, 75)
+        ->call('saveStudent', $student->id)->assertHasNoErrors();
+
+    $this->assertDatabaseHas('student_scores', [
+        'student_id' => $student->id, 'assessment_factor_id' => $factor->id,
+        'score' => $activityScore, 'source' => 'activity_assessment',
+        'source_version' => 3, 'notes' => 'Rekap keterampilan',
+    ]);
+    $this->assertDatabaseHas('student_scores', [
+        'student_id' => $student->id, 'assessment_factor_id' => $manualFactor->id,
+        'score' => 75, 'source' => 'manual',
+    ]);
+
+    expect(fn () => app(AssessmentService::class)->saveManualScore($config, $student, $factor->id, 99))
+        ->toThrow(ValidationException::class, 'Nilai otomatis terkunci.');
+
+    app(StudentScoreWriter::class)->writeAutomatic(
+        assessmentConfigId: $config->id, studentId: $student->id,
+        assessmentFactorId: $factor->id, score: 85, source: 'activity_assessment',
+    );
+    $this->assertDatabaseHas('student_scores', [
+        'student_id' => $student->id, 'assessment_factor_id' => $factor->id,
+        'score' => 85, 'source' => 'activity_assessment',
+    ]);
+})->with(['zero score' => 0.0, 'nonzero score' => 80.0]);
+
+test('semester input rechecks sources that arrive after the form was opened', function () {
+    extract(participationContext());
+    $component = Livewire::test(Scores::class)
+        ->assertSeeHtml('wire:model="scores.'.$student->id.'.'.$factor->id.'"');
+    StudentScore::query()->create([
+        'assessment_config_id' => $config->id, 'student_id' => $student->id,
+        'assessment_factor_id' => $factor->id, 'score' => 65, 'source' => 'activity_assessment',
+    ]);
+
+    $component->set('scores.'.$student->id.'.'.$factor->id, 99)
+        ->call('saveStudent', $student->id)->assertHasNoErrors()
+        ->assertDontSeeHtml('wire:model="scores.'.$student->id.'.'.$factor->id.'"');
+
+    $this->assertDatabaseHas('student_scores', [
+        'student_id' => $student->id, 'assessment_factor_id' => $factor->id,
+        'score' => 65, 'source' => 'activity_assessment',
+    ]);
+});
+
+test('activity scores do not lock another students manual score for the same factor', function () {
+    extract(participationContext());
+    $manualStudent = Student::factory()->create(['school_id' => $school->id]);
+    $manualStudent->enrollments()->create([
+        'academic_year_id' => $activity->academic_year_id,
+        'classroom_id' => $student->enrollments()->first()->classroom_id, 'status' => 'active',
+    ]);
+    StudentScore::query()->create([
+        'assessment_config_id' => $config->id, 'student_id' => $student->id,
+        'assessment_factor_id' => $factor->id, 'score' => 80, 'source' => 'activity_assessment',
+    ]);
+    StudentScore::query()->create([
+        'assessment_config_id' => $config->id, 'student_id' => $manualStudent->id,
+        'assessment_factor_id' => $factor->id, 'score' => 60, 'source' => 'manual',
+    ]);
+
+    Livewire::test(Scores::class)
+        ->assertSeeHtml('wire:model="scores.'.$manualStudent->id.'.'.$factor->id.'"')
+        ->set('scores.'.$manualStudent->id.'.'.$factor->id, 70)
+        ->call('saveStudent', $manualStudent->id)->assertHasNoErrors();
+
+    $this->assertDatabaseHas('student_scores', [
+        'student_id' => $manualStudent->id, 'assessment_factor_id' => $factor->id,
+        'score' => 70, 'source' => 'manual',
+    ]);
+    $this->assertDatabaseHas('student_scores', [
+        'student_id' => $student->id, 'assessment_factor_id' => $factor->id,
+        'score' => 80, 'source' => 'activity_assessment',
+    ]);
 });

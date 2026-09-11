@@ -213,7 +213,7 @@
 
                                     {{ ($item->factor->source_type === 'attendance' || (int) $selectedConfig->participation_factor_id === (int) $item->assessment_factor_id)
                                         ? 'Otomatis'
-                                        : 'Manual'
+                                        : 'Manual / rekap'
                                     }}
                                 </div>
 
@@ -277,8 +277,12 @@
                             )
 
                                 <td class="p-3">
+                                    @php
+                                        $automaticScore = $automaticScores->get($student->id)?->get($item->assessment_factor_id);
+                                    @endphp
 
                                     @if (
+                                        $automaticScore ||
                                         $item->factor->source_type
                                         ===
                                         'attendance' || (int) $selectedConfig->participation_factor_id === (int) $item->assessment_factor_id
@@ -292,7 +296,7 @@
                                                    dark:bg-zinc-800"
                                         >
                                             {{ number_format(
-                                                $scores[
+                                                $automaticScore?->score ?? $scores[
                                                     $student->id
                                                 ][
                                                     $item->assessment_factor_id
@@ -300,6 +304,15 @@
                                                 2
                                             ) }}
                                         </div>
+
+                                        <p class="mt-1 text-xs text-zinc-500">
+                                            {{ match ($automaticScore?->source) {
+                                                'activity_assessment' => 'Terkunci · Penilaian kegiatan',
+                                                'participation' => 'Terkunci · Rekap keaktifan',
+                                                'attendance' => 'Terkunci · Rekap absensi',
+                                                default => 'Terkunci · Nilai otomatis',
+                                            } }}
+                                        </p>
 
                                     @else
 

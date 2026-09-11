@@ -9,6 +9,7 @@ use App\Models\Student;
 use App\Models\StudentScore;
 use App\Services\AssessmentService;
 use App\Services\SemesterClosureService;
+use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 
@@ -174,9 +175,19 @@ class Scores extends Component
                     $studentId
                 );
 
+        $automaticFactorIds = StudentScore::query()
+            ->where('assessment_config_id', $config->id)
+            ->where('student_id', $student->id)
+            ->where('source', '!=', 'manual')
+            ->pluck('assessment_factor_id');
+
         foreach (
             $config->items as $item
         ) {
+
+            if ($automaticFactorIds->contains($item->assessment_factor_id)) {
+                continue;
+            }
 
             if ((int) $config->participation_factor_id === (int) $item->assessment_factor_id) {
                 continue;
@@ -421,13 +432,21 @@ class Scores extends Component
                     )
                 : collect();
 
+        $automaticScores = StudentScore::query()
+            ->where('assessment_config_id', $this->configId)
+            ->whereIn('student_id', $students->modelKeys())
+            ->where('source', '!=', 'manual')
+            ->get()
+            ->groupBy('student_id')
+            ->map(fn (Collection $scores): Collection => $scores->keyBy('assessment_factor_id'));
+
         return view(
             'livewire.assessments.scores',
             compact(
                 'configs',
                 'selectedConfig',
                 'students',
-                'finalGrades', 'scoutLevels'
+                'finalGrades', 'scoutLevels', 'automaticScores'
             )
         );
     }
