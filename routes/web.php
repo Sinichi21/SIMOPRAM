@@ -142,6 +142,10 @@ Route::middleware([
     |--------------------------------------------------------------------------
     */
 
+    Route::view('/admin/permohonan-sekolah', 'admin.school-registrations')
+        ->middleware('can:schools.manage')
+        ->name('school-registrations.index');
+
     Route::middleware([
         'school.required',
     ])->group(function () {

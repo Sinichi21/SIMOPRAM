@@ -126,17 +126,12 @@
 
         @can('schools.manage')
 
-            <flux:sidebar.nav
-                data-school-menu
-                @class([
-                    'opacity-60 [&_*]:cursor-not-allowed' => ! $hasActiveSchool,
-                ])
-            >
+            <flux:sidebar.nav>
 
                 <flux:sidebar.group
                     heading="Administrasi"
                     expandable
-                    :expanded="request()->routeIs('schools.*')"
+                    :expanded="request()->routeIs('schools.*', 'school-registrations.*')"
                     class="grid"
                 >
 
@@ -148,6 +143,12 @@
                     >
                         Data Sekolah
                     </flux:sidebar.item>
+
+                    @if (auth()->user()?->isSuperAdmin())
+                        <flux:sidebar.item :href="route('school-registrations.index')" :current="request()->routeIs('school-registrations.*')" wire:navigate>
+                            Permohonan Sekolah
+                        </flux:sidebar.item>
+                    @endif
 
                 </flux:sidebar.group>
 
