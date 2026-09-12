@@ -16,6 +16,7 @@ use App\Models\Student;
 use App\Models\StudentEnrollment;
 use App\Models\User;
 use App\Services\LpjReportService;
+use App\Services\ReportVerificationService;
 use App\Support\SchoolContext;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\CarbonImmutable;
@@ -43,6 +44,21 @@ test('LPJ page renders its Livewire configuration and academic years', function 
         ->assertSeeLivewire(Lpj::class)
         ->assertSee('2026/2027');
 });
+
+test('LPJ prints the document verification QR and code for each period type', function (string $periodType) {
+    $data = app(LpjReportService::class)->build($this->academicYear->id, $this->semester->id, $periodType, 9);
+    $service = app(ReportVerificationService::class);
+    $verification = $service->issueReportDocument($this->school->id, 'lpj', str_repeat('a', 64));
+    $data['verification'] = $verification;
+    $data['verificationQrDataUri'] = $service->qrDataUri($verification);
+
+    $html = view('reports.pdf.lpj', $data)->render();
+
+    expect($html)->toContain('Verifikasi Dokumen SIMPRAM', $verification->code, $data['verificationQrDataUri']);
+    expect(strpos($html, 'class="simpram-verification-footer"'))
+        ->toBeLessThan(strpos($html, '<section'));
+    expect(Pdf::loadHTML($html)->setPaper('a4')->output())->toStartWith('%PDF-');
+})->with(['monthly', 'semester']);
 
 test('LPJ attendance toggles independently update the download options', function () {
     Livewire::actingAs($this->user)
