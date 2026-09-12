@@ -131,7 +131,7 @@
                 <flux:sidebar.group
                     heading="Administrasi"
                     expandable
-                    :expanded="request()->routeIs('schools.*', 'school-registrations.*')"
+                    :expanded="request()->routeIs('schools.*', 'school-registrations.*', 'activity-logs.*')"
                     class="grid"
                 >
 
@@ -147,6 +147,9 @@
                     @if (auth()->user()?->isSuperAdmin())
                         <flux:sidebar.item :href="route('school-registrations.index')" :current="request()->routeIs('school-registrations.*')" wire:navigate>
                             Permohonan Sekolah
+                        </flux:sidebar.item>
+                        <flux:sidebar.item :href="route('activity-logs.index')" :current="request()->routeIs('activity-logs.*')" wire:navigate>
+                            Log Aktivitas
                         </flux:sidebar.item>
                     @endif
 

@@ -87,7 +87,8 @@ class GradeRanges extends Component
             $config = GradeScaleConfig::findOrFail($id);
             if (! $config->is_active) {
                 $this->validatedRanges($config->scales->map(fn ($scale) => $scale->only(['letter_grade', 'min_score', 'max_score', 'description']))->all());
-                GradeScaleConfig::where('scout_level_id', $config->scout_level_id)->update(['is_active' => false]);
+                GradeScaleConfig::where('scout_level_id', $config->scout_level_id)->get()
+                    ->each(fn (GradeScaleConfig $other) => $other->update(['is_active' => false]));
             }
             $config->update(['is_active' => ! $config->is_active]);
         });
@@ -137,7 +138,7 @@ class GradeRanges extends Component
         DB::transaction(function () use ($ranges): void {
             School::query()->lockForUpdate()->findOrFail($this->schoolId);
             $config = GradeScaleConfig::findOrFail($this->editingConfigId);
-            $config->scales()->delete();
+            $config->scales()->get()->each(fn ($scale) => $scale->delete());
             foreach ($ranges as $index => $range) {
                 $config->scales()->create([...$range, 'sort_order' => $index]);
             }

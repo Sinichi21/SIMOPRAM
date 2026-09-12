@@ -44,6 +44,12 @@
                 ])>
                 Permohonan Sekolah
             </a>
+            <a href="{{ route('activity-logs.index') }}" wire:navigate
+                @class([
+                    'block rounded-lg px-3 py-2 text-sm font-medium transition',
+                    'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' => request()->routeIs('activity-logs.*'),
+                    'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800' => ! request()->routeIs('activity-logs.*'),
+                ])>Log Aktivitas</a>
         @endif
 
     </div>

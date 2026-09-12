@@ -22,6 +22,17 @@ class StudentCsvImporter
     /** @return array{imported: int, failed: int, errors: array<int, string>} */
     public function import(string $path): array
     {
+        try {
+            return $this->importRows($path);
+        } catch (\Throwable $exception) {
+            app(ActivityLogger::class)->record('students', 'failed', status: 'failed', description: 'Impor siswa gagal');
+            throw $exception;
+        }
+    }
+
+    /** @return array{imported: int, failed: int, errors: array<int, string>} */
+    private function importRows(string $path): array
+    {
         $schoolId = app(SchoolContext::class)->id();
 
         abort_unless($schoolId, 409, 'Pilih sekolah aktif terlebih dahulu.');
@@ -74,6 +85,9 @@ class StudentCsvImporter
                 $errors[] = 'Baris '.($index + 1).': '.$this->errorMessage($exception);
             }
         }
+
+        app(ActivityLogger::class)->record('students', 'imported', new: ['imported' => $imported, 'failed' => $failed],
+            status: $failed > 0 ? 'failed' : 'success', description: 'Mengimpor data siswa dari CSV');
 
         return compact('imported', 'failed', 'errors');
     }

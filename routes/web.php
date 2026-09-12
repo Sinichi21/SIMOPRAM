@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ActivityJudgeController;
+use App\Http\Controllers\ActivityLogExportController;
 use App\Http\Controllers\ComplaintController;
 use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\LpjReportController;
@@ -145,6 +146,11 @@ Route::middleware([
     Route::view('/admin/permohonan-sekolah', 'admin.school-registrations')
         ->middleware('can:schools.manage')
         ->name('school-registrations.index');
+
+    Route::view('/admin/log-aktivitas', 'admin.activity-logs')
+        ->middleware('can:activity-logs.view')->name('activity-logs.index');
+    Route::get('/admin/log-aktivitas/export/pdf', ActivityLogExportController::class)
+        ->middleware(['can:activity-logs.view', 'throttle:10,1'])->name('activity-logs.export');
 
     Route::middleware([
         'school.required',
