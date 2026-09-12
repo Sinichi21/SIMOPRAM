@@ -63,6 +63,20 @@ class MessagingService
 
     public function send(string $channel, string $destination, string $message, string $subject = 'Notifikasi SIMPRAM'): string
     {
+        try {
+            $result = $this->deliver($channel, $destination, $message, $subject);
+        } catch (Throwable $exception) {
+            app(ActivityLogger::class)->record('messaging', 'failed', status: 'failed', description: 'Pengiriman pesan gagal');
+            throw $exception;
+        }
+
+        app(ActivityLogger::class)->record('messaging', 'sent', description: 'Penyedia menerima pengiriman pesan');
+
+        return $result;
+    }
+
+    private function deliver(string $channel, string $destination, string $message, string $subject): string
+    {
         if (! $this->enabled($channel)) {
             throw new RuntimeException('Saluran belum aktif. Hubungi Super Admin untuk konfigurasi pengiriman.');
         }

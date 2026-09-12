@@ -285,7 +285,7 @@ class ActivityAssessmentService
                 );
         }
 
-        $obsoleteQuery->delete();
+        $obsoleteQuery->lazyById()->each(fn ($target) => $target->delete());
 
         $created = 0;
 
@@ -430,7 +430,7 @@ class ActivityAssessmentService
                 );
         }
 
-        $obsoleteQuery->delete();
+        $obsoleteQuery->lazyById()->each(fn ($target) => $target->delete());
 
         $created = 0;
 
@@ -553,7 +553,7 @@ class ActivityAssessmentService
 
             $target
                 ->members()
-                ->delete();
+                ->lazyById()->each(fn ($member) => $member->delete());
 
             foreach (
                 $memberIds as $studentId
@@ -1297,7 +1297,7 @@ class ActivityAssessmentService
                         'like',
                         'Rekap otomatis penilaian kegiatan%'
                     )
-                    ->delete();
+                    ->lazyById()->each(fn (StudentScore $score) => $score->delete());
 
                 /*
                 |--------------------------------------------------------------------------

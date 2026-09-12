@@ -2,6 +2,7 @@
 
 use App\Livewire\Students\Index;
 use App\Models\AcademicYear;
+use App\Models\ActivityLog;
 use App\Models\Classroom;
 use App\Models\School;
 use App\Models\ScoutLevel;
@@ -56,6 +57,10 @@ test('authorized user can import valid students and receives row errors', functi
         ->assertHasNoErrors()
         ->assertSet('importErrors.0', 'Baris 3: Tahun ajaran, kelas, atau golongan tidak ditemukan.')
         ->assertSee('Impor selesai. Berhasil: 1, gagal: 1.');
+
+    $audit = ActivityLog::where('module', 'students')->where('action', 'imported')->sole();
+    expect($audit->new_values)->toBe(['imported' => 1, 'failed' => 1])
+        ->and($audit->status)->toBe('failed')->and($audit->user_id)->toBe($user->id);
 
     $this->assertDatabaseHas('students', [
         'school_id' => $school->id,

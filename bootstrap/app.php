@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CaptureActivityContext;
 use App\Http\Middleware\EnsureAccountActive;
 use App\Http\Middleware\RequireCurrentSchool;
 use App\Http\Middleware\SetCurrentSchool;
@@ -16,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->prepend(CaptureActivityContext::class);
         $middleware->web(append: [EnsureAccountActive::class]);
         $middleware->alias([
             'school' => SetCurrentSchool::class,

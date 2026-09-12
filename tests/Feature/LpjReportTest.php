@@ -7,9 +7,11 @@ use App\Models\Attendance;
 use App\Models\AttendanceSession;
 use App\Models\AttendanceSessionParticipant;
 use App\Models\Classroom;
+use App\Models\Coach;
 use App\Models\Journal;
 use App\Models\JournalAttachment;
 use App\Models\School;
+use App\Models\SchoolDocumentSetting;
 use App\Models\ScoutLevel;
 use App\Models\Semester;
 use App\Models\Student;
@@ -43,6 +45,45 @@ test('LPJ page renders its Livewire configuration and academic years', function 
         ->get(route('reports.lpj'))
         ->assertSeeLivewire(Lpj::class)
         ->assertSee('2026/2027');
+});
+
+test('LPJ uses the latest phone of the selected responsible coach on another export', function (string $mode) {
+    $coach = Coach::query()->create([
+        'school_id' => $this->school->id, 'name' => 'Pembina Terpilih', 'is_active' => true,
+        'user_id' => $mode === 'user' ? $this->user->id : null,
+    ]);
+    SchoolDocumentSetting::query()->create([
+        'school_id' => $this->school->id,
+        'responsible_coach_id' => $mode === 'legacy' ? $coach->id : null,
+        'responsible_signatory_user_id' => $mode === 'user' ? $this->user->id : null,
+        'manual_signatories' => $mode === 'coach' ? ['responsible' => ['coach_id' => $coach->id]] : null,
+    ]);
+    $service = app(LpjReportService::class);
+    $first = $service->build($this->academicYear->id, $this->semester->id, 'monthly', 9);
+    expect($first['responsiblePhone'])->toBeNull();
+    expect(view('reports.pdf.lpj', $first)->render())->toContain('<td>Nomor HP</td><td>: -</td>');
+
+    $coach->update(['phone' => '081234567890']);
+    $second = $service->build($this->academicYear->id, $this->semester->id, 'monthly', 9);
+
+    expect($second['responsiblePhone'])->toBe('081234567890');
+    expect(view('reports.pdf.lpj', $second)->render())->toContain('<td>Nomor HP</td><td>: 081234567890</td>');
+})->with(['coach', 'user', 'legacy']);
+
+test('LPJ does not borrow a legacy coach phone for a manually named signatory', function () {
+    $coach = Coach::query()->create([
+        'school_id' => $this->school->id, 'name' => 'Pembina Lama', 'is_active' => true, 'phone' => '081234567890',
+    ]);
+    SchoolDocumentSetting::query()->create([
+        'school_id' => $this->school->id, 'responsible_coach_id' => $coach->id,
+        'manual_signatories' => ['responsible' => ['name' => 'Penanggung Jawab Baru', 'position' => 'Pembina']],
+    ]);
+
+    $data = app(LpjReportService::class)->build($this->academicYear->id, $this->semester->id, 'monthly', 9);
+
+    expect($data['responsiblePhone'])->toBeNull();
+    expect(view('reports.pdf.lpj', $data)->render())
+        ->toContain('Penanggung Jawab Baru', '<td>Nomor HP</td><td>: -</td>');
 });
 
 test('LPJ prints the document verification QR and code for each period type', function (string $periodType) {

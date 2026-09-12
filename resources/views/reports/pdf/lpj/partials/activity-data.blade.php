@@ -8,7 +8,7 @@
 
     <table class="data-table">
         <tr><td>1.</td><td>Nama Penanggung Jawab</td><td>: {{ $coachName }}</td></tr>
-        <tr><td>2.</td><td>Nomor HP</td><td>: {{ $responsibleCoach?->phone ?: '-' }}</td></tr>
+        <tr><td>2.</td><td>Nomor HP</td><td>: {{ $responsiblePhone ?: '-' }}</td></tr>
         <tr><td>3.</td><td>Nama Ekstra/Pengemb. Diri</td><td>: Pramuka</td></tr>
         <tr><td>4.</td><td>Hari Pelaksanaan Ekstra</td><td>: {{ $schedule['dayName'] }}</td></tr>
         <tr>

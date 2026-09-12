@@ -508,7 +508,7 @@ class Settings extends Component
             ): void {
                 $config
                     ->items()
-                    ->delete();
+                    ->get()->each(fn (AssessmentConfigItem $item) => $item->delete());
 
                 $order = 0;
 
@@ -586,9 +586,7 @@ class Settings extends Component
                         '!=',
                         $config->id
                     )
-                    ->update([
-                        'is_active' => false,
-                    ]);
+                    ->get()->each(fn (AssessmentConfig $other) => $other->update(['is_active' => false]));
 
                 $config->update([
                     'is_active' => true,
