@@ -6,7 +6,7 @@
     <style>
         @page { 
             size: A4 portrait;
-            margin: 12mm 14mm 12mm 14mm; 
+            margin: 12mm 14mm 27mm 14mm;
         }
         * { box-sizing: border-box; }
         body {
@@ -193,6 +193,8 @@
     </style>
 </head>
 <body>
+@include('reports.pdf.partials.verification-footer')
+
 @php
     $signatoryService = app(\App\Services\DocumentSignatoryService::class);
 
