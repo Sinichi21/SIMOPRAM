@@ -40,9 +40,6 @@
         </thead>
         <tbody>
             @foreach ($classData['students'] as $student)
-                @php
-                    $studentRowIndex = $loop->index;
-                @endphp
                 <tr>
                     <td>{{ $loop->iteration }}</td>
                     <td class="col-name">{{ $student['name'] }}</td>
@@ -53,11 +50,9 @@
                             $meta = $routineSession['dateMeta'][$dateKey] ?? null;
                         @endphp
                         @if ($meta && $meta['isHoliday'])
-                            @if ($studentRowIndex === 0)
-                                <td class="holiday date-column" rowspan="{{ $classData['students']->count() }}">
-                                    {{ strtoupper($meta['holidayLabel'] ?: 'LIBUR') }}
-                                </td>
-                            @endif
+                            <td class="holiday date-column">
+                                {{ strtoupper($meta['holidayLabel'] ?: 'LIBUR') }}
+                            </td>
                         @else
                             <td class="status date-column">{{ ($manualStudentAttendance ?? false) ? '' : ($student['statuses'][$dateKey] ?? '-') }}</td>
                         @endif
