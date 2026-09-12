@@ -17,6 +17,7 @@ use App\Models\StudentEnrollment;
 use App\Models\User;
 use App\Services\LpjReportService;
 use App\Support\SchoolContext;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -77,7 +78,7 @@ test('LPJ download rejects invalid attendance modes', function () {
 
 test('LPJ manual attendance leaves cells blank and preserves holidays independently', function (bool $manualStudents, bool $manualCoaches) {
     $data = app(LpjReportService::class)->build($this->academicYear->id, $this->semester->id, 'monthly', 9);
-    $dates = collect([CarbonImmutable::parse('2026-09-04'), CarbonImmutable::parse('2026-09-11')]);
+    $dates = collect([CarbonImmutable::parse('2026-09-04'), CarbonImmutable::parse('2026-09-11'), CarbonImmutable::parse('2026-09-18')]);
     $data['manualStudentAttendance'] = $manualStudents;
     $data['manualCoachAttendance'] = $manualCoaches;
     $data['reportMonths'] = collect([[
@@ -90,7 +91,11 @@ test('LPJ manual attendance leaves cells blank and preserves holidays independen
             'documentation' => collect(),
             'attendanceClasses' => collect([[
                 'classroom' => (object) ['name' => 'V A'],
-                'students' => collect([['name' => 'Siswa Contoh', 'className' => 'V A', 'statuses' => ['2026-09-04' => 'I']]]),
+                'students' => collect(range(1, 60))->map(fn (int $number): array => [
+                    'name' => 'Siswa Contoh '.$number,
+                    'className' => 'V A',
+                    'statuses' => ['2026-09-04' => 'I', '2026-09-18' => 'H'],
+                ]),
             ]]),
         ]]),
     ]]);
@@ -100,6 +105,25 @@ test('LPJ manual attendance leaves cells blank and preserves holidays independen
     expect($html)->toContain('LIBUR SEKOLAH', '>LIBUR</td>')
         ->toContain('<td class="status date-column">'.($manualStudents ? '' : 'I').'</td>')
         ->toContain('<td class="status">'.($manualCoaches ? '' : 'H').'</td>');
+
+    $document = new DOMDocument;
+    @$document->loadHTML($html);
+    $xpath = new DOMXPath($document);
+    $studentRows = $xpath->query('//table[contains(@class, "attendance-table")]/tbody/tr[td[contains(text(), "Siswa Contoh")]]');
+
+    expect($studentRows)->toHaveCount(60);
+
+    foreach ($studentRows as $row) {
+        $cells = $xpath->query('./td', $row);
+        expect($cells)->toHaveCount(6);
+        expect(trim($cells->item(4)->textContent))->toBe('LIBUR SEKOLAH');
+        expect($cells->item(4)->hasAttribute('rowspan'))->toBeFalse();
+        expect(trim($cells->item(5)->textContent))->toBe($manualStudents ? '' : 'H');
+    }
+
+    $pdf = Pdf::loadHTML($html)->setPaper('a4');
+    expect($pdf->output())->toStartWith('%PDF-');
+    expect($pdf->getDomPDF()->getCanvas()->get_page_count())->toBeGreaterThan(3);
 })->with([[false, false], [true, false], [false, true], [true, true]]);
 
 test('monthly LPJ only contains activities from the selected month', function () {
