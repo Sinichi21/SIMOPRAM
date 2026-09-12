@@ -18,6 +18,10 @@ class Lpj extends Component
 
     public ?int $month = null;
 
+    public bool $manualStudentAttendance = false;
+
+    public bool $manualCoachAttendance = false;
+
     public function mount(): void
     {
         $year = AcademicYear::query()->where('is_active', true)->first();

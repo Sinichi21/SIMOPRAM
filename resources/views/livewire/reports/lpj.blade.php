@@ -35,10 +35,15 @@
                 </select>
             </div>
         @endif
+        <div class="space-y-4 md:col-span-2">
+            <flux:switch wire:model.live="manualStudentAttendance" label="Kehadiran siswa manual" description="Aktif: kolom kehadiran siswa dikosongkan untuk diisi/TTD langsung. Nonaktif: tercetak otomatis dari sistem." />
+            <flux:switch wire:model.live="manualCoachAttendance" label="Kehadiran pembina manual" description="Aktif: kolom kehadiran pembina dikosongkan untuk diisi/TTD langsung. Nonaktif: tercetak otomatis dari sistem." />
+            <flux:text>Penanda libur tetap tercetak pada kedua mode.</flux:text>
+        </div>
         <div class="flex justify-end md:col-span-2">
             @can('reports.export')
                 @if ($academicYearId && $semesterId && ($periodType === 'semester' || $month))
-                    <a href="{{ route('reports.lpj.pdf', array_filter(['academic_year_id' => $academicYearId, 'semester_id' => $semesterId, 'period_type' => $periodType, 'month' => $periodType === 'monthly' ? $month : null])) }}" target="_blank"
+                    <a href="{{ route('reports.lpj.pdf', array_filter(['academic_year_id' => $academicYearId, 'semester_id' => $semesterId, 'period_type' => $periodType, 'month' => $periodType === 'monthly' ? $month : null, 'manual_student_attendance' => (int) $manualStudentAttendance, 'manual_coach_attendance' => (int) $manualCoachAttendance], fn ($value) => $value !== null)) }}" target="_blank"
                        class="inline-flex items-center rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900">Download LPJ PDF</a>
                 @else
                     <span class="text-sm text-zinc-500">Lengkapi periode untuk mengunduh LPJ.</span>

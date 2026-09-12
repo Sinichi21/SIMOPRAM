@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\Reports\Lpj;
 use App\Models\AcademicYear;
 use App\Models\Activity;
 use App\Models\Attendance;
@@ -18,6 +19,7 @@ use App\Services\LpjReportService;
 use App\Support\SchoolContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 beforeEach(function () {
@@ -32,6 +34,73 @@ beforeEach(function () {
         'semester_number' => 1, 'start_date' => '2026-07-01', 'end_date' => '2026-12-31', 'is_active' => true,
     ]);
 });
+
+test('LPJ page renders its Livewire configuration and academic years', function () {
+    $this->actingAs($this->user)
+        ->withSession(['active_school_id' => $this->school->id])
+        ->get(route('reports.lpj'))
+        ->assertSeeLivewire(Lpj::class)
+        ->assertSee('2026/2027');
+});
+
+test('LPJ attendance toggles independently update the download options', function () {
+    Livewire::actingAs($this->user)
+        ->test(Lpj::class)
+        ->set('academicYearId', $this->academicYear->id)
+        ->set('semesterId', $this->semester->id)
+        ->set('month', 9)
+        ->assertSee('manual_student_attendance=0', false)
+        ->assertSee('manual_coach_attendance=0', false)
+        ->set('manualStudentAttendance', true)
+        ->assertSee('manual_student_attendance=1', false)
+        ->assertSee('manual_coach_attendance=0', false)
+        ->set('manualStudentAttendance', false)
+        ->set('manualCoachAttendance', true)
+        ->assertSee('manual_student_attendance=0', false)
+        ->assertSee('manual_coach_attendance=1', false);
+});
+
+test('LPJ download rejects invalid attendance modes', function () {
+    $this->actingAs($this->user)
+        ->withSession(['active_school_id' => $this->school->id])
+        ->getJson(route('reports.lpj.pdf', [
+            'academic_year_id' => $this->academicYear->id,
+            'semester_id' => $this->semester->id,
+            'period_type' => 'monthly',
+            'month' => 9,
+            'manual_student_attendance' => 'invalid',
+            'manual_coach_attendance' => 'invalid',
+        ]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['manual_student_attendance', 'manual_coach_attendance']);
+});
+
+test('LPJ manual attendance leaves cells blank and preserves holidays independently', function (bool $manualStudents, bool $manualCoaches) {
+    $data = app(LpjReportService::class)->build($this->academicYear->id, $this->semester->id, 'monthly', 9);
+    $dates = collect([CarbonImmutable::parse('2026-09-04'), CarbonImmutable::parse('2026-09-11')]);
+    $data['manualStudentAttendance'] = $manualStudents;
+    $data['manualCoachAttendance'] = $manualCoaches;
+    $data['reportMonths'] = collect([[
+        'label' => 'September 2026', 'start' => $dates->first(), 'end' => $dates->last(),
+        'dates' => $dates, 'dateRows' => collect(), 'documentation' => collect(),
+        'coachRows' => collect([['coach' => (object) ['name' => 'Pembina Contoh'], 'statuses' => ['2026-09-04' => 'H', '2026-09-11' => 'LIBUR']]]),
+        'routineSessions' => collect([[
+            'label' => 'Sesi 1', 'startTime' => null, 'endTime' => null, 'dates' => $dates,
+            'dateMeta' => ['2026-09-11' => ['isHoliday' => true, 'holidayLabel' => 'LIBUR SEKOLAH']],
+            'documentation' => collect(),
+            'attendanceClasses' => collect([[
+                'classroom' => (object) ['name' => 'V A'],
+                'students' => collect([['name' => 'Siswa Contoh', 'className' => 'V A', 'statuses' => ['2026-09-04' => 'I']]]),
+            ]]),
+        ]]),
+    ]]);
+
+    $html = view('reports.pdf.lpj', $data)->render();
+
+    expect($html)->toContain('LIBUR SEKOLAH', '>LIBUR</td>')
+        ->toContain('<td class="status date-column">'.($manualStudents ? '' : 'I').'</td>')
+        ->toContain('<td class="status">'.($manualCoaches ? '' : 'H').'</td>');
+})->with([[false, false], [true, false], [false, true], [true, true]]);
 
 test('monthly LPJ only contains activities from the selected month', function () {
     foreach ([['Latihan Agustus', '2026-08-10'], ['Latihan September', '2026-09-10']] as [$title, $date]) {
