@@ -86,6 +86,7 @@ class LpjReportService
             'academicYear' => $academicYear,
             'semester' => $semester,
             'documentSetting' => $documentSetting,
+            'responsiblePhone' => $this->responsiblePhone($documentSetting),
             'scoutGroup' => $scoutGroup,
             'periodType' => $periodType,
             'month' => $month,
@@ -103,6 +104,31 @@ class LpjReportService
                 $activities
             ),
         ];
+    }
+
+    private function responsiblePhone(?SchoolDocumentSetting $setting): ?string
+    {
+        if (! $setting) {
+            return null;
+        }
+
+        $coaches = Coach::query()->where('school_id', $setting->school_id)->where('is_active', true);
+
+        if ($setting->responsible_signatory_user_id) {
+            return $coaches->where('user_id', $setting->responsible_signatory_user_id)->value('phone');
+        }
+
+        $manual = $setting->manual_signatories['responsible'] ?? null;
+
+        if (! empty($manual['coach_id'])) {
+            return $coaches->whereKey($manual['coach_id'])->whereNull('user_id')->value('phone');
+        }
+
+        if (filled($manual['name'] ?? null)) {
+            return null;
+        }
+
+        return $setting->responsibleCoach?->phone;
     }
 
     /** @return array{CarbonImmutable, CarbonImmutable} */
