@@ -59,7 +59,7 @@
                                 </td>
                             @endif
                         @else
-                            <td class="status date-column">{{ $student['statuses'][$dateKey] ?? '-' }}</td>
+                            <td class="status date-column">{{ ($manualStudentAttendance ?? false) ? '' : ($student['statuses'][$dateKey] ?? '-') }}</td>
                         @endif
                     @endforeach
                 </tr>

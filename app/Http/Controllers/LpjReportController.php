@@ -23,6 +23,8 @@ class LpjReportController extends Controller
             'semester_id' => ['required', 'integer'],
             'period_type' => ['required', 'in:monthly,semester'],
             'month' => ['nullable', 'required_if:period_type,monthly', 'integer', 'between:1,12'],
+            'manual_student_attendance' => ['sometimes', 'boolean'],
+            'manual_coach_attendance' => ['sometimes', 'boolean'],
         ]);
 
         $data = $reportService->build(
@@ -31,6 +33,9 @@ class LpjReportController extends Controller
             $validated['period_type'],
             isset($validated['month']) ? (int) $validated['month'] : null
         );
+
+        $data['manualStudentAttendance'] = (bool) ($validated['manual_student_attendance'] ?? false);
+        $data['manualCoachAttendance'] = (bool) ($validated['manual_coach_attendance'] ?? false);
 
         $periodLabel = $validated['period_type'] === 'monthly'
             ? $data['periodStart']->locale('id')->translatedFormat('F Y')

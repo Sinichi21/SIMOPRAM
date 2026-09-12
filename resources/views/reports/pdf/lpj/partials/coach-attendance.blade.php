@@ -31,7 +31,7 @@
                     <td class="col-name">{{ $row['coach']->name }}</td>
                     @foreach ($reportMonth['dates'] as $date)
                         @php($status = $row['statuses'][$date->format('Y-m-d')] ?? '-')
-                        <td class="{{ $status === 'LIBUR' ? 'holiday' : 'status' }}">{{ $status === 'LIBUR' ? 'LIBUR' : $status }}</td>
+                        <td class="{{ $status === 'LIBUR' ? 'holiday' : 'status' }}">{{ $status === 'LIBUR' ? 'LIBUR' : (($manualCoachAttendance ?? false) ? '' : $status) }}</td>
                     @endforeach
                     <td>-</td>
                 </tr>
@@ -41,7 +41,11 @@
         </tbody>
     </table>
 
-    <div class="attendance-note">* H pada daftar pembina saat ini berasal dari penugasan pembina pada kegiatan SIMOPRAM.</div>
+    @if ($manualCoachAttendance ?? false)
+        <div class="attendance-note">Kehadiran diisi/ditandatangani langsung oleh pembina.</div>
+    @else
+        <div class="attendance-note">* H pada daftar pembina saat ini berasal dari penugasan pembina pada kegiatan SIMOPRAM.</div>
+    @endif
 
     <div class="signature-block">
         <table class="signature-table">
