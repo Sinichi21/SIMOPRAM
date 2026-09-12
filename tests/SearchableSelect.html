@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <title>Searchable select browser tests</title>
+    <link rel="stylesheet" href="../resources/css/searchable-select.css">
+</head>
+<body>
+    <form id="form">
+        <label for="school">Sekolah</label>
+        <select id="school" name="school_id" required onchange="window.changeCount++">
+            <option value="">Pilih sekolah</option>
+            <option value="1">SD Harapan</option>
+            <option value="2">SMP Élang</option>
+            <option value="3" disabled>Sekolah Nonaktif</option>
+            <option value="4" hidden>Tersembunyi</option>
+            <optgroup label="Bali"><option value="5">SMA Denpasar</option></optgroup>
+            <optgroup label="Dilarang" disabled><option value="6">Sekolah Dilarang</option></optgroup>
+        </select>
+        <select id="multiple" multiple name="students[]"><option value="a" selected>Ayu</option><option value="b">Budi</option></select>
+        <select id="disabled" disabled><option>Nonaktif</option></select>
+        <fieldset disabled><select id="fieldset"><option>Nonaktif</option></select></fieldset>
+        <select id="native" data-native-select><option>Native</option></select>
+    </form>
+    <dialog id="dialog"><select id="modal-select"><option value="m">Modal</option></select></dialog>
+    <pre id="results">RUNNING</pre>
+    <script>
+        window.changeCount = 0;
+        window.testHooks = {};
+        window.Livewire = { hook: (name, callback) => window.testHooks[name] = callback };
+    </script>
+    <script src="../resources/js/searchable-select.js"></script>
+    <script>
+        (async () => {
+            const results = [];
+            const assert = (condition, description) => { if (!condition) throw new Error(description); results.push(`PASS ${description}`); };
+            const popup = () => document.querySelector('[data-select-search-popup]');
+            const open = (select) => select.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+            const search = (text) => { const input = popup().querySelector('input'); input.value = text; input.dispatchEvent(new Event('input', { bubbles: true })); };
+            const key = (name) => document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: name, bubbles: true, cancelable: true }));
+            const tick = () => new Promise((resolve) => setTimeout(resolve, 20));
+            try {
+                const select = document.getElementById('school');
+                open(select);
+                assert(popup() && document.activeElement.type === 'search', 'select opens with search focused');
+                assert(document.activeElement.getAttribute('aria-label') === 'Cari Sekolah', 'search has the source field label');
+                assert(!popup().textContent.includes('Tersembunyi'), 'hidden options stay hidden');
+                search('elang');
+                assert(popup().querySelectorAll('[role=option]').length === 1, 'search ignores case and accents');
+                assert(select.value === '' && window.changeCount === 0, 'searching alone does not change or submit the field');
+                key('Enter');
+                assert(select.value === '2' && window.changeCount === 1 && !popup(), 'Enter commits the value and fires the existing onchange exactly once');
+                assert(new FormData(document.getElementById('form')).get('school_id') === '2', 'normal form submission retains the select value');
+                open(select);
+                search('does not exist');
+                assert(popup().textContent.includes('Tidak ada pilihan yang cocok.'), 'empty results have useful feedback');
+                key('Enter');
+                assert(select.value === '2' && window.changeCount === 1, 'Enter on empty results preserves the selection');
+                key('Escape');
+                assert(!popup() && document.activeElement === select, 'Escape restores focus without changing the value');
+                open(select);
+                search('Bali');
+                assert(popup().querySelectorAll('[role=option]').length === 1, 'option group labels can be searched');
+                search('Dilarang');
+                assert(popup().querySelector('[role=option]').disabled, 'disabled optgroups stay disabled');
+                key('Enter');
+                assert(select.value === '2', 'disabled options cannot be selected using the keyboard');
+                key('Escape');
+                const multi = document.getElementById('multiple');
+                open(multi);
+                search('Budi');
+                key('Enter');
+                assert(Array.from(multi.selectedOptions).map(option => option.value).join(',') === 'a,b' && popup(), 'multi-select adds choices and keeps search open');
+                key('Enter');
+                assert(multi.value === 'a' && multi.selectedOptions.length === 1, 'multi-select can remove a choice');
+                key('Escape');
+                for (const id of ['disabled', 'fieldset', 'native']) { open(document.getElementById(id)); assert(!popup(), `${id} select keeps native behavior`); }
+                const dynamic = document.createElement('select');
+                dynamic.id = 'dynamic';
+                dynamic.append(new Option('Lama', 'old'));
+                document.body.append(dynamic);
+                open(dynamic);
+                dynamic.replaceChildren(new Option('Baru', 'new'));
+                await tick();
+                assert(popup().textContent.includes('Baru') && !popup().textContent.includes('Lama'), 'server option replacements refresh the open search');
+                dynamic.append(new Option('<img src=x onerror=alert(1)>', 'safe'));
+                await tick();
+                search('<img');
+                assert(!popup().querySelector('img') && popup().textContent.includes('<img'), 'option labels are rendered as text');
+                dynamic.disabled = true;
+                await tick();
+                assert(!popup(), 'disabling the source closes the popup');
+                dynamic.disabled = false;
+                open(dynamic);
+                dynamic.remove();
+                await tick();
+                assert(!popup(), 'removing a Livewire select cleans up its popup');
+                open(select);
+                document.dispatchEvent(new Event('livewire:navigating'));
+                assert(!popup(), 'navigation cleans up the popup');
+                open(select);
+                select.value = '1';
+                window.testHooks.morphed();
+                assert(popup().querySelector('[aria-selected=true]').textContent === 'SD Harapan', 'Livewire property changes refresh selected state');
+                key('Escape');
+                const dialog = document.getElementById('dialog');
+                dialog.showModal();
+                open(document.getElementById('modal-select'));
+                assert(dialog.contains(popup()) && document.activeElement.type === 'search', 'search remains focusable inside modal dialogs');
+                key('Escape');
+                assert(dialog.open, 'Escape closes only the select popup');
+                dialog.close();
+                const many = document.createElement('select');
+                for (let i = 0; i < 1000; i++) many.append(new Option(`Sekolah ${i}`, String(i)));
+                document.body.append(many);
+                open(many);
+                search('Sekolah 999');
+                key('Enter');
+                assert(many.value === '999', 'search reaches options beyond the first page in a large list');
+                document.getElementById('form').reset();
+                assert(select.value === '', 'native form reset still works');
+                document.getElementById('results').textContent = `${results.join('\n')}\nALL PASSED (${results.length})`;
+            } catch (error) {
+                document.getElementById('results').textContent = `${results.join('\n')}\nFAIL ${error.message}\n${error.stack}`;
+            }
+        })();
+    </script>
+</body>
+</html>
