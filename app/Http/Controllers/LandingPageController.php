@@ -3,11 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\Activity;
+use App\Models\ActivityAssessment;
+use App\Models\Announcement;
 use App\Models\LandingPageSetting;
 use App\Models\School;
+use App\Services\PublicAssessmentService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class LandingPageController extends Controller
 {
@@ -29,8 +33,10 @@ class LandingPageController extends Controller
 
         $content = LandingPageSetting::contentForPage();
         $heroImage = LandingPageSetting::where('key', 'global')->value('hero_image');
+        $announcements = $this->publicAnnouncements(Announcement::query()->whereNull('school_id'))->latest('published_at')->limit(6)->get();
+        $activities = $this->publicActivities(Activity::query()->whereNull('school_id'))->latest('start_at')->limit(6)->get();
 
-        return view('landing.index', compact('schools', 'search', 'content', 'heroImage'));
+        return view('landing.index', compact('schools', 'search', 'content', 'heroImage', 'announcements', 'activities'));
     }
 
     public function school(School $school): View
@@ -56,7 +62,7 @@ class LandingPageController extends Controller
         return view('landing.detail', [
             'school' => $school, 'title' => $announcement->title,
             'category' => 'Pengumuman', 'body' => $announcement->body,
-            'date' => $announcement->published_at, 'activity' => null, 'journal' => null,
+            'date' => $announcement->published_at, 'activity' => null, 'journal' => null, 'announcement' => $announcement->load('creator:id,name'),
         ]);
     }
 
@@ -68,6 +74,8 @@ class LandingPageController extends Controller
             'school' => $school, 'title' => $activity->title,
             'category' => 'Kegiatan', 'body' => $activity->description,
             'date' => $activity->start_at, 'activity' => $activity, 'journal' => null,
+            'results' => $this->results($activity),
+            ...$this->activityHierarchy($activity),
         ]);
     }
 
@@ -91,14 +99,77 @@ class LandingPageController extends Controller
     {
         abort_unless($school->is_active, 404);
 
-        return $this->publicActivities($school->activities()->getQuery())->findOrFail($activityId);
+        return $this->publicActivities($school->activities()->getQuery())
+            ->with(['scoutLevels', 'coaches' => fn ($query) => $query->withoutGlobalScope('school')->where('coaches.school_id', $school->id)])
+            ->findOrFail($activityId);
+    }
+
+    public function globalAnnouncement(int $announcementId): View
+    {
+        $announcement = $this->publicAnnouncements(Announcement::query()->whereNull('school_id'))->with('creator:id,name')->findOrFail($announcementId);
+
+        return view('landing.detail', ['school' => null, 'title' => $announcement->title, 'category' => 'Pengumuman',
+            'body' => $announcement->body, 'date' => $announcement->published_at, 'announcement' => $announcement, 'activity' => null, 'journal' => null]);
+    }
+
+    public function globalActivity(int $activityId): View
+    {
+        $activity = $this->publicActivities(Activity::query()->whereNull('school_id'))->with('scoutLevels', 'coaches')->findOrFail($activityId);
+
+        return view('landing.detail', ['school' => null, 'title' => $activity->title, 'category' => 'Kegiatan',
+            'body' => $activity->description, 'date' => $activity->start_at, 'activity' => $activity, 'journal' => null,
+            'results' => $this->results($activity), ...$this->activityHierarchy($activity)]);
+    }
+
+    public function schoolResults(School $school, int $activityId, int $assessmentId): View
+    {
+        return $this->resultsView($this->findPublicActivity($school, $activityId), $assessmentId, $school);
+    }
+
+    public function globalResults(int $activityId, int $assessmentId): View
+    {
+        $activity = $this->publicActivities(Activity::query()->whereNull('school_id'))->findOrFail($activityId);
+
+        return $this->resultsView($activity, $assessmentId);
+    }
+
+    private function resultsView(Activity $activity, int $assessmentId, ?School $school = null): View
+    {
+        $service = app(PublicAssessmentService::class);
+        $assessment = $service->publishedFor($activity)->firstWhere('id', $assessmentId);
+        abort_unless($assessment, 404);
+        $rankings = $service->rankings($assessment);
+
+        return view('landing.results', compact('activity', 'assessment', 'rankings', 'school'));
+    }
+
+    /** @return Collection<int, array{assessment: ActivityAssessment, rankings: Collection}> */
+    private function results(Activity $activity): Collection
+    {
+        $service = app(PublicAssessmentService::class);
+
+        return $service->publishedFor($activity)->map(fn ($assessment): array => [
+            'assessment' => $assessment, 'rankings' => $service->rankings($assessment)->whereNotNull('score')->take(3),
+        ]);
     }
 
     private function publicActivities(Builder $query): Builder
     {
         return $query->withoutGlobalScope('school')->where('is_public', true)
+            ->where('approval_status', 'approved')
             ->whereIn('status', ['published', 'ongoing', 'completed'])
             ->where(fn (Builder $query) => $query->whereNull('published_at')->orWhere('published_at', '<=', now()));
+    }
+
+    /** @return array{parentActivity: ?Activity, subActivities: Collection} */
+    private function activityHierarchy(Activity $activity): array
+    {
+        $query = $this->publicActivities(Activity::query()->where('school_id', $activity->school_id));
+
+        return [
+            'parentActivity' => $activity->parent_activity_id ? (clone $query)->find($activity->parent_activity_id) : null,
+            'subActivities' => (clone $query)->where('parent_activity_id', $activity->id)->orderBy('start_at')->orderBy('title')->get(),
+        ];
     }
 
     private function publicAnnouncements(Builder $query): Builder

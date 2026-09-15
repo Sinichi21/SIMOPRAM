@@ -15,6 +15,8 @@ class Activity extends Model
 {
     use BelongsToSchool, HasFactory, SoftDeletes;
 
+    protected $attributes = ['approval_status' => 'approved', 'registration_open' => false];
+
     protected $fillable = [
         'academic_year_id',
         'semester_id',
@@ -31,15 +33,24 @@ class Activity extends Model
         'status',
         'is_public',
         'published_at',
+        'registration_open',
     ];
 
     protected function casts(): array
     {
         return [
             'start_at' => 'datetime',
+            'parent_activity_id' => 'integer',
             'end_at' => 'datetime',
             'published_at' => 'datetime',
             'is_public' => 'boolean',
+            'registration_open' => 'boolean',
+            'registration_fields' => 'array',
+            'registration_categories' => 'array',
+            'attachments' => 'array',
+            'team_min' => 'integer',
+            'team_max' => 'integer',
+            'reviewed_at' => 'datetime',
             'routine_session_no' => 'integer',
             'latitude' => 'decimal:7',
             'longitude' => 'decimal:7',
@@ -49,6 +60,36 @@ class Activity extends Model
     public function school(): BelongsTo
     {
         return $this->belongsTo(School::class);
+    }
+
+    public function organizerSchool(): BelongsTo
+    {
+        return $this->belongsTo(School::class, 'organizer_school_id');
+    }
+
+    public function parentActivity(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_activity_id');
+    }
+
+    public function subActivities(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_activity_id');
+    }
+
+    public function delegates(): HasMany
+    {
+        return $this->hasMany(ActivityDelegate::class);
+    }
+
+    public function registrations(): HasMany
+    {
+        return $this->hasMany(ActivityRegistration::class);
+    }
+
+    public function entries(): HasMany
+    {
+        return $this->hasMany(ActivityEntry::class);
     }
 
     public function academicYear(): BelongsTo

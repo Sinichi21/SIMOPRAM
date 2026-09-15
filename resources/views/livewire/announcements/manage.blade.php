@@ -339,6 +339,7 @@
 
         </div>
 
+        @include('partials.content-media-fields')
     </form>
 
 

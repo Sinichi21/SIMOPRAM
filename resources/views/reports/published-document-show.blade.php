@@ -17,7 +17,7 @@
                     <a href="{{ $publicUrl }}" target="_blank" rel="noopener noreferrer" class="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium dark:border-zinc-700">Buka Verifikasi Publik</a>
                     @if (! $verification->isRevoked() && $verification->hasArchivedPdf())
                         @can('reports.export')
-                            <a href="{{ route('reports.published-documents.download', ['code' => $verification->code]) }}" class="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-zinc-900">Download Ulang PDF</a>
+                            <a href="{{ route('reports.published-documents.download', ['code' => $verification->code]) }}" class="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-zinc-900" target="_blank" rel="noopener noreferrer">Lihat PDF</a>
                         @endcan
                     @endif
                 </div>

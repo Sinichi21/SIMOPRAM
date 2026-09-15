@@ -13,6 +13,14 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class ActivityFactory extends Factory
 {
+    public function publicRegistration(): static
+    {
+        return $this->state(fn (): array => ['school_id' => null, 'academic_year_id' => null,
+            'activity_type' => 'competition', 'routine_session_no' => null, 'status' => 'published', 'is_public' => true,
+            'approval_status' => 'approved', 'registration_open' => true, 'registration_categories' => ['individual'],
+            'start_at' => now()->subHour(), 'end_at' => now()->addDay()]);
+    }
+
     /**
      * Define the model's default state.
      *

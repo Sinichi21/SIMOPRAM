@@ -1,15 +1,20 @@
 <?php
 
+use App\Http\Controllers\ActivityAttendancePrintController;
 use App\Http\Controllers\ActivityJudgeController;
 use App\Http\Controllers\ActivityLogExportController;
+use App\Http\Controllers\ActivityParticipantPortalController;
+use App\Http\Controllers\ActivityRegistrationController;
 use App\Http\Controllers\ComplaintController;
 use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\LpjReportController;
+use App\Http\Controllers\PublicContentMediaController;
 use App\Http\Controllers\PublishedDocumentController;
 use App\Http\Controllers\ReportPdfController;
 use App\Http\Controllers\ReportVerificationController;
 use App\Http\Controllers\SchoolRegistrationController;
 use App\Http\Controllers\SchoolSwitchController;
+use App\Http\Middleware\SetGlobalContentContext;
 use App\Livewire\Auth\Register;
 use App\Livewire\Settings\LandingContent;
 use Illuminate\Support\Facades\Route;
@@ -21,6 +26,36 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', [LandingPageController::class, 'index'])->name('home');
+Route::get('/informasi/lampiran/{kind}/{id}/{index}', PublicContentMediaController::class)->whereIn('kind', ['activities', 'announcements'])->whereNumber(['id', 'index'])->name('public.content.attachment');
+Route::get('/informasi/kegiatan/{activityId}/peserta', [ActivityRegistrationController::class, 'participants'])->whereNumber('activityId')->name('public.activities.participants');
+Route::get('/informasi/kegiatan/{activityId}/daftar', [ActivityRegistrationController::class, 'create'])->whereNumber('activityId')->name('public.activities.register');
+Route::post('/informasi/kegiatan/{activityId}/daftar', [ActivityRegistrationController::class, 'store'])->whereNumber('activityId')->middleware('throttle:5,1')->name('public.activities.register.store');
+Route::get('/akses-kegiatan/{token}', [ActivityParticipantPortalController::class, 'open'])->where('token', '[a-zA-Z0-9]{64}')->middleware('throttle:30,1')->name('activity-access.open');
+Route::post('/akses-kegiatan/{token}', [ActivityParticipantPortalController::class, 'enter'])->where('token', '[a-zA-Z0-9]{64}')->middleware('throttle:10,1')->name('activity-access.enter');
+Route::get('/portal-kegiatan/{registrationId}', [ActivityParticipantPortalController::class, 'portal'])->whereNumber('registrationId')->name('activity-access.portal');
+Route::post('/portal-kegiatan/{registrationId}/hadir', [ActivityParticipantPortalController::class, 'checkIn'])->whereNumber('registrationId')->middleware('throttle:10,1')->name('activity-access.check-in');
+Route::post('/portal-kegiatan/keluar', [ActivityParticipantPortalController::class, 'leave'])->name('activity-access.leave');
+Route::get('/kegiatan-umum-saya', [ActivityParticipantPortalController::class, 'mine'])->middleware('auth')->name('activity-access.mine');
+Route::get('/informasi/pengumuman/{announcementId}', [LandingPageController::class, 'globalAnnouncement'])->whereNumber('announcementId')->name('public.announcements.show');
+Route::get('/informasi/kegiatan/{activityId}', [LandingPageController::class, 'globalActivity'])->whereNumber('activityId')->name('public.activities.show');
+Route::get('/informasi/kegiatan/{activityId}/hasil/{assessmentId}', [LandingPageController::class, 'globalResults'])->whereNumber(['activityId', 'assessmentId'])->name('public.activities.results');
+Route::get('/s/{school:slug}/kegiatan/{activityId}/hasil/{assessmentId}', [LandingPageController::class, 'schoolResults'])->whereNumber(['activityId', 'assessmentId'])->name('schools.activities.results');
+
+Route::middleware(['auth', SetGlobalContentContext::class])->group(function (): void {
+    Route::view('/admin/kegiatan-umum/{activityId}/absensi', 'activities.global-attendance')->whereNumber('activityId')->name('admin.activity-attendance');
+    Route::get('/admin/kegiatan-umum/{activityId}/absensi/cetak', [ActivityAttendancePrintController::class, 'global'])->whereNumber('activityId')->name('admin.activity-attendance.print');
+    Route::view('/admin/kegiatan-umum/{activityId}/peserta', 'activities.global-participants')->whereNumber('activityId')->name('admin.activity-participants');
+    Route::view('/admin/kegiatan-umum/{activityId}/formulir', 'activities.registration-settings')->whereNumber('activityId')->name('admin.activity-registration-settings');
+    Route::view('/admin/kegiatan-umum/{activityId}/delegasi', 'activities.global-delegates')->whereNumber('activityId')->name('admin.activity-delegates');
+    Route::get('/admin/kegiatan-umum/{activityId}/peserta/tambah', [ActivityRegistrationController::class, 'adminCreate'])->whereNumber('activityId')->name('admin.activity-participants.create');
+    Route::post('/admin/kegiatan-umum/{activityId}/peserta/tambah', [ActivityRegistrationController::class, 'adminStore'])->whereNumber('activityId')->name('admin.activity-participants.store');
+    Route::get('/admin/kegiatan-umum/{activityId}/peserta/{entryId}/edit', [ActivityRegistrationController::class, 'edit'])->whereNumber(['activityId', 'entryId'])->name('admin.activity-participants.edit');
+    Route::post('/admin/kegiatan-umum/{activityId}/peserta/{entryId}/edit', [ActivityRegistrationController::class, 'adminStore'])->whereNumber(['activityId', 'entryId'])->name('admin.activity-participants.update');
+    Route::get('/admin/kegiatan-umum/{activityId}/peserta/{entryId}/lampiran/{index}', [ActivityRegistrationController::class, 'attachment'])->whereNumber(['activityId', 'entryId', 'index'])->name('admin.activity-participants.attachment');
+    Route::view('/admin/kegiatan-umum', 'admin.public-activities')->name('admin.public-activities');
+    Route::view('/admin/pengumuman-umum', 'admin.public-announcements')->name('admin.public-announcements');
+    Route::view('/admin/penilaian-umum', 'assessments.global-manage')->name('admin.public-assessments');
+});
 Route::livewire('/settings/landing-content', LandingContent::class)
     ->middleware('auth')->name('settings.landing-content');
 Route::livewire('/settings/schools/{school:slug}/landing-content', LandingContent::class)
@@ -270,6 +305,9 @@ Route::middleware([
             ->name(
                 'attendances.manage'
             );
+
+        Route::get('/kegiatan/{activityId}/absensi/{sessionId}/cetak', [ActivityAttendancePrintController::class, 'school'])
+            ->whereNumber(['activityId', 'sessionId'])->middleware('can:attendance_sessions.view')->name('attendances.print');
 
         Route::get(
             '/master/siswa/{studentId}/akun',

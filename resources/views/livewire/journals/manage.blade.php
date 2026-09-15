@@ -548,7 +548,7 @@
                                 }}"
                                 target="_blank"
                                 class="font-medium underline"
-                            >
+                             rel="noopener noreferrer">
                                 {{ $attachment->original_name }}
                             </a>
 

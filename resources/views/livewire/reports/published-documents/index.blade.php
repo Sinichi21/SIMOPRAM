@@ -111,7 +111,7 @@
                                     <a href="{{ route('reports.published-documents.show', ['code' => $document->code]) }}" wire:navigate class="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium dark:border-zinc-700">Detail</a>
                                     @if (! $document->isRevoked() && $document->hasArchivedPdf())
                                         @can('reports.export')
-                                            <a href="{{ route('reports.published-documents.download', ['code' => $document->code]) }}" class="rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white dark:bg-white dark:text-zinc-900">Download PDF</a>
+                                            <a href="{{ route('reports.published-documents.download', ['code' => $document->code]) }}" class="rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white dark:bg-white dark:text-zinc-900" target="_blank" rel="noopener noreferrer">Lihat PDF</a>
                                         @endcan
                                     @endif
                                     <a href="{{ route('reports.verify', ['code' => $document->code]) }}" target="_blank" rel="noopener noreferrer" class="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium dark:border-zinc-700">Verifikasi</a>

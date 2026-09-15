@@ -43,6 +43,13 @@
                 }}
             </h2>
 
+            <div class="mb-5">
+                <flux:select wire:model="parentActivityId" label="Agenda induk (opsional)">
+                    <option value="">Agenda utama / berdiri sendiri</option>
+                    @foreach($parentActivities as $parent)<option value="{{ $parent->id }}">{{ $parent->title }}</option>@endforeach
+                </flux:select>
+                <flux:text>Pilih agenda utama untuk mengelompokkan kegiatan ini sebagai subagenda.</flux:text>
+            </div>
 
             <div class="grid gap-4 md:grid-cols-2">
 
@@ -411,6 +418,7 @@
 
             </div>
 
+            @include('partials.content-media-fields', ['withBanner' => true])
         </form>
 
     @endcanany
@@ -507,6 +515,7 @@
                             <td class="p-3">
                                 <div class="font-medium">
                                     {{ $activity->title }}
+                                    @if($activity->parent_activity_id)<p class="text-xs text-zinc-500">Subagenda: {{ $parentActivities->firstWhere('id', $activity->parent_activity_id)?->title ?? 'Agenda induk' }}</p>@endif
                                 </div>
 
                                 <div class="text-xs text-zinc-500">

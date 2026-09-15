@@ -4,7 +4,7 @@
             <flux:heading size="xl">Log Aktivitas</flux:heading>
             <flux:text>Jejak audit, keamanan, dan kegagalan sistem. Semua waktu ditampilkan dalam WITA.</flux:text>
         </div>
-        <flux:button :href="route('activity-logs.export', $filters)" variant="primary">Ekspor PDF</flux:button>
+        <flux:button :href="route('activity-logs.export', $filters)" variant="primary" target="_blank" rel="noopener noreferrer">Ekspor PDF</flux:button>
     </div>
     <flux:text>Ekspor mengikuti seluruh filter di bawah, maksimal {{ config('activity-log.pdf_limit') }} log per PDF. Data rahasia dan isi dokumen disembunyikan.</flux:text>
     @if ($errors->any())

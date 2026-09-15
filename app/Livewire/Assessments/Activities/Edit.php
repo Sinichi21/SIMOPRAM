@@ -6,6 +6,8 @@ use App\Models\ActivityAssessment;
 use App\Models\ActivityAssessmentCriterion;
 use App\Models\AssessmentFactor;
 use App\Services\ActivityAssessmentService;
+use App\Services\PublicAssessmentService;
+use App\Support\SchoolContext;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
@@ -37,6 +39,16 @@ class Edit extends Component
     public float $criterionMaxScore = 100;
 
     public float $criterionWeight = 0;
+
+    public function publishResults(bool $published, PublicAssessmentService $service): void
+    {
+        $schoolId = app(SchoolContext::class)->id();
+        abort_unless($schoolId, 409);
+        $assessment = ActivityAssessment::query()->where('school_id', $schoolId)->findOrFail($this->assessmentId);
+        $service->setPublished($assessment, $published);
+        $this->resetValidation('publication');
+        session()->flash('status', $published ? 'Hasil penilaian ditampilkan pada detail kegiatan publik.' : 'Hasil penilaian disembunyikan dari publik.');
+    }
 
     public function mount(
         int $assessmentId

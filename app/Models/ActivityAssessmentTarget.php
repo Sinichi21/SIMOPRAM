@@ -13,6 +13,7 @@ class ActivityAssessmentTarget extends Model
 
     protected $fillable = [
         'activity_assessment_id',
+        'participant_name',
         'student_id',
         'scout_unit_id',
         'total_score',

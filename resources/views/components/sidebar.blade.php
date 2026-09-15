@@ -81,6 +81,14 @@
         Diletakkan di atas seluruh menu yang bergantung pada sekolah.
         ================================================== --}}
 
+        @if ($currentUser && app(\App\Services\GlobalActivityAccess::class)->canEnter($currentUser))
+            <flux:sidebar.group heading="Informasi Umum" class="grid">
+                @if($currentUser->isSuperAdmin())<flux:sidebar.item :href="route('admin.public-announcements')" :current="request()->routeIs('admin.public-announcements')" wire:navigate>Pengumuman Umum</flux:sidebar.item>@endif
+                <flux:sidebar.item :href="route('admin.public-activities')" :current="request()->routeIs('admin.public-activities')" wire:navigate>Kegiatan Umum</flux:sidebar.item>
+                <flux:sidebar.item :href="route('admin.public-assessments')" :current="request()->routeIs('admin.public-assessments')" wire:navigate>Penilaian Umum</flux:sidebar.item>
+            </flux:sidebar.group>
+        @endif
+        <flux:sidebar.item :href="route('activity-access.mine')" :current="request()->routeIs('activity-access.mine')">Kegiatan Umum Saya</flux:sidebar.item>
         <form
             method="POST"
             action="{{ route('school.switch') }}"

@@ -106,7 +106,7 @@
                         hover:bg-zinc-800
                         dark:bg-white
                         dark:text-zinc-900"
-                >
+                 rel="noopener noreferrer">
                     Export PDF
                 </a>
 

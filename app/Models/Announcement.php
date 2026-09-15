@@ -29,6 +29,7 @@ class Announcement extends Model
     {
         return [
             'is_public' => 'boolean',
+            'attachments' => 'array',
 
             'publish_at' => 'datetime',
             'published_at' => 'datetime',

@@ -1,5 +1,12 @@
 <div class="space-y-6">
 
+    <section class="flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between dark:bg-zinc-900">
+        <div><h2 class="font-semibold">Publikasi hasil penilaian</h2><p class="mt-1 text-sm text-zinc-500">{{ $assessment->results_published_at ? 'Hasil sudah dipublikasikan.' : 'Hasil belum ditampilkan ke publik.' }} Halaman kegiatan publik menampilkan tiga peserta teratas dan detail seluruh nilai.</p>@error('publication')<p role="alert" class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror</div>
+        @can('activity_assessments.publish')
+            <flux:button wire:click="publishResults({{ $assessment->results_published_at ? 'false' : 'true' }})" wire:confirm="Ubah publikasi nama peserta dan hasil pada halaman kegiatan publik?" class="shrink-0">{{ $assessment->results_published_at ? 'Sembunyikan Hasil' : 'Publish Hasil' }}</flux:button>
+        @endcan
+    </section>
+
     @if ($assessment->is_special)
         <livewire:assessments.activities.judges :assessment-id="$assessment->id" :key="'judges-'.$assessment->id" />
     @endif

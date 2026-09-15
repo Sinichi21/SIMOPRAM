@@ -1,4 +1,6 @@
 <div class="space-y-6">
+    @if (session('status'))<p role="status" class="rounded-xl bg-emerald-50 p-4 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">{{ session('status') }}</p>@endif
+    @error('publication')<p role="alert" class="text-red-600">{{ $message }}</p>@enderror
 
     <div>
         <h1 class="text-2xl font-semibold">
@@ -408,9 +410,14 @@
 
                             <td class="px-4 py-3 text-right">
                                 <div
-                                    class="flex justify-end gap-3"
+                                    class="flex flex-wrap justify-end gap-3"
                                 >
 
+                                    @can('activity_assessments.publish')
+                                        <button type="button" wire:click="publishResults({{ $assessment->id }}, {{ $assessment->results_published_at ? 'false' : 'true' }})" wire:confirm="{{ $assessment->results_published_at ? 'Sembunyikan hasil dari halaman publik?' : 'Tampilkan nama peserta dan hasil penilaian pada detail kegiatan publik?' }}" wire:loading.attr="disabled" class="rounded-lg border border-zinc-300 px-3 py-2 text-sm">
+                                            {{ $assessment->results_published_at ? 'Sembunyikan Hasil' : 'Publish Hasil' }}
+                                        </button>
+                                    @endcan
                                     <a
                                         href="{{ route(
                                             'activity-assessments.edit',

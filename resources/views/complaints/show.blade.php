@@ -5,7 +5,7 @@
         <section class="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <p class="mb-5 text-sm text-zinc-500">Pelapor: {{ $complaint->name }} · {{ $complaint->email }}<br>Tujuan: {{ $complaint->school?->name ?? 'Publik / Super admin' }}</p>
             @include('complaints.detail')
-            @if ($complaint->attachment_path)<a href="{{ route('complaints.attachment', $complaint->id) }}" class="mt-5 inline-block rounded-lg px-4 py-2" data-action-tone="view">Unduh lampiran bukti</a>@endif
+            @if ($complaint->attachment_path)<a href="{{ route('complaints.attachment', $complaint->id) }}" class="mt-5 inline-block rounded-lg px-4 py-2" data-action-tone="view" target="_blank" rel="noopener noreferrer">Lihat lampiran bukti</a>@endif
         </section>
         @if ($canManage)
             <section class="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"><h2 class="mb-5 text-xl font-bold">Tindak lanjut pengaduan</h2><form method="POST" action="{{ route('complaints.update', $complaint->id) }}" class="space-y-5">@csrf @method('PATCH')

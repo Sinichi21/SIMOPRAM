@@ -37,6 +37,8 @@
             </div>
         </section>
 
+        @include('landing.public-agenda')
+
         <section id="fitur" class="bg-emerald-950 px-5 py-20 text-white lg:px-8">
             <div class="mx-auto max-w-7xl"><p class="text-sm font-bold uppercase tracking-[.2em] text-amber-300">{{ $content['features_label'] }}</p><h2 class="mt-3 max-w-2xl text-4xl font-black tracking-tight sm:text-5xl">{{ $content['features_title'] }}</h2>
                 <div class="mt-12 grid gap-px overflow-hidden rounded-3xl bg-white/15 sm:grid-cols-2 lg:grid-cols-3">

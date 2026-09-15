@@ -111,7 +111,7 @@
     {{-- NAVIGASI HALAMAN --}}
     {{-- ========================================= --}}
 
-    @if ($school || request()->routeIs('home'))
+    @if ($school || request()->routeIs('home', 'public.*'))
 
         <nav
             aria-label="Navigasi halaman"
@@ -156,8 +156,9 @@
 
             @else
 
+                <a href="{{ route('home') }}#agenda" class="transition hover:text-emerald-700 dark:hover:text-emerald-300">Pengumuman &amp; kegiatan</a>
                 <a
-                    href="#fitur"
+                    href="{{ route('home') }}#fitur"
                     class="transition hover:text-emerald-700
                            dark:hover:text-emerald-300"
                 >
@@ -165,7 +166,7 @@
                 </a>
 
                 <a
-                    href="#sekolah"
+                    href="{{ route('home') }}#sekolah"
                     class="transition hover:text-emerald-700
                            dark:hover:text-emerald-300"
                 >
@@ -173,7 +174,7 @@
                 </a>
 
                 <a
-                    href="#daftar-sekolah"
+                    href="{{ route('home') }}#daftar-sekolah"
                     class="transition hover:text-emerald-700
                            dark:hover:text-emerald-300"
                 >

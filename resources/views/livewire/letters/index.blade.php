@@ -181,7 +181,7 @@
                 <a
                     href="{{ route('reports.published-documents.download', ['code' => $letter->publication->code]) }}"
                     class="mr-2 text-emerald-600"
-                >PDF</a>
+                 target="_blank" rel="noopener noreferrer">PDF</a>
             @endcan
         @endif
         <a

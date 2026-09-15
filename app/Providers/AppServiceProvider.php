@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Http\Middleware\RequireCurrentSchool;
 use App\Http\Middleware\SetCurrentSchool;
+use App\Http\Middleware\SetGlobalContentContext;
 use App\Models\School;
 use App\Models\User;
 use App\Support\SchoolContext;
@@ -52,6 +53,7 @@ class AppServiceProvider extends ServiceProvider
         Livewire::addPersistentMiddleware([
             SetCurrentSchool::class,
             RequireCurrentSchool::class,
+            SetGlobalContentContext::class,
         ]);
 
         /*
