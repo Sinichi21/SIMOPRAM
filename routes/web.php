@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ActivityAssessmentReportController;
 use App\Http\Controllers\ActivityAttendancePrintController;
 use App\Http\Controllers\ActivityJudgeController;
 use App\Http\Controllers\ActivityLogExportController;
@@ -26,6 +27,14 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', [LandingPageController::class, 'index'])->name('home');
+Route::get('/validasi-penilaian/{code}', [ActivityAssessmentReportController::class, 'verify'])
+    ->where('code', '[a-f0-9]{48}')->middleware('throttle:60,1')->name('assessment-reports.verify');
+Route::middleware(['auth', 'school'])->group(function () {
+    Route::post('/penilaian/{assessmentId}/rekap', [ActivityAssessmentReportController::class, 'store'])
+        ->whereNumber('assessmentId')->middleware('throttle:10,1')->name('assessment-reports.store');
+    Route::get('/penilaian/rekap/{code}', [ActivityAssessmentReportController::class, 'show'])
+        ->where('code', '[a-f0-9]{48}')->name('assessment-reports.show');
+});
 Route::get('/informasi/lampiran/{kind}/{id}/{index}', PublicContentMediaController::class)->whereIn('kind', ['activities', 'announcements'])->whereNumber(['id', 'index'])->name('public.content.attachment');
 Route::get('/informasi/kegiatan/{activityId}/peserta', [ActivityRegistrationController::class, 'participants'])->whereNumber('activityId')->name('public.activities.participants');
 Route::get('/informasi/kegiatan/{activityId}/daftar', [ActivityRegistrationController::class, 'create'])->whereNumber('activityId')->name('public.activities.register');

@@ -33,7 +33,34 @@
     @endforeach</ul>
     <h3 class="font-semibold">{{ $isFinal ? 'Hasil Final' : 'Hasil Sementara' }} — rata-rata juri yang sudah final</h3>
     <p class="text-sm text-zinc-500">Nilai sama mendapat peringkat sama (contoh: 1, 1, 3). Draft juri tidak dihitung.</p>
-    <div class="overflow-x-auto"><table class="w-full text-left text-sm"><thead><tr><th class="p-2">Peringkat</th><th class="p-2">Peserta / regu</th><th class="p-2">Nilai</th></tr></thead><tbody>
-        @foreach($rankings as $row)<tr wire:key="rank-{{ $row['target']->id }}" class="border-t"><td class="p-2">{{ $row['rank'] ?? '—' }}</td><td class="p-2">{{ $row['target']->participant_name ?? $row['target']->student?->name ?? $row['target']->scoutUnit?->name ?? 'Peserta' }}</td><td class="p-2">{{ $row['score'] === null ? '—' : number_format($row['score'], 2) }}</td></tr>@endforeach
-    </tbody></table></div>
+    @include('landing.judge-list', ['resultJudges' => $resultJudges])
+    @include('landing.ranking-table', ['rankings' => $rankings, 'showJudgeScores' => true])
+    @if($canExport)
+        <form action="{{ route('assessment-reports.store', $assessment->id) }}" method="POST" target="_blank" class="space-y-4 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+            @csrf
+            <h3 class="font-semibold">Cetak / export nilai</h3>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <flux:select name="format" label="Jenis rekap">
+                    <option value="complete">Rekap lengkap — semua juri, rata-rata, dan peringkat</option>
+                    <option value="judges">Rekap juri — seluruh form masing-masing juri</option>
+                </flux:select>
+                <flux:select name="with_signatures" label="Tanda tangan">
+                    <option value="1">Dengan ruang tanda tangan juri</option>
+                    <option value="0">Tanpa ruang tanda tangan</option>
+                </flux:select>
+            </div>
+            <flux:text>PDF dibuka di tab baru. Setiap cetakan memiliki tanggal terbit dan QR validasi arsip. Rekap juri menyediakan tanda tangan juri tersebut; rekap lengkap menyediakan tanda tangan seluruh juri.</flux:text>
+            <flux:button type="submit" variant="primary">Terbitkan dan lihat PDF</flux:button>
+        </form>
+        @if($reports->isNotEmpty())
+            <div class="space-y-2">
+                <h3 class="font-semibold">Arsip cetakan terakhir</h3>
+                @foreach($reports as $report)
+                    <div wire:key="report-{{ $report->id }}"><a class="text-sm underline" href="{{ route('assessment-reports.show', $report->code) }}" target="_blank" rel="noopener noreferrer">
+                        NILAI-{{ $report->issued_at->format('Ymd') }}-{{ $report->id }} · {{ $report->format === 'judges' ? 'Rekap juri' : 'Rekap lengkap' }} · {{ $report->issued_at->format('d-m-Y H:i') }}
+                    </a></div>
+                @endforeach
+            </div>
+        @endif
+    @endif
 </section>

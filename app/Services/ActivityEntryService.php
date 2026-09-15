@@ -50,8 +50,11 @@ class ActivityEntryService
         [$minimum, $maximum] = $this->limits($activity, $base['category']);
         validator($base, ['members' => ['array', 'min:'.$minimum, 'max:'.$maximum], 'name' => [$base['category'] === 'individual' ? 'nullable' : 'required']])->validate();
         $answerRules = [];
+        $answerAttributes = [];
         $fileField = null;
         foreach ($fields as $field) {
+            $answerAttributes['answers.'.$field['id']] = $field['label'];
+            $answerAttributes['answers.'.$field['id'].'.*'] = $field['label'];
             if ($field['type'] === 'file') {
                 $fileField = $field;
 
@@ -73,7 +76,7 @@ class ActivityEntryService
         if (array_diff(array_keys($incomingAnswers), $allowedIds)) {
             throw ValidationException::withMessages(['answers' => 'Formulir berubah atau berisi field yang tidak dikenal. Muat ulang formulir.']);
         }
-        $answers = validator(['answers' => $incomingAnswers], $answerRules)->validate()['answers'] ?? [];
+        $answers = validator(['answers' => $incomingAnswers], $answerRules, [], $answerAttributes)->validate()['answers'] ?? [];
         validator(['files' => $files], [
             'files' => [$fileField ? 'array' : 'prohibited', 'max:10'],
             'files.*' => ['file', 'max:5120', 'mimes:pdf,jpg,jpeg,png,webp,doc,docx,xls,xlsx'],

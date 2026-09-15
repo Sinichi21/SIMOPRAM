@@ -3,6 +3,7 @@
 namespace App\Livewire\Assessments\Activities;
 
 use App\Models\ActivityAssessment;
+use App\Models\ActivityAssessmentReport;
 use App\Services\ActivityJudgeService;
 use App\Services\GlobalActivityAccess;
 use App\Services\MessagingService;
@@ -90,7 +91,11 @@ class Judges extends Component
         $activeJudges = $assessment->judges->whereNull('revoked_at');
         $isFinal = $activeJudges->isNotEmpty() && $activeJudges->every(fn ($judge) => $judge->finalized_at !== null);
         $canManageJudges = $assessment->school_id === null || auth()->user()?->can('activity_assessments.publish');
+        $canExport = $canManageJudges && ($assessment->school_id === null || auth()->user()?->can('reports.export'));
+        $resultJudges = app(ActivityJudgeService::class)->resultJudges($assessment);
+        $reports = $canExport ? ActivityAssessmentReport::where('activity_assessment_id', $assessment->id)
+            ->where('school_id', $assessment->school_id)->latest('id')->limit(5)->get() : collect();
 
-        return view('livewire.assessments.activities.judges', compact('assessment', 'rankings', 'isFinal', 'canManageJudges'));
+        return view('livewire.assessments.activities.judges', compact('assessment', 'rankings', 'isFinal', 'canManageJudges', 'canExport', 'resultJudges', 'reports'));
     }
 }

@@ -75,6 +75,18 @@ test('external judge can save a draft and finalize only once without logging in'
     $this->assertDatabaseCount('student_scores', 0);
 });
 
+test('judge validation identifies the participant criterion and allowed maximum', function () {
+    app()->setLocale('id');
+    extract(judgeContext());
+    ['judge' => $judge, 'token' => $token] = app(ActivityJudgeService::class)->invite($assessment, 'Juri');
+    $participant = $target->student->name;
+    auth()->logout();
+    $this->post(route('activity-judges.show', $token), [
+        'scores' => [$target->id => [$criterion->id => 51]], 'action' => 'finalize',
+    ])->assertSessionHasErrors(['scores.'.$target->id.'.'.$criterion->id => 'Nilai Teknik untuk '.$participant.' tidak boleh lebih dari '.$criterion->max_score.'.']);
+    expect($judge->fresh()->finalized_at)->toBeNull();
+});
+
 test('judge links enforce the activity time window and revocation', function (string $state) {
     extract(judgeContext());
     ['judge' => $judge, 'token' => $token] = app(ActivityJudgeService::class)->invite($assessment, 'Juri');

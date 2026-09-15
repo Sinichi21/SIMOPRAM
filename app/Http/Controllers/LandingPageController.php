@@ -7,6 +7,7 @@ use App\Models\ActivityAssessment;
 use App\Models\Announcement;
 use App\Models\LandingPageSetting;
 use App\Models\School;
+use App\Services\ActivityJudgeService;
 use App\Services\PublicAssessmentService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -139,8 +140,9 @@ class LandingPageController extends Controller
         $assessment = $service->publishedFor($activity)->firstWhere('id', $assessmentId);
         abort_unless($assessment, 404);
         $rankings = $service->rankings($assessment);
+        $resultJudges = $assessment->is_special ? app(ActivityJudgeService::class)->resultJudges($assessment) : collect();
 
-        return view('landing.results', compact('activity', 'assessment', 'rankings', 'school'));
+        return view('landing.results', compact('activity', 'assessment', 'rankings', 'school', 'resultJudges'));
     }
 
     /** @return Collection<int, array{assessment: ActivityAssessment, rankings: Collection}> */

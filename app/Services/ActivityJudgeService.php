@@ -105,15 +105,19 @@ class ActivityJudgeService
             $assessment = ActivityAssessment::query()->lockForUpdate()->findOrFail($judge->activity_assessment_id);
             $judge = $assessment->judges()->lockForUpdate()->findOrFail($judge->id);
             $this->assertAccessible($judge);
-            $assessment->load('targets', 'criteria');
+            $assessment->load('targets.student', 'targets.scoutUnit', 'criteria');
             $rules = ['scores' => ['required', 'array:'.implode(',', $assessment->targets->modelKeys())]];
+            $attributes = [];
             foreach ($assessment->targets as $target) {
+                $participant = $target->participant_name ?? $target->student?->name ?? $target->scoutUnit?->name ?? 'Peserta';
+                $attributes['scores.'.$target->id] = 'Nilai '.$participant;
                 $rules['scores.'.$target->id] = [$finalize ? 'required' : 'sometimes', 'array:'.implode(',', $assessment->criteria->modelKeys())];
                 foreach ($assessment->criteria as $criterion) {
                     $rules['scores.'.$target->id.'.'.$criterion->id] = [$finalize ? 'required' : 'nullable', 'numeric', 'min:0', 'max:'.$criterion->max_score];
+                    $attributes['scores.'.$target->id.'.'.$criterion->id] = 'Nilai '.$criterion->name.' untuk '.$participant;
                 }
             }
-            $validated = Validator::make(['scores' => $scores], $rules)->validate();
+            $validated = Validator::make(['scores' => $scores], $rules, [], $attributes)->validate();
             $judge->update(['scores' => $validated['scores'], 'finalized_at' => $finalize ? now() : null]);
             app(AssessmentAuditService::class)->record(
                 action: $finalize ? 'activity_judge.finalized' : 'activity_judge.saved', subject: $judge,
@@ -123,17 +127,27 @@ class ActivityJudgeService
         });
     }
 
-    /** @return Collection<int, array{target: mixed, score: float|null, rank: int|null}> */
+    /** @return Collection<int, array{id: int, number: int, name: string, finalized: bool}> */
+    public function resultJudges(ActivityAssessment $assessment): Collection
+    {
+        $assessment->loadMissing('judges');
+
+        return $assessment->judges->whereNull('revoked_at')->sortBy('id')->values()
+            ->map(fn ($judge, int $index): array => ['id' => $judge->id, 'number' => $index + 1, 'name' => $judge->name, 'finalized' => $judge->finalized_at !== null]);
+    }
+
+    /** @return Collection<int, array{target: mixed, score: float|null, rank: int|null, judge_scores: array<int, float|null>}> */
     public function rankings(ActivityAssessment $assessment): Collection
     {
         $assessment->loadMissing('targets.student', 'targets.scoutUnit', 'criteria', 'judges');
         $judges = $assessment->judges->whereNotNull('finalized_at')->whereNull('revoked_at');
         $rows = $assessment->targets->map(function ($target) use ($assessment, $judges): array {
-            $scores = $judges->map(function ($judge) use ($target, $assessment): float {
-                return $assessment->criteria->sum(fn ($criterion) => (float) ($judge->scores[$target->id][$criterion->id] ?? 0) / $criterion->max_score * $criterion->weight);
+            $scores = $judges->mapWithKeys(function ($judge) use ($target, $assessment): array {
+                return [$judge->id => $assessment->criteria->sum(fn ($criterion) => (float) ($judge->scores[$target->id][$criterion->id] ?? 0) / $criterion->max_score * $criterion->weight)];
             });
 
-            return ['target' => $target, 'score' => $scores->isEmpty() ? null : round($scores->avg(), 2), 'rank' => null];
+            return ['target' => $target, 'score' => $scores->isEmpty() ? null : round($scores->avg(), 2), 'rank' => null,
+                'judge_scores' => $scores->map(fn (float $score): float => round($score, 2))->all()];
         })->sortByDesc('score')->values();
         $previous = null;
         $rank = 0;
