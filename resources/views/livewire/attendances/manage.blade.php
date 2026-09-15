@@ -429,6 +429,10 @@
 
     {{-- ABSENSI MANUAL --}}
     @if ($selectedSession)
+        <div class="flex flex-wrap gap-3">
+            <flux:button :href="route('attendances.print', [$activity->id, $selectedSession->id, 'blank'=>1])">Cetak form absensi sesi</flux:button>
+            <flux:button :href="route('attendances.print', [$activity->id, $selectedSession->id, 'blank'=>0])">Cetak rekap absensi sesi</flux:button>
+        </div>
 
         <div
             class="rounded-xl border border-zinc-200

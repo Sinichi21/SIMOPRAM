@@ -4,7 +4,9 @@ namespace App\Livewire\Assessments\Activities;
 
 use App\Models\ActivityAssessment;
 use App\Services\ActivityJudgeService;
+use App\Services\GlobalActivityAccess;
 use App\Services\MessagingService;
+use App\Support\SchoolContext;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
@@ -28,7 +30,7 @@ class Judges extends Component
     public function sendInvitation(MessagingService $messaging): void
     {
         $assessment = $this->assessment();
-        abort_unless(auth()->user()?->can('activity_assessments.publish'), 403);
+        app(ActivityJudgeService::class)->authorizeManagement($assessment);
         $this->validate(['messageChannel' => ['required', 'in:whatsapp,telegram,email'],
             'messageDestination' => ['required', 'string', 'max:255']]);
         $token = basename(parse_url($this->invitationUrl, PHP_URL_PATH) ?: '');
@@ -56,9 +58,15 @@ class Judges extends Component
 
     protected function assessment(): ActivityAssessment
     {
-        abort_unless(auth()->user()?->can('activity_assessments.view'), 403);
+        $schoolId = app(SchoolContext::class)->id();
+        $assessment = ActivityAssessment::query()->where('school_id', $schoolId)->where('is_special', true)->findOrFail($this->assessmentId);
+        if ($schoolId === null) {
+            app(GlobalActivityAccess::class)->authorize($assessment->activity()->withoutGlobalScope('school')->firstOrFail());
+        } else {
+            abort_unless(auth()->user()?->can('activity_assessments.view'), 403);
+        }
 
-        return ActivityAssessment::query()->where('is_special', true)->findOrFail($this->assessmentId);
+        return $assessment;
     }
 
     public function invite(ActivityJudgeService $service): void
@@ -81,7 +89,8 @@ class Judges extends Component
         $rankings = app(ActivityJudgeService::class)->rankings($assessment);
         $activeJudges = $assessment->judges->whereNull('revoked_at');
         $isFinal = $activeJudges->isNotEmpty() && $activeJudges->every(fn ($judge) => $judge->finalized_at !== null);
+        $canManageJudges = $assessment->school_id === null || auth()->user()?->can('activity_assessments.publish');
 
-        return view('livewire.assessments.activities.judges', compact('assessment', 'rankings', 'isFinal'));
+        return view('livewire.assessments.activities.judges', compact('assessment', 'rankings', 'isFinal', 'canManageJudges'));
     }
 }

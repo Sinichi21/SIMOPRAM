@@ -7,17 +7,44 @@ use App\Models\Activity;
 use App\Models\Coach;
 use App\Models\ScoutLevel;
 use App\Models\Semester;
+use App\Services\ActivityHierarchyService;
+use App\Services\ContentMediaService;
+use App\Services\PublishedContentDocuments;
 use App\Support\SchoolContext;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 class Index extends Component
 {
+    use WithFileUploads;
     use WithPagination;
 
+    public array $attachmentUploads = [];
+
+    public array $existingAttachments = [];
+
+    public array $publishedDocumentIds = [];
+
+    #[Computed]
+    public function publishedDocumentOptions(): Collection
+    {
+        return app(PublishedContentDocuments::class)->available(app(SchoolContext::class)->id());
+    }
+
+    public array $removeAttachmentIndexes = [];
+
+    public $bannerUpload;
+
+    public bool $removeBanner = false;
+
     public ?int $editingId = null;
+
+    public ?int $parentActivityId = null;
 
     public ?int $academic_year_id = null;
 
@@ -86,6 +113,7 @@ class Index extends Component
         $schoolId = $this->schoolId();
 
         return [
+            'parentActivityId' => ['nullable', 'integer', 'min:1'],
             'academic_year_id' => [
                 'required',
                 'integer',
@@ -292,6 +320,9 @@ class Index extends Component
                 }
 
                 $syncData = [];
+                app(ActivityHierarchyService::class)->assignParent($activity, $this->parentActivityId);
+                $activity->save();
+                app(ContentMediaService::class)->save($activity, $this->attachmentUploads, $this->bannerUpload, $this->removeBanner, $this->removeAttachmentIndexes, documentIds: $this->publishedDocumentIds);
 
                 foreach (
                     $validated['coach_ids'] as $coachId
@@ -340,6 +371,9 @@ class Index extends Component
 
         $this->editingId =
             $activity->id;
+        $this->existingAttachments = collect($activity->attachments ?? [])->map(fn (array $file): array => ['name' => $file['name']])->all();
+        $this->parentActivityId = $activity->parent_activity_id;
+        $this->reset('publishedDocumentIds', 'attachmentUploads', 'removeAttachmentIndexes', 'bannerUpload', 'removeBanner');
 
         $this->academic_year_id =
             $activity->academic_year_id;
@@ -425,6 +459,8 @@ class Index extends Component
 
     protected function resetForm(): void
     {
+        $this->parentActivityId = null;
+        $this->reset('publishedDocumentIds', 'attachmentUploads', 'existingAttachments', 'removeAttachmentIndexes', 'bannerUpload', 'removeBanner');
         $activeYear = AcademicYear::query()
             ->where('is_active', true)
             ->first();
@@ -492,6 +528,8 @@ class Index extends Component
 
     public function render()
     {
+        $parentActivities = Activity::query()->where('school_id', $this->schoolId())->whereNull('parent_activity_id')
+            ->when($this->editingId, fn ($query) => $query->where('id', '!=', $this->editingId))->orderBy('title')->get(['id', 'title']);
         $academicYears =
             AcademicYear::query()
                 ->orderByDesc('start_date')
@@ -585,6 +623,7 @@ class Index extends Component
             'livewire.activities.index',
             compact(
                 'activities',
+                'parentActivities',
                 'academicYears',
                 'semesters',
                 'coaches', 'scoutLevels'

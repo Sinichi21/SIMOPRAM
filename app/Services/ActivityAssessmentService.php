@@ -664,6 +664,8 @@ class ActivityAssessmentService
         $assessment->update([
             'status' => 'draft',
 
+            'results_published_at' => null,
+
             'published_by' => null,
 
             'published_at' => null,

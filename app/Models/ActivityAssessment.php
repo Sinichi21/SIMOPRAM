@@ -14,6 +14,7 @@ class ActivityAssessment extends Model
 
     protected $fillable = [
         'is_special',
+        'results_published_at',
         'activity_id',
         'assessment_factor_id',
         'title',
@@ -29,6 +30,7 @@ class ActivityAssessment extends Model
     {
         return [
             'is_special' => 'boolean',
+            'results_published_at' => 'datetime',
             'published_at' => 'datetime',
         ];
     }

@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\ActivityAssessment;
+use App\Models\ActivityJudge;
 use App\Models\AssessmentAuditLog;
 use App\Support\SchoolContext;
 use Illuminate\Database\Eloquent\Model;
@@ -23,7 +25,7 @@ class AssessmentAuditService
             )->id();
 
         abort_unless(
-            $schoolId,
+            $schoolId || ($subject instanceof ActivityJudge || $subject instanceof ActivityAssessment) && $subject->school_id === null,
             409,
             'Pilih sekolah aktif terlebih dahulu.'
         );

@@ -6,13 +6,35 @@ use App\Models\Announcement;
 use App\Models\AnnouncementTarget;
 use App\Models\Classroom;
 use App\Models\ScoutUnit;
+use App\Services\ContentMediaService;
 use App\Services\NotificationService;
+use App\Services\PublishedContentDocuments;
+use App\Support\SchoolContext;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 class Manage extends Component
 {
+    use WithFileUploads;
+
+    public array $attachmentUploads = [];
+
+    public array $existingAttachments = [];
+
+    public array $publishedDocumentIds = [];
+
+    #[Computed]
+    public function publishedDocumentOptions(): Collection
+    {
+        return app(PublishedContentDocuments::class)->available(app(SchoolContext::class)->id());
+    }
+
+    public array $removeAttachmentIndexes = [];
+
     public ?int $announcementId = null;
 
     public string $title = '';
@@ -50,6 +72,7 @@ class Manage extends Component
 
         $this->title =
             $announcement->title;
+        $this->existingAttachments = collect($announcement->attachments ?? [])->map(fn (array $file): array => ['name' => $file['name']])->all();
 
         $this->body =
             $announcement->body;
@@ -316,6 +339,9 @@ class Manage extends Component
                 $announcement
                     ->targets()
                     ->delete();
+                app(ContentMediaService::class)->save($announcement, $this->attachmentUploads, removeIndexes: $this->removeAttachmentIndexes, documentIds: $this->publishedDocumentIds);
+                $this->existingAttachments = collect($announcement->attachments ?? [])->map(fn (array $file): array => ['name' => $file['name']])->all();
+                $this->reset('publishedDocumentIds', 'attachmentUploads', 'removeAttachmentIndexes');
 
                 $this->saveTargets(
                     $announcement,

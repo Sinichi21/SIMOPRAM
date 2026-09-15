@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\CaptureActivityContext;
 use App\Http\Middleware\EnsureAccountActive;
+use App\Http\Middleware\PreviewFileResponse;
 use App\Http\Middleware\RequireCurrentSchool;
 use App\Http\Middleware\SetCurrentSchool;
 use Illuminate\Foundation\Application;
@@ -18,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(CaptureActivityContext::class);
+        $middleware->append(PreviewFileResponse::class);
         $middleware->web(append: [EnsureAccountActive::class]);
         $middleware->alias([
             'school' => SetCurrentSchool::class,

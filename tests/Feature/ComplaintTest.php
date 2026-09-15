@@ -147,7 +147,7 @@ test('super admins can handle public complaints and download evidence', function
     $record = Complaint::factory()->create(['attachment_path' => 'complaints/evidence.pdf']);
 
     $this->actingAs($admin)->get(route('complaints.show', $record->id))->assertOk()->assertSee('Tindak lanjut pengaduan');
-    $this->get(route('complaints.attachment', $record->id))->assertDownload('evidence.pdf');
+    $this->get(route('complaints.attachment', $record->id).'?download=1')->assertDownload('evidence.pdf');
     $this->patch(route('complaints.update', $record->id), ['status' => 'resolved', 'response' => 'Kendala telah kami perbaiki.'])->assertRedirect();
     $this->assertDatabaseHas('complaints', ['id' => $record->id, 'status' => 'resolved', 'response' => 'Kendala telah kami perbaiki.']);
 });

@@ -6,6 +6,8 @@ use App\Models\Activity;
 use App\Models\ActivityAssessment;
 use App\Models\AssessmentFactor;
 use App\Models\ScoutLevel;
+use App\Services\PublicAssessmentService;
+use App\Support\SchoolContext;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
 
@@ -26,6 +28,16 @@ class Index extends Component
     public string $search = '';
 
     public string $scoutLevelId = '';
+
+    public function publishResults(int $id, bool $published, PublicAssessmentService $service): void
+    {
+        $schoolId = app(SchoolContext::class)->id();
+        abort_unless($schoolId, 409);
+        $assessment = ActivityAssessment::query()->where('school_id', $schoolId)->findOrFail($id);
+        $service->setPublished($assessment, $published);
+        $this->resetValidation('publication');
+        session()->flash('status', $published ? 'Hasil penilaian ditampilkan pada detail kegiatan publik.' : 'Hasil penilaian disembunyikan dari publik.');
+    }
 
     public function create(): void
     {

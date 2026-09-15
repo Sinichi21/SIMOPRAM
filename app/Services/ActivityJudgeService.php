@@ -17,7 +17,7 @@ class ActivityJudgeService
     /** @return array{judge: ActivityJudge, token: string} */
     public function invite(ActivityAssessment $assessment, string $name): array
     {
-        abort_unless(auth()->user()?->can('activity_assessments.publish'), 403);
+        $this->authorizeManagement($assessment);
         abort_unless(app(SchoolContext::class)->id() === $assessment->school_id, 404);
 
         return DB::transaction(function () use ($assessment, $name): array {
@@ -49,7 +49,7 @@ class ActivityJudgeService
 
     public function revoke(ActivityAssessment $assessment, int $judgeId): void
     {
-        abort_unless(auth()->user()?->can('activity_assessments.publish'), 403);
+        $this->authorizeManagement($assessment);
         abort_unless(app(SchoolContext::class)->id() === $assessment->school_id, 404);
         DB::transaction(function () use ($assessment, $judgeId): void {
             $assessment = ActivityAssessment::query()->lockForUpdate()->findOrFail($assessment->id);
@@ -67,11 +67,24 @@ class ActivityJudgeService
     {
         abort_unless(strlen($token) === 64, 404);
         $judge = ActivityJudge::withoutGlobalScope('school')->where('token_hash', hash('sha256', $token))->firstOrFail();
-        $school = School::query()->where('is_active', true)->findOrFail($judge->school_id);
-        app(SchoolContext::class)->set($school);
+        if ($judge->school_id === null) {
+            app(SchoolContext::class)->clear();
+        } else {
+            $school = School::query()->where('is_active', true)->findOrFail($judge->school_id);
+            app(SchoolContext::class)->set($school);
+        }
         $this->assertAccessible($judge);
 
         return $judge;
+    }
+
+    public function authorizeManagement(ActivityAssessment $assessment): void
+    {
+        if ($assessment->school_id === null) {
+            app(GlobalActivityAccess::class)->authorize($assessment->activity()->withoutGlobalScope('school')->firstOrFail());
+        } else {
+            abort_unless(auth()->user()?->can('activity_assessments.publish'), 403);
+        }
     }
 
     public function assertAccessible(ActivityJudge $judge): void
