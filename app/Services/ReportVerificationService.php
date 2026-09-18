@@ -5,15 +5,22 @@ namespace App\Services;
 use App\Models\ReportVerification;
 use App\Models\SemesterClosure;
 use App\Support\SchoolContext;
+use DateTimeInterface;
 use Endroid\QrCode\Builder\Builder;
 use Endroid\QrCode\Encoding\Encoding;
 use Endroid\QrCode\ErrorCorrectionLevel;
 use Endroid\QrCode\RoundBlockSizeMode;
 use Endroid\QrCode\Writer\PngWriter;
 use Endroid\QrCode\Writer\SvgWriter;
+use Illuminate\Contracts\Support\Arrayable;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use JsonSerializable;
 use RuntimeException;
+use SplObjectStorage;
+use Traversable;
 
 class ReportVerificationService
 {
@@ -188,21 +195,348 @@ class ReportVerificationService
      * Checksum data sumber sebelum QR ditambahkan ke PDF.
      * file_sha256 tetap menjadi hash authoritative binary PDF final.
      */
+    // public function contentChecksum(mixed $payload): string
+    // {
+    //     $json = json_encode(
+    //         $payload,
+    //         JSON_UNESCAPED_UNICODE
+    //         | JSON_UNESCAPED_SLASHES
+    //         | JSON_INVALID_UTF8_SUBSTITUTE
+    //         | JSON_PARTIAL_OUTPUT_ON_ERROR
+    //     );
+
+    //     if (! is_string($json)) {
+    //         $json = serialize($payload);
+    //     }
+
+    //     return hash('sha256', $json);
+    // }
+
     public function contentChecksum(mixed $payload): string
     {
-        $json = json_encode(
+        $context = hash_init('sha256');
+
+        $visiting = new SplObjectStorage;
+
+        $this->updateChecksum(
+            $context,
             $payload,
-            JSON_UNESCAPED_UNICODE
-            | JSON_UNESCAPED_SLASHES
-            | JSON_INVALID_UTF8_SUBSTITUTE
-            | JSON_PARTIAL_OUTPUT_ON_ERROR
+            $visiting
         );
 
-        if (! is_string($json)) {
-            $json = serialize($payload);
+        return hash_final($context);
+    }
+
+    /**
+     * Hash payload secara incremental agar tidak membuat JSON besar di memory.
+     */
+    private function updateChecksum(
+        \HashContext $context,
+        mixed $value,
+        SplObjectStorage $visiting
+    ): void {
+        if ($value === null) {
+            hash_update($context, 'null;');
+
+            return;
         }
 
-        return hash('sha256', $json);
+        if (is_bool($value)) {
+            hash_update(
+                $context,
+                $value ? 'bool:1;' : 'bool:0;'
+            );
+
+            return;
+        }
+
+        if (is_int($value)) {
+            hash_update(
+                $context,
+                'int:'.$value.';'
+            );
+
+            return;
+        }
+
+        if (is_float($value)) {
+            hash_update(
+                $context,
+                'float:'.json_encode(
+                    $value,
+                    JSON_PRESERVE_ZERO_FRACTION
+                ).';'
+            );
+
+            return;
+        }
+
+        if (is_string($value)) {
+            /*
+            * Sertakan panjang untuk menghindari ambiguitas:
+            *
+            * ["ab", "c"]
+            * tidak boleh sama dengan
+            * ["a", "bc"]
+            */
+            hash_update(
+                $context,
+                'string:'.strlen($value).':'
+            );
+
+            /*
+            * String besar langsung dimasukkan ke hash context.
+            * Tidak dibuat salinan JSON baru.
+            */
+            hash_update(
+                $context,
+                $value
+            );
+
+            hash_update(
+                $context,
+                ';'
+            );
+
+            return;
+        }
+
+        if ($value instanceof DateTimeInterface) {
+            hash_update(
+                $context,
+                'datetime:'.$value->format(DATE_ATOM).';'
+            );
+
+            return;
+        }
+
+        if (is_array($value)) {
+            hash_update(
+                $context,
+                'array:'.count($value).'{'
+            );
+
+            foreach ($value as $key => $item) {
+                $this->updateChecksum(
+                    $context,
+                    $key,
+                    $visiting
+                );
+
+                $this->updateChecksum(
+                    $context,
+                    $item,
+                    $visiting
+                );
+            }
+
+            hash_update(
+                $context,
+                '}'
+            );
+
+            return;
+        }
+
+        /*
+        * Perlindungan terhadap object circular reference.
+        */
+        if (is_object($value)) {
+            if ($visiting->contains($value)) {
+                hash_update(
+                    $context,
+                    'cycle:'.get_class($value).';'
+                );
+
+                return;
+            }
+
+            $visiting->attach($value);
+        }
+
+        try {
+            if ($value instanceof Model) {
+                hash_update(
+                    $context,
+                    'model:'.get_class($value).'{'
+                );
+
+                /*
+                * Hash atribut model tanpa mengubah seluruh model
+                * menjadi JSON besar.
+                */
+                $this->updateChecksum(
+                    $context,
+                    $value->getAttributes(),
+                    $visiting
+                );
+
+                /*
+                * Relasi yang memang sudah dimuat tetap ikut checksum.
+                */
+                foreach ($value->getRelations() as $name => $relation) {
+                    hash_update(
+                        $context,
+                        'relation:'.$name.'{'
+                    );
+
+                    $this->updateChecksum(
+                        $context,
+                        $relation,
+                        $visiting
+                    );
+
+                    hash_update(
+                        $context,
+                        '}'
+                    );
+                }
+
+                hash_update(
+                    $context,
+                    '}'
+                );
+
+                return;
+            }
+
+            if ($value instanceof Collection) {
+                hash_update(
+                    $context,
+                    'collection:'.get_class($value).':'.$value->count().'{'
+                );
+
+                foreach ($value as $key => $item) {
+                    $this->updateChecksum(
+                        $context,
+                        $key,
+                        $visiting
+                    );
+
+                    $this->updateChecksum(
+                        $context,
+                        $item,
+                        $visiting
+                    );
+                }
+
+                hash_update(
+                    $context,
+                    '}'
+                );
+
+                return;
+            }
+
+            if ($value instanceof Traversable) {
+                hash_update(
+                    $context,
+                    'traversable:'.get_class($value).'{'
+                );
+
+                foreach ($value as $key => $item) {
+                    $this->updateChecksum(
+                        $context,
+                        $key,
+                        $visiting
+                    );
+
+                    $this->updateChecksum(
+                        $context,
+                        $item,
+                        $visiting
+                    );
+                }
+
+                hash_update(
+                    $context,
+                    '}'
+                );
+
+                return;
+            }
+
+            if ($value instanceof Arrayable) {
+                hash_update(
+                    $context,
+                    'arrayable:'.get_class($value).'{'
+                );
+
+                $this->updateChecksum(
+                    $context,
+                    $value->toArray(),
+                    $visiting
+                );
+
+                hash_update(
+                    $context,
+                    '}'
+                );
+
+                return;
+            }
+
+            if ($value instanceof JsonSerializable) {
+                hash_update(
+                    $context,
+                    'jsonserializable:'.get_class($value).'{'
+                );
+
+                $this->updateChecksum(
+                    $context,
+                    $value->jsonSerialize(),
+                    $visiting
+                );
+
+                hash_update(
+                    $context,
+                    '}'
+                );
+
+                return;
+            }
+
+            if (is_object($value)) {
+                hash_update(
+                    $context,
+                    'object:'.get_class($value).'{'
+                );
+
+                $this->updateChecksum(
+                    $context,
+                    get_object_vars($value),
+                    $visiting
+                );
+
+                hash_update(
+                    $context,
+                    '}'
+                );
+
+                return;
+            }
+
+            if (is_resource($value)) {
+                hash_update(
+                    $context,
+                    'resource:'.get_resource_type($value).';'
+                );
+
+                return;
+            }
+
+            hash_update(
+                $context,
+                'unknown:'.get_debug_type($value).';'
+            );
+        } finally {
+            if (
+                is_object($value)
+                && $visiting->contains($value)
+            ) {
+                $visiting->detach($value);
+            }
+        }
     }
 
     /*
