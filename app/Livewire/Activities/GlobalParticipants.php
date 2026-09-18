@@ -4,7 +4,9 @@ namespace App\Livewire\Activities;
 
 use App\Jobs\SendActivityAccessLink;
 use App\Models\Activity;
+use App\Models\ActivityMessageDelivery;
 use App\Services\ActivityEntryService;
+use App\Services\ActivityNotificationService;
 use App\Services\ActivityRegistrationService;
 use App\Services\GlobalActivityAccess;
 use Illuminate\Contracts\View\View;
@@ -32,6 +34,22 @@ class GlobalParticipants extends Component
     public string $validation = '';
 
     public string $order = 'newest';
+
+    public string $notificationTitle = '';
+
+    public string $notificationBody = '';
+
+    public function sendAnnouncement(ActivityNotificationService $notifications): void
+    {
+        $activity = $this->activity();
+        $this->validate([
+            'notificationTitle' => ['required', 'string', 'max:150'],
+            'notificationBody' => ['required', 'string', 'max:5000'],
+        ], attributes: ['notificationTitle' => 'judul pengumuman', 'notificationBody' => 'isi pengumuman']);
+        $count = $notifications->announce($activity, $this->notificationTitle, $this->notificationBody);
+        $this->reset('notificationTitle', 'notificationBody');
+        session()->flash('status', $count.' pesan dijadwalkan untuk peserta aktif kegiatan ini.');
+    }
 
     protected function activity(): Activity
     {
@@ -123,6 +141,9 @@ class GlobalParticipants extends Component
         $entries = $entries->paginate(15);
         $selected = $this->selectedId ? $activity->entries()->with(['members' => fn ($query) => $query->where('status', 'active')])->findOrFail($this->selectedId) : null;
 
-        return view('livewire.activities.global-participants', compact('activity', 'entries', 'selected'));
+        $deliveries = ActivityMessageDelivery::query()->whereHas('registration', fn ($query) => $query->where('activity_id', $activity->id))
+            ->with('registration:id,name')->latest('id')->limit(10)->get();
+
+        return view('livewire.activities.global-participants', compact('activity', 'entries', 'selected', 'deliveries'));
     }
 }

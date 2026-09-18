@@ -4,6 +4,24 @@
     @if($errors->any())<div role="alert" class="rounded-xl bg-red-50 p-4 text-red-800">@foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
     <div class="flex flex-wrap gap-3"><flux:button :href="route('admin.public-activities')">Kegiatan umum</flux:button><flux:button variant="primary" :href="route('admin.activity-participants.create', $activity->id)">Tambah peserta</flux:button><flux:button :href="route('admin.activity-registration-settings', $activity->id)">Pengaturan formulir</flux:button></div>
     <flux:button :href="route('admin.activity-attendance', $activity->id)">Absensi dan cetak daftar hadir</flux:button>
+    <form wire:submit="sendAnnouncement" class="space-y-4 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+        <flux:heading>Pengumuman untuk peserta kegiatan</flux:heading>
+        <flux:text>Pesan dikirim ke peserta dan pendamping aktif kegiatan ini melalui email atau WhatsApp yang dipilih saat pendaftaran, termasuk pengguna tautan sementara.</flux:text>
+        <flux:input wire:model="notificationTitle" label="Judul pengumuman" required maxlength="150" />
+        <flux:textarea wire:model="notificationBody" label="Isi pengumuman" required maxlength="5000" />
+        <flux:button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="sendAnnouncement">Kirim ke peserta</flux:button>
+    </form>
+    @if($deliveries->isNotEmpty())
+        <details class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+            <summary>Riwayat 10 pesan peserta terbaru</summary>
+            <flux:text>Terkirim berarti diterima penyedia. Pesan gagal tidak dikirim ulang otomatis.</flux:text>
+            <ul class="space-y-2 pt-3">
+                @foreach($deliveries as $delivery)
+                    <li wire:key="delivery-{{ $delivery->id }}">{{ $delivery->registration->name }} — {{ $delivery->title }} ({{ $delivery->channel }}): {{ ['pending' => 'Menunggu pengiriman', 'processing' => 'Diproses', 'sent' => 'Terkirim', 'skipped' => 'Dilewati', 'failed' => 'Gagal; periksa penyedia sebelum mengirim ulang'][$delivery->status] ?? $delivery->status }}</li>
+                @endforeach
+            </ul>
+        </details>
+    @endif
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <flux:input wire:model.live.debounce.300ms="search" label="Pencarian" placeholder="Nama, NTA/NIP, sekolah" />
         <flux:select wire:model.live="category" label="Kategori"><option value="">Semua kategori</option>@foreach(\App\Services\ActivityEntryService::CATEGORIES as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach</flux:select>

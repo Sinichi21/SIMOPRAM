@@ -452,7 +452,7 @@ class Manage extends Component
     ): void {
         abort_unless(
             auth()->user()->can(
-                'attendances.manual'
+                'attendance.manual'
             ),
             403
         );

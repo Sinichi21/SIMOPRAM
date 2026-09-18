@@ -15,6 +15,7 @@ use App\Http\Controllers\ReportPdfController;
 use App\Http\Controllers\ReportVerificationController;
 use App\Http\Controllers\SchoolRegistrationController;
 use App\Http\Controllers\SchoolSwitchController;
+use App\Http\Controllers\StudentDocumentController;
 use App\Http\Middleware\SetGlobalContentContext;
 use App\Livewire\Auth\Register;
 use App\Livewire\Settings\LandingContent;
@@ -484,6 +485,9 @@ Route::middleware([
             '/pengumuman-saya',
             'announcements.my'
         )
+            ->middleware(
+                'can:announcements.my'
+            )
             ->name(
                 'announcements.my'
             );
@@ -738,6 +742,62 @@ Route::middleware([
             ->name(
                 'reports.published-documents.download'
             );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Area Personal Siswa
+        |--------------------------------------------------------------------------
+        */
+
+        Route::view(
+            '/profil-pramuka-saya',
+            'student.scout-profile'
+        )->name('student.scout-profile');
+
+        Route::view(
+            '/riwayat-nilai',
+            'student.grade-history'
+        )->name('student.grade-history');
+
+        Route::view(
+            '/nilai-saya',
+            'student.grades'
+        )
+            ->name(
+                'student.grades'
+            );
+
+        Route::view(
+            '/keterampilan-saya',
+            'student.skills'
+        )->name('student.skills');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Dokumen Siswa
+        |--------------------------------------------------------------------------
+        */
+
+        Route::view(
+            '/dokumen-saya',
+            'student.documents'
+        )->name('student.documents');
+
+        Route::get(
+            '/dokumen-saya/{code}/download',
+            [
+                StudentDocumentController::class,
+                'download',
+            ]
+        )
+            ->where(
+                'code',
+                '[a-f0-9]{48}'
+            )
+            ->name(
+                'student.documents.download'
+            );
+
     });
 });
 

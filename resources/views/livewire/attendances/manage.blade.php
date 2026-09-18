@@ -539,7 +539,7 @@
 
                                 <td class="p-3">
 
-                                    @can('attendances.manual')
+                                    @can('attendance.manual')
 
                                         <div class="flex flex-wrap gap-1">
 

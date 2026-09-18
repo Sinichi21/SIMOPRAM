@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Log Aktivitas SIMOPRAM</title>
+    <title>Log Aktivitas SIMPRAM</title>
     <style>
         @page { margin: 24px; }
         body { font-family: DejaVu Sans, sans-serif; font-size: 9px; color: #18181b; }
@@ -16,7 +16,7 @@
     </style>
 </head>
 <body>
-    <h1>Log Aktivitas SIMOPRAM</h1>
+    <h1>Log Aktivitas SIMPRAM</h1>
     <p>Rentang: {{ $filters['from'] }} sampai {{ $filters['to'] }} (WITA, termasuk kedua tanggal)</p>
     <p>Diekspor oleh: {{ $exportedBy }} · {{ now(config('activity-log.timezone'))->format('d/m/Y H:i:s') }} WITA · Jumlah: {{ $logs->count() }} log</p>
     <p class="muted">Filter:
