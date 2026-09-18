@@ -26,7 +26,8 @@
     <flux:sidebar
         sticky
         collapsible="mobile"
-        x-data="{ hasActiveSchool: @js($hasActiveSchool) }"
+        {{-- x-data="{ hasActiveSchool: @js($hasActiveSchool) }" --}}
+        x-data="{ hasActiveSchool: {{ $hasActiveSchool ? 'true' : 'false' }} }"
         x-on:click.capture="
             if (! hasActiveSchool && $event.target.closest('[data-school-menu]')) {
                 $event.preventDefault();
