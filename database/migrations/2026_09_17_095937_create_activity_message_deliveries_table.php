@@ -19,7 +19,10 @@ return new class extends Migration
             $table->string('channel', 20);
             $table->string('status', 20)->default('pending');
             $table->timestamp('sent_at')->nullable();
-            $table->index(['activity_registration_id', 'status']);
+            $table->index(
+                ['activity_registration_id', 'status'],
+                'amd_registration_status_idx'
+            );
             $table->timestamps();
         });
     }
