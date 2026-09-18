@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ActivityAssessmentReportController;
 use App\Http\Controllers\ActivityAttendancePrintController;
 use App\Http\Controllers\ActivityJudgeController;
 use App\Http\Controllers\ActivityLogExportController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\ReportPdfController;
 use App\Http\Controllers\ReportVerificationController;
 use App\Http\Controllers\SchoolRegistrationController;
 use App\Http\Controllers\SchoolSwitchController;
+use App\Http\Controllers\StudentDocumentController;
 use App\Http\Middleware\SetGlobalContentContext;
 use App\Livewire\Auth\Register;
 use App\Livewire\Settings\LandingContent;
@@ -26,6 +28,14 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', [LandingPageController::class, 'index'])->name('home');
+Route::get('/validasi-penilaian/{code}', [ActivityAssessmentReportController::class, 'verify'])
+    ->where('code', '[a-f0-9]{48}')->middleware('throttle:60,1')->name('assessment-reports.verify');
+Route::middleware(['auth', 'school'])->group(function () {
+    Route::post('/penilaian/{assessmentId}/rekap', [ActivityAssessmentReportController::class, 'store'])
+        ->whereNumber('assessmentId')->middleware('throttle:10,1')->name('assessment-reports.store');
+    Route::get('/penilaian/rekap/{code}', [ActivityAssessmentReportController::class, 'show'])
+        ->where('code', '[a-f0-9]{48}')->name('assessment-reports.show');
+});
 Route::get('/informasi/lampiran/{kind}/{id}/{index}', PublicContentMediaController::class)->whereIn('kind', ['activities', 'announcements'])->whereNumber(['id', 'index'])->name('public.content.attachment');
 Route::get('/informasi/kegiatan/{activityId}/peserta', [ActivityRegistrationController::class, 'participants'])->whereNumber('activityId')->name('public.activities.participants');
 Route::get('/informasi/kegiatan/{activityId}/daftar', [ActivityRegistrationController::class, 'create'])->whereNumber('activityId')->name('public.activities.register');
@@ -475,6 +485,9 @@ Route::middleware([
             '/pengumuman-saya',
             'announcements.my'
         )
+            ->middleware(
+                'can:announcements.my'
+            )
             ->name(
                 'announcements.my'
             );
@@ -729,6 +742,62 @@ Route::middleware([
             ->name(
                 'reports.published-documents.download'
             );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Area Personal Siswa
+        |--------------------------------------------------------------------------
+        */
+
+        Route::view(
+            '/profil-pramuka-saya',
+            'student.scout-profile'
+        )->name('student.scout-profile');
+
+        Route::view(
+            '/riwayat-nilai',
+            'student.grade-history'
+        )->name('student.grade-history');
+
+        Route::view(
+            '/nilai-saya',
+            'student.grades'
+        )
+            ->name(
+                'student.grades'
+            );
+
+        Route::view(
+            '/keterampilan-saya',
+            'student.skills'
+        )->name('student.skills');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Dokumen Siswa
+        |--------------------------------------------------------------------------
+        */
+
+        Route::view(
+            '/dokumen-saya',
+            'student.documents'
+        )->name('student.documents');
+
+        Route::get(
+            '/dokumen-saya/{code}/download',
+            [
+                StudentDocumentController::class,
+                'download',
+            ]
+        )
+            ->where(
+                'code',
+                '[a-f0-9]{48}'
+            )
+            ->name(
+                'student.documents.download'
+            );
+
     });
 });
 

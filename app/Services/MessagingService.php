@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Mail\OutboundMessage;
+use App\Messaging\Contracts\ChannelMessage;
+use App\Messaging\TextMessage;
 use App\Models\MessagingSetting;
 use App\Models\UserNotificationChannel;
 use App\Support\SchoolContext;
@@ -63,52 +65,7 @@ class MessagingService
 
     public function send(string $channel, string $destination, string $message, string $subject = 'Notifikasi SIMPRAM'): string
     {
-        try {
-            $result = $this->deliver($channel, $destination, $message, $subject);
-        } catch (Throwable $exception) {
-            app(ActivityLogger::class)->record('messaging', 'failed', status: 'failed', description: 'Pengiriman pesan gagal');
-            throw $exception;
-        }
-
-        app(ActivityLogger::class)->record('messaging', 'sent', description: 'Penyedia menerima pengiriman pesan');
-
-        return $result;
-    }
-
-    private function deliver(string $channel, string $destination, string $message, string $subject): string
-    {
-        if (! $this->enabled($channel)) {
-            throw new RuntimeException('Saluran belum aktif. Hubungi Super Admin untuk konfigurasi pengiriman.');
-        }
-        $destination = $this->destination($channel, $destination);
-        try {
-            if ($channel === 'telegram') {
-                $response = app(TelegramService::class)->sendMessage($destination, $message);
-
-                return 'message_id='.data_get($response, 'result.message_id');
-            }
-            if ($channel === 'whatsapp') {
-                $token = MessagingSetting::forChannel('whatsapp')?->options['token'] ?? '';
-                if (! $token) {
-                    throw new RuntimeException('Token Fonnte belum dikonfigurasi.');
-                }
-                $response = Http::connectTimeout(5)->timeout(15)->asForm()
-                    ->withHeaders(['Authorization' => $token])->post('https://api.fonnte.com/send', [
-                        'target' => $destination, 'message' => $message, 'countryCode' => '0', 'connectOnly' => true,
-                    ]);
-                if (! $response->successful() || $response->json('status') !== true) {
-                    throw new RuntimeException('Fonnte menolak pesan.');
-                }
-
-                return 'accepted';
-            }
-            $this->configureMail();
-            Mail::to($destination)->send(new OutboundMessage($message, $subject));
-
-            return 'accepted';
-        } catch (Throwable) {
-            throw new RuntimeException('Pengiriman belum terkonfirmasi. Periksa konfigurasi, koneksi perangkat, kuota, dan riwayat penyedia sebelum mengirim ulang.');
-        }
+        return $this->sendMessage($channel, $destination, new TextMessage($message, $subject));
     }
 
     public function configureMail(): void
@@ -122,5 +79,126 @@ class MessagingService
         }
 
         app(MailConfigurationService::class)->apply($setting);
+    }
+
+    public function sendMessage(
+        string $channel,
+        string $destination,
+        ChannelMessage $message,
+    ): string {
+        try {
+            $result = $this->deliverMessage(
+                $channel,
+                $destination,
+                $message,
+            );
+        } catch (Throwable $exception) {
+            app(ActivityLogger::class)->record(
+                'messaging',
+                'failed',
+                status: 'failed',
+                description: 'Pengiriman pesan gagal',
+            );
+
+            throw $exception;
+        }
+
+        app(ActivityLogger::class)->record(
+            'messaging',
+            'sent',
+            description: 'Penyedia menerima pengiriman pesan',
+        );
+
+        return $result;
+    }
+
+    private function deliverMessage(
+        string $channel,
+        string $destination,
+        ChannelMessage $message,
+    ): string {
+        if (! $this->enabled($channel)) {
+            throw new RuntimeException(
+                'Saluran belum aktif. Hubungi Super Admin untuk konfigurasi pengiriman.'
+            );
+        }
+
+        $destination = $this->destination(
+            $channel,
+            $destination,
+        );
+
+        try {
+            if ($channel === 'telegram') {
+                $response = app(TelegramService::class)
+                    ->sendMessage(
+                        $destination,
+                        $message->text(),
+                    );
+
+                return 'message_id='.data_get(
+                    $response,
+                    'result.message_id',
+                );
+            }
+
+            if ($channel === 'whatsapp') {
+                $token = MessagingSetting::forChannel('whatsapp')
+                    ?->options['token'] ?? '';
+
+                if (! $token) {
+                    throw new RuntimeException(
+                        'Token Fonnte belum dikonfigurasi.'
+                    );
+                }
+
+                $response = Http::connectTimeout(5)
+                    ->timeout(15)
+                    ->asForm()
+                    ->withHeaders([
+                        'Authorization' => $token,
+                    ])
+                    ->post(
+                        'https://api.fonnte.com/send',
+                        [
+                            'target' => $destination,
+                            'message' => $message->text(),
+                            'countryCode' => '0',
+                            'connectOnly' => true,
+                        ],
+                    );
+
+                if (
+                    ! $response->successful()
+                    || $response->json('status') !== true
+                ) {
+                    throw new RuntimeException(
+                        'Fonnte menolak pesan.'
+                    );
+                }
+
+                return 'accepted';
+            }
+
+            if ($channel === 'email') {
+                $this->configureMail();
+
+                Mail::to($destination)->send(
+                    new OutboundMessage($message)
+                );
+
+                return 'accepted';
+            }
+
+            throw new RuntimeException(
+                'Saluran pengiriman tidak valid.'
+            );
+
+        } catch (Throwable $exception) {
+            throw new RuntimeException(
+                'Pengiriman belum terkonfirmasi. Periksa konfigurasi, koneksi perangkat, kuota, dan riwayat penyedia sebelum mengirim ulang.',
+                previous: $exception,
+            );
+        }
     }
 }

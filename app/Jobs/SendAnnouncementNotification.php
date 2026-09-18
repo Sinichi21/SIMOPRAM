@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Messaging\AnnouncementMessage;
 use App\Models\Announcement;
 use App\Models\NotificationLog;
 use App\Models\School;
@@ -58,13 +59,8 @@ class SendAnnouncementNotification implements ShouldQueue
             $destination = $this->channel === 'email' ? $user->email : $recipient->destination;
             $log->update(['status' => 'processing', 'recipient' => $destination]);
             try {
-                $body = strip_tags($announcement->body);
-                if ($this->channel === 'telegram') {
-                    $body = mb_substr($body, 0, 3000);
-                }
-                $response = $messaging->send($this->channel, $destination,
-                    $context->school()->name."\n\n".$announcement->title."\n\n".$body."\n\n".route('announcements.my'),
-                    $announcement->title);
+                $response = $messaging->sendMessage($this->channel, $destination,
+                    new AnnouncementMessage($announcement, $context->school()->name, $this->channel === 'telegram'));
                 $log->update(['status' => 'sent', 'response' => $response, 'sent_at' => now(), 'error_message' => null]);
             } catch (Throwable) {
                 $log->update(['status' => 'failed', 'error_message' => 'Pengiriman belum terkonfirmasi. Periksa konfigurasi dan riwayat penyedia sebelum mengirim ulang.']);

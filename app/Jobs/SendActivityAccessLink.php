@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Messaging\ActivityAccessMessage;
 use App\Models\ActivityRegistration;
 use App\Services\MessagingService;
 use App\Support\SchoolContext;
@@ -55,10 +56,8 @@ class SendActivityAccessLink implements ShouldQueue
             return;
         }
         try {
-            $messaging->send($registration->channel, $registration->destination,
-                'Pendaftaran '.$registration->name.' pada '.$registration->activity->title.' berhasil. Akses '.($registration->role === 'coach' ? 'pembina' : 'siswa').': '
-                .route('activity-access.open', ['token' => $token]).' Berlaku '.$registration->activity->start_at->format('d-m-Y H:i').' sampai '.$registration->activity->end_at->format('d-m-Y H:i').' ('.config('app.timezone').'). Jangan bagikan link ini.',
-                'Akses peserta kegiatan');
+            $messaging->sendMessage($registration->channel, $registration->destination,
+                new ActivityAccessMessage($registration, route('activity-access.open', ['token' => $token])));
             $status = 'sent';
         } catch (Throwable) {
             $status = 'failed';

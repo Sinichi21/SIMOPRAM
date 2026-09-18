@@ -8,7 +8,8 @@
         <header class="app-page-heading"><p class="text-sm">{{ $activity->title }}</p><h1 class="mt-3 text-3xl">{{ $assessment->title }}</h1><p class="mt-3">Seluruh perolehan nilai</p></header>
         <section class="space-y-5 rounded-2xl border border-zinc-200 bg-white p-5 sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
             <p class="text-sm leading-6 text-zinc-600 dark:text-zinc-300">{{ $assessment->is_special ? 'Nilai merupakan rata-rata berbobot dari juri yang sudah final. Draft juri tidak dihitung. Hasil dapat berubah selama penjurian berlangsung.' : 'Hasil menggunakan nilai kegiatan yang telah disimpan oleh penilai.' }} Nilai sama mendapat peringkat sama (contoh: 1, 1, 3).</p>
-            @include('landing.ranking-table', ['rankings' => $rankings])
+            @include('landing.judge-list', ['resultJudges' => $resultJudges])
+            @include('landing.ranking-table', ['rankings' => $rankings, 'showJudgeScores' => $assessment->is_special])
             <h2 class="text-lg font-semibold">Kriteria penilaian</h2>
             <dl class="grid gap-4 sm:grid-cols-2">
                 @foreach ($assessment->criteria as $criterion)

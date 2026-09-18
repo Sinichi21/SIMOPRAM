@@ -4,6 +4,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 
 | Applies to | Rule file |
 | --- | --- |
+| {lang,app/Services}/** | .ai/rules/langapp-services.md |
 | app/{Models,Livewire}/** | .ai/rules/models-livewire.md |
 | app/{Models,Services,Livewire,Providers,Http}/** | .ai/rules/models-services-livewire-providers-http.md |
 | resources/** | .ai/rules/resources.md |
@@ -13,5 +14,6 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/{Services,Jobs,Livewire,Models}/** | .ai/rules/services-jobs-livewire-models.md |
 | app/{Services,Livewire,Models}/** | .ai/rules/services-livewire-models.md |
 | app/{Services,Livewire}/** | .ai/rules/services-livewire.md |
+| app/{Services,Models,Http}/** | .ai/rules/services-models-http.md |
 | app/Services/** | .ai/rules/services.md |
 | tests/** | .ai/rules/tests.md |

@@ -150,6 +150,18 @@ test('registration upload rules reject excess count oversize and unconfigured up
     $this->assertDatabaseCount('activity_entries', 0);
 })->with([['count', 'files'], ['size', 'files.0'], ['missing', 'files'], ['unconfigured', 'files']]);
 
+test('required dynamic answers use the administrator question label in errors', function () {
+    app()->setLocale('id');
+    Queue::fake([SendActivityAccessLink::class]);
+    $activity = Activity::factory()->publicRegistration()->create(['registration_fields' => [
+        ['id' => 'random_question_id', 'label' => 'Pengalaman berkemah', 'description' => '', 'type' => 'paragraph', 'required' => true, 'options' => []],
+    ]]);
+    $this->post(route('public.activities.register.store', $activity), activityEntryPayload())
+        ->assertSessionHasErrors(['answers.random_question_id' => 'Pengalaman berkemah wajib diisi.']);
+    $this->assertDatabaseCount('activity_entries', 0);
+    Queue::assertNothingPushed();
+});
+
 test('SIMPRAM selection uses canonical data and cannot enroll another users profile', function () {
     Queue::fake([SendActivityAccessLink::class]);
     $activity = Activity::factory()->publicRegistration()->create();

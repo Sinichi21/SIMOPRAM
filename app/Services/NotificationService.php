@@ -17,6 +17,10 @@ class NotificationService
     public function publish(
         Announcement $announcement
     ): void {
+        if ($announcement->school_id === null) {
+            return;
+        }
+
         $users =
             $this->audience->users(
                 $announcement

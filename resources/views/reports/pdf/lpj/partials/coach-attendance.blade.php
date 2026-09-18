@@ -44,7 +44,7 @@
     @if ($manualCoachAttendance ?? false)
         <div class="attendance-note">Kehadiran diisi/ditandatangani langsung oleh pembina.</div>
     @else
-        <div class="attendance-note">* H pada daftar pembina saat ini berasal dari penugasan pembina pada kegiatan SIMOPRAM.</div>
+        <div class="attendance-note">* H pada daftar pembina saat ini berasal dari penugasan pembina pada kegiatan SIMPRAM.</div>
     @endif
 
     <div class="signature-block">

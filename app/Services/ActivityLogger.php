@@ -49,7 +49,7 @@ class ActivityLogger
             $this->record($module ?? ($security ? 'users' : $this->moduleFor(request()->route()?->getName() ?? '')), 'failed', new: ['exception_type' => class_basename($exception)], status: 'failed',
                 type: $security ? 'security' : ($exception instanceof ValidationException ? 'audit' : 'system'), description: $security ? 'Akses ditolak' : 'Operasi aplikasi gagal');
         } catch (\Throwable) {
-            error_log('SIMOPRAM: pencatatan kegagalan aktivitas tidak tersedia.');
+            error_log('SIMPRAM: pencatatan kegagalan aktivitas tidak tersedia.');
         }
     }
 

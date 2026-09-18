@@ -49,7 +49,7 @@ class PublicAssessmentService
         if ($assessment->is_special) {
             return app(ActivityJudgeService::class)->rankings($assessment)->map(fn (array $row): array => [
                 'name' => $row['target']->participant_name ?? $row['target']->student?->name ?? $row['target']->scoutUnit?->name ?? 'Peserta',
-                'score' => $row['score'], 'rank' => $row['rank'],
+                'score' => $row['score'], 'rank' => $row['rank'], 'judge_scores' => $row['judge_scores'],
             ]);
         }
         $previousScore = null;

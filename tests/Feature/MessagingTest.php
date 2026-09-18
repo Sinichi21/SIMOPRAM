@@ -4,6 +4,7 @@ use App\Jobs\SendAnnouncementNotification;
 use App\Livewire\Messaging\Settings;
 use App\Livewire\NotificationSettings\Manage;
 use App\Mail\OutboundMessage;
+use App\Messaging\TextMessage;
 use App\Models\Announcement;
 use App\Models\Coach;
 use App\Models\MessagingSetting;
@@ -147,10 +148,10 @@ test('email uses saved smtp settings and keeps message content escaped', functio
     app(MessagingService::class)->send('email', 'recipient@example.com', '<script>unsafe</script>', 'Pengumuman');
 
     Mail::assertSent(OutboundMessage::class, fn ($mail) => $mail->hasTo('recipient@example.com')
-        && $mail->messageText === '<script>unsafe</script>' && $mail->messageSubject === 'Pengumuman');
+        && $mail->envelope()->subject === 'Pengumuman' && str_contains($mail->render(), '&lt;script&gt;unsafe&lt;/script&gt;'));
     expect(config('mail.mailers.messaging.host'))->toBe('smtp.example.com');
     expect(config('mail.from.address'))->toBe('school@example.com');
-    expect((new OutboundMessage('<script>unsafe</script>', 'Pengumuman'))->render())
+    expect((new OutboundMessage(new TextMessage('<script>unsafe</script>', 'Pengumuman')))->render())
         ->toContain('&lt;script&gt;unsafe&lt;/script&gt;')->not->toContain('<script>unsafe</script>');
 });
 
