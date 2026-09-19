@@ -13,6 +13,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 
 class LandingPageController extends Controller
 {
@@ -40,17 +41,111 @@ class LandingPageController extends Controller
         return view('landing.index', compact('schools', 'search', 'content', 'heroImage', 'announcements', 'activities'));
     }
 
+    // public function school(School $school): View
+    // {
+    //     abort_unless($school->is_active, 404);
+
+    //     $school->load([
+    //         'announcements' => fn ($query) => $this->publicAnnouncements($query->getQuery())
+    //             ->latest('published_at')->limit(3),
+    //         'activities' => fn ($query) => $this->publicActivities($query->getQuery())
+    //             ->latest('start_at')->limit(6),
+    //         'coaches' => fn ($query) => $query->withoutGlobalScope('school')->with('user:id,email')->where('is_active', true)->orderBy('name')->limit(3),
+    //     ]);
+
+    //     return view('landing.school', compact('school'));
+    // }
+
     public function school(School $school): View
     {
         abort_unless($school->is_active, 404);
 
         $school->load([
-            'announcements' => fn ($query) => $this->publicAnnouncements($query->getQuery())
-                ->latest('published_at')->limit(3),
-            'activities' => fn ($query) => $this->publicActivities($query->getQuery())
-                ->latest('start_at')->limit(6),
-            'coaches' => fn ($query) => $query->withoutGlobalScope('school')->with('user:id,email')->where('is_active', true)->orderBy('name')->limit(3),
+            'announcements' => fn ($query) => $this
+                ->publicAnnouncements($query->getQuery())
+                ->latest('published_at')
+                ->limit(3),
+
+            'activities' => function ($query) use ($school): void {
+                $activityQuery = $this->publicActivities(
+                    $query->getQuery()
+                );
+
+                $activityQuery
+                    ->with([
+                        'journal' => function ($journalQuery) use ($school): void {
+                            $journalQuery
+                                ->withoutGlobalScope('school')
+                                ->where('school_id', $school->id)
+                                ->where('status', 'published')
+                                ->where(function (Builder $query): void {
+                                    $query
+                                        ->whereNull('published_at')
+                                        ->orWhere('published_at', '<=', now());
+                                })
+                                ->with([
+                                    'attachments' => function ($attachmentQuery) use ($school): void {
+                                        $attachmentQuery
+                                            ->withoutGlobalScope('school')
+                                            ->where('school_id', $school->id)
+                                            ->where(
+                                                'mime_type',
+                                                'like',
+                                                'image/%'
+                                            )
+                                            ->orderBy('id');
+                                    },
+                                ]);
+                        },
+                    ])
+                    ->latest('start_at')
+                    ->limit(6);
+            },
+
+            'coaches' => fn ($query) => $query
+                ->withoutGlobalScope('school')
+                ->with('user:id,email')
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->limit(3),
         ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Cover dokumentasi
+        |--------------------------------------------------------------------------
+        |
+        | Foto jurnal hanya menjadi cover apabila jurnal publik tersedia.
+        | Activity tanpa jurnal tetap ditampilkan.
+        |
+        */
+        $school->activities->each(function (Activity $activity): void {
+            $attachments = $activity->journal?->attachments ?? collect();
+
+            $cover = $attachments->first(
+                function ($attachment): bool {
+                    if (
+                        blank($attachment->path)
+                        || ! str_starts_with(
+                            (string) $attachment->mime_type,
+                            'image/'
+                        )
+                    ) {
+                        return false;
+                    }
+
+                    return Storage::disk('public')
+                        ->exists($attachment->path);
+                }
+            );
+
+            $activity->setAttribute(
+                'cover_image_url',
+                $cover
+                    ? Storage::disk('public')->url($cover->path)
+                    : null
+            );
+        });
 
         return view('landing.school', compact('school'));
     }

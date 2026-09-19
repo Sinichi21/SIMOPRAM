@@ -32,9 +32,177 @@
             </div>
         </div></section>
 
-        <section id="dokumentasi" class="px-5 py-20 lg:px-8"><div class="mx-auto max-w-7xl"><p class="text-sm font-bold uppercase tracking-[.2em] text-[var(--school-color)]">Cerita dari lapangan</p><h2 class="mt-3 text-4xl font-black">Dokumentasi kegiatan</h2>
-            <div class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">@forelse($school->activities as $activity)<article class="group relative min-h-72 overflow-hidden rounded-3xl bg-[var(--school-color)] p-7 text-white"><div class="absolute -right-10 -top-10 size-40 rounded-full border-[25px] border-white/10 transition group-hover:scale-110"></div><div class="relative flex h-full flex-col justify-end"><p class="text-xs font-bold uppercase tracking-widest text-amber-300">{{ $activity->activity_type }} · {{ $activity->start_at->translatedFormat('M Y') }}</p><h3 class="mt-3 text-2xl font-black">{{ $activity->title }}</h3><p class="mt-3 line-clamp-2 text-sm leading-6 text-white/70">{{ $activity->description ?: $activity->location }}</p><a href="{{ route('schools.documentation.show', [$school, $activity->id]) }}" class="mt-5 inline-flex font-bold text-amber-300">Lihat dokumentasi &rarr;</a></div></article>@empty<div class="col-span-full rounded-3xl border border-dashed border-slate-300 p-12 text-center text-slate-500 dark:text-zinc-400">Dokumentasi kegiatan akan segera hadir.</div>@endforelse</div>
-        </div></section>
+        <section id="dokumentasi" class="px-5 py-20 lg:px-8">
+    <div class="mx-auto max-w-7xl">
+
+        {{-- Heading --}}
+        <p
+            class="text-sm font-bold uppercase tracking-[.2em]
+                   text-[var(--school-color)]"
+        >
+            Cerita dari lapangan
+        </p>
+
+        <h2 class="mt-3 text-4xl font-black">
+            Dokumentasi kegiatan
+        </h2>
+
+        {{-- Dokumentasi --}}
+        <div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+
+            @forelse ($school->activities as $activity)
+
+                <article
+                    class="group relative min-h-[340px]
+                           overflow-hidden rounded-3xl
+                           bg-[var(--school-color)]
+                           text-white shadow-sm"
+                >
+
+                    {{-- ========================================= --}}
+                    {{-- FOTO DOKUMENTASI DARI JURNAL              --}}
+                    {{-- ========================================= --}}
+                    @if ($activity->cover_image_url)
+
+                        <img
+                            src="{{ $activity->cover_image_url }}"
+                            alt="Dokumentasi {{ $activity->title }}"
+                            loading="lazy"
+                            class="absolute inset-0
+                                   h-full w-full
+                                   object-cover
+                                   transition duration-700 ease-out
+                                   group-hover:scale-105"
+                        >
+
+                        {{-- Overlay untuk menjaga tulisan terbaca --}}
+                        <div
+                            class="absolute inset-0
+                                   bg-gradient-to-t
+                                   from-black/90
+                                   via-black/55
+                                   to-black/10"
+                        ></div>
+
+                        {{-- sedikit tint warna sekolah --}}
+                        <div
+                            class="absolute inset-0
+                                   bg-[var(--school-color)]
+                                   opacity-10"
+                        ></div>
+
+                    @else
+
+                        {{-- ========================================= --}}
+                        {{-- FALLBACK JIKA GAMBAR TIDAK TERSEDIA       --}}
+                        {{-- ========================================= --}}
+                        <div
+                            class="absolute inset-0
+                                   bg-[var(--school-color)]"
+                        ></div>
+
+                        <div
+                            class="absolute -right-10 -top-10
+                                   size-40 rounded-full
+                                   border-[25px] border-white/10
+                                   transition duration-500
+                                   group-hover:scale-110"
+                        ></div>
+
+                    @endif
+
+
+                    {{-- ========================================= --}}
+                    {{-- ISI KARTU                                 --}}
+                    {{-- ========================================= --}}
+                    <div
+                        class="relative z-10 flex min-h-[340px]
+                               flex-col justify-end p-7"
+                    >
+
+                        <p
+                            class="text-xs font-bold uppercase
+                                   tracking-widest text-amber-300"
+                        >
+                            {{ $activity->activity_type ?: 'Kegiatan' }}
+                            ·
+                            {{ $activity->start_at->translatedFormat('M Y') }}
+                        </p>
+
+
+                        <h3
+                            class="mt-3 text-2xl font-black
+                                   leading-tight"
+                        >
+                            {{ $activity->title }}
+                        </h3>
+
+
+                        @php
+                            $documentationDescription =
+                                $activity->journal?->activity_description
+                                ?: $activity->description
+                                ?: $activity->location;
+                        @endphp
+
+
+                        @if ($documentationDescription)
+                            <p
+                                class="mt-3 line-clamp-2
+                                       text-sm leading-6
+                                       text-white/80"
+                            >
+                                {{ $documentationDescription }}
+                            </p>
+                        @endif
+
+
+                        <a
+                            href="{{ route(
+                                'schools.documentation.show',
+                                [$school, $activity->id]
+                            ) }}"
+                            class="mt-5 inline-flex items-center
+                                   gap-2 font-bold
+                                   text-amber-300
+                                   transition
+                                   hover:text-amber-200"
+                        >
+                            Lihat dokumentasi
+
+                            <span
+                                aria-hidden="true"
+                                class="transition-transform
+                                       duration-200
+                                       group-hover:translate-x-1"
+                            >
+                                &rarr;
+                            </span>
+                        </a>
+
+                    </div>
+
+                </article>
+
+            @empty
+
+                <div
+                    class="col-span-full
+                           rounded-3xl
+                           border border-dashed border-slate-300
+                           p-12 text-center
+                           text-slate-500
+                           dark:border-zinc-700
+                           dark:text-zinc-400"
+                >
+                    Dokumentasi kegiatan akan segera hadir.
+                </div>
+
+            @endforelse
+
+        </div>
+    </div>
+</section>
 
         <section id="kontak" class="px-5 pb-20 lg:px-8"><div class="mx-auto grid max-w-7xl overflow-hidden rounded-[2rem] bg-amber-300 text-slate-900 lg:grid-cols-2"><div class="p-8 lg:p-12"><p class="text-sm font-bold uppercase tracking-[.2em] text-[var(--school-color)]">Hubungi kami</p><h2 class="mt-3 text-4xl font-black">Punya pertanyaan tentang Pramuka?</h2><p class="mt-5 max-w-md leading-7 text-slate-700">Pembina kami siap membantu informasi kegiatan dan pendaftaran anggota.</p><div class="mt-8 space-y-2 text-sm font-semibold">@if($school->phone)<p>Telepon · {{ $school->phone }}</p>@endif @if($school->email)<p>Email · {{ $school->email }}</p>@endif<p>Alamat · {{ $school->address ?: $school->city }}</p></div></div><div class="grid gap-px bg-slate-900/10 sm:grid-cols-2">@forelse($school->coaches as $coach)<div class="bg-white/60 p-8 text-slate-900 dark:bg-zinc-900 dark:text-zinc-100"><span class="grid size-12 place-items-center rounded-full bg-[var(--school-color)] font-bold text-white">{{ str($coach->name)->substr(0, 1) }}</span><h3 class="mt-5 font-bold">{{ $coach->name }}</h3><p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">{{ $coach->position ?: 'Pembina Pramuka' }}</p>@php($contactEmail = filter_var($coach->user?->email, FILTER_VALIDATE_EMAIL) ? $coach->user->email : (filter_var($school->email, FILTER_VALIDATE_EMAIL) ? $school->email : null))
 @if($contactEmail)<a href="mailto:{{ $contactEmail }}?subject={{ rawurlencode('Informasi Pramuka '.$school->name) }}" class="mt-5 inline-block text-sm font-bold text-[var(--school-color)] dark:text-emerald-300">Hubungi pembina &rarr;</a>@else<p class="mt-5 text-sm text-slate-500">Email kontak belum tersedia.</p>@endif</div>@empty<div class="col-span-full grid place-items-center p-10 text-sm text-slate-600 dark:text-zinc-300">Kontak pembina akan segera diperbarui.</div>@endforelse</div></div></section>
