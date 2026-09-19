@@ -339,7 +339,7 @@ class LpjReportService
 
                         $holidayLabel = $reason !== ''
                             ? 'LIBUR - '.$reason
-                            : 'LIBUR / TIDAK ADA KEGIATAN';
+                            : 'LIBUR';
                     }
 
                     return [
@@ -368,7 +368,7 @@ class LpjReportService
                     ->implode(' / ');
 
                 if ($holidayLabel === '') {
-                    $holidayLabel = 'LIBUR / TIDAK ADA KEGIATAN';
+                    $holidayLabel = 'LIBUR';
                 }
             }
 
