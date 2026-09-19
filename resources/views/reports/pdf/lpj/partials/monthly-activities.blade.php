@@ -22,7 +22,7 @@
                     <td>{{ $row['date']->locale('id')->translatedFormat('l, d F Y') }}</td>
                     <td>
                         @if ($row['sessions']->isEmpty())
-                            <strong>{{ $row['holidayLabel'] ?: 'LIBUR / TIDAK ADA KEGIATAN' }}</strong>
+                            <strong>{{ $row['holidayLabel'] ?: 'LIBUR' }}</strong>
                         @else
                             @foreach ($row['sessions'] as $session)
                                 <div class="report-session">
