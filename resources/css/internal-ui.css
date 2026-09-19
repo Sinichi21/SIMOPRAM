@@ -185,5 +185,58 @@
 }
 
 .app-content .overflow-x-auto {
+    min-width: 0;
+    max-width: 100%;
     overscroll-behavior-x: contain;
+}
+
+/* Flex/grid children must be able to shrink around long names and form labels. */
+.app-content :where(.grid, .flex) > :where(div, section, form, fieldset, label, [data-flux-field]) {
+    min-width: 0;
+}
+
+.app-content :where(fieldset, [data-flux-field], [data-flux-input], [data-flux-textarea]) {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.app-content :where(input, select, textarea) {
+    min-width: 0;
+}
+
+.app-content :where(h1, h2, h3, p, label, legend, [data-flux-description], [data-flux-error]):not(.letter-preview *, .letter-real-preview *, [contenteditable] *) {
+    overflow-wrap: anywhere;
+}
+
+/* Preserve readable columns; only the table viewport scrolls on narrow screens. */
+.app-content .overflow-x-auto > table:not([style], .letter-preview table, .letter-real-preview table, [contenteditable] table):has(> thead > tr > :nth-child(4)) {
+    min-width: 40rem;
+}
+
+.app-content .overflow-x-auto > table:not([style], .letter-preview table, .letter-real-preview table, [contenteditable] table):has(> thead > tr > :nth-child(6)) {
+    min-width: 52rem;
+}
+
+.app-content .overflow-x-auto > table:not([style], .letter-preview table, .letter-real-preview table, [contenteditable] table) > tbody > tr > td:not([colspan]) {
+    max-width: 24rem;
+    overflow-wrap: anywhere;
+}
+
+@media (width < 80rem) {
+    .app-content :where([data-flux-button], [data-action-tone]):not([data-flux-button-group] *) {
+        max-width: 100%;
+        height: auto;
+        min-height: 2.5rem;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        padding-block: .625rem;
+    }
+
+    .app-content :where([data-flux-button], [data-action-tone]) > svg {
+        flex-shrink: 0;
+    }
+
+    .app-content .overflow-x-auto > table:not([style], .letter-preview table, .letter-real-preview table, [contenteditable] table) > :where(thead, tbody) > tr > :where(th, td) {
+        padding: .75rem;
+    }
 }

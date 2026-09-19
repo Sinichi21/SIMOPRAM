@@ -5,6 +5,7 @@ use App\Jobs\SendActivityNotification;
 use App\Livewire\Activities\GlobalParticipants;
 use App\Mail\OutboundMessage;
 use App\Models\Activity;
+use App\Models\ActivityAssessment;
 use App\Models\ActivityEntry;
 use App\Models\ActivityMessageDelivery;
 use App\Models\ActivityRegistration;
@@ -147,3 +148,21 @@ test('activity access emails use the structured message layout', function () {
     expect($member->fresh()->delivery_status)->toBe('sent');
     Mail::assertSent(OutboundMessage::class, fn ($mail) => str_contains($mail->render(), '/akses-kegiatan/'));
 });
+
+test('publishing competition results notifies participants with a public results link', function (bool $public) {
+    $activity = Activity::factory()->publicRegistration()->create(['is_public' => $public]);
+    $entry = ActivityEntry::factory()->create(['activity_id' => $activity->id]);
+    $member = ActivityRegistration::factory()->create(['entry_id' => $entry->id]);
+    $assessment = ActivityAssessment::factory()->special()->published()->create(['school_id' => null, 'activity_id' => $activity->id]);
+
+    $assessment->update(['results_published_at' => now()]);
+
+    if ($public) {
+        $delivery = ActivityMessageDelivery::sole();
+        expect($delivery->activity_registration_id)->toBe($member->id)
+            ->and($delivery->body)->toContain(route('public.activities.results', ['activityId' => $activity->id, 'assessmentId' => $assessment->id]));
+    } else {
+        $this->assertDatabaseCount('activity_message_deliveries', 0);
+        Queue::assertNothingPushed();
+    }
+})->with([true, false]);

@@ -22,7 +22,7 @@
             </ul>
         </details>
     @endif
-    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
         <flux:input wire:model.live.debounce.300ms="search" label="Pencarian" placeholder="Nama, NTA/NIP, sekolah" />
         <flux:select wire:model.live="category" label="Kategori"><option value="">Semua kategori</option>@foreach(\App\Services\ActivityEntryService::CATEGORIES as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach</flux:select>
         <flux:select wire:model.live="status" label="Status"><option value="">Semua</option><option value="active">Aktif</option><option value="inactive">Nonaktif</option></flux:select>

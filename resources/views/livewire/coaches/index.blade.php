@@ -401,7 +401,7 @@
         </div>
 
 
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Tabel data, geser untuk melihat seluruh kolom">
 
             <table class="w-full text-left text-sm">
 

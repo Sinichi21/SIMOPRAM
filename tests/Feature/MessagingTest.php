@@ -191,6 +191,46 @@ test('invalid whatsapp preference does not persist any channel', function () {
     $this->assertDatabaseCount('user_notification_channels', 0);
 });
 
+test('students and coaches can configure their own email and whatsapp notifications', function (string $role) {
+    $school = School::factory()->create();
+    $user = User::factory()->create(['system_role' => $role, 'is_active' => true, 'approval_status' => 'approved']);
+    $user->schoolMemberships()->create(['school_id' => $school->id, 'is_active' => true, 'joined_at' => now()]);
+    $this->actingAs($user)->withSession(['active_school_id' => $school->id]);
+    app(SchoolContext::class)->set($school);
+
+    $this->get(route('notification-settings.manage'))->assertOk()->assertSee('Email & WhatsApp saya', false)->assertSee($user->email);
+    Livewire::test(Manage::class)->set('whatsappNumber', '081234567890')->set('whatsappEnabled', true)
+        ->set('emailEnabled', true)->call('savePreferences')->assertHasNoErrors();
+
+    $this->assertDatabaseHas('user_notification_channels', ['school_id' => $school->id, 'user_id' => $user->id,
+        'channel' => 'email', 'destination' => $user->email, 'is_active' => true]);
+    $this->assertDatabaseHas('user_notification_channels', ['school_id' => $school->id, 'user_id' => $user->id,
+        'channel' => 'whatsapp', 'destination' => '6281234567890', 'is_active' => true]);
+})->with(['student', 'coach']);
+
+test('announcement email uses its dedicated template and honors the user preference', function (bool $enabled) {
+    $school = School::factory()->create();
+    app(SchoolContext::class)->set($school);
+    $user = User::factory()->create(['is_active' => true]);
+    $announcement = Announcement::create(['title' => 'Latihan sekolah', 'body' => '<p>Hadir besok pagi.</p>', 'created_by' => $user->id]);
+    UserNotificationChannel::create(['user_id' => $user->id, 'channel' => 'email', 'destination' => $user->email, 'is_active' => $enabled]);
+    MessagingSetting::factory()->create(['channel' => 'email', 'enabled' => true, 'options' => [
+        'host' => 'smtp.example.com', 'port' => 587, 'from_address' => 'mail@example.com',
+    ]]);
+    Mail::fake();
+
+    (new SendAnnouncementNotification($school->id, $announcement->id, $user->id, 'email'))->handle(app(MessagingService::class));
+
+    if ($enabled) {
+        Mail::assertSent(OutboundMessage::class, fn ($mail) => $mail->hasTo($user->email)
+            && $mail->content()->view === 'mail.notification.announcement'
+            && str_contains($mail->render(), 'Hadir besok pagi.') && str_contains($mail->render(), 'Buka pengumuman saya'));
+    } else {
+        Mail::assertNothingSent();
+    }
+    expect(NotificationLog::sole()->status)->toBe($enabled ? 'sent' : 'skipped');
+})->with([true, false]);
+
 test('publishing queues each enabled channel only once', function () {
     app(SchoolContext::class)->set(School::factory()->create());
     $user = User::factory()->create(['is_active' => true]);

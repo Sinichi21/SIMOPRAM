@@ -188,7 +188,7 @@
                     Pilih Kelas
                 </label>
 
-                <div class="grid gap-2 md:grid-cols-3">
+                <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
 
                     @foreach ($classrooms as $classroom)
 
@@ -236,7 +236,7 @@
                     Pilih Regu / Barung
                 </label>
 
-                <div class="grid gap-2 md:grid-cols-3">
+                <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
 
                     @foreach ($scoutUnits as $unit)
 

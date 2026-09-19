@@ -91,7 +91,7 @@
             </div>
 
             <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start">
-                <div class="flex-1">
+                <div class="min-w-0 flex-1">
                     <input
                         type="file"
                         wire:model="csvFile"
@@ -542,7 +542,7 @@
 
             <div
                 class="grid gap-4
-                       md:grid-cols-3"
+                       sm:grid-cols-2 xl:grid-cols-3"
             >
 
                 {{-- TAHUN AJARAN --}}
@@ -931,7 +931,7 @@
         </div>
 
 
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Tabel data, geser untuk melihat seluruh kolom">
 
             <table
                 class="w-full text-left
