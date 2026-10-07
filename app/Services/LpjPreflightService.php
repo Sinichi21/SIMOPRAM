@@ -7,7 +7,7 @@ use App\Models\Activity;
 class LpjPreflightService
 {
     /**
-     * @param array<string, mixed> $report
+     * @param  array<string, mixed>  $report
      * @return array<int, string>
      */
     public function warnings(array $report): array
@@ -23,6 +23,7 @@ class LpjPreflightService
 
             if ($activity->attendanceSessions->isEmpty()) {
                 $warnings[] = "{$date} - {$activity->title}: belum ada sesi absensi.";
+
                 continue;
             }
 
