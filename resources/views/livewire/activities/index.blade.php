@@ -142,6 +142,13 @@
                             Gunakan nomor sesi yang sama untuk jadwal rutin yang berulang setiap minggu.
                         </p>
 
+                        @if ($editingId)
+                            <label class="mt-3 flex items-start gap-2 text-xs text-amber-800 dark:text-amber-300">
+                                <input type="checkbox" wire:model="confirmSessionChange" class="mt-0.5 rounded">
+                                <span>Konfirmasi jika mengubah nomor sesi pada kegiatan yang sudah memiliki absensi. Riwayat kehadiran tidak dihapus, tetapi pengelompokan LPJ dapat berubah.</span>
+                            </label>
+                        @endif
+
                         @error('routine_session_no')
                             <p class="mt-1 text-sm text-red-500">
                                 {{ $message }}
