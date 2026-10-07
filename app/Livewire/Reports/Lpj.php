@@ -4,6 +4,8 @@ namespace App\Livewire\Reports;
 
 use App\Models\AcademicYear;
 use App\Models\Semester;
+use App\Services\LpjReportService;
+use App\Services\LpjPreflightService;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
@@ -21,6 +23,37 @@ class Lpj extends Component
     public bool $manualStudentAttendance = false;
 
     public bool $manualCoachAttendance = false;
+
+    public bool $preflightChecked = false;
+
+    public array $preflightWarnings = [];
+
+    public function updated($property): void
+    {
+        $this->preflightChecked = false;
+        $this->preflightWarnings = [];
+    }
+
+    public function checkReport(): void
+    {
+        abort_unless(auth()->user()?->can('reports.export'), 403);
+
+        $this->validate([
+            'academicYearId' => ['required', 'integer'],
+            'semesterId' => ['required', 'integer'],
+            'periodType' => ['required', 'in:monthly,semester'],
+            'month' => ['nullable', 'required_if:periodType,monthly', 'integer', 'between:1,12'],
+        ]);
+
+        $data = app(LpjReportService::class)->build(
+            (int) $this->academicYearId,
+            (int) $this->semesterId,
+            $this->periodType,
+            $this->periodType === 'monthly' ? (int) $this->month : null
+        );
+        $this->preflightWarnings = app(LpjPreflightService::class)->warnings($data);
+        $this->preflightChecked = true;
+    }
 
     public function mount(): void
     {
