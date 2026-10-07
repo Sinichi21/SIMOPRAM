@@ -40,13 +40,31 @@
             <flux:switch wire:model.live="manualCoachAttendance" label="Kehadiran pembina manual" description="Aktif: kolom kehadiran pembina dikosongkan untuk diisi/TTD langsung. Nonaktif: tercetak otomatis dari sistem." />
             <flux:text>Penanda libur tetap tercetak pada kedua mode.</flux:text>
         </div>
+        <div class="md:col-span-2 space-y-3">
+            @can('reports.export')
+                <button type="button" wire:click="checkReport" class="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium dark:border-zinc-700">Periksa Data Sebelum Ekspor</button>
+                @if ($preflightChecked)
+                    @if (count($preflightWarnings))
+                        <div role="alert" class="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                            <p class="font-semibold">Perlu ditinjau ({{ count($preflightWarnings) }} temuan):</p>
+                            <ul class="mt-2 list-disc space-y-1 pl-5">
+                                @foreach ($preflightWarnings as $warning)<li>{{ $warning }}</li>@endforeach
+                            </ul>
+                            <p class="mt-2">Peringatan tidak mengubah data absensi. Periksa kegiatan terkait sebelum menerbitkan LPJ.</p>
+                        </div>
+                    @else
+                        <p role="status" class="text-sm text-emerald-700 dark:text-emerald-300">Pemeriksaan selesai, tidak ditemukan masalah pada pemeriksaan dasar.</p>
+                    @endif
+                @endif
+            @endcan
+        </div>
         <div class="flex justify-end md:col-span-2">
             @can('reports.export')
-                @if ($academicYearId && $semesterId && ($periodType === 'semester' || $month))
+                @if ($academicYearId && $semesterId && ($periodType === 'semester' || $month) && $preflightChecked)
                     <a href="{{ route('reports.lpj.pdf', array_filter(['academic_year_id' => $academicYearId, 'semester_id' => $semesterId, 'period_type' => $periodType, 'month' => $periodType === 'monthly' ? $month : null, 'manual_student_attendance' => (int) $manualStudentAttendance, 'manual_coach_attendance' => (int) $manualCoachAttendance], fn ($value) => $value !== null)) }}" target="_blank"
                        class="inline-flex items-center rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900" rel="noopener noreferrer">Download LPJ PDF</a>
                 @else
-                    <span class="text-sm text-zinc-500">Lengkapi periode untuk mengunduh LPJ.</span>
+                    <span class="text-sm text-zinc-500">Lengkapi periode lalu klik Periksa Data Sebelum Ekspor untuk mengunduh LPJ.</span>
                 @endif
             @endcan
         </div>
