@@ -17,6 +17,7 @@ use App\Models\Semester;
 use App\Models\Student;
 use App\Models\StudentEnrollment;
 use App\Models\User;
+use App\Services\LpjPreflightService;
 use App\Services\LpjReportService;
 use App\Services\ReportVerificationService;
 use App\Support\SchoolContext;
@@ -528,7 +529,6 @@ test('student attendance renders the class document heading only once for a long
         ->and(substr_count($html, 'DAFTAR HADIR PESERTA/SISWA EKSTRA / PENGEMBANGAN DIRI'))->toBe(1);
 });
 
-
 test('LPJ distinguishes unscheduled participants when a student changes routine sessions across dates', function () {
     $classroom = Classroom::query()->create(['name' => 'V A', 'grade' => 5, 'is_active' => true]);
     $student = Student::factory()->create(['school_id' => $this->school->id, 'name' => 'Peserta Pindah Sesi']);
@@ -617,7 +617,7 @@ test('LPJ preflight detects overlapping student schedules without changing atten
     }
 
     $report = app(LpjReportService::class)->build($this->academicYear->id, $this->semester->id, 'monthly', 9);
-    $warnings = app(\App\Services\LpjPreflightService::class)->warnings($report);
+    $warnings = app(LpjPreflightService::class)->warnings($report);
 
     expect(implode(' ', $warnings))->toContain('bertabrakan')
         ->and(Attendance::query()->where('student_id', $student->id)->count())->toBe(2);
