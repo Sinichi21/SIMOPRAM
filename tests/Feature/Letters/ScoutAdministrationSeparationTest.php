@@ -28,7 +28,7 @@ class ScoutAdministrationSeparationTest extends TestCase
             'agenda_format' => '{sequence_padded}/SM/{year}',
         ]);
 
-        SchoolDocumentSetting::withoutGlobalScope('school')->create([
+        SchoolDocumentSetting::withoutGlobalScope('school')->forceCreate([
             'school_id' => $school->id,
             'gudep_male_number' => '03.061',
             'gudep_female_number' => '03.062',
