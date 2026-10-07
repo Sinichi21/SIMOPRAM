@@ -980,7 +980,7 @@ class LpjReportService
             default => false,
         };
 
-        if (! $source instanceof \\GdImage) {
+        if (! $source instanceof \GdImage) {
             return null;
         }
 
