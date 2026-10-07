@@ -7,6 +7,7 @@ use App\Models\Attendance;
 use App\Models\AttendanceSession;
 use App\Models\School;
 use App\Models\Semester;
+use App\Models\Student;
 use App\Models\User;
 use App\Support\SchoolContext;
 use Livewire\Livewire;
@@ -97,7 +98,6 @@ test('special activities do not keep a routine session number', function () {
         ->value('routine_session_no'))->toBeNull();
 });
 
-
 test('changing an attended activity session requires confirmation and retains attendance', function () {
     $user = User::factory()->create(['system_role' => 'super_admin', 'is_active' => true]);
     $school = School::factory()->create();
@@ -123,7 +123,7 @@ test('changing an attended activity session requires confirmation and retains at
         'open_at' => '2026-09-04 12:00:00', 'close_at' => '2026-09-04 13:30:00',
         'is_active' => true,
     ]);
-    $student = \App\Models\Student::factory()->create(['school_id' => $school->id]);
+    $student = Student::factory()->create(['school_id' => $school->id]);
     $attendance = Attendance::query()->create([
         'attendance_session_id' => $session->id,
         'activity_id' => $activity->id, 'student_id' => $student->id,
