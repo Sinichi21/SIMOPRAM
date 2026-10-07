@@ -46,7 +46,6 @@ class Index extends Component
 
     public bool $confirmSessionChange = false;
 
-
     public ?int $parentActivityId = null;
 
     public ?int $academic_year_id = null;
