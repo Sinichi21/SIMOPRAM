@@ -62,7 +62,7 @@
         </tbody>
     </table>
 
-    <div class="attendance-note">Keterangan: H = Hadir, I = Izin, S = Sakit, A = Alpa, - = belum/tidak tercatat.</div>
+    <div class="attendance-note">Keterangan: H = Hadir, I = Izin, S = Sakit, A = Alpa, - = belum/tidak tercatat, — = tidak dijadwalkan pada sesi ini.</div>
 
     <div class="signature-block">
         <table class="signature-table">
