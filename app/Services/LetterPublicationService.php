@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Letter;
 use App\Models\LetterAttachment;
 use App\Models\ReportVerification;
+use App\Models\ScoutAdministrationProfile;
 use App\Models\SchoolDocumentSetting;
 use App\Models\ScoutGroup;
 use App\Support\SchoolContext;
@@ -80,6 +81,11 @@ class LetterPublicationService
                 ->where('is_active', true)
                 ->first();
 
+            $administrationProfile = ScoutAdministrationProfile::query()
+                ->where('type', $letter->administration_type ?: 'mabigus')
+                ->where('is_active', true)
+                ->first();
+
             $templateBody = (string) ($letter->template?->body_template ?? '');
             $flexibleLayout = $letter->template
                 ? $this->renderer->containsAny($templateBody, [
@@ -102,6 +108,8 @@ class LetterPublicationService
                 'school' => $letter->school,
                 'documentSetting' => $documentSetting,
                 'scoutGroup' => $scoutGroup,
+                'administrationProfile' => $administrationProfile,
+                'administrationType' => (string) ($letter->administration_type ?: 'mabigus'),
                 'verification' => $verification,
                 'verificationUrl' => $this->verificationService->publicUrl($verification),
                 'qrDataUri' => $this->verificationService->qrDataUri($verification),
@@ -135,6 +143,7 @@ class LetterPublicationService
             'id' => $letter->id,
             'school_id' => $letter->school_id,
             'letter_number' => $letter->letter_number,
+            'administration_type' => $letter->administration_type,
             'letter_date' => $letter->letter_date?->toDateString(),
             'recipient' => $letter->recipient,
             'subject' => $letter->subject,

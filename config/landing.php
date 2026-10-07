@@ -16,7 +16,7 @@ return [
         'registration_title' => ['label' => 'Judul pendaftaran', 'default' => 'Bawa SIMPRAM ke sekolah Anda.'],
         'registration_description' => ['label' => 'Deskripsi pendaftaran', 'default' => 'Kirim data singkat. Tim kami akan memverifikasi dan membantu menyiapkan ruang kerja sekolah.', 'type' => 'textarea'],
         'footer_text' => ['label' => 'Teks footer', 'default' => 'SIMPRAM. Bersama membina generasi.'],
-        'contact_email' => ['label' => 'Email kontak', 'default' => 'halo@simpram.id', 'type' => 'email'],
+        'contact_email' => ['label' => 'Email kontak', 'default' => 'admin@simpram.my.id', 'type' => 'email'],
         'feature_1_title' => ['label' => 'Fitur 1 — judul', 'default' => 'Data anggota'],
         'feature_1_description' => ['label' => 'Fitur 1 — deskripsi', 'default' => 'Kelola siswa, pembina, regu, dan tingkatan secara terpusat.'],
         'feature_2_title' => ['label' => 'Fitur 2 — judul', 'default' => 'Presensi cerdas'],

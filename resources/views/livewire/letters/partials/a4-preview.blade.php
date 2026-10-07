@@ -148,20 +148,32 @@
                                             >
 
                                             <div style="margin: 0 23mm; font-size: 14pt; font-weight: bold; line-height: 1.05;">
-                                                GERAKAN PRAMUKA<br>
-                                                <?php if ($previewDocumentSetting?->gudep_male_number): ?>
-                                                    GUGUSDEPAN {{ strtoupper($previewSchool?->city ?: '') }}
-                                                    {{ $previewDocumentSetting->gudep_male_number }}<br>
-                                                <?php endif; ?>
-                                                <?php if ($previewDocumentSetting?->gudep_female_number): ?>
-                                                    GUGUSDEPAN {{ strtoupper($previewSchool?->city ?: '') }}
-                                                    {{ $previewDocumentSetting->gudep_female_number }}<br>
-                                                <?php endif; ?>
-                                                PANGKALAN {{ strtoupper($previewSchool?->name ?: 'SEKOLAH') }}
+                                                {{ $previewAdministrationProfile?->letterhead_title ?: 'GERAKAN PRAMUKA' }}<br>
+                                                @if (filled($previewAdministrationProfile?->letterhead_subtitle))
+                                                    {{ $previewAdministrationProfile->letterhead_subtitle }}<br>
+                                                @else
+                                                    @if ($administration_type === 'male')
+                                                        @if ($previewDocumentSetting?->gudep_male_number)
+                                                            GUGUSDEPAN {{ strtoupper($previewSchool?->city ?: '') }} {{ $previewDocumentSetting->gudep_male_number }}<br>
+                                                        @endif
+                                                    @elseif ($administration_type === 'female')
+                                                        @if ($previewDocumentSetting?->gudep_female_number)
+                                                            GUGUSDEPAN {{ strtoupper($previewSchool?->city ?: '') }} {{ $previewDocumentSetting->gudep_female_number }}<br>
+                                                        @endif
+                                                    @else
+                                                        @if ($previewDocumentSetting?->gudep_male_number)
+                                                            GUGUSDEPAN {{ strtoupper($previewSchool?->city ?: '') }} {{ $previewDocumentSetting->gudep_male_number }}<br>
+                                                        @endif
+                                                        @if ($previewDocumentSetting?->gudep_female_number)
+                                                            GUGUSDEPAN {{ strtoupper($previewSchool?->city ?: '') }} {{ $previewDocumentSetting->gudep_female_number }}<br>
+                                                        @endif
+                                                    @endif
+                                                    PANGKALAN {{ strtoupper($previewSchool?->name ?: 'SEKOLAH') }}
+                                                @endif
                                             </div>
 
                                             <div style="margin: .8mm 23mm 0; font-size: 10pt; line-height: 1.1;">
-                                                {{ $previewAddress }}
+                                                {{ $previewAdministrationProfile?->letterhead_address ?: $previewAddress }}
                                             </div>
                                         </header>
 

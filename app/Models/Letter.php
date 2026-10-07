@@ -14,7 +14,7 @@ class Letter extends Model
     use BelongsToSchool, SoftDeletes;
 
     protected $fillable = [
-        'school_id', 'direction', 'agenda_number', 'letter_number', 'letter_type_id', 'letter_field_id', 'template_id',
+        'school_id', 'direction', 'administration_type', 'agenda_number', 'letter_number', 'letter_type_id', 'letter_field_id', 'template_id',
         'letter_date', 'received_date', 'sender', 'recipient', 'subject', 'classification', 'security_classification',
         'archive_code', 'archive_category', 'retention_years', 'archive_status', 'body', 'metadata',
         'signatory_name', 'signatory_position', 'signatory_identity', 'status', 'created_by', 'updated_by',

@@ -96,7 +96,7 @@
                     @if ($status === 401 || $status === 419)
                         <a href="{{ route('login') }}" class="button button-secondary">Masuk kembali</a>
                     @else
-                        <a href="mailto:halo@simpram.id" class="button button-secondary">Hubungi pengelola</a>
+                        <a href="mailto:admin@simpram.my.id" class="button button-secondary">Hubungi pengelola</a>
                     @endif
                 </div>
             </section>

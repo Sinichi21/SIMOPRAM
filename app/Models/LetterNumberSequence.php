@@ -9,5 +9,5 @@ class LetterNumberSequence extends Model
 {
     use BelongsToSchool;
 
-    protected $fillable = ['school_id', 'direction', 'year', 'last_number'];
+    protected $fillable = ['school_id', 'direction', 'administration_type', 'year', 'last_number'];
 }

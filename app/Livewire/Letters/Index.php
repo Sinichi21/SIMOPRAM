@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Letters;
 
+use App\Enums\ScoutAdministrationType;
 use App\Models\Letter;
 use App\Models\LetterAttachment;
 use App\Models\LetterField;
@@ -10,6 +11,7 @@ use App\Models\LetterType;
 use App\Models\School;
 use App\Models\SchoolDocumentSetting;
 use App\Models\SchoolLetterSetting;
+use App\Models\ScoutAdministrationProfile;
 use App\Models\ScoutGroup;
 use App\Services\DocumentSignatoryService;
 use App\Services\LetterAdministrationBootstrapService;
@@ -30,6 +32,8 @@ class Index extends Component
     use WithFileUploads, WithPagination;
 
     public string $direction = 'incoming';
+
+    public string $administration_type = 'mabigus';
 
     public ?int $editingId = null;
 
@@ -169,6 +173,7 @@ class Index extends Component
             : ['draft', 'published', 'cancelled'];
 
         return [
+            'administration_type' => ['required', Rule::in(array_keys(ScoutAdministrationType::options()))],
             'letter_number' => ['nullable', 'string', 'max:150'],
             'letter_date' => ['required', 'date'],
             'received_date' => [$this->direction === 'incoming' ? 'required' : 'nullable', 'date'],
@@ -279,7 +284,7 @@ class Index extends Component
             $date = Carbon::parse($this->letter_date);
             $type = LetterType::query()->findOrFail($this->letter_type_id);
             $field = LetterField::query()->findOrFail($this->letter_field_id);
-            $validated['letter_number'] = $numberService->nextOutgoing($schoolId, $date, $type, $field);
+            $validated['letter_number'] = $numberService->nextOutgoing($schoolId, $date, $type, $field, $this->administration_type);
             $this->letter_number = $validated['letter_number'];
         }
 
@@ -347,7 +352,7 @@ class Index extends Component
         } else {
             if ($this->direction === 'incoming') {
                 $date = Carbon::parse($this->received_date ?: $this->letter_date);
-                $payload['agenda_number'] = $numberService->nextAgenda($schoolId, $date);
+                $payload['agenda_number'] = $numberService->nextAgenda($schoolId, $date, $this->administration_type);
             }
             $payload['created_by'] = $userId;
             $letter = Letter::query()->create($payload);
@@ -370,6 +375,7 @@ class Index extends Component
         $letter = Letter::query()->where('direction', $this->direction)->findOrFail($id);
         abort_if($letter->status === 'published' && $letter->publication()->exists(), 409, 'Surat yang sudah diterbitkan bersifat final dan tidak dapat diedit.');
         $this->editingId = $letter->id;
+        $this->administration_type = (string) ($letter->administration_type ?: 'mabigus');
 
         foreach ([
             'letter_number', 'sender', 'recipient', 'subject', 'classification', 'security_classification', 'archive_code', 'archive_category',
@@ -487,6 +493,13 @@ class Index extends Component
         $this->signatory_identity = $resolved['identity'];
     }
 
+    public function updatedAdministrationType(): void
+    {
+        if ($this->direction === 'outgoing') {
+            $this->applyLetterSettingDefaults();
+        }
+    }
+
     private function applyLetterSettingDefaults(): void
     {
         if ($this->direction !== 'outgoing') {
@@ -494,6 +507,24 @@ class Index extends Component
         }
 
         $documentSetting = SchoolDocumentSetting::query()->first();
+        $profile = ScoutAdministrationProfile::query()
+            ->where('type', $this->administration_type)
+            ->where('is_active', true)
+            ->first();
+
+        if ($profile?->default_signatory_user_id) {
+            $resolved = app(DocumentSignatoryService::class)->resolve(
+                (int) $profile->default_signatory_user_id,
+                $this->schoolId()
+            );
+            $this->signatory_source = 'master';
+            $this->signatory_user_id = $resolved['user_id'];
+            $this->signatory_name = $resolved['name'];
+            $this->signatory_position = $resolved['position'];
+            $this->signatory_identity = $resolved['identity'];
+
+            return;
+        }
 
         $resolved = app(DocumentSignatoryService::class)->configured($documentSetting, 'default_letter', $this->schoolId());
         if ($resolved) {
@@ -533,17 +564,11 @@ class Index extends Component
 
         $recipientLocation = trim((string) ($this->templateData['recipient_location'] ?? ''));
 
-        $maleGudep = trim((string) $documentSetting?->gudep_male_number);
-        $femaleGudep = trim((string) $documentSetting?->gudep_female_number);
-
-        if ($maleGudep !== '' && $femaleGudep !== '') {
-            $femaleSuffix = preg_replace('/^.*\./', '', $femaleGudep);
-            $gudep = $femaleSuffix !== ''
-                ? $maleGudep.'-'.$femaleSuffix
-                : $maleGudep.'-'.$femaleGudep;
-        } else {
-            $gudep = $maleGudep !== '' ? $maleGudep : $femaleGudep;
-        }
+        $gudepTokens = app(LetterNumberService::class)->gudepTokens(
+            $this->schoolId(),
+            (string) ($legacy?->gudep_code ?? ''),
+            $this->administration_type
+        );
 
         return [
             'letter_number' => $this->letter_number ?: ($this->status === 'published' ? '' : '(nomor otomatis saat diterbitkan)'),
@@ -555,7 +580,10 @@ class Index extends Component
             'attachment_count' => (string) $attachmentCount,
             'attachment_label' => $attachmentCount > 0 ? $attachmentCount.' berkas' : '-',
             'city' => (string) ($documentSetting?->signing_city ?: ($legacy?->city ?? '')),
-            'gudep' => $gudep !== '' ? $gudep : (string) ($legacy?->gudep_code ?? ''),
+            'gudep' => $gudepTokens['gudep'],
+            'gudep_male' => $gudepTokens['gudep_male'],
+            'gudep_female' => $gudepTokens['gudep_female'],
+            'gudep_pair' => $gudepTokens['gudep_pair'],
             'signatory_name' => $this->signatory_name,
             'signatory_position' => $this->signatory_position,
             'signatory_identity' => $this->signatory_identity,
@@ -574,6 +602,7 @@ class Index extends Component
     private function resetForm(): void
     {
         $this->editingId = null;
+        $this->administration_type = 'mabigus';
         $this->letter_number = '';
         $this->letter_date = now()->toDateString();
         $this->received_date = $this->direction === 'incoming' ? now()->toDateString() : '';
@@ -625,6 +654,7 @@ class Index extends Component
         $signatoryUsers = $this->direction === 'outgoing'
             ? app(DocumentSignatoryService::class)->usersForSchool($this->schoolId())
             : collect();
+        $administrationTypes = ScoutAdministrationType::options();
 
         $selectedTemplate = null;
         $previewBody = '';
@@ -632,6 +662,7 @@ class Index extends Component
         $previewSchool = null;
         $previewDocumentSetting = null;
         $previewScoutGroup = null;
+        $previewAdministrationProfile = null;
 
         if ($this->direction === 'outgoing' && $this->template_id) {
             $selectedTemplate = $templates->firstWhere('id', $this->template_id)
@@ -666,6 +697,11 @@ class Index extends Component
             $previewScoutGroup = ScoutGroup::query()
                 ->where('is_active', true)
                 ->first();
+
+            $previewAdministrationProfile = ScoutAdministrationProfile::query()
+                ->where('type', $this->administration_type)
+                ->where('is_active', true)
+                ->first();
         }
 
         return view('livewire.letters.index', compact(
@@ -679,7 +715,9 @@ class Index extends Component
             'previewSchool',
             'previewDocumentSetting',
             'previewScoutGroup',
+            'previewAdministrationProfile',
             'signatoryUsers',
+            'administrationTypes',
         ) + ['placeholderCatalog' => $renderer->catalog()]);
     }
 }

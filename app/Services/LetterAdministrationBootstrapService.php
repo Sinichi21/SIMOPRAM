@@ -7,6 +7,8 @@ use App\Models\LetterTemplate;
 use App\Models\LetterType;
 use App\Models\School;
 use App\Models\SchoolLetterSetting;
+use App\Models\SchoolDocumentSetting;
+use App\Models\ScoutAdministrationProfile;
 
 class LetterAdministrationBootstrapService
 {
@@ -33,6 +35,31 @@ class LetterAdministrationBootstrapService
                 'default_signatory_position' => 'Pembina Gugusdepan',
             ]
         );
+
+        $legacy = SchoolLetterSetting::withoutGlobalScope('school')->where('school_id', $schoolId)->first();
+        $documentSetting = SchoolDocumentSetting::withoutGlobalScope('school')->where('school_id', $schoolId)->first();
+
+        $profiles = [
+            'male' => 'Administrasi Gudep Putra',
+            'female' => 'Administrasi Gudep Putri',
+            'mabigus' => 'Administrasi Mabigus',
+        ];
+
+        foreach ($profiles as $type => $name) {
+            ScoutAdministrationProfile::withoutGlobalScope('school')->firstOrCreate(
+                ['school_id' => $schoolId, 'type' => $type],
+                [
+                    'name' => $name,
+                    'number_format' => (string) $legacy->number_format,
+                    'agenda_format' => (string) $legacy->agenda_format,
+                    'default_signatory_user_id' => $documentSetting?->default_letter_signatory_user_id,
+                    'letterhead_title' => $legacy->letterhead_title,
+                    'letterhead_subtitle' => null,
+                    'letterhead_address' => $legacy->letterhead_address,
+                    'is_active' => true,
+                ]
+            );
+        }
 
         $types = [
             ['01', 'Surat Permohonan', 'Permohonan izin, narasumber, peminjaman barang, dan permohonan sejenis.'],
