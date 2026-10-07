@@ -919,6 +919,23 @@ class LpjReportService
             return null;
         }
 
+        // DomPDF parses inline Base64 images as HTML. Embedding full-resolution
+        // photographs can exceed the PHP worker's memory limit (256 MB on VPS).
+        // Generate small in-memory previews; never overwrite uploaded originals.
+        if (extension_loaded('gd')) {
+            $preview = $this->pdfImagePreview($path);
+
+            if ($preview !== null) {
+                return 'data:image/jpeg;base64,'.base64_encode($preview);
+            }
+        }
+
+        // Retain compatibility with legacy tiny images and lightweight test
+        // fixtures, but never inline unbounded original files into PDF HTML.
+        if (filesize($path) === false || filesize($path) > 256 * 1024) {
+            return null;
+        }
+
         $contents = file_get_contents($path);
 
         if ($contents === false) {
@@ -938,6 +955,68 @@ class LpjReportService
         }
 
         return 'data:'.$resolvedMimeType.';base64,'.base64_encode($contents);
+    }
+
+    private function pdfImagePreview(string $path): ?string
+    {
+        $info = @getimagesize($path);
+
+        if (! is_array($info) || ! isset($info[0], $info[1])
+            || $info[0] < 1 || $info[1] < 1) {
+            return null;
+        }
+
+        // Avoid decoding abnormally huge pixel buffers on limited VPS workers.
+        if ($info[0] * $info[1] > 24_000_000) {
+            return null;
+        }
+
+        $source = match ($info[2] ?? null) {
+            IMAGETYPE_JPEG => @imagecreatefromjpeg($path),
+            IMAGETYPE_PNG => @imagecreatefrompng($path),
+            IMAGETYPE_WEBP => function_exists('imagecreatefromwebp')
+                ? @imagecreatefromwebp($path)
+                : false,
+            default => false,
+        };
+
+        if (! $source instanceof \\GdImage) {
+            return null;
+        }
+
+        $scale = min(1, 1100 / max($info[0], $info[1]));
+        $width = max(1, (int) round($info[0] * $scale));
+        $height = max(1, (int) round($info[1] * $scale));
+        $preview = imagecreatetruecolor($width, $height);
+
+        if ($preview === false) {
+            imagedestroy($source);
+
+            return null;
+        }
+
+        // JPEG previews use a white matte for transparent source images.
+        imagefill($preview, 0, 0, imagecolorallocate($preview, 255, 255, 255));
+        $resized = imagecopyresampled(
+            $preview, $source, 0, 0, 0, 0,
+            $width, $height, $info[0], $info[1]
+        );
+        imagedestroy($source);
+
+        if (! $resized) {
+            imagedestroy($preview);
+
+            return null;
+        }
+
+        ob_start();
+        $success = imagejpeg($preview, null, 68);
+        $result = ob_get_clean();
+        imagedestroy($preview);
+
+        return $success && is_string($result) && strlen($result) <= 300 * 1024
+            ? $result
+            : null;
     }
 
     private function localImagePath(?string $path): ?string
