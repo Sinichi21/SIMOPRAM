@@ -54,7 +54,7 @@
                                 {{ strtoupper($meta['holidayLabel'] ?: 'LIBUR') }}
                             </td>
                         @else
-                            <td class="status date-column">{{ ($manualStudentAttendance ?? false) ? '' : ($student['statuses'][$dateKey] ?? '-') }}</td>
+                            <td class="status date-column">{{ ($manualStudentAttendance ?? false) && ($student['statuses'][$dateKey] ?? '-') !== '—' ? '' : ($student['statuses'][$dateKey] ?? '-') }}</td>
                         @endif
                     @endforeach
                 </tr>
