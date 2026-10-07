@@ -107,13 +107,16 @@ test('LPJ attendance toggles independently update the download options', functio
         ->set('academicYearId', $this->academicYear->id)
         ->set('semesterId', $this->semester->id)
         ->set('month', 9)
+        ->call('checkReport')
         ->assertSee('manual_student_attendance=0', false)
         ->assertSee('manual_coach_attendance=0', false)
         ->set('manualStudentAttendance', true)
+        ->call('checkReport')
         ->assertSee('manual_student_attendance=1', false)
         ->assertSee('manual_coach_attendance=0', false)
         ->set('manualStudentAttendance', false)
         ->set('manualCoachAttendance', true)
+        ->call('checkReport')
         ->assertSee('manual_student_attendance=0', false)
         ->assertSee('manual_coach_attendance=1', false);
 });
@@ -523,4 +526,99 @@ test('student attendance renders the class document heading only once for a long
 
     expect(substr_count($html, 'KELAS V A - SEPTEMBER 2026'))->toBe(1)
         ->and(substr_count($html, 'DAFTAR HADIR PESERTA/SISWA EKSTRA / PENGEMBANGAN DIRI'))->toBe(1);
+});
+
+
+test('LPJ distinguishes unscheduled participants when a student changes routine sessions across dates', function () {
+    $classroom = Classroom::query()->create(['name' => 'V A', 'grade' => 5, 'is_active' => true]);
+    $student = Student::factory()->create(['school_id' => $this->school->id, 'name' => 'Peserta Pindah Sesi']);
+    StudentEnrollment::query()->create([
+        'student_id' => $student->id, 'academic_year_id' => $this->academicYear->id,
+        'classroom_id' => $classroom->id, 'status' => 'active',
+    ]);
+
+    foreach ([
+        [1, '2026-09-04 12:00:00', true],
+        [1, '2026-09-11 12:00:00', false],
+        [2, '2026-09-11 13:30:00', true],
+    ] as [$sessionNo, $startAt, $participates]) {
+        $start = CarbonImmutable::parse($startAt);
+        $activity = Activity::factory()->create([
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester_id' => $this->semester->id,
+            'created_by' => $this->user->id,
+            'title' => 'Latihan Sesi '.$sessionNo,
+            'activity_type' => 'regular',
+            'routine_session_no' => $sessionNo,
+            'start_at' => $start,
+            'end_at' => $start->addMinutes(90),
+            'status' => 'completed',
+        ]);
+        $session = AttendanceSession::query()->create([
+            'activity_id' => $activity->id, 'created_by' => $this->user->id,
+            'name' => 'Absensi', 'participant_scope' => 'all',
+            'open_at' => $start, 'close_at' => $start->addMinutes(90), 'is_active' => true,
+        ]);
+
+        if ($participates) {
+            AttendanceSessionParticipant::query()->create([
+                'attendance_session_id' => $session->id, 'student_id' => $student->id,
+            ]);
+            Attendance::query()->create([
+                'attendance_session_id' => $session->id, 'activity_id' => $activity->id,
+                'student_id' => $student->id, 'status' => 'present', 'source' => 'manual',
+            ]);
+        } else {
+            // A different student is rostered so this session has a known scope.
+            $other = Student::factory()->create(['school_id' => $this->school->id]);
+            AttendanceSessionParticipant::query()->create([
+                'attendance_session_id' => $session->id, 'student_id' => $other->id,
+            ]);
+        }
+    }
+
+    $report = app(LpjReportService::class)->build($this->academicYear->id, $this->semester->id, 'monthly', 9);
+    $sessions = $report['reportMonths']->first()['routineSessions'];
+    $sessionOne = $sessions->firstWhere('number', 1);
+    $sessionTwo = $sessions->firstWhere('number', 2);
+    $studentOne = $sessionOne['attendanceClasses']->first()['students']->firstWhere('studentId', $student->id);
+    $studentTwo = $sessionTwo['attendanceClasses']->first()['students']->firstWhere('studentId', $student->id);
+
+    expect($studentOne['statuses']['2026-09-04'])->toBe('H')
+        ->and($studentOne['statuses']['2026-09-11'])->toBe('—')
+        ->and($studentTwo['statuses']['2026-09-11'])->toBe('H')
+        ->and(Attendance::query()->where('student_id', $student->id)->count())->toBe(2);
+});
+
+test('LPJ preflight detects overlapping student schedules without changing attendance', function () {
+    $student = Student::factory()->create(['school_id' => $this->school->id]);
+
+    foreach (['12:00:00', '12:30:00'] as $time) {
+        $start = CarbonImmutable::parse('2026-09-11 '.$time);
+        $activity = Activity::factory()->create([
+            'school_id' => $this->school->id, 'academic_year_id' => $this->academicYear->id,
+            'semester_id' => $this->semester->id, 'created_by' => $this->user->id,
+            'activity_type' => 'regular', 'routine_session_no' => $time === '12:00:00' ? 1 : 2,
+            'start_at' => $start, 'end_at' => $start->addMinutes(90), 'status' => 'completed',
+        ]);
+        $session = AttendanceSession::query()->create([
+            'activity_id' => $activity->id, 'created_by' => $this->user->id,
+            'name' => 'Absensi', 'participant_scope' => 'all',
+            'open_at' => $start, 'close_at' => $start->addMinutes(90), 'is_active' => true,
+        ]);
+        AttendanceSessionParticipant::query()->create([
+            'attendance_session_id' => $session->id, 'student_id' => $student->id,
+        ]);
+        Attendance::query()->create([
+            'attendance_session_id' => $session->id, 'activity_id' => $activity->id,
+            'student_id' => $student->id, 'status' => 'present', 'source' => 'manual',
+        ]);
+    }
+
+    $report = app(LpjReportService::class)->build($this->academicYear->id, $this->semester->id, 'monthly', 9);
+    $warnings = app(\App\Services\LpjPreflightService::class)->warnings($report);
+
+    expect(implode(' ', $warnings))->toContain('bertabrakan')
+        ->and(Attendance::query()->where('student_id', $student->id)->count())->toBe(2);
 });
