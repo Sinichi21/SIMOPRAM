@@ -618,6 +618,8 @@ class LpjReportService
             ->filter(fn (StudentEnrollment $enrollment): bool => (bool) $enrollment->student && (bool) $enrollment->classroom);
 
         $attendanceByDateStudent = [];
+        $rosterByDate = [];
+        $unknownRosterByDate = [];
 
         foreach ($sessions as $session) {
             $activity = $activities->firstWhere('id', $session->activity_id);
@@ -627,8 +629,21 @@ class LpjReportService
             }
 
             $dateKey = $activity->start_at->format('Y-m-d');
+            $rosterByDate[$dateKey] ??= [];
+            $snapshotIds = $session->participants->pluck('student_id')->filter();
+
+            if ($snapshotIds->isEmpty()) {
+                // Preserve legacy behavior if the session did not snapshot its roster.
+                $unknownRosterByDate[$dateKey] = true;
+            } else {
+                foreach ($snapshotIds as $studentId) {
+                    $rosterByDate[$dateKey][(int) $studentId] = true;
+                }
+            }
 
             foreach ($session->attendances as $attendance) {
+                // An existing attendance is always evidence of participation.
+                $rosterByDate[$dateKey][(int) $attendance->student_id] = true;
                 $current = $attendanceByDateStudent[$dateKey][$attendance->student_id] ?? null;
                 $attendanceByDateStudent[$dateKey][$attendance->student_id] = $this->preferAttendanceStatus(
                     $current,
@@ -651,18 +666,24 @@ class LpjReportService
 
         $classes = $enrollments
             ->groupBy('classroom_id')
-            ->map(function (Collection $classEnrollments) use ($dates, $attendanceByDateStudent): array {
+            ->map(function (Collection $classEnrollments) use ($dates, $attendanceByDateStudent, $rosterByDate, $unknownRosterByDate): array {
                 $classroom = $classEnrollments->first()->classroom;
                 $students = $classEnrollments
                     ->sortBy(fn (StudentEnrollment $enrollment): string => mb_strtolower($enrollment->student->name))
                     ->values()
-                    ->map(function (StudentEnrollment $enrollment) use ($dates, $attendanceByDateStudent): array {
+                    ->map(function (StudentEnrollment $enrollment) use ($dates, $attendanceByDateStudent, $rosterByDate, $unknownRosterByDate): array {
                         $statuses = [];
 
                         foreach ($dates as $date) {
                             $dateKey = $date->format('Y-m-d');
                             $status = $attendanceByDateStudent[$dateKey][$enrollment->student_id] ?? null;
-                            $statuses[$dateKey] = $this->attendanceCode($status);
+                            $notScheduled = array_key_exists($dateKey, $rosterByDate)
+                                && ! isset($unknownRosterByDate[$dateKey])
+                                && ! isset($rosterByDate[$dateKey][(int) $enrollment->student_id]);
+
+                            $statuses[$dateKey] = $status === null && $notScheduled
+                                ? '—'
+                                : $this->attendanceCode($status);
                         }
 
                         return [
