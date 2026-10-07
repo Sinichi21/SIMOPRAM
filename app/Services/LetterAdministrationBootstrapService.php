@@ -6,8 +6,8 @@ use App\Models\LetterField;
 use App\Models\LetterTemplate;
 use App\Models\LetterType;
 use App\Models\School;
-use App\Models\SchoolLetterSetting;
 use App\Models\SchoolDocumentSetting;
+use App\Models\SchoolLetterSetting;
 use App\Models\ScoutAdministrationProfile;
 
 class LetterAdministrationBootstrapService
