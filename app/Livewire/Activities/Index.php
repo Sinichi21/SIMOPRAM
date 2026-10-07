@@ -44,6 +44,9 @@ class Index extends Component
 
     public ?int $editingId = null;
 
+    public bool $confirmSessionChange = false;
+
+
     public ?int $parentActivityId = null;
 
     public ?int $academic_year_id = null;
@@ -262,6 +265,19 @@ class Index extends Component
 
         $schoolId = $this->schoolId();
 
+        if ($this->editingId) {
+            $existing = Activity::query()->where('school_id', $schoolId)->findOrFail($this->editingId);
+            $oldSession = $existing->activity_type === 'regular' ? (int) $existing->routine_session_no : null;
+            $newSession = $validated['activity_type'] === 'regular' ? (int) $validated['routine_session_no'] : null;
+
+            if ($oldSession !== $newSession && $existing->attendanceSessions()->whereHas('attendances')->exists()
+                && ! $this->confirmSessionChange) {
+                $this->addError('routine_session_no', 'Kegiatan sudah memiliki absensi. Centang konfirmasi perubahan sesi untuk melanjutkan. Riwayat absensi tetap dipertahankan.');
+
+                return;
+            }
+        }
+
         DB::transaction(
             function () use (
                 $validated,
@@ -371,6 +387,7 @@ class Index extends Component
 
         $this->editingId =
             $activity->id;
+        $this->confirmSessionChange = false;
         $this->existingAttachments = collect($activity->attachments ?? [])->map(fn (array $file): array => ['name' => $file['name']])->all();
         $this->parentActivityId = $activity->parent_activity_id;
         $this->reset('publishedDocumentIds', 'attachmentUploads', 'removeAttachmentIndexes', 'bannerUpload', 'removeBanner');
@@ -460,6 +477,7 @@ class Index extends Component
     protected function resetForm(): void
     {
         $this->parentActivityId = null;
+        $this->confirmSessionChange = false;
         $this->reset('publishedDocumentIds', 'attachmentUploads', 'existingAttachments', 'removeAttachmentIndexes', 'bannerUpload', 'removeBanner');
         $activeYear = AcademicYear::query()
             ->where('is_active', true)
