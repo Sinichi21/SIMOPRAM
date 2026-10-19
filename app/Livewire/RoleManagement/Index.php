@@ -76,7 +76,7 @@ class Index extends Component
                 'alpha_dash:ascii',
                 Rule::notIn($this->protectedRoleNames()),
                 Rule::unique('roles', 'name')
-                    ->where(fn (Builder $query): Builder => $query
+                    ->where(fn ($query) => $query
                         ->where('guard_name', 'web')
                         ->where('school_id', $schoolId))
                     ->ignore($role?->id),
