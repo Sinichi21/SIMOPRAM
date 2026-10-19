@@ -13,6 +13,89 @@
         </div>
     @endif
 
+    <section class="space-y-4 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-6">
+        <div>
+            <flux:heading size="lg">Role bawaan sistem</flux:heading>
+            <flux:text class="mt-1">Role ini dikelola sistem dan hanya dapat dilihat. Administrator sekolah tidak dapat mengubah permission bawaan.</flux:text>
+        </div>
+
+        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            @foreach ($systemRoles as $systemRole)
+                <article wire:key="system-role-{{ $systemRole->id }}" class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="font-medium">{{ $roleLabels[$systemRole->name] ?? str($systemRole->name)->replace('_', ' ')->title() }}</div>
+                        <flux:badge color="zinc">Bawaan</flux:badge>
+                    </div>
+                    <div class="mt-2 text-sm text-zinc-500">{{ $systemRole->permissions->count() }} permission · {{ $systemRole->users_count }} pengguna</div>
+                </article>
+            @endforeach
+        </div>
+    </section>
+
+    <section class="space-y-5 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-6">
+        <div>
+            <flux:heading size="lg">Delegasi role ke akun</flux:heading>
+            <flux:text class="mt-1">Pilih akun aktif yang menjadi anggota sekolah ini, lalu tetapkan role untuk sekolah aktif. Role administrator sistem tidak dapat didelegasikan.</flux:text>
+        </div>
+
+        <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+            <div class="space-y-3">
+                <flux:input wire:model.live.debounce.300ms="userSearch" type="search" label="Cari akun sekolah" placeholder="Nama atau email..." />
+                <div class="max-h-72 space-y-2 overflow-y-auto">
+                    @forelse ($matchingUsers as $user)
+                        <button
+                            type="button"
+                            wire:key="role-user-{{ $user->id }}"
+                            wire:click="selectUser({{ $user->id }})"
+                            @class([
+                                'w-full rounded-lg border px-3 py-2 text-left transition',
+                                'border-zinc-900 bg-zinc-100 dark:border-zinc-100 dark:bg-zinc-800' => $selectedUser?->id === $user->id,
+                                'border-zinc-200 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800/60' => $selectedUser?->id !== $user->id,
+                            ])
+                        >
+                            <span class="block text-sm font-medium">{{ $user->name }}</span>
+                            <span class="block text-xs text-zinc-500">{{ $user->email }}</span>
+                        </button>
+                    @empty
+                        <p class="rounded-lg border border-dashed border-zinc-300 px-3 py-4 text-sm text-zinc-500 dark:border-zinc-700">Tidak ada akun aktif yang cocok di sekolah ini.</p>
+                    @endforelse
+                </div>
+            </div>
+
+            <div>
+                @if ($selectedUser)
+                    <form wire:submit="assignRolesToUser" class="space-y-4">
+                        <div>
+                            <flux:heading>{{ $selectedUser->name }}</flux:heading>
+                            <flux:text>{{ $selectedUser->email }}</flux:text>
+                        </div>
+
+                        <div class="grid gap-2 sm:grid-cols-2">
+                            @foreach ($availableRoles as $availableRole)
+                                <label wire:key="assign-role-{{ $availableRole->id }}" class="flex items-start gap-2 rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-700">
+                                    <input type="checkbox" value="{{ $availableRole->id }}" wire:model="selectedRoleIds" class="mt-0.5 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600">
+                                    <span>
+                                        <span class="block font-medium">{{ $roleLabels[$availableRole->name] ?? str($availableRole->name)->replace('_', ' ')->title() }}</span>
+                                        <span class="text-xs text-zinc-500">{{ $availableRole->school_id === null ? 'Role bawaan' : 'Role sekolah' }}</span>
+                                    </span>
+                                </label>
+                            @endforeach
+                        </div>
+                        @error('selectedRoleIds.*') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
+
+                        <flux:button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="assignRolesToUser">
+                            Simpan Delegasi Role
+                        </flux:button>
+                    </form>
+                @else
+                    <div class="flex h-full min-h-40 items-center justify-center rounded-lg border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500 dark:border-zinc-700">
+                        Pilih akun di sebelah kiri untuk mengatur role.
+                    </div>
+                @endif
+            </div>
+        </div>
+    </section>
+
     @if ($showForm)
         <section class="space-y-5 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-6">
             <div class="flex items-start justify-between gap-3">

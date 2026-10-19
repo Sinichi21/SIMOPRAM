@@ -1566,7 +1566,8 @@
                         :expanded="request()->routeIs(
                             'schools.*',
                             'school-registrations.*',
-                            'activity-logs.*'
+                            'activity-logs.*',
+                            'system-roles.*'
                         )"
                         class="grid"
                     >
@@ -1594,6 +1595,15 @@
                                 wire:navigate
                             >
                                 Log Aktivitas
+                            </flux:sidebar.item>
+
+                            <flux:sidebar.item
+                                icon="shield-check"
+                                :href="route('system-roles.index')"
+                                :current="request()->routeIs('system-roles.*')"
+                                wire:navigate
+                            >
+                                Role & Permission Bawaan
                             </flux:sidebar.item>
                         @endif
                     </flux:sidebar.group>

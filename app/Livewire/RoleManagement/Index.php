@@ -2,9 +2,11 @@
 
 namespace App\Livewire\RoleManagement;
 
+use App\Models\User;
 use App\Support\SchoolContext;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Locked;
@@ -15,6 +17,8 @@ use Spatie\Permission\PermissionRegistrar;
 
 class Index extends Component
 {
+    private const ASSIGNABLE_SYSTEM_ROLES = ['coach', 'student', 'principal'];
+
     #[Locked]
     public ?int $roleId = null;
 
@@ -26,6 +30,14 @@ class Index extends Component
     public bool $showForm = false;
 
     public string $search = '';
+
+    public string $userSearch = '';
+
+    #[Locked]
+    public ?int $selectedUserId = null;
+
+    /** @var array<int, int|string> */
+    public array $selectedRoleIds = [];
 
     public function mount(): void
     {
@@ -59,6 +71,63 @@ class Index extends Component
     {
         $this->authorizeManagement();
         $this->resetForm();
+    }
+
+    public function selectUser(int $userId): void
+    {
+        $this->authorizeManagement();
+
+        $user = $this->findActiveSchoolUser($userId);
+        $schoolId = app(SchoolContext::class)->id();
+        $previousTeamId = getPermissionsTeamId();
+
+        try {
+            setPermissionsTeamId($schoolId);
+            $user->unsetRelation('roles')->unsetRelation('permissions');
+            $this->selectedUserId = $user->id;
+            $this->selectedRoleIds = $user->roles()
+                ->pluck('roles.id')
+                ->map(fn (int $roleId): int => $roleId)
+                ->all();
+        } finally {
+            setPermissionsTeamId($previousTeamId);
+        }
+    }
+
+    public function assignRolesToUser(): void
+    {
+        $this->authorizeManagement();
+
+        $schoolId = app(SchoolContext::class)->id();
+        $user = $this->findActiveSchoolUser((int) $this->selectedUserId);
+        $assignableRoles = $this->assignableRoles($schoolId);
+
+        $validated = $this->validate([
+            'selectedRoleIds' => ['array'],
+            'selectedRoleIds.*' => ['integer', Rule::in($assignableRoles->modelKeys())],
+        ], [
+            'selectedRoleIds.*.in' => 'Role yang dipilih tidak tersedia untuk sekolah aktif.',
+        ]);
+
+        $roles = $assignableRoles
+            ->whereIn('id', $validated['selectedRoleIds'] ?? [])
+            ->all();
+
+        $previousTeamId = getPermissionsTeamId();
+
+        try {
+            setPermissionsTeamId($schoolId);
+            DB::transaction(function () use ($user, $roles): void {
+                $user->unsetRelation('roles')->unsetRelation('permissions')->syncRoles($roles);
+            });
+        } finally {
+            setPermissionsTeamId($previousTeamId);
+        }
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $this->selectedRoleIds = collect($roles)->map(fn (Role $role): int => $role->id)->all();
+
+        session()->flash('status', 'Role akun berhasil diperbarui untuk sekolah aktif.');
     }
 
     public function saveRole(): void
@@ -139,6 +208,27 @@ class Index extends Component
             ->orderBy('name')
             ->get();
 
+        $systemRoles = Role::query()
+            ->whereNull('school_id')
+            ->withCount('users')
+            ->with('permissions:id,name')
+            ->orderBy('name')
+            ->get();
+
+        $availableRoles = $this->assignableRoles($schoolId);
+        $roleLabels = [
+            'coach' => 'Pembina',
+            'student' => 'Siswa',
+            'principal' => 'Kepala Sekolah',
+            'school_admin' => 'Admin Sekolah',
+            'scout_admin' => 'Admin Pramuka',
+            'super_admin' => 'Super Admin',
+        ];
+        $matchingUsers = $this->matchingUsers($schoolId);
+        $selectedUser = $this->selectedUserId
+            ? $this->findActiveSchoolUserOrNull($this->selectedUserId)
+            : null;
+
         $permissionGroups = Permission::query()
             ->where('guard_name', 'web')
             ->whereNotIn('name', $this->protectedPermissions())
@@ -146,7 +236,15 @@ class Index extends Component
             ->get(['id', 'name'])
             ->groupBy(fn (Permission $permission): string => str((string) $permission->name)->before('.')->replace('_', ' ')->title()->toString());
 
-        return view('livewire.role-management.index', compact('roles', 'permissionGroups'));
+        return view('livewire.role-management.index', compact(
+            'roles',
+            'systemRoles',
+            'availableRoles',
+            'roleLabels',
+            'matchingUsers',
+            'selectedUser',
+            'permissionGroups',
+        ));
     }
 
     private function authorizeManagement(): void
@@ -160,6 +258,66 @@ class Index extends Component
         return Role::query()
             ->where('school_id', app(SchoolContext::class)->id())
             ->findOrFail($roleId);
+    }
+
+    private function findActiveSchoolUser(int $userId): User
+    {
+        return User::query()
+            ->whereKey($userId)
+            ->where('is_active', true)
+            ->whereHas('schoolMemberships', fn (Builder $query): Builder => $query
+                ->where('school_id', app(SchoolContext::class)->id())
+                ->where('is_active', true)
+                ->whereNull('left_at'))
+            ->firstOrFail();
+    }
+
+    private function findActiveSchoolUserOrNull(int $userId): ?User
+    {
+        return User::query()
+            ->whereKey($userId)
+            ->where('is_active', true)
+            ->whereHas('schoolMemberships', fn (Builder $query): Builder => $query
+                ->where('school_id', app(SchoolContext::class)->id())
+                ->where('is_active', true)
+                ->whereNull('left_at'))
+            ->first();
+    }
+
+    /** @return Collection<int, Role> */
+    private function assignableRoles(int $schoolId): Collection
+    {
+        return Role::query()
+            ->where(function (Builder $query) use ($schoolId): void {
+                $query->where('school_id', $schoolId)
+                    ->orWhere(function (Builder $query): void {
+                        $query->whereNull('school_id')
+                            ->whereIn('name', self::ASSIGNABLE_SYSTEM_ROLES);
+                    });
+            })
+            ->where('guard_name', 'web')
+            ->orderBy('name')
+            ->get();
+    }
+
+    /** @return Collection<int, User> */
+    private function matchingUsers(int $schoolId): Collection
+    {
+        return User::query()
+            ->where('is_active', true)
+            ->whereHas('schoolMemberships', fn (Builder $query): Builder => $query
+                ->where('school_id', $schoolId)
+                ->where('is_active', true)
+                ->whereNull('left_at'))
+            ->when(trim($this->userSearch) !== '', function (Builder $query): void {
+                $search = '%'.trim($this->userSearch).'%';
+                $query->where(fn (Builder $query): Builder => $query
+                    ->where('name', 'like', $search)
+                    ->orWhere('email', 'like', $search));
+            })
+            ->orderBy('name')
+            ->limit(20)
+            ->get(['id', 'name', 'email']);
     }
 
     /** @return array<int, string> */

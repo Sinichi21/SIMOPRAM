@@ -20,6 +20,7 @@ use App\Http\Middleware\SetGlobalContentContext;
 use App\Livewire\Auth\Register;
 use App\Livewire\RoleManagement\Index as RoleManagementIndex;
 use App\Livewire\Settings\LandingContent;
+use App\Livewire\SystemRoleManagement\Index as SystemRoleManagementIndex;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -182,6 +183,10 @@ Route::middleware([
         ->name(
             'schools.index'
         );
+
+    Route::get('/admin/pengaturan-role-bawaan', SystemRoleManagementIndex::class)
+        ->middleware('can:schools.manage')
+        ->name('system-roles.index');
 
     /*
     |--------------------------------------------------------------------------
