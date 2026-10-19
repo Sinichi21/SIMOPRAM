@@ -16,6 +16,8 @@ class RolePermissionSeeder extends Seeder
 
         $permissions = [
             'dashboard.view',
+            'roles.view',
+            'roles.manage',
 
             'school.profile.view',
             'school.profile.update',
