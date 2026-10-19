@@ -196,10 +196,12 @@ class RolePermissionSeeder extends Seeder
             'guard_name' => 'web',
             'school_id' => null,
         ]);
-        $principal->syncPermissions([
-            'dashboard.view', 'report_verifications.view', 'reports.export',
-            'documents.approve', 'announcements.my',
-        ]);
+        if ($principal->wasRecentlyCreated) {
+            $principal->syncPermissions([
+                'dashboard.view', 'report_verifications.view', 'reports.export',
+                'documents.approve', 'announcements.my',
+            ]);
+        }
 
         $coach = Role::firstOrCreate([
             'name' => 'coach',
@@ -213,101 +215,105 @@ class RolePermissionSeeder extends Seeder
             'school_id' => null,
         ]);
 
-        $scoutAdmin->syncPermissions(
-            Permission::all()
-        );
+        if ($scoutAdmin->wasRecentlyCreated) {
+            $scoutAdmin->syncPermissions(Permission::all());
+        }
 
-        $schoolAdmin->syncPermissions(
-            Permission::all()
-        );
+        if ($schoolAdmin->wasRecentlyCreated) {
+            $schoolAdmin->syncPermissions(Permission::all());
+        }
 
-        $coach->syncPermissions([
-            'dashboard.view',
+        if ($coach->wasRecentlyCreated) {
+            $coach->syncPermissions([
+                'dashboard.view',
 
-            'students.view',
-            'coaches.view',
+                'students.view',
+                'coaches.view',
 
-            'activities.view',
-            'activities.create',
-            'activities.update',
+                'activities.view',
+                'activities.create',
+                'activities.update',
 
-            'activity_assessments.view',
-            'activity_assessments.score',
-            'activity_assessments.create',
-            'activity_assessments.update',
+                'activity_assessments.view',
+                'activity_assessments.score',
+                'activity_assessments.create',
+                'activity_assessments.update',
 
-            'attendance.view',
-            'attendance.open',
-            'attendance.close',
-            'attendance.manual',
-            'attendance.verify',
-            'attendance.update',
-            'attendance.checkin',
-            'attendances.self',
-            'attendance_sessions.view',
-            'attendance_sessions.manage',
+                'attendance.view',
+                'attendance.open',
+                'attendance.close',
+                'attendance.manual',
+                'attendance.verify',
+                'attendance.update',
+                'attendance.checkin',
+                'attendances.self',
+                'attendance_sessions.view',
+                'attendance_sessions.manage',
 
-            'journals.view',
-            'journals.create',
-            'journals.update',
-            'journals.submit',
-            'journals.publish',
-            'journals.attachments',
+                'journals.view',
+                'journals.create',
+                'journals.update',
+                'journals.submit',
+                'journals.publish',
+                'journals.attachments',
 
-            'letters.view',
-            'letters.create',
-            'letters.update',
-            'letters.attachments',
+                'letters.view',
+                'letters.create',
+                'letters.update',
+                'letters.attachments',
 
-            'announcements.view',
-            'announcements.create',
-            'announcements.update',
-            'announcements.my',
+                'announcements.view',
+                'announcements.create',
+                'announcements.update',
+                'announcements.my',
 
-            'reports.attendance',
-            'reports.grades',
-            'reports.activities',
-            'reports.grades.view',
-            'reports.attendance.view',
-            'reports.lpj.view',
-            'reports.export',
+                'reports.attendance',
+                'reports.grades',
+                'reports.activities',
+                'reports.grades.view',
+                'reports.attendance.view',
+                'reports.lpj.view',
+                'reports.export',
 
-            'academic_years.view',
-            'semesters.view',
-            'gudep.view',
-            'classrooms.view',
-            'scout_units.view',
-            'scout_units.manage',
+                'academic_years.view',
+                'semesters.view',
+                'gudep.view',
+                'classrooms.view',
+                'scout_units.view',
+                'scout_units.manage',
 
-            'assessments.view',
-            'assessments.input',
-            'assessments.configure',
-            'assessments.finalize',
-            'assessments.manage',
-            'assessment_factors.view',
-            'assessment_factors.manage',
-            'assessments.calculate',
-            'assessment_sync.view',
-            'assessment_sync.manage',
-            // 'assessment_audit.view',
-            'assessments.scores.view',
-            'assessments.scores.manage',
+                'assessments.view',
+                'assessments.input',
+                'assessments.configure',
+                'assessments.finalize',
+                'assessments.manage',
+                'assessment_factors.view',
+                'assessment_factors.manage',
+                'assessments.calculate',
+                'assessment_sync.view',
+                'assessment_sync.manage',
+                // 'assessment_audit.view',
+                'assessments.scores.view',
+                'assessments.scores.manage',
 
-            'attendance_score_settings.view',
-            'semester_closures.view',
-            'report_verifications.view',
-        ]);
+                'attendance_score_settings.view',
+                'semester_closures.view',
+                'report_verifications.view',
+            ]);
+        }
 
-        $student->syncPermissions([
-            'dashboard.view',
-            'activities.view',
-            'attendance.checkin',
-            'announcements.view',
-            'assessments.view',
-            'attendance_sessions.view',
-            'attendances.self',
-            'announcements.my',
-        ]);
+        if ($student->wasRecentlyCreated) {
+            $student->syncPermissions([
+                'dashboard.view',
+                'activities.view',
+                'attendance.checkin',
+                'announcements.view',
+                'assessments.view',
+                'attendance_sessions.view',
+                'attendances.self',
+                'announcements.my',
+            ]);
+        }
 
         app(PermissionRegistrar::class)
             ->forgetCachedPermissions();
