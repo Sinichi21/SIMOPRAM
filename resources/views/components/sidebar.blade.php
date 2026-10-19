@@ -1727,6 +1727,22 @@
                         @endcan
                     @endif
                 </flux:sidebar.group>
+
+                @if ($hasActiveSchool && $currentUser?->can('roles.manage'))
+                    <flux:sidebar.group
+                        heading="Administrasi Akses"
+                        class="grid"
+                    >
+                        <flux:sidebar.item
+                            icon="shield-check"
+                            :href="route('roles.index')"
+                            :current="request()->routeIs('roles.*')"
+                            wire:navigate
+                        >
+                            Role & Permission
+                        </flux:sidebar.item>
+                    </flux:sidebar.group>
+                @endif
             </flux:sidebar.nav>
 
         @endif
