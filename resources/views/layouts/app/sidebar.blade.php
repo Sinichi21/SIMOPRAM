@@ -366,6 +366,19 @@ MENU MASTER DATA
 
 @endcan
 
+@if (app(\App\Support\SchoolContext::class)->hasSchool() && auth()->user()?->can('roles.manage'))
+    <flux:sidebar.group heading="Administrasi Akses" class="grid">
+        <flux:sidebar.item
+            icon="shield-check"
+            :href="route('roles.index')"
+            :current="request()->routeIs('roles.*')"
+            wire:navigate
+        >
+            Role & Permission
+        </flux:sidebar.item>
+    </flux:sidebar.group>
+@endif
+
 @can('user_approvals.manage')
     <flux:sidebar.group heading="Manajemen User">
     <a

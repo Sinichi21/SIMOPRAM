@@ -18,6 +18,7 @@ use App\Http\Controllers\SchoolSwitchController;
 use App\Http\Controllers\StudentDocumentController;
 use App\Http\Middleware\SetGlobalContentContext;
 use App\Livewire\Auth\Register;
+use App\Livewire\RoleManagement\Index as RoleManagementIndex;
 use App\Livewire\Settings\LandingContent;
 use Illuminate\Support\Facades\Route;
 
@@ -200,6 +201,10 @@ Route::middleware([
     Route::middleware([
         'school.required',
     ])->group(function () {
+
+        Route::get('/pengaturan/role-management', RoleManagementIndex::class)
+            ->middleware('can:roles.manage')
+            ->name('roles.index');
 
         Route::view(
             '/master/tahun-ajaran',
