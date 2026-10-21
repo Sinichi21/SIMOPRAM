@@ -14,6 +14,7 @@ class Coach extends Model
     use SoftDeletes;
 
     protected $fillable = [
+        'person_id',
         'user_id',
         'nip',
         'name',
