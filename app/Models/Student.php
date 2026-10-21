@@ -39,6 +39,11 @@ class Student extends Model
         ];
     }
 
+    public function person(): BelongsTo
+    {
+        return $this->belongsTo(Person::class);
+    }
+
     public function school(): BelongsTo
     {
         return $this->belongsTo(
