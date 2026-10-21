@@ -94,7 +94,11 @@ it('does not allow a non-super-admin to invoke profile linking', function (): vo
         ->set('newPersonName', 'Nama Contoh')
         ->set('confirmLink', true)
         ->call('linkProfiles'))
-        ->toThrow(\Symfony\Component\HttpKernel\Exception\HttpException::class);
+        ->toThrow(\InvalidArgumentException::class);
+
+    expect(Person::query()->count())->toBe(0)
+        ->and($first->fresh()->person_id)->toBeNull()
+        ->and($second->fresh()->person_id)->toBeNull();
 });
 
 it('links multiple coach profiles across schools without deleting or changing their school ownership', function (): void {
