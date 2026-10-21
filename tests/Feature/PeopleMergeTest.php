@@ -96,3 +96,38 @@ it('does not allow a non-super-admin to invoke profile linking', function (): vo
         ->call('linkProfiles'))
         ->toThrow(\\Symfony\\Component\\HttpKernel\\Exception\\HttpException::class);
 });
+
+it('links multiple coach profiles across schools without deleting or changing their school ownership', function (): void {
+    $admin = User::factory()->create(['system_role' => 'super_admin']);
+    $schoolOne = \\App\\Models\\School::factory()->create();
+    $schoolTwo = \\App\\Models\\School::factory()->create();
+
+    $coachOne = $schoolOne->coaches()->create([
+        'name' => 'Pembina Contoh',
+        'is_active' => true,
+    ]);
+    $coachTwo = $schoolTwo->coaches()->create([
+        'name' => 'Pembina Contoh',
+        'is_active' => true,
+    ]);
+
+    $this->actingAs($admin);
+
+    Livewire::test(PeopleMergeIndex::class)
+        ->set('profileType', 'coach')
+        ->set('selectedProfileIds', [$coachOne->id, $coachTwo->id])
+        ->set('newPersonName', 'Pembina Contoh')
+        ->set('confirmLink', true)
+        ->call('linkProfiles')
+        ->assertHasNoErrors();
+
+    $coachOne->refresh();
+    $coachTwo->refresh();
+
+    expect($coachOne->person_id)->not->toBeNull()
+        ->and($coachTwo->person_id)->toBe($coachOne->person_id)
+        ->and($coachOne->school_id)->toBe($schoolOne->id)
+        ->and($coachTwo->school_id)->toBe($schoolTwo->id)
+        ->and(\\App\\Models\\Coach::query()->count())->toBe(2)
+        ->and(Person::query()->count())->toBe(1);
+});
