@@ -1,9 +1,9 @@
 <?php
 
-use App\\Livewire\\PeopleMerge\\Index as PeopleMergeIndex;
-use App\\Models\\Person;
-use App\\Models\\User;
-use Livewire\\Livewire;
+use App\Livewire\PeopleMerge\Index as PeopleMergeIndex;
+use App\Models\Person;
+use App\Models\User;
+use Livewire\Livewire;
 
 it('allows only super admins to open the profile merge page', function (): void {
     $superAdmin = User::factory()->create(['system_role' => 'super_admin']);
@@ -94,13 +94,13 @@ it('does not allow a non-super-admin to invoke profile linking', function (): vo
         ->set('newPersonName', 'Nama Contoh')
         ->set('confirmLink', true)
         ->call('linkProfiles'))
-        ->toThrow(\\Symfony\\Component\\HttpKernel\\Exception\\HttpException::class);
+        ->toThrow(\Symfony\Component\HttpKernel\Exception\HttpException::class);
 });
 
 it('links multiple coach profiles across schools without deleting or changing their school ownership', function (): void {
     $admin = User::factory()->create(['system_role' => 'super_admin']);
-    $schoolOne = \\App\\Models\\School::factory()->create();
-    $schoolTwo = \\App\\Models\\School::factory()->create();
+    $schoolOne = \App\Models\School::factory()->create();
+    $schoolTwo = \App\Models\School::factory()->create();
 
     $coachOne = $schoolOne->coaches()->create([
         'name' => 'Pembina Contoh',
@@ -128,6 +128,6 @@ it('links multiple coach profiles across schools without deleting or changing th
         ->and($coachTwo->person_id)->toBe($coachOne->person_id)
         ->and($coachOne->school_id)->toBe($schoolOne->id)
         ->and($coachTwo->school_id)->toBe($schoolTwo->id)
-        ->and(\\App\\Models\\Coach::query()->count())->toBe(2)
+        ->and(\App\Models\Coach::query()->count())->toBe(2)
         ->and(Person::query()->count())->toBe(1);
 });
