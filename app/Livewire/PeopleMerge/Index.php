@@ -1,19 +1,19 @@
 <?php
 
-namespace App\\Livewire\\PeopleMerge;
+namespace App\Livewire\PeopleMerge;
 
-use App\\Models\\Coach;
-use App\\Models\\Person;
-use App\\Models\\Student;
-use App\\Models\\User;
-use Illuminate\\Contracts\\View\\View;
-use Illuminate\\Database\\Eloquent\\Builder;
-use Illuminate\\Database\\Eloquent\\Model;
-use Illuminate\\Support\\Facades\\DB;
-use Illuminate\\Support\\Facades\\Log;
-use Illuminate\\Validation\\ValidationException;
-use Livewire\\Component;
-use Livewire\\WithPagination;
+use App\Models\Coach;
+use App\Models\Person;
+use App\Models\Student;
+use App\Models\User;
+use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Livewire\Component;
+use Livewire\WithPagination;
 
 class Index extends Component
 {
