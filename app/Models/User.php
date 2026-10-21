@@ -103,6 +103,11 @@ class User extends Authenticatable implements PasskeyUser
         );
     }
 
+    public function person(): BelongsTo
+    {
+        return $this->belongsTo(Person::class);
+    }
+
     public function schoolMemberships()
     {
         return $this->hasMany(
