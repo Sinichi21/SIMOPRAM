@@ -72,7 +72,7 @@ Route::livewire('/settings/landing-content', LandingContent::class)
     ->middleware('auth')->name('settings.landing-content');
 Route::livewire('/settings/schools/{school:slug}/landing-content', LandingContent::class)
     ->middleware('auth')->name('settings.tenant-content');
-Route::livewire('/register', Register::class)->middleware('guest')->name('register');
+Route::livewire('/admin/people/merge', PeopleMergeIndex::class)\n    ->middleware('auth')\n    ->name('admin.people.merge');\nRoute::livewire('/register', Register::class)->middleware('guest')->name('register');
 Route::get('/pengaduan', [ComplaintController::class, 'publicForm'])->name('complaints.public');
 Route::post('/pengaduan', [ComplaintController::class, 'publicStore'])->middleware('throttle:5,1')->name('complaints.public.store');
 Route::post('/pengaduan/lacak', [ComplaintController::class, 'track'])->middleware('throttle:10,1')->name('complaints.track');
