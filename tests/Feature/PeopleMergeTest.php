@@ -5,7 +5,6 @@ use App\Models\Coach;
 use App\Models\Person;
 use App\Models\School;
 use App\Models\User;
-use InvalidArgumentException;
 use Livewire\Livewire;
 
 it('allows only super admins to open the profile merge page', function (): void {
@@ -97,7 +96,7 @@ it('does not allow a non-super-admin to invoke profile linking', function (): vo
         ->set('newPersonName', 'Nama Contoh')
         ->set('confirmLink', true)
         ->call('linkProfiles'))
-        ->toThrow(InvalidArgumentException::class);
+        ->toThrow(\\InvalidArgumentException::class);
 
     expect(Person::query()->count())->toBe(0)
         ->and($first->fresh()->person_id)->toBeNull()
