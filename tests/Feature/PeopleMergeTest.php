@@ -5,7 +5,6 @@ use App\Models\Coach;
 use App\Models\Person;
 use App\Models\School;
 use App\Models\User;
-use InvalidArgumentException;
 use Livewire\Livewire;
 
 it('allows only super admins to open the profile merge page', function (): void {
@@ -97,7 +96,7 @@ it('does not allow a non-super-admin to invoke profile linking', function (): vo
         ->set('newPersonName', 'Nama Contoh')
         ->set('confirmLink', true)
         ->call('linkProfiles'))
-        ->toThrow(InvalidArgumentException::class);
+        ->toThrow(\InvalidArgumentException::class);
 
     expect(Person::query()->count())->toBe(0)
         ->and($first->fresh()->person_id)->toBeNull()
@@ -107,7 +106,7 @@ it('does not allow a non-super-admin to invoke profile linking', function (): vo
 it('links multiple coach profiles across schools without deleting or changing their school ownership', function (): void {
     $admin = User::factory()->create(['system_role' => 'super_admin']);
     $schoolOne = School::factory()->create();
-    $schoolTwo = \App\Models\School::factory()->create();
+    $schoolTwo = School::factory()->create();
 
     $coachOne = $schoolOne->coaches()->create([
         'name' => 'Pembina Contoh',
