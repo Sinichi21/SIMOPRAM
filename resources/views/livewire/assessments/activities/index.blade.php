@@ -279,7 +279,28 @@
             </h2>
 
 
-            <div class="flex flex-col gap-2 sm:flex-row">
+            <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                <select
+                    wire:model.live="assignmentFilter"
+                    class="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                >
+                    <option value="mine">Ditugaskan ke Saya</option>
+                    <option value="all">Semua Kegiatan</option>
+                    <option value="coach">Pembina Tertentu</option>
+                </select>
+
+                @if ($assignmentFilter === 'coach')
+                    <select
+                        wire:model.live="filterCoachId"
+                        class="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                    >
+                        <option value="">Pilih Pembina</option>
+                        @foreach ($assignmentCoaches as $coach)
+                            <option value="{{ $coach->id }}">{{ $coach->name }}</option>
+                        @endforeach
+                    </select>
+                @endif
+
                 <select
                     wire:model.live="scoutLevelId"
                     class="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"

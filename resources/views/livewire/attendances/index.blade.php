@@ -7,7 +7,7 @@
     </div>
 
     <flux:card class="space-y-4">
-        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
             <flux:input
                 wire:model.live.debounce.300ms="search"
                 icon="magnifying-glass"
@@ -41,9 +41,24 @@
                 <option value="completed">Selesai</option>
                 <option value="cancelled">Dibatalkan</option>
             </flux:select>
+
+            <flux:select wire:model.live="assignmentFilter">
+                <option value="mine">Ditugaskan ke Saya</option>
+                <option value="all">Semua Kegiatan</option>
+                <option value="coach">Pembina Tertentu</option>
+            </flux:select>
+
+            @if ($assignmentFilter === 'coach')
+                <flux:select wire:model.live="filterCoachId">
+                    <option value="">Pilih Pembina</option>
+                    @foreach ($assignmentCoaches as $coach)
+                        <option value="{{ $coach->id }}">{{ $coach->name }}</option>
+                    @endforeach
+                </flux:select>
+            @endif
         </div>
 
-        <flux:table>
+        <flux:table class="min-w-[48rem]">
             <flux:table.columns>
                 <flux:table.column>Kegiatan</flux:table.column>
                 <flux:table.column>Tanggal</flux:table.column>

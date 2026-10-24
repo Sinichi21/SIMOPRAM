@@ -4,9 +4,9 @@ namespace App\Livewire\Activities;
 
 use App\Models\AcademicYear;
 use App\Models\Activity;
-use App\Models\Coach;
 use App\Models\ScoutLevel;
 use App\Models\Semester;
+use App\Services\ActivityAssignmentFilter;
 use App\Services\ActivityHierarchyService;
 use App\Services\ContentMediaService;
 use App\Services\PublishedContentDocuments;
@@ -80,8 +80,14 @@ class Index extends Component
 
     public string $filterScoutLevelId = '';
 
+    public string $assignmentFilter = 'mine';
+
+    public string $filterCoachId = '';
+
     public function mount(): void
     {
+        $this->assignmentFilter = app(ActivityAssignmentFilter::class)->defaultMode(auth()->user());
+
         $year = AcademicYear::query()
             ->where('is_active', true)
             ->first();
@@ -543,6 +549,17 @@ class Index extends Component
         $this->resetPage();
     }
 
+    public function updatedAssignmentFilter(): void
+    {
+        $this->filterCoachId = '';
+        $this->resetPage();
+    }
+
+    public function updatedFilterCoachId(): void
+    {
+        $this->resetPage();
+    }
+
     public function render()
     {
         $parentActivities = Activity::query()->where('school_id', $this->schoolId())->whereNull('parent_activity_id')
@@ -565,10 +582,7 @@ class Index extends Component
                 ->get();
 
         $coaches =
-            Coach::query()
-                ->where('is_active', true)
-                ->orderBy('name')
-                ->get();
+            app(ActivityAssignmentFilter::class)->coaches($this->schoolId());
 
         $scoutLevels =
             ScoutLevel::query()
@@ -577,7 +591,13 @@ class Index extends Component
                 ->get();
 
         $activities =
-            Activity::query()
+            app(ActivityAssignmentFilter::class)->apply(
+                Activity::query(),
+                auth()->user(),
+                $this->schoolId(),
+                $this->assignmentFilter,
+                $this->filterCoachId !== '' ? (int) $this->filterCoachId : null,
+            )
                 ->with([
                     'academicYear',
                     'semester',

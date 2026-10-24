@@ -5,6 +5,8 @@ namespace App\Livewire\Attendances;
 use App\Models\AcademicYear;
 use App\Models\Activity;
 use App\Models\Semester;
+use App\Services\ActivityAssignmentFilter;
+use App\Support\SchoolContext;
 use Illuminate\View\View;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -20,6 +22,15 @@ class Index extends Component
     public string $filterSemesterId = '';
 
     public string $filterStatus = '';
+
+    public string $assignmentFilter = 'mine';
+
+    public string $filterCoachId = '';
+
+    public function mount(ActivityAssignmentFilter $assignmentFilter): void
+    {
+        $this->assignmentFilter = $assignmentFilter->defaultMode(auth()->user());
+    }
 
     public function updatedSearch(): void
     {
@@ -42,6 +53,17 @@ class Index extends Component
         $this->resetPage();
     }
 
+    public function updatedAssignmentFilter(): void
+    {
+        $this->filterCoachId = '';
+        $this->resetPage();
+    }
+
+    public function updatedFilterCoachId(): void
+    {
+        $this->resetPage();
+    }
+
     public function render(): View
     {
         $academicYears = AcademicYear::query()
@@ -59,7 +81,17 @@ class Index extends Component
             ->orderBy('semester_number')
             ->get();
 
-        $activities = Activity::query()
+        $schoolId = app(SchoolContext::class)->id();
+        abort_unless($schoolId, 409, 'Pilih sekolah aktif terlebih dahulu.');
+        $assignmentCoaches = app(ActivityAssignmentFilter::class)->coaches($schoolId);
+
+        $activities = app(ActivityAssignmentFilter::class)->apply(
+            Activity::query(),
+            auth()->user(),
+            $schoolId,
+            $this->assignmentFilter,
+            $this->filterCoachId !== '' ? (int) $this->filterCoachId : null,
+        )
             ->with([
                 'academicYear',
                 'semester',
@@ -105,7 +137,7 @@ class Index extends Component
             compact(
                 'activities',
                 'academicYears',
-                'semesters'
+                'semesters', 'assignmentCoaches'
             )
         );
     }

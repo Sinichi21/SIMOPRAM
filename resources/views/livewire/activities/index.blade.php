@@ -490,6 +490,21 @@
                 @endforeach
             </select>
 
+            <select wire:model.live="assignmentFilter" class="rounded-lg border border-zinc-300 px-3 py-2">
+                <option value="mine">Ditugaskan ke Saya</option>
+                <option value="all">Semua Kegiatan</option>
+                <option value="coach">Pembina Tertentu</option>
+            </select>
+
+            @if ($assignmentFilter === 'coach')
+                <select wire:model.live="filterCoachId" class="rounded-lg border border-zinc-300 px-3 py-2">
+                    <option value="">Pilih Pembina</option>
+                    @foreach ($coaches as $coach)
+                        <option value="{{ $coach->id }}">{{ $coach->name }}</option>
+                    @endforeach
+                </select>
+            @endif
+
         </div>
 
 
