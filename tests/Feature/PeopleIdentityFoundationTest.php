@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\Coach;
 use App\Models\Person;
 use App\Models\School;
 use App\Models\Student;
@@ -34,8 +33,7 @@ test('people can be linked to accounts and multiple school profiles without repl
         'name' => 'Contoh Identitas',
     ]);
 
-    $coach = Coach::query()->create([
-        'school_id' => $schoolOne->id,
+    $coach = $schoolOne->coaches()->create([
         'person_id' => $person->id,
         'name' => 'Contoh Identitas',
         'is_active' => true,

@@ -27,6 +27,22 @@
                 <option value="monthly">Bulanan</option><option value="semester">Semester</option>
             </select>
         </div>
+        <div>
+            <label class="mb-1 block text-sm font-medium">Pelaksana LPJ</label>
+            <select wire:model.live="performerMode" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
+                <option value="system">Pengaturan dokumen sekolah</option>
+                <option value="coach">Pembina tertentu</option>
+            </select>
+        </div>
+        @if ($performerMode === 'coach')
+            <div>
+                <label class="mb-1 block text-sm font-medium">Pembina</label>
+                <select wire:model.live="coachId" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
+                    <option value="">-- Pilih pembina --</option>
+                    @foreach ($coaches as $coach)<option value="{{ $coach->id }}">{{ $coach->name }}</option>@endforeach
+                </select>
+            </div>
+        @endif
         @if ($periodType === 'monthly')
             <div>
                 <label class="mb-1 block text-sm font-medium">Bulan</label>
@@ -60,8 +76,8 @@
         </div>
         <div class="flex justify-end md:col-span-2">
             @can('reports.export')
-                @if ($academicYearId && $semesterId && ($periodType === 'semester' || $month) && $preflightChecked)
-                    <a href="{{ route('reports.lpj.pdf', array_filter(['academic_year_id' => $academicYearId, 'semester_id' => $semesterId, 'period_type' => $periodType, 'month' => $periodType === 'monthly' ? $month : null, 'manual_student_attendance' => (int) $manualStudentAttendance, 'manual_coach_attendance' => (int) $manualCoachAttendance], fn ($value) => $value !== null)) }}" target="_blank"
+                @if ($academicYearId && $semesterId && ($periodType === 'semester' || $month) && ($performerMode === 'system' || $coachId) && $preflightChecked)
+                    <a href="{{ route('reports.lpj.pdf', array_filter(['academic_year_id' => $academicYearId, 'semester_id' => $semesterId, 'period_type' => $periodType, 'month' => $periodType === 'monthly' ? $month : null, 'coach_id' => $performerMode === 'coach' ? $coachId : null, 'manual_student_attendance' => (int) $manualStudentAttendance, 'manual_coach_attendance' => (int) $manualCoachAttendance], fn ($value) => $value !== null)) }}" target="_blank"
                        class="inline-flex items-center rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900" rel="noopener noreferrer">Download LPJ PDF</a>
                 @else
                     <span class="text-sm text-zinc-500">Lengkapi periode lalu klik Periksa Data Sebelum Ekspor untuk mengunduh LPJ.</span>

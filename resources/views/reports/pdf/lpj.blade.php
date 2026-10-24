@@ -18,6 +18,7 @@
         }
         h1, h2, h3, p { margin-top: 0; }
         .page-break { page-break-after: always; }
+        .page-break:last-of-type { page-break-after: auto; }
         .avoid-break,
         .keep-together,
         .signature-block {
@@ -199,18 +200,24 @@
     $signatoryService = app(\App\Services\DocumentSignatoryService::class);
 
     $principal = $signatoryService->configured($documentSetting, 'principal', (int) $school->id);
-    $responsible = $signatoryService->configured($documentSetting, 'responsible', (int) $school->id);
+    $responsible = $selectedCoach
+        ? null
+        : $signatoryService->configured($documentSetting, 'responsible', (int) $school->id);
     $coordinator = $signatoryService->configured($documentSetting, 'coordinator', (int) $school->id);
 
-    $responsibleCoach = $documentSetting?->responsibleCoach;
+    $responsibleCoach = $selectedCoach ?? $documentSetting?->responsibleCoach;
 
     $principalName = $principal['name'] ?? ($documentSetting?->principal_name ?: $scoutGroup?->kamabigus_name ?: '........................');
     $principalIdentifier = $principal['identity'] ?? ($documentSetting?->principal_nip ? 'NIP. '.$documentSetting->principal_nip : '');
     $principalPosition = $principal['position'] ?? 'Kepala '.$school->name;
 
-    $coachName = $responsible['name'] ?? ($responsibleCoach?->name ?: $scoutGroup?->head_coach_name ?: '........................');
-    $coachIdentifier = $responsible['identity'] ?? ($responsibleCoach?->nip ? 'NTA. '.$responsibleCoach->nip : '');
-    $responsiblePosition = $responsible['position'] ?? 'Pembina Ekstra / Pengembangan Diri';
+    $coachName = $selectedCoach?->name ?? ($responsible['name'] ?? ($responsibleCoach?->name ?: $scoutGroup?->head_coach_name ?: '........................'));
+    $coachIdentifier = $selectedCoach
+        ? ($selectedCoach->nip ? 'NTA. '.$selectedCoach->nip : '')
+        : ($responsible['identity'] ?? ($responsibleCoach?->nip ? 'NTA. '.$responsibleCoach->nip : ''));
+    $responsiblePosition = $selectedCoach
+        ? ($selectedCoach->position ?: 'Pembina Ekstra / Pengembangan Diri')
+        : ($responsible['position'] ?? 'Pembina Ekstra / Pengembangan Diri');
 
     $coordinatorName = $coordinator['name'] ?? ($documentSetting?->coordinator_name ?: '........................');
     $coordinatorIdentifier = $coordinator['identity'] ?? ($documentSetting?->coordinator_nip ? 'NIP. '.$documentSetting->coordinator_nip : '');

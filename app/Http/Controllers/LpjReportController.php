@@ -25,13 +25,15 @@ class LpjReportController extends Controller
             'month' => ['nullable', 'required_if:period_type,monthly', 'integer', 'between:1,12'],
             'manual_student_attendance' => ['sometimes', 'boolean'],
             'manual_coach_attendance' => ['sometimes', 'boolean'],
+            'coach_id' => ['nullable', 'integer'],
         ]);
 
         $data = $reportService->build(
             (int) $validated['academic_year_id'],
             (int) $validated['semester_id'],
             $validated['period_type'],
-            isset($validated['month']) ? (int) $validated['month'] : null
+            isset($validated['month']) ? (int) $validated['month'] : null,
+            isset($validated['coach_id']) ? (int) $validated['coach_id'] : null
         );
 
         $data['manualStudentAttendance'] = (bool) ($validated['manual_student_attendance'] ?? false);
@@ -50,6 +52,7 @@ class LpjReportController extends Controller
                 'semester_id' => $validated['semester_id'],
                 'period_type' => $validated['period_type'],
                 'month' => $validated['month'] ?? null,
+                'coach_id' => $validated['coach_id'] ?? null,
                 'data' => $data,
             ]),
             title: 'LPJ Pramuka - '.$periodLabel,
@@ -59,6 +62,7 @@ class LpjReportController extends Controller
                 'period_type' => $validated['period_type'],
                 'period' => $periodLabel,
                 'month' => $validated['month'] ?? null,
+                'coach_id' => $validated['coach_id'] ?? null,
             ],
             sourceType: Semester::class,
             sourceId: (int) $data['semester']->id,
@@ -93,7 +97,9 @@ class LpjReportController extends Controller
                 filename: $filename,
                 signatoryUserIds: [
                     data_get($data, 'documentSetting.principal_signatory_user_id'),
-                    data_get($data, 'documentSetting.responsible_signatory_user_id'),
+                    $data['selectedCoach']
+                        ? null
+                        : data_get($data, 'documentSetting.responsible_signatory_user_id'),
                     data_get($data, 'documentSetting.coordinator_signatory_user_id'),
                 ]
             );
