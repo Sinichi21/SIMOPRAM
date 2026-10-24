@@ -35,7 +35,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Carbon|null $updated_at
  */
 #[Fillable([
-    'name', 'email', 'password', 'phone', 'system_role', 'is_active',
+    'person_id', 'name', 'email', 'password', 'phone', 'system_role', 'is_active',
     'requested_school_id', 'requested_role', 'approval_status',
     'approved_by', 'approved_at', 'activation_pending',
 ])]
@@ -101,6 +101,11 @@ class User extends Authenticatable implements PasskeyUser
             ],
             true
         );
+    }
+
+    public function person(): BelongsTo
+    {
+        return $this->belongsTo(Person::class);
     }
 
     public function schoolMemberships()

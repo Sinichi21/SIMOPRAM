@@ -3,9 +3,11 @@
 namespace App\Livewire\Reports;
 
 use App\Models\AcademicYear;
+use App\Models\Coach;
 use App\Models\Semester;
 use App\Services\LpjPreflightService;
 use App\Services\LpjReportService;
+use App\Support\SchoolContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
@@ -19,6 +21,10 @@ class Lpj extends Component
     public string $periodType = 'monthly';
 
     public ?int $month = null;
+
+    public string $performerMode = 'system';
+
+    public ?int $coachId = null;
 
     public bool $manualStudentAttendance = false;
 
@@ -43,13 +49,16 @@ class Lpj extends Component
             'semesterId' => ['required', 'integer'],
             'periodType' => ['required', 'in:monthly,semester'],
             'month' => ['nullable', 'required_if:periodType,monthly', 'integer', 'between:1,12'],
+            'performerMode' => ['required', 'in:system,coach'],
+            'coachId' => ['nullable', 'required_if:performerMode,coach', 'integer'],
         ]);
 
         $data = app(LpjReportService::class)->build(
             (int) $this->academicYearId,
             (int) $this->semesterId,
             $this->periodType,
-            $this->periodType === 'monthly' ? (int) $this->month : null
+            $this->periodType === 'monthly' ? (int) $this->month : null,
+            $this->performerMode === 'coach' ? (int) $this->coachId : null
         );
         $this->preflightWarnings = app(LpjPreflightService::class)->warnings($data);
         $this->preflightChecked = true;
@@ -80,6 +89,11 @@ class Lpj extends Component
             'academicYears' => AcademicYear::query()->orderByDesc('start_date')->get(),
             'semesters' => Semester::query()->when($this->academicYearId, fn ($query) => $query->where('academic_year_id', $this->academicYearId))->orderBy('semester_number')->get(),
             'months' => $this->availableMonths(),
+            'coaches' => Coach::query()
+                ->where('school_id', app(SchoolContext::class)->school()?->id)
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'name']),
         ]);
     }
 

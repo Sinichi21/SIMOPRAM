@@ -14,6 +14,7 @@ class Coach extends Model
     use SoftDeletes;
 
     protected $fillable = [
+        'person_id',
         'user_id',
         'nip',
         'name',
@@ -30,6 +31,11 @@ class Coach extends Model
         return [
             'is_active' => 'boolean',
         ];
+    }
+
+    public function person(): BelongsTo
+    {
+        return $this->belongsTo(Person::class);
     }
 
     public function school(): BelongsTo

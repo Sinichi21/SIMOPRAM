@@ -18,6 +18,7 @@ use App\Http\Controllers\SchoolSwitchController;
 use App\Http\Controllers\StudentDocumentController;
 use App\Http\Middleware\SetGlobalContentContext;
 use App\Livewire\Auth\Register;
+use App\Livewire\PeopleMerge\Index as PeopleMergeIndex;
 use App\Livewire\RoleManagement\Index as RoleManagementIndex;
 use App\Livewire\Settings\LandingContent;
 use App\Livewire\SystemRoleManagement\Index as SystemRoleManagementIndex;
@@ -72,6 +73,9 @@ Route::livewire('/settings/landing-content', LandingContent::class)
     ->middleware('auth')->name('settings.landing-content');
 Route::livewire('/settings/schools/{school:slug}/landing-content', LandingContent::class)
     ->middleware('auth')->name('settings.tenant-content');
+Route::livewire('/admin/people/merge', PeopleMergeIndex::class)
+    ->middleware('auth')
+    ->name('admin.people.merge');
 Route::livewire('/register', Register::class)->middleware('guest')->name('register');
 Route::get('/pengaduan', [ComplaintController::class, 'publicForm'])->name('complaints.public');
 Route::post('/pengaduan', [ComplaintController::class, 'publicStore'])->middleware('throttle:5,1')->name('complaints.public.store');

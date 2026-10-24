@@ -16,6 +16,7 @@ class Student extends Model
     use SoftDeletes;
 
     protected $fillable = [
+        'person_id',
         'user_id',
         'nis',
         'nisn',
@@ -37,6 +38,11 @@ class Student extends Model
             'birth_date' => 'date',
             'joined_at' => 'date',
         ];
+    }
+
+    public function person(): BelongsTo
+    {
+        return $this->belongsTo(Person::class);
     }
 
     public function school(): BelongsTo

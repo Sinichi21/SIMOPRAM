@@ -21,10 +21,15 @@ class LpjReportService
         int $academicYearId,
         int $semesterId,
         string $periodType,
-        ?int $month = null
+        ?int $month = null,
+        ?int $coachId = null
     ): array {
         $school = app(SchoolContext::class)->school();
         abort_unless($school, 409, 'Pilih sekolah aktif terlebih dahulu.');
+
+        $selectedCoach = $coachId
+            ? Coach::query()->where('school_id', $school->id)->where('is_active', true)->findOrFail($coachId)
+            : null;
 
         $academicYear = AcademicYear::query()->findOrFail($academicYearId);
         $semester = Semester::query()
@@ -55,6 +60,7 @@ class LpjReportService
                 'cancelled',
             ])
             ->whereBetween('start_at', [$periodStart, $periodEnd])
+            ->when($selectedCoach, fn ($query) => $query->whereHas('coaches', fn ($coaches) => $coaches->whereKey($selectedCoach->id)))
             ->with([
                 'coaches:id,name,nip,phone',
                 'scoutLevels:id,name',
@@ -76,7 +82,8 @@ class LpjReportService
             $periodStart,
             $periodEnd,
             $activities,
-            $documentSetting
+            $documentSetting,
+            $selectedCoach
         );
 
         $activeActivities = $activities->where('status', '!=', 'cancelled');
@@ -86,7 +93,10 @@ class LpjReportService
             'academicYear' => $academicYear,
             'semester' => $semester,
             'documentSetting' => $documentSetting,
-            'responsiblePhone' => $this->responsiblePhone($documentSetting),
+            'selectedCoach' => $selectedCoach,
+            'responsiblePhone' => $selectedCoach
+                ? $selectedCoach->phone
+                : $this->responsiblePhone($documentSetting),
             'scoutGroup' => $scoutGroup,
             'periodType' => $periodType,
             'month' => $month,
@@ -188,7 +198,8 @@ class LpjReportService
         CarbonImmutable $periodStart,
         CarbonImmutable $periodEnd,
         Collection $activities,
-        ?SchoolDocumentSetting $documentSetting
+        ?SchoolDocumentSetting $documentSetting,
+        ?Coach $selectedCoach = null
     ): Collection {
         $months = collect();
         $cursor = $periodStart->startOfMonth();
@@ -234,7 +245,8 @@ class LpjReportService
                 'coachRows' => $this->coachRows(
                     $dates,
                     $monthActivities,
-                    $documentSetting?->responsibleCoach
+                    $selectedCoach ?? $documentSetting?->responsibleCoach,
+                    $selectedCoach
                 ),
             ]);
 
@@ -750,12 +762,14 @@ class LpjReportService
     private function coachRows(
         Collection $dates,
         Collection $activities,
-        ?Coach $responsibleCoach
+        ?Coach $responsibleCoach,
+        ?Coach $selectedCoach = null
     ): Collection {
         $coaches = $activities
             ->flatMap(fn (Activity $activity) => $activity->coaches)
             ->when($responsibleCoach, fn (Collection $collection) => $collection->push($responsibleCoach))
             ->unique('id')
+            ->when($selectedCoach, fn (Collection $collection) => $collection->where('id', $selectedCoach->id))
             ->sortBy('name')
             ->values();
 

@@ -87,6 +87,82 @@ test('LPJ does not borrow a legacy coach phone for a manually named signatory', 
         ->toContain('Penanggung Jawab Baru', '<td>Nomor HP</td><td>: -</td>');
 });
 
+test('LPJ for one coach uses their identity and only their assigned activities and attendance row', function () {
+    $selectedCoach = Coach::query()->create([
+        'school_id' => $this->school->id,
+        'name' => 'Pembina Terpilih',
+        'nip' => 'NTA-123',
+        'phone' => '081234567890',
+        'position' => 'Pembina Penggalang',
+        'user_id' => $this->user->id,
+        'is_active' => true,
+    ]);
+    SchoolDocumentSetting::query()->create([
+        'school_id' => $this->school->id,
+        'manual_signatories' => ['responsible' => ['coach_id' => $selectedCoach->id]],
+    ]);
+    $otherCoach = Coach::query()->create([
+        'school_id' => $this->school->id,
+        'name' => 'Pembina Lain',
+        'is_active' => true,
+    ]);
+
+    $assignedActivity = Activity::factory()->create([
+        'school_id' => $this->school->id,
+        'academic_year_id' => $this->academicYear->id,
+        'semester_id' => $this->semester->id,
+        'created_by' => $this->user->id,
+        'title' => 'Kegiatan Pembina Terpilih',
+        'start_at' => '2026-09-04 08:00:00',
+        'status' => 'completed',
+    ]);
+    $otherActivity = Activity::factory()->create([
+        'school_id' => $this->school->id,
+        'academic_year_id' => $this->academicYear->id,
+        'semester_id' => $this->semester->id,
+        'created_by' => $this->user->id,
+        'title' => 'Kegiatan Pembina Lain',
+        'start_at' => '2026-09-11 08:00:00',
+        'status' => 'completed',
+    ]);
+    $assignedActivity->coaches()->attach([$selectedCoach->id, $otherCoach->id], ['school_id' => $this->school->id]);
+    $otherActivity->coaches()->attach($otherCoach->id, ['school_id' => $this->school->id]);
+
+    $data = app(LpjReportService::class)->build(
+        $this->academicYear->id,
+        $this->semester->id,
+        'monthly',
+        9,
+        $selectedCoach->id
+    );
+    $html = view('reports.pdf.lpj', $data)->render();
+
+    expect($data['activities']->pluck('title')->all())->toBe(['Kegiatan Pembina Terpilih'])
+        ->and($data['responsiblePhone'])->toBe('081234567890')
+        ->and($data['reportMonths']->first()['coachRows']->pluck('coach.name')->all())->toBe(['Pembina Terpilih'])
+        ->and($html)->toContain('Pembina Terpilih', 'NTA. NTA-123', '081234567890')
+        ->not->toContain('Kegiatan Pembina Lain', 'Pembina Lain');
+});
+
+test('LPJ download rejects a coach from another school', function () {
+    $otherSchool = School::factory()->create();
+    $otherCoach = $otherSchool->coaches()->create([
+        'name' => 'Pembina Sekolah Lain',
+        'is_active' => true,
+    ]);
+
+    $this->actingAs($this->user)
+        ->withSession(['active_school_id' => $this->school->id])
+        ->getJson(route('reports.lpj.pdf', [
+            'academic_year_id' => $this->academicYear->id,
+            'semester_id' => $this->semester->id,
+            'period_type' => 'monthly',
+            'month' => 9,
+            'coach_id' => $otherCoach->id,
+        ]))
+        ->assertNotFound();
+});
+
 test('LPJ prints the document verification QR and code for each period type', function (string $periodType) {
     $data = app(LpjReportService::class)->build($this->academicYear->id, $this->semester->id, $periodType, 9);
     $service = app(ReportVerificationService::class);
@@ -120,6 +196,25 @@ test('LPJ attendance toggles independently update the download options', functio
         ->call('checkReport')
         ->assertSee('manual_student_attendance=0', false)
         ->assertSee('manual_coach_attendance=1', false);
+});
+
+test('LPJ coach selection adds the selected coach to the export link', function () {
+    $coach = Coach::query()->create([
+        'school_id' => $this->school->id,
+        'name' => 'Pembina Ekspor',
+        'is_active' => true,
+    ]);
+
+    Livewire::actingAs($this->user)
+        ->test(Lpj::class)
+        ->set('academicYearId', $this->academicYear->id)
+        ->set('semesterId', $this->semester->id)
+        ->set('month', 9)
+        ->set('performerMode', 'coach')
+        ->set('coachId', $coach->id)
+        ->call('checkReport')
+        ->assertSee('Pembina Ekspor')
+        ->assertSee('coach_id='.$coach->id, false);
 });
 
 test('LPJ download rejects invalid attendance modes', function () {
@@ -200,6 +295,8 @@ test('monthly LPJ only contains activities from the selected month', function ()
 
     $activityDataPosition = strpos($html, 'DATA KEGIATAN EKSTRA / PENGEMBANGAN DIRI');
     $monthlyReportPosition = strpos($html, 'LAPORAN PELAKSANAAN KEGIATAN EKSTRA / PENGEMBANGAN DIRI');
+    $pdf = Pdf::loadHTML($html)->setPaper('a4');
+    $pdf->output();
 
     expect($data['activities'])->toHaveCount(1)
         ->and($html)->toContain('Latihan Agustus')
@@ -208,7 +305,8 @@ test('monthly LPJ only contains activities from the selected month', function ()
         ->and($activityDataPosition)->not->toBeFalse()
         ->and($monthlyReportPosition)->not->toBeFalse()
         ->and($activityDataPosition)->toBeLessThan($monthlyReportPosition)
-        ->and($html)->toContain('class="signature-block"');
+        ->and($html)->toContain('class="signature-block"')
+        ->and($pdf->getDomPDF()->getCanvas()->get_page_count())->toBe(3);
 });
 
 test('semester LPJ has one cover and approval page and includes all semester months', function () {
