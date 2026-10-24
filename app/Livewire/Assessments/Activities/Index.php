@@ -6,6 +6,7 @@ use App\Models\Activity;
 use App\Models\ActivityAssessment;
 use App\Models\AssessmentFactor;
 use App\Models\ScoutLevel;
+use App\Services\ActivityAssignmentFilter;
 use App\Services\PublicAssessmentService;
 use App\Support\SchoolContext;
 use Illuminate\Validation\Rule;
@@ -28,6 +29,20 @@ class Index extends Component
     public string $search = '';
 
     public string $scoutLevelId = '';
+
+    public string $assignmentFilter = 'mine';
+
+    public string $filterCoachId = '';
+
+    public function mount(ActivityAssignmentFilter $assignmentFilter): void
+    {
+        $this->assignmentFilter = $assignmentFilter->defaultMode(auth()->user());
+    }
+
+    public function updatedAssignmentFilter(): void
+    {
+        $this->filterCoachId = '';
+    }
 
     public function publishResults(int $id, bool $published, PublicAssessmentService $service): void
     {
@@ -170,8 +185,20 @@ class Index extends Component
 
     public function render()
     {
+        $schoolId = app(SchoolContext::class)->id();
+        abort_unless($schoolId, 409, 'Pilih sekolah aktif terlebih dahulu.');
+        $assignmentFilter = app(ActivityAssignmentFilter::class);
+        $assignmentCoaches = $assignmentFilter->coaches($schoolId);
+        $selectedCoachId = $this->filterCoachId !== '' ? (int) $this->filterCoachId : null;
+
         $activities =
-            Activity::query()
+            $assignmentFilter->apply(
+                Activity::query(),
+                auth()->user(),
+                $schoolId,
+                $this->assignmentFilter,
+                $selectedCoachId,
+            )
                 ->with('scoutLevels')
                 ->when(
                     $this->scoutLevelId,
@@ -218,6 +245,16 @@ class Index extends Component
                     'factor',
                     'activity.scoutLevels',
                 ])
+                ->whereHas(
+                    'activity',
+                    fn ($activityQuery) => $assignmentFilter->apply(
+                        $activityQuery,
+                        auth()->user(),
+                        $schoolId,
+                        $this->assignmentFilter,
+                        $selectedCoachId,
+                    )
+                )
                 ->when(
                     $this->scoutLevelId,
                     fn ($query) => $query->whereHas(
@@ -290,6 +327,8 @@ class Index extends Component
                 'assessments' => $assessments,
 
                 'scoutLevels' => $scoutLevels,
+
+                'assignmentCoaches' => $assignmentCoaches,
             ]
         );
     }

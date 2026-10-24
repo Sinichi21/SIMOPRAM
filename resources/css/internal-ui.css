@@ -184,6 +184,15 @@
     border-bottom: 0;
 }
 
+/* Long names, identifiers and URLs must wrap inside internal table columns. */
+.app-content :where(table):not(.letter-preview table, .letter-real-preview table, [contenteditable] table) :where(th, td):not(.whitespace-nowrap) {
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
 .app-content .overflow-x-auto {
     min-width: 0;
     max-width: 100%;
@@ -238,5 +247,32 @@
 
     .app-content .overflow-x-auto > table:not([style], .letter-preview table, .letter-real-preview table, [contenteditable] table) > :where(thead, tbody) > tr > :where(th, td) {
         padding: .75rem;
+    }
+}
+
+/* Keep button labels readable and wrap table actions into balanced rows. */
+.app-content :where(button, a, [data-flux-button], [data-action-tone]):not([data-flux-button-group] *) {
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
+}
+
+.app-content table td > .flex:has(> :where(button, a, [data-flux-button], [data-action-tone])) {
+    flex-wrap: wrap;
+    align-items: stretch;
+}
+
+.app-content table td > .flex:has(> :where(button, a, [data-flux-button], [data-action-tone])) > :where(button, a, [data-flux-button], [data-action-tone]) {
+    flex: 1 1 calc(50% - .5rem);
+    min-width: min(7rem, 100%);
+    max-width: 100%;
+}
+
+@media (width < 64rem) {
+    .app-content table td > .flex:has(> :where(button, a, [data-flux-button], [data-action-tone])) > :where(button, a, [data-flux-button], [data-action-tone]) {
+        flex-basis: 100%;
     }
 }
