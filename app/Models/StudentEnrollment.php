@@ -34,6 +34,7 @@ class StudentEnrollment extends Model
         );
     }
 
+    /** @return BelongsTo<AcademicYear, $this> */
     public function academicYear(): BelongsTo
     {
         return $this->belongsTo(
@@ -41,6 +42,7 @@ class StudentEnrollment extends Model
         );
     }
 
+    /** @return BelongsTo<Classroom, $this> */
     public function classroom(): BelongsTo
     {
         return $this->belongsTo(

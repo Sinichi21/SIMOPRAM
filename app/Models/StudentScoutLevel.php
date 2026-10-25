@@ -35,6 +35,7 @@ class StudentScoutLevel extends Model
         );
     }
 
+    /** @return BelongsTo<ScoutLevel, $this> */
     public function scoutLevel(): BelongsTo
     {
         return $this->belongsTo(

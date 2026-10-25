@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Activity;
 use App\Models\School;
 use App\Models\User;
 
@@ -34,4 +35,27 @@ test('school dashboard still requires a selected school', function () {
     $token = $user->createToken('Android')->plainTextToken;
 
     $this->withToken($token)->getJson('/api/v1/dashboard')->assertUnprocessable();
+});
+
+test('school dashboard returns metrics scoped to the selected school', function () {
+    $selectedSchool = School::factory()->create();
+    $otherSchool = School::factory()->create();
+    $selectedActivity = Activity::factory()->create([
+        'school_id' => $selectedSchool->id,
+        'approval_status' => 'approved',
+    ]);
+    Activity::factory()->create([
+        'school_id' => $otherSchool->id,
+        'approval_status' => 'approved',
+    ]);
+    $user = User::factory()->create(['is_active' => true, 'system_role' => 'super_admin']);
+    $token = $user->createToken('Android')->plainTextToken;
+
+    $this->withToken($token)->withHeader('X-School-Id', (string) $selectedSchool->id)
+        ->getJson('/api/v1/dashboard')
+        ->assertOk()
+        ->assertJsonPath('data.school.id', $selectedSchool->id)
+        ->assertJsonPath('data.summary.activities', 1)
+        ->assertJsonPath('data.summary.upcoming_activities', 1)
+        ->assertJsonPath('data.upcoming_activities.0.id', $selectedActivity->id);
 });
