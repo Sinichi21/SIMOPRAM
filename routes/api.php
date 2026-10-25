@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\ActivityController;
 use App\Http\Controllers\Api\V1\AttendanceController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DashboardController;
+use App\Http\Controllers\Api\V1\StudentController;
 use App\Http\Middleware\EnsureApiAccountActive;
 use App\Http\Middleware\ResolveApiSchool;
 use Illuminate\Support\Facades\Route;
@@ -19,6 +20,7 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
 
         Route::middleware(ResolveApiSchool::class)->group(function (): void {
             Route::get('/dashboard', DashboardController::class)->middleware('permission:dashboard.view')->name('dashboard');
+            Route::get('/students', [StudentController::class, 'index'])->middleware('permission:students.view')->name('students.index');
             Route::get('/activities', [ActivityController::class, 'index'])->middleware('permission:activities.view')->name('activities.index');
             Route::get('/activities/{activityId}', [ActivityController::class, 'show'])->whereNumber('activityId')->middleware('permission:activities.view')->name('activities.show');
             Route::get('/activities/{activityId}/attendance-sessions', [AttendanceController::class, 'sessions'])->whereNumber('activityId')->middleware('permission:attendance_sessions.view')->name('activities.attendance-sessions');
