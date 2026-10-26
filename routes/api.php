@@ -35,8 +35,13 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
             Route::get('/activities/{activityId}', [ActivityController::class, 'show'])->whereNumber('activityId')->middleware('permission:activities.view')->name('activities.show');
             Route::put('/activities/{activityId}', [ActivityController::class, 'update'])->whereNumber('activityId')->middleware('permission:activities.update')->name('activities.update');
             Route::post('/activities/{activityId}/cancel', [ActivityController::class, 'cancel'])->whereNumber('activityId')->middleware('permission:activities.cancel')->name('activities.cancel');
+            Route::get('/attendance/permissions', [AttendanceController::class, 'permissions'])->middleware('permission:attendance_sessions.view')->name('attendance.permissions');
+            Route::get('/activities/{activityId}/attendance-session-options', [AttendanceController::class, 'sessionOptions'])->whereNumber('activityId')->middleware('permission:attendance_sessions.view')->name('activities.attendance-session-options');
             Route::get('/activities/{activityId}/attendance-sessions', [AttendanceController::class, 'sessions'])->whereNumber('activityId')->middleware('permission:attendance_sessions.view')->name('activities.attendance-sessions');
+            Route::post('/activities/{activityId}/attendance-sessions', [AttendanceController::class, 'storeSession'])->whereNumber('activityId')->middleware('permission:attendance_sessions.manage')->name('activities.attendance-sessions.store');
             Route::get('/attendance-sessions/{sessionId}/participants', [AttendanceController::class, 'participants'])->whereNumber('sessionId')->middleware('permission:attendance_sessions.view')->name('attendance-sessions.participants');
+            Route::patch('/attendance-sessions/{sessionId}', [AttendanceController::class, 'updateSession'])->whereNumber('sessionId')->middleware('permission:attendance_sessions.manage')->name('attendance-sessions.update');
+            Route::patch('/attendance-sessions/{sessionId}/toggle', [AttendanceController::class, 'toggleSession'])->whereNumber('sessionId')->middleware('permission:attendance_sessions.manage')->name('attendance-sessions.toggle');
             Route::patch('/attendance-sessions/{sessionId}/participants/{studentId}', [AttendanceController::class, 'mark'])->whereNumber('sessionId')->whereNumber('studentId')->middleware('permission:attendance.manual')->name('attendance-sessions.mark');
             Route::post('/attendance-sessions/{sessionId}/check-in', [AttendanceController::class, 'checkIn'])->whereNumber('sessionId')->middleware('permission:attendances.self')->name('attendance-sessions.check-in');
         });
