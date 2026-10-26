@@ -84,7 +84,8 @@ test('participant endpoint returns saved attendance status after a fresh request
         ->assertOk()
         ->assertJsonPath('data.0.student.id', $student->id)
         ->assertJsonPath('data.0.attendance.status', 'present')
-        ->assertJsonPath('data.0.attendance.source', 'manual');
+        ->assertJsonPath('data.0.attendance.source', 'manual')
+        ->assertJsonPath('data.0.attendance.checked_in_at', '2026-10-26 08:12:00');
 
     // A second independent request must return the persisted status too.
     $this->withToken($token)
@@ -131,6 +132,8 @@ test('user with session management permission can create a session and its parti
         ])
         ->assertCreated()
         ->assertJsonPath('data.name', 'Latihan sore')
+        ->assertJsonPath('data.open_at', '2026-10-26 10:00:00')
+        ->assertJsonPath('data.close_at', '2026-10-26 11:00:00')
         ->assertJsonPath('data.allow_manual', true);
 
     $session = AttendanceSession::query()
