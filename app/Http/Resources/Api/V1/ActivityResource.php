@@ -18,6 +18,7 @@ class ActivityResource extends JsonResource
             'id' => $this->id,
             'title' => $this->title,
             'activity_type' => $this->activity_type,
+            'routine_session_no' => $this->routine_session_no,
             'description' => $this->description,
             'location' => $this->location,
             'start_at' => $this->start_at,
