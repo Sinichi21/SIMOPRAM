@@ -1,8 +1,11 @@
 <?php
 
 use App\Models\Activity;
+use App\Models\Coach;
 use App\Models\School;
+use App\Models\Student;
 use App\Models\User;
+use App\Support\SchoolContext;
 
 test('super admin can view global dashboard without a selected school', function () {
     $activeSchool = School::factory()->create();
@@ -40,6 +43,19 @@ test('school dashboard still requires a selected school', function () {
 test('school dashboard returns metrics scoped to the selected school', function () {
     $selectedSchool = School::factory()->create();
     $otherSchool = School::factory()->create();
+    Student::factory()->create(['school_id' => $selectedSchool->id, 'status' => 'active']);
+    Student::factory()->create(['school_id' => $selectedSchool->id, 'status' => 'inactive']);
+    Student::factory()->create(['school_id' => $otherSchool->id, 'status' => 'active']);
+
+    $schoolContext = app(SchoolContext::class);
+    $schoolContext->set($selectedSchool);
+    Coach::query()->create(['name' => 'Pembina Aktif Dashboard', 'is_active' => true]);
+    Coach::query()->create(['name' => 'Pembina Nonaktif Dashboard', 'is_active' => false]);
+    $schoolContext->clear();
+    $schoolContext->set($otherSchool);
+    Coach::query()->create(['name' => 'Pembina Sekolah Lain', 'is_active' => true]);
+    $schoolContext->clear();
+
     $selectedActivity = Activity::factory()->create([
         'school_id' => $selectedSchool->id,
         'approval_status' => 'approved',
@@ -55,6 +71,10 @@ test('school dashboard returns metrics scoped to the selected school', function 
         ->getJson('/api/v1/dashboard')
         ->assertOk()
         ->assertJsonPath('data.school.id', $selectedSchool->id)
+        ->assertJsonPath('data.summary.students', 2)
+        ->assertJsonPath('data.summary.active_students', 1)
+        ->assertJsonPath('data.summary.coaches', 2)
+        ->assertJsonPath('data.summary.active_coaches', 1)
         ->assertJsonPath('data.summary.activities', 1)
         ->assertJsonPath('data.summary.upcoming_activities', 1)
         ->assertJsonPath('data.upcoming_activities.0.id', $selectedActivity->id);
