@@ -43,7 +43,7 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
             Route::patch('/attendance-sessions/{sessionId}', [AttendanceController::class, 'updateSession'])->whereNumber('sessionId')->middleware('permission:attendance_sessions.manage')->name('attendance-sessions.update');
             Route::patch('/attendance-sessions/{sessionId}/toggle', [AttendanceController::class, 'toggleSession'])->whereNumber('sessionId')->middleware('permission:attendance_sessions.manage')->name('attendance-sessions.toggle');
             Route::patch('/attendance-sessions/{sessionId}/participants/{studentId}', [AttendanceController::class, 'mark'])->whereNumber('sessionId')->whereNumber('studentId')->middleware('permission:attendance.manual')->name('attendance-sessions.mark');
-            Route::post('/attendance-sessions/{sessionId}/check-in', [AttendanceController::class, 'checkIn'])->whereNumber('sessionId')->middleware('permission:attendances.self')->name('attendance-sessions.check-in');
+            Route::post('/attendance-sessions/{sessionId}/check-in', [AttendanceController::class, 'checkIn'])->whereNumber('sessionId')->middleware('permission:attendances.self|attendance.checkin')->name('attendance-sessions.check-in');
         });
     });
 });
