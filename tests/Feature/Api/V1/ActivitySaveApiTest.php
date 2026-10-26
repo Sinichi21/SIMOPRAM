@@ -55,8 +55,8 @@ test('authorized user can create a draft activity using the selected school acti
 test('activity creation rejects invalid time range and users without permission', function () {
     $school = School::factory()->create();
     AcademicYear::factory()->create(['school_id' => $school->id, 'is_active' => true]);
-    $user = User::factory()->create(['is_active' => true]);
-    $token = $user->createToken('Android')->plainTextToken;
+    $user = User::factory()->create(['is_active' => true, 'system_role' => 'super_admin']);
+    $token = activityApiToken($user, $school->id, 'activities.create');
 
     $this->withToken($token)->withHeader('X-School-Id', (string) $school->id)
         ->postJson('/api/v1/activities', [
@@ -65,7 +65,8 @@ test('activity creation rejects invalid time range and users without permission'
             'start_at' => '2026-10-28T10:00:00',
             'end_at' => '2026-10-28T08:00:00',
         ])
-        ->assertForbidden();
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('end_at');
 });
 
 test('authorized user can update an activity only inside selected school', function () {
