@@ -1,32 +1,32 @@
 <?php
 
-namespace App\\Http\\Controllers\\Api\\V1;
+namespace App\Http\Controllers\Api\V1;
 
-use App\\Http\\Controllers\\Controller;
-use App\\Http\\Requests\\Api\\V1\\MarkAttendanceRequest;
-use App\\Http\\Requests\\Api\\V1\\SelfCheckInRequest;
-use App\\Http\\Resources\\Api\\V1\\AttendanceParticipantResource;
-use App\\Http\\Resources\\Api\\V1\\AttendanceResource;
-use App\\Http\\Resources\\Api\\V1\\AttendanceSessionResource;
-use App\\Http\\Resources\\Api\\V1\\ActivityResource;
-use App\\Models\\Activity;
-use App\\Models\\Attendance;
-use App\\Models\\AttendanceSession;
-use App\\Models\\Classroom;
-use App\\Models\\ScoutLevel;
-use App\\Models\\ScoutUnit;
-use App\\Models\\Student;
-use App\\Services\\ActivityAssignmentFilter;
-use App\\Services\\AttendanceService;
-use App\\Support\\SchoolContext;
-use Illuminate\\Database\\Eloquent\\Collection as EloquentCollection;
-use Illuminate\\Http\\JsonResponse;
-use Illuminate\\Http\\Request;
-use Illuminate\\Http\\Resources\\Json\\AnonymousResourceCollection;
-use Illuminate\\Support\\Carbon;
-use Illuminate\\Support\\Facades\\DB;
-use Illuminate\\Support\\Facades\\Validator;
-use Illuminate\\Validation\\ValidationException;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\MarkAttendanceRequest;
+use App\Http\Requests\Api\V1\SelfCheckInRequest;
+use App\Http\Resources\Api\V1\AttendanceParticipantResource;
+use App\Http\Resources\Api\V1\AttendanceResource;
+use App\Http\Resources\Api\V1\AttendanceSessionResource;
+use App\Http\Resources\Api\V1\ActivityResource;
+use App\Models\Activity;
+use App\Models\Attendance;
+use App\Models\AttendanceSession;
+use App\Models\Classroom;
+use App\Models\ScoutLevel;
+use App\Models\ScoutUnit;
+use App\Models\Student;
+use App\Services\ActivityAssignmentFilter;
+use App\Services\AttendanceService;
+use App\Support\SchoolContext;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class AttendanceController extends Controller
 {
