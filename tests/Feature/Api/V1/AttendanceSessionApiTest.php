@@ -69,7 +69,12 @@ test('participant endpoint returns saved attendance status after a fresh request
 
     $user = User::factory()->create([
         'is_active' => true,
-        'system_role' => 'super_admin',
+        'system_role' => 'school_admin',
+    ]);
+    $user->schoolMemberships()->create([
+        'school_id' => $school->id,
+        'is_active' => true,
+        'joined_at' => today(),
     ]);
     $token = attendanceSessionApiToken($user, $school->id, 'attendance_sessions.view');
 
@@ -101,7 +106,12 @@ test('user with session management permission can create a session and its parti
     ]);
     $user = User::factory()->create([
         'is_active' => true,
-        'system_role' => 'super_admin',
+        'system_role' => 'school_admin',
+    ]);
+    $user->schoolMemberships()->create([
+        'school_id' => $school->id,
+        'is_active' => true,
+        'joined_at' => today(),
     ]);
     $token = attendanceSessionApiToken($user, $school->id, 'attendance_sessions.view', 'attendance_sessions.manage');
 
@@ -143,7 +153,12 @@ test('user without session management permission cannot create a session', funct
     ]);
     $user = User::factory()->create([
         'is_active' => true,
-        'system_role' => 'super_admin',
+        'system_role' => 'school_admin',
+    ]);
+    $user->schoolMemberships()->create([
+        'school_id' => $school->id,
+        'is_active' => true,
+        'joined_at' => today(),
     ]);
     $token = $user->createToken('Android read-only test')->plainTextToken;
 
@@ -196,7 +211,12 @@ test('manual attendance mark is persisted and returned on the next participants 
 
     $user = User::factory()->create([
         'is_active' => true,
-        'system_role' => 'super_admin',
+        'system_role' => 'school_admin',
+    ]);
+    $user->schoolMemberships()->create([
+        'school_id' => $school->id,
+        'is_active' => true,
+        'joined_at' => today(),
     ]);
     $token = attendanceSessionApiToken($user, $school->id, 'attendance_sessions.view', 'attendance.manual');
 
