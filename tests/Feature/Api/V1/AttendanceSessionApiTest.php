@@ -7,6 +7,7 @@ use App\\Models\\AttendanceSessionParticipant;
 use App\\Models\\School;
 use App\\Models\\Student;
 use App\\Models\\User;
+use App\\Support\\SchoolContext;
 use Spatie\\Permission\\Models\\Permission;
 use Illuminate\\Foundation\\Testing\\RefreshDatabase;
 
@@ -27,6 +28,7 @@ function attendanceSessionApiToken(User $user, int $schoolId, string ...$permiss
 
 test('participant endpoint returns saved attendance status after a fresh request', function () {
     $school = School::factory()->create();
+    app(SchoolContext::class)->set($school);
     $activity = Activity::factory()->create([
         'school_id' => $school->id,
         'approval_status' => 'approved',
@@ -63,6 +65,7 @@ test('participant endpoint returns saved attendance status after a fresh request
         'source' => 'manual',
         'checked_in_at' => '2026-10-26 08:12:00',
     ]);
+    app(SchoolContext::class)->clear();
 
     $user = User::factory()->create([
         'is_active' => true,
@@ -163,5 +166,63 @@ test('user without session management permission cannot create a session', funct
         'school_id' => $school->id,
         'activity_id' => $activity->id,
         'name' => 'Sesi tanpa izin',
+    ]);
+});
+
+
+test('manual attendance mark is persisted and returned on the next participants request', function () {
+    $school = School::factory()->create();
+    app(SchoolContext::class)->set($school);
+    $activity = Activity::factory()->create([
+        'school_id' => $school->id,
+        'approval_status' => 'approved',
+    ]);
+    $student = Student::factory()->create([
+        'school_id' => $school->id,
+        'status' => 'active',
+    ]);
+    $session = AttendanceSession::query()->create([
+        'activity_id' => $activity->id,
+        'name' => 'Sesi catat dan muat ulang',
+        'participant_scope' => 'all',
+        'open_at' => '2026-10-26 08:00:00',
+        'late_after' => '2026-10-26 08:15:00',
+        'close_at' => '2026-10-26 09:00:00',
+        'allow_manual' => true,
+        'allow_self_checkin' => false,
+        'is_active' => true,
+    ]);
+    $session->participants()->create(['student_id' => $student->id]);
+    app(SchoolContext::class)->clear();
+
+    $user = User::factory()->create([
+        'is_active' => true,
+        'system_role' => 'super_admin',
+    ]);
+    $token = attendanceSessionApiToken($user, $school->id, 'attendance_sessions.view', 'attendance.manual');
+
+    $this->withToken($token)
+        ->withHeader('X-School-Id', (string) $school->id)
+        ->patchJson('/api/v1/attendance-sessions/'.$session->id.'/participants/'.$student->id, [
+            'status' => 'late',
+            'notes' => 'Tiba terlambat',
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.status', 'late')
+        ->assertJsonPath('data.source', 'manual');
+
+    $this->withToken($token)
+        ->withHeader('X-School-Id', (string) $school->id)
+        ->getJson('/api/v1/attendance-sessions/'.$session->id.'/participants')
+        ->assertOk()
+        ->assertJsonPath('data.0.attendance.status', 'late')
+        ->assertJsonPath('data.0.attendance.source', 'manual');
+
+    $this->assertDatabaseHas('attendances', [
+        'school_id' => $school->id,
+        'attendance_session_id' => $session->id,
+        'student_id' => $student->id,
+        'status' => 'late',
+        'notes' => 'Tiba terlambat',
     ]);
 });
