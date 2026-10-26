@@ -371,7 +371,6 @@ test('session management permission allows editing and toggling a session withou
     ]);
 });
 
-
 test('student can see only assigned self check-in sessions with server time', function () {
     $school = School::factory()->create();
     app(SchoolContext::class)->set($school);
