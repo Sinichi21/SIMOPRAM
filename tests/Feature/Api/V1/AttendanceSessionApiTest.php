@@ -1,15 +1,15 @@
 <?php
 
-use App\\Models\\Activity;
-use App\\Models\\Attendance;
-use App\\Models\\AttendanceSession;
-use App\\Models\\AttendanceSessionParticipant;
-use App\\Models\\School;
-use App\\Models\\Student;
-use App\\Models\\User;
-use App\\Support\\SchoolContext;
-use Spatie\\Permission\\Models\\Permission;
-use Illuminate\\Foundation\\Testing\\RefreshDatabase;
+use App\Models\Activity;
+use App\Models\Attendance;
+use App\Models\AttendanceSession;
+use App\Models\AttendanceSessionParticipant;
+use App\Models\School;
+use App\Models\Student;
+use App\Models\User;
+use App\Support\SchoolContext;
+use Spatie\Permission\Models\Permission;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
