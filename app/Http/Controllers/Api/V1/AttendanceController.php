@@ -402,9 +402,6 @@ class AttendanceController extends Controller
         return $data;
     }
 
-    /**
-     * @param array<string, mixed> $data
-     */
     private function hasOverlappingActiveSession(
         Activity $activity,
         array $data,
