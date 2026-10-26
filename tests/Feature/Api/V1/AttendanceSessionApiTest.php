@@ -246,7 +246,6 @@ test('manual attendance mark is persisted and returned on the next participants 
     ]);
 });
 
-
 test('user without manual attendance permission cannot create an attendance record', function () {
     $school = School::factory()->create();
     app(SchoolContext::class)->set($school);
@@ -296,7 +295,6 @@ test('user without manual attendance permission cannot create an attendance reco
         'student_id' => $student->id,
     ]);
 });
-
 
 test('session management permission allows editing and toggling a session without losing its participant snapshot', function () {
     $school = School::factory()->create();
