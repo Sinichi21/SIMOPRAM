@@ -8,6 +8,7 @@ use App\\Http\\Requests\\Api\\V1\\SelfCheckInRequest;
 use App\\Http\\Resources\\Api\\V1\\AttendanceParticipantResource;
 use App\\Http\\Resources\\Api\\V1\\AttendanceResource;
 use App\\Http\\Resources\\Api\\V1\\AttendanceSessionResource;
+use App\\Http\\Resources\\Api\\V1\\ActivityResource;
 use App\\Models\\Activity;
 use App\\Models\\Attendance;
 use App\\Models\\AttendanceSession;
@@ -29,6 +30,23 @@ use Illuminate\\Validation\\ValidationException;
 
 class AttendanceController extends Controller
 {
+    public function activities(
+        ActivityAssignmentFilter $filter,
+        SchoolContext $context
+    ): AnonymousResourceCollection {
+        $user = request()->user();
+        $query = Activity::query()
+            ->with(['academicYear', 'semester', 'coaches', 'scoutLevels'])
+            ->withCount('attendanceSessions')
+            ->where('approval_status', 'approved');
+
+        $filter->apply($query, $user, (int) $context->id(), $filter->defaultMode($user), null);
+
+        return ActivityResource::collection(
+            $query->orderByDesc('start_at')->paginate(30)
+        );
+    }
+
     public function permissions(Request $request): JsonResponse
     {
         $user = $request->user();
