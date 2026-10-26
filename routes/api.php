@@ -33,6 +33,7 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
             Route::post('/activities', [ActivityController::class, 'store'])->middleware('permission:activities.create')->name('activities.store');
             Route::get('/activities/{activityId}', [ActivityController::class, 'show'])->whereNumber('activityId')->middleware('permission:activities.view')->name('activities.show');
             Route::put('/activities/{activityId}', [ActivityController::class, 'update'])->whereNumber('activityId')->middleware('permission:activities.update')->name('activities.update');
+            Route::post('/activities/{activityId}/cancel', [ActivityController::class, 'cancel'])->whereNumber('activityId')->middleware('permission:activities.cancel')->name('activities.cancel');
             Route::get('/activities/{activityId}/attendance-sessions', [AttendanceController::class, 'sessions'])->whereNumber('activityId')->middleware('permission:attendance_sessions.view')->name('activities.attendance-sessions');
             Route::get('/attendance-sessions/{sessionId}/participants', [AttendanceController::class, 'participants'])->whereNumber('sessionId')->middleware('permission:attendance_sessions.view')->name('attendance-sessions.participants');
             Route::patch('/attendance-sessions/{sessionId}/participants/{studentId}', [AttendanceController::class, 'mark'])->whereNumber('sessionId')->whereNumber('studentId')->middleware('permission:attendance.manual')->name('attendance-sessions.mark');

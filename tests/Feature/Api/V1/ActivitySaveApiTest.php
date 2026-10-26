@@ -96,3 +96,43 @@ test('authorized user can update an activity only inside selected school', funct
         ])
         ->assertNotFound();
 });
+
+test('activity update exposes the website status and public visibility fields to mobile clients', function () {
+    $school = School::factory()->create();
+    $activity = Activity::factory()->create(['school_id' => $school->id, 'status' => 'draft', 'is_public' => false]);
+    $user = User::factory()->create(['is_active' => true, 'system_role' => 'super_admin']);
+    $token = activityApiToken($user, $school->id, 'activities.update');
+
+    $this->withToken($token)->withHeader('X-School-Id', (string) $school->id)
+        ->putJson('/api/v1/activities/'.$activity->id, [
+            'title' => 'Kegiatan Terbit',
+            'activity_type' => 'camp',
+            'start_at' => '2026-10-29T08:00:00',
+            'end_at' => '2026-10-29T12:00:00',
+            'status' => 'published',
+            'is_public' => true,
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.status', 'published')
+        ->assertJsonPath('data.is_public', true);
+
+    $this->assertDatabaseHas('activities', [
+        'id' => $activity->id,
+        'status' => 'published',
+        'is_public' => true,
+    ]);
+});
+
+test('activity cancellation requires its dedicated permission', function () {
+    $school = School::factory()->create();
+    $activity = Activity::factory()->create(['school_id' => $school->id, 'status' => 'published']);
+    $user = User::factory()->create(['is_active' => true, 'system_role' => 'super_admin']);
+    $token = activityApiToken($user, $school->id, 'activities.cancel');
+
+    $this->withToken($token)->withHeader('X-School-Id', (string) $school->id)
+        ->postJson('/api/v1/activities/'.$activity->id.'/cancel')
+        ->assertOk()
+        ->assertJsonPath('data.status', 'cancelled');
+
+    $this->assertDatabaseHas('activities', ['id' => $activity->id, 'status' => 'cancelled']);
+});
