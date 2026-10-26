@@ -46,6 +46,59 @@ class AttendanceController extends Controller
         );
     }
 
+    public function selfCheckInSessions(Request $request): JsonResponse
+    {
+        $student = Student::query()
+            ->where('user_id', $request->user()->id)
+            ->where('status', 'active')
+            ->firstOrFail();
+
+        $sessions = AttendanceSession::query()
+            ->with('activity:id,title')
+            ->with(['attendances' => fn ($query) => $query->where('student_id', $student->id)])
+            ->where('is_active', true)
+            ->where('allow_self_checkin', true)
+            ->whereHas('activity', fn ($query) => $query->where('approval_status', 'approved'))
+            ->whereHas('participants', fn ($query) => $query->where('student_id', $student->id))
+            ->where(function ($query) use ($student): void {
+                $query->where('close_at', '>=', now())
+                    ->orWhereHas('attendances', fn ($attendance) => $attendance->where('student_id', $student->id));
+            })
+            ->orderBy('open_at')
+            ->get()
+            ->map(function (AttendanceSession $session): array {
+                $attendance = $session->attendances->first();
+
+                return [
+                    'id' => $session->id,
+                    'activity_id' => $session->activity_id,
+                    'activity_title' => $session->activity?->title,
+                    'name' => $session->name,
+                    'open_at' => $session->open_at?->format('Y-m-d H:i:s'),
+                    'late_after' => $session->late_after?->format('Y-m-d H:i:s'),
+                    'close_at' => $session->close_at?->format('Y-m-d H:i:s'),
+                    'is_active' => $session->is_active,
+                    'allow_self_checkin' => $session->allow_self_checkin,
+                    'latitude' => $session->latitude,
+                    'longitude' => $session->longitude,
+                    'radius_m' => $session->radius_m,
+                    'max_accuracy_m' => $session->max_accuracy_m,
+                    'attendance' => $attendance ? [
+                        'id' => $attendance->id,
+                        'status' => $attendance->status,
+                        'source' => $attendance->source,
+                        'checked_in_at' => $attendance->checked_in_at?->format('Y-m-d H:i:s'),
+                    ] : null,
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'data' => $sessions,
+            'server_time' => now()->toIso8601String(),
+        ]);
+    }
+
     public function permissions(Request $request): JsonResponse
     {
         $user = $request->user();
