@@ -370,3 +370,82 @@ test('session management permission allows editing and toggling a session withou
         'student_id' => $student->id,
     ]);
 });
+
+
+test('student can see only assigned self check-in sessions with server time', function () {
+    $school = School::factory()->create();
+    app(SchoolContext::class)->set($school);
+    $studentUser = User::factory()->create([
+        'is_active' => true,
+        'system_role' => 'student',
+    ]);
+    $studentUser->schoolMemberships()->create([
+        'school_id' => $school->id,
+        'is_active' => true,
+        'joined_at' => today(),
+    ]);
+    $student = Student::factory()->create([
+        'school_id' => $school->id,
+        'user_id' => $studentUser->id,
+        'status' => 'active',
+    ]);
+    $otherUser = User::factory()->create(['is_active' => true, 'system_role' => 'student']);
+    $otherStudent = Student::factory()->create([
+        'school_id' => $school->id,
+        'user_id' => $otherUser->id,
+        'status' => 'active',
+    ]);
+    $activity = Activity::factory()->create([
+        'school_id' => $school->id,
+        'approval_status' => 'approved',
+    ]);
+
+    $assigned = AttendanceSession::query()->create([
+        'school_id' => $school->id,
+        'activity_id' => $activity->id,
+        'name' => 'Sesi GPS siswa ini',
+        'participant_scope' => 'all',
+        'open_at' => now()->subMinutes(10),
+        'late_after' => now()->addMinutes(5),
+        'close_at' => now()->addMinutes(30),
+        'allow_manual' => true,
+        'allow_self_checkin' => true,
+        'latitude' => -8.65,
+        'longitude' => 115.21,
+        'radius_m' => 100,
+        'max_accuracy_m' => 100,
+        'is_active' => true,
+    ]);
+    $assigned->participants()->create(['student_id' => $student->id]);
+
+    $notAssigned = AttendanceSession::query()->create([
+        'school_id' => $school->id,
+        'activity_id' => $activity->id,
+        'name' => 'Sesi siswa lain',
+        'participant_scope' => 'all',
+        'open_at' => now()->subMinutes(10),
+        'late_after' => now()->addMinutes(5),
+        'close_at' => now()->addMinutes(30),
+        'allow_manual' => true,
+        'allow_self_checkin' => true,
+        'latitude' => -8.65,
+        'longitude' => 115.21,
+        'radius_m' => 100,
+        'max_accuracy_m' => 100,
+        'is_active' => true,
+    ]);
+    $notAssigned->participants()->create(['student_id' => $otherStudent->id]);
+    app(SchoolContext::class)->clear();
+
+    $token = attendanceSessionApiToken($studentUser, $school->id, 'attendances.self');
+
+    $this->withToken($token)
+        ->withHeader('X-School-Id', (string) $school->id)
+        ->getJson('/api/v1/attendance/self-check-in-sessions')
+        ->assertOk()
+        ->assertJsonPath('data.0.id', $assigned->id)
+        ->assertJsonPath('data.0.attendance', null)
+        ->assertJsonPath('data.0.allow_self_checkin', true)
+        ->assertJsonStructure(['server_time'])
+        ->assertJsonMissing(['name' => 'Sesi siswa lain']);
+});
