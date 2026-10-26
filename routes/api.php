@@ -29,6 +29,7 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
             Route::post('/coaches', [CoachController::class, 'store'])->middleware('permission:coaches.create')->name('coaches.store');
             Route::get('/coaches/{coachId}', [CoachController::class, 'show'])->whereNumber('coachId')->middleware('permission:coaches.view')->name('coaches.show');
             Route::put('/coaches/{coachId}', [CoachController::class, 'update'])->whereNumber('coachId')->middleware('permission:coaches.update')->name('coaches.update');
+            Route::get('/activities/form-options', [ActivityController::class, 'formOptions'])->middleware('permission:activities.view')->name('activities.form-options');
             Route::get('/activities', [ActivityController::class, 'index'])->middleware('permission:activities.view')->name('activities.index');
             Route::post('/activities', [ActivityController::class, 'store'])->middleware('permission:activities.create')->name('activities.store');
             Route::get('/activities/{activityId}', [ActivityController::class, 'show'])->whereNumber('activityId')->middleware('permission:activities.view')->name('activities.show');
