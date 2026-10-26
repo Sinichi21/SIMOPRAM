@@ -226,7 +226,7 @@ test('manual attendance mark is persisted and returned on the next participants 
             'status' => 'late',
             'notes' => 'Tiba terlambat',
         ])
-        ->assertOk()
+        ->assertCreated()
         ->assertJsonPath('data.status', 'late')
         ->assertJsonPath('data.source', 'manual');
 
@@ -243,5 +243,56 @@ test('manual attendance mark is persisted and returned on the next participants 
         'student_id' => $student->id,
         'status' => 'late',
         'notes' => 'Tiba terlambat',
+    ]);
+});
+
+
+test('user without manual attendance permission cannot create an attendance record', function () {
+    $school = School::factory()->create();
+    app(SchoolContext::class)->set($school);
+    $activity = Activity::factory()->create([
+        'school_id' => $school->id,
+        'approval_status' => 'approved',
+    ]);
+    $student = Student::factory()->create([
+        'school_id' => $school->id,
+        'status' => 'active',
+    ]);
+    $session = AttendanceSession::query()->create([
+        'activity_id' => $activity->id,
+        'name' => 'Sesi hanya-lihat',
+        'participant_scope' => 'all',
+        'open_at' => '2026-10-26 08:00:00',
+        'late_after' => '2026-10-26 08:15:00',
+        'close_at' => '2026-10-26 09:00:00',
+        'allow_manual' => true,
+        'allow_self_checkin' => false,
+        'is_active' => true,
+    ]);
+    $session->participants()->create(['student_id' => $student->id]);
+    app(SchoolContext::class)->clear();
+
+    $user = User::factory()->create([
+        'is_active' => true,
+        'system_role' => 'school_admin',
+    ]);
+    $user->schoolMemberships()->create([
+        'school_id' => $school->id,
+        'is_active' => true,
+        'joined_at' => today(),
+    ]);
+    $token = attendanceSessionApiToken($user, $school->id, 'attendance_sessions.view');
+
+    $this->withToken($token)
+        ->withHeader('X-School-Id', (string) $school->id)
+        ->patchJson('/api/v1/attendance-sessions/'.$session->id.'/participants/'.$student->id, [
+            'status' => 'present',
+        ])
+        ->assertForbidden();
+
+    $this->assertDatabaseMissing('attendances', [
+        'school_id' => $school->id,
+        'attendance_session_id' => $session->id,
+        'student_id' => $student->id,
     ]);
 });
