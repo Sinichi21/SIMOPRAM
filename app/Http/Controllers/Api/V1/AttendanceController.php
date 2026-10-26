@@ -169,7 +169,7 @@ class AttendanceController extends Controller
 
         DB::transaction(function () use ($session, $data, $targetChanged, $attendanceService): void {
             $session->update($data);
-            if ($targetChanged || !$session->attendances()->exists()) {
+            if ($targetChanged || ! $session->attendances()->exists()) {
                 $attendanceService->syncParticipants($session);
             }
         });
@@ -185,7 +185,7 @@ class AttendanceController extends Controller
     ): AttendanceSessionResource {
         $session = $this->authorizedSession($sessionId, $filter, $context);
         $activity = $this->authorizedActivity($session->activity_id, $filter, $context);
-        $nextActive = !$session->is_active;
+        $nextActive = ! $session->is_active;
 
         if ($nextActive && $this->hasOverlappingActiveSession($activity, [
             'open_at' => $session->open_at,
@@ -197,7 +197,7 @@ class AttendanceController extends Controller
         }
 
         DB::transaction(function () use ($session, $nextActive, $attendanceService): void {
-            if ($nextActive && !$session->attendances()->exists()) {
+            if ($nextActive && ! $session->attendances()->exists()) {
                 $attendanceService->syncParticipants($session);
             }
             $session->update(['is_active' => $nextActive]);
@@ -351,7 +351,7 @@ class AttendanceController extends Controller
         if ($scope === 'all') {
             $data['participant_scope_id'] = null;
         } else {
-            if (!$scopeId) {
+            if (! $scopeId) {
                 throw ValidationException::withMessages([
                     'participant_scope_id' => 'Pilih target peserta.',
                 ]);
@@ -373,7 +373,7 @@ class AttendanceController extends Controller
                 default => false,
             };
 
-            if (!$targetExists) {
+            if (! $targetExists) {
                 throw ValidationException::withMessages([
                     'participant_scope_id' => 'Target peserta tidak aktif, tidak tersedia di sekolah ini, atau tidak sesuai kegiatan.',
                 ]);
