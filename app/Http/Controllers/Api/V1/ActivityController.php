@@ -9,15 +9,49 @@ use App\Http\Resources\Api\V1\ActivityResource;
 use App\Models\AcademicYear;
 use App\Models\Activity;
 use App\Models\Coach;
+use App\Models\ScoutLevel;
+use App\Models\Semester;
 use App\Services\ActivityAssignmentFilter;
 use App\Services\ActivityHierarchyService;
 use App\Support\SchoolContext;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 
 class ActivityController extends Controller
 {
+    public function formOptions(Request $request, SchoolContext $context): JsonResponse
+    {
+        $activityId = $request->integer('activity_id') ?: null;
+
+        return response()->json([
+            'data' => [
+                'academic_years' => AcademicYear::query()
+                    ->orderByDesc('start_date')
+                    ->get(['id', 'name', 'is_active']),
+                'semesters' => Semester::query()
+                    ->orderBy('academic_year_id')
+                    ->orderBy('semester_number')
+                    ->get(['id', 'academic_year_id', 'name', 'semester_number', 'is_active']),
+                'parent_activities' => Activity::query()
+                    ->whereNull('parent_activity_id')
+                    ->when($activityId, fn ($query) => $query->where('id', '!=', $activityId))
+                    ->orderBy('title')
+                    ->get(['id', 'title']),
+                'coaches' => Coach::query()
+                    ->where('school_id', $context->id())
+                    ->where('is_active', true)
+                    ->orderBy('name')
+                    ->get(['id', 'name']),
+                'scout_levels' => ScoutLevel::query()
+                    ->orderBy('sort_order')
+                    ->orderBy('name')
+                    ->get(['id', 'code', 'name']),
+            ],
+        ]);
+    }
+
     public function store(ActivitySaveRequest $request, SchoolContext $context, ActivityHierarchyService $hierarchy): JsonResponse
     {
         $validated = $request->validated();
