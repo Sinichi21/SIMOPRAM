@@ -8,8 +8,8 @@ use App\Models\School;
 use App\Models\Student;
 use App\Models\User;
 use App\Support\SchoolContext;
-use Spatie\Permission\Models\Permission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
@@ -168,7 +168,6 @@ test('user without session management permission cannot create a session', funct
         'name' => 'Sesi tanpa izin',
     ]);
 });
-
 
 test('manual attendance mark is persisted and returned on the next participants request', function () {
     $school = School::factory()->create();
