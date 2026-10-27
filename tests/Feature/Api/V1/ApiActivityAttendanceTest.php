@@ -35,7 +35,6 @@ test('activity endpoints require school context and permission', function () {
         ->getJson('/api/v1/activities')->assertForbidden();
 });
 
-
 test('mobile activity and attendance lists include web-visible non-approved activities within the selected school', function () {
     $school = School::factory()->create();
     $activity = Activity::factory()->create([
