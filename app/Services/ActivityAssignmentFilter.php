@@ -29,10 +29,6 @@ class ActivityAssignmentFilter
 
     public function apply(Builder $query, User $user, int $schoolId, string $mode, ?int $coachId): Builder
     {
-        if ($mode === 'all') {
-            return $query;
-        }
-
         // Student accounts are linked to Student records, not Coach records.
         // Only expose activities matching the student's active scout level or
         // activities for which the student is an explicit attendance participant.
@@ -58,6 +54,10 @@ class ActivityAssignmentFilter
                     $participantQuery->where('student_id', $student->id);
                 });
             });
+        }
+
+        if ($mode === 'all') {
+            return $query;
         }
 
         $assignedCoachId = $mode === 'coach'
