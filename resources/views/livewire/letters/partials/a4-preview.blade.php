@@ -134,7 +134,7 @@
                                         style="width: 210mm; height: 297mm; padding: 12mm 16mm 27mm; zoom: .72;"
                                     >
                                         <header
-                                            style="position: relative; min-height: 22mm; border-bottom: 1.6px solid #000; margin-bottom: 4mm; padding: 0 2mm 2.5mm; text-align: center;"
+                                            style="position: relative; min-height: 22mm; border-bottom: 3px double #000; margin-bottom: 4mm; padding: 0 2mm 2.5mm; text-align: center;"
                                         >
                                             <img
                                                 src="{{ asset('images/reports/logo-pramuka.png') }}"
@@ -149,27 +149,13 @@
 
                                             <div style="margin: 0 23mm; font-size: 14pt; font-weight: bold; line-height: 1.05;">
                                                 {{ $previewAdministrationProfile?->letterhead_title ?: 'GERAKAN PRAMUKA' }}<br>
-                                                @if (filled($previewAdministrationProfile?->letterhead_subtitle))
-                                                    {{ $previewAdministrationProfile->letterhead_subtitle }}<br>
-                                                @else
-                                                    @if ($administration_type === 'male')
-                                                        @if ($previewDocumentSetting?->gudep_male_number)
-                                                            GUGUSDEPAN {{ strtoupper($previewSchool?->city ?: '') }} {{ $previewDocumentSetting->gudep_male_number }}<br>
-                                                        @endif
-                                                    @elseif ($administration_type === 'female')
-                                                        @if ($previewDocumentSetting?->gudep_female_number)
-                                                            GUGUSDEPAN {{ strtoupper($previewSchool?->city ?: '') }} {{ $previewDocumentSetting->gudep_female_number }}<br>
-                                                        @endif
-                                                    @else
-                                                        @if ($previewDocumentSetting?->gudep_male_number)
-                                                            GUGUSDEPAN {{ strtoupper($previewSchool?->city ?: '') }} {{ $previewDocumentSetting->gudep_male_number }}<br>
-                                                        @endif
-                                                        @if ($previewDocumentSetting?->gudep_female_number)
-                                                            GUGUSDEPAN {{ strtoupper($previewSchool?->city ?: '') }} {{ $previewDocumentSetting->gudep_female_number }}<br>
-                                                        @endif
-                                                    @endif
-                                                    PANGKALAN {{ strtoupper($previewSchool?->name ?: 'SEKOLAH') }}
+                                                @if (in_array($administration_type, ['male', 'mabigus'], true) && filled($previewDocumentSetting?->gudep_male_number))
+                                                    GUGUSDEPAN {{ strtoupper($previewSchool?->city ?: '') }} {{ $previewDocumentSetting->gudep_male_number }}<br>
                                                 @endif
+                                                @if (in_array($administration_type, ['female', 'mabigus'], true) && filled($previewDocumentSetting?->gudep_female_number))
+                                                    GUGUSDEPAN {{ strtoupper($previewSchool?->city ?: '') }} {{ $previewDocumentSetting->gudep_female_number }}<br>
+                                                @endif
+                                                PANGKALAN {{ strtoupper($previewAdministrationProfile?->letterhead_subtitle ?: ($previewSchool?->name ?: 'SEKOLAH')) }}
                                             </div>
 
                                             <div style="margin: .8mm 23mm 0; font-size: 10pt; line-height: 1.1;">

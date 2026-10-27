@@ -6,6 +6,8 @@ use App\Enums\ScoutAdministrationType;
 use App\Models\LetterField;
 use App\Models\LetterNumberSequence;
 use App\Models\LetterType;
+use App\Models\School;
+use App\Models\SchoolDocumentSetting;
 use App\Models\ScoutAdministrationProfile;
 use App\Services\DocumentSignatoryService;
 use App\Services\LetterAdministrationBootstrapService;
@@ -152,11 +154,16 @@ class Settings extends Component
 
     public function render()
     {
+        $school = School::query()->find($this->schoolId());
+        $documentSetting = SchoolDocumentSetting::query()->first();
+
         return view('livewire.letters.settings', [
             'types' => LetterType::query()->orderBy('sort_order')->get(),
             'fields' => LetterField::query()->orderBy('sort_order')->get(),
             'administrationTypes' => ScoutAdministrationType::options(),
             'signatoryUsers' => app(DocumentSignatoryService::class)->usersForSchool($this->schoolId()),
+            'school' => $school,
+            'documentSetting' => $documentSetting,
         ]);
     }
 }

@@ -17,7 +17,7 @@
 
         /* Gunakan pt, bukan px. 12px sebelumnya hanya sekitar 9pt di PDF. */
         .letterhead {
-            border-bottom: 1.6px solid #000;
+            border-bottom: 3px double #000;
             margin-bottom: 4mm;
             min-height: 22mm;
             padding: 0 2mm 2.5mm;

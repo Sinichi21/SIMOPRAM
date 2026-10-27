@@ -176,6 +176,26 @@
     @endcanany
 
     <div class="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div class="border-b border-zinc-200 p-4 dark:border-zinc-800">
+            <p class="mb-3 text-sm font-medium">Kelompok Administrasi</p>
+            <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                <button
+                    type="button"
+                    wire:click="$set('administrationFilter', 'all')"
+                    aria-pressed="{{ $administrationFilter === 'all' ? 'true' : 'false' }}"
+                    class="rounded-lg border px-3 py-2 text-sm font-medium {{ $administrationFilter === 'all' ? 'border-blue-600 bg-blue-600 text-white' : 'border-zinc-300 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200' }}"
+                >Semua</button>
+                @foreach ($administrationTypes as $value => $label)
+                    <button
+                        type="button"
+                        wire:key="letter-administration-filter-{{ $value }}"
+                        wire:click="$set('administrationFilter', '{{ $value }}')"
+                        aria-pressed="{{ $administrationFilter === $value ? 'true' : 'false' }}"
+                        class="rounded-lg border px-3 py-2 text-sm font-medium {{ $administrationFilter === $value ? 'border-blue-600 bg-blue-600 text-white' : 'border-zinc-300 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200' }}"
+                    >{{ $label }}</button>
+                @endforeach
+            </div>
+        </div>
         <div class="grid gap-3 border-b border-zinc-200 p-4 md:grid-cols-2 dark:border-zinc-800"><input type="search" wire:model.live.debounce.300ms="search" placeholder="Cari nomor, perihal, pengirim/tujuan..." class="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"><select wire:model.live="statusFilter" class="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"><option value="">Semua status</option>@foreach ($statuses as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach</select></div>
         <div class="overflow-x-auto"><table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800"><thead class="bg-zinc-50 dark:bg-zinc-950/50"><tr><th class="px-4 py-3 text-left">Nomor</th><th class="px-4 py-3 text-left">Tanggal</th><th class="px-4 py-3 text-left">{{ $incoming ? 'Pengirim' : 'Tujuan' }}</th><th class="px-4 py-3 text-left">Perihal</th><th class="px-4 py-3 text-left">Jenis/Bidang</th><th class="px-4 py-3 text-left">Status</th><th class="px-4 py-3 text-right">Aksi</th></tr></thead><tbody class="divide-y divide-zinc-200 dark:divide-zinc-800">
             @forelse ($letters as $letter)
