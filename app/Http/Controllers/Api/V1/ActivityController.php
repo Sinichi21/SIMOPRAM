@@ -129,7 +129,7 @@ class ActivityController extends Controller
         $user = $request->user();
         $mode = $request->validated('assignment', $filter->defaultMode($user));
         $coachId = $request->integer('coach_id') ?: null;
-        $query = Activity::query()->where('approval_status', 'approved')
+        $query = Activity::query()
             ->with(['academicYear', 'semester', 'coaches', 'scoutLevels', 'parentActivity'])->withCount('attendanceSessions');
         if ($search = $request->validated('search')) {
             $query->where('title', 'like', '%'.$search.'%');
@@ -154,7 +154,7 @@ class ActivityController extends Controller
     {
         $user = request()->user();
         $mode = $filter->defaultMode($user);
-        $query = Activity::query()->where('approval_status', 'approved');
+        $query = Activity::query();
         $filter->apply($query, $user, $context->id(), $mode, null);
         $activity = $query->with(['academicYear', 'semester', 'coaches', 'scoutLevels'])
             ->withCount('attendanceSessions')->findOrFail($activityId);
