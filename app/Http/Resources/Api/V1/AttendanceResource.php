@@ -14,6 +14,6 @@ class AttendanceResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        return ['id' => $this->id, 'status' => $this->status, 'source' => $this->source, 'checked_in_at' => $this->checked_in_at];
+        return ['id' => $this->id, 'status' => $this->status, 'source' => $this->source, 'checked_in_at' => $this->checked_in_at?->format('Y-m-d H:i:s')];
     }
 }

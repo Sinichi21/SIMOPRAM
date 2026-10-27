@@ -22,8 +22,8 @@
         $letterheadAddress = trim($letterheadAddress.' '.$postalCode);
     }
 
-    $customTitle = trim((string) ($adminProfile?->letterhead_title ?? ''));
-    $customSubtitle = trim((string) ($adminProfile?->letterhead_subtitle ?? ''));
+    $parentInstitution = trim((string) ($adminProfile?->letterhead_title ?: 'GERAKAN PRAMUKA'));
+    $baseName = trim((string) ($adminProfile?->letterhead_subtitle ?: $school->name));
 @endphp
 
 <header class="letterhead">
@@ -36,30 +36,16 @@
     @endif
 
     <div class="letterhead-title">
-        {{ $customTitle !== '' ? $customTitle : 'GERAKAN PRAMUKA' }}<br>
+        <span class="letterhead-institution">{{ $parentInstitution }}</span><br>
 
-        @if ($customSubtitle !== '')
-            {{ $customSubtitle }}<br>
-        @else
-            @if ($adminType === 'male')
-                @if ($documentSetting?->gudep_male_number)
-                    GUGUSDEPAN {{ strtoupper($school->city ?: '') }} {{ $documentSetting->gudep_male_number }}<br>
-                @endif
-            @elseif ($adminType === 'female')
-                @if ($documentSetting?->gudep_female_number)
-                    GUGUSDEPAN {{ strtoupper($school->city ?: '') }} {{ $documentSetting->gudep_female_number }}<br>
-                @endif
-            @else
-                @if ($documentSetting?->gudep_male_number)
-                    GUGUSDEPAN {{ strtoupper($school->city ?: '') }} {{ $documentSetting->gudep_male_number }}<br>
-                @endif
-                @if ($documentSetting?->gudep_female_number)
-                    GUGUSDEPAN {{ strtoupper($school->city ?: '') }} {{ $documentSetting->gudep_female_number }}<br>
-                @endif
-            @endif
-
-            PANGKALAN {{ strtoupper($school->name) }}
+        @if (in_array($adminType, ['male', 'mabigus'], true) && filled($documentSetting?->gudep_male_number))
+            <span class="letterhead-gudep">GUGUSDEPAN {{ strtoupper($school->city ?: '') }} {{ $documentSetting->gudep_male_number }}</span><br>
         @endif
+        @if (in_array($adminType, ['female', 'mabigus'], true) && filled($documentSetting?->gudep_female_number))
+            <span class="letterhead-gudep">GUGUSDEPAN {{ strtoupper($school->city ?: '') }} {{ $documentSetting->gudep_female_number }}</span><br>
+        @endif
+
+        <span class="letterhead-base">PANGKALAN {{ strtoupper($baseName) }}</span>
     </div>
 
     <div class="letterhead-address">{{ $letterheadAddress }}</div>

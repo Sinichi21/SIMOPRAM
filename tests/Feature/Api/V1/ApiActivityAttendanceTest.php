@@ -34,3 +34,34 @@ test('activity endpoints require school context and permission', function () {
     $this->withToken($token)->withHeader('X-School-Id', (string) $school->id)
         ->getJson('/api/v1/activities')->assertForbidden();
 });
+
+test('mobile activity and attendance lists include web-visible non-approved activities within the selected school', function () {
+    $school = School::factory()->create();
+    $activity = Activity::factory()->create([
+        'school_id' => $school->id,
+        'approval_status' => 'pending',
+        'status' => 'draft',
+    ]);
+    $otherSchool = School::factory()->create();
+    Activity::factory()->create([
+        'school_id' => $otherSchool->id,
+        'approval_status' => 'pending',
+        'status' => 'draft',
+    ]);
+    $user = User::factory()->create(['is_active' => true, 'system_role' => 'super_admin']);
+    setPermissionsTeamId($school->id);
+    $user->givePermissionTo(Permission::findOrCreate('activities.view', 'web'));
+    $user->givePermissionTo(Permission::findOrCreate('attendance_sessions.view', 'web'));
+    setPermissionsTeamId(null);
+    $token = $user->createToken('Android')->plainTextToken;
+
+    $this->withToken($token)->withHeader('X-School-Id', (string) $school->id)
+        ->getJson('/api/v1/activities')
+        ->assertOk()
+        ->assertJsonFragment(['id' => $activity->id, 'title' => $activity->title]);
+
+    $this->withToken($token)->withHeader('X-School-Id', (string) $school->id)
+        ->getJson('/api/v1/attendance/activities')
+        ->assertOk()
+        ->assertJsonFragment(['id' => $activity->id, 'title' => $activity->title]);
+});

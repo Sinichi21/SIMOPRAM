@@ -35,6 +35,8 @@ class Index extends Component
 
     public string $administration_type = 'mabigus';
 
+    public string $administrationFilter = 'all';
+
     public ?int $editingId = null;
 
     public string $letter_number = '';
@@ -109,6 +111,11 @@ class Index extends Component
     }
 
     public function updatedStatusFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedAdministrationFilter(): void
     {
         $this->resetPage();
     }
@@ -645,6 +652,7 @@ class Index extends Component
                     ->orWhere('sender', 'like', $search)
                     ->orWhere('recipient', 'like', $search));
             })
+            ->when($this->administrationFilter !== 'all', fn ($q) => $q->where('administration_type', $this->administrationFilter))
             ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
             ->orderByDesc('letter_date')->orderByDesc('id')->paginate(10);
 

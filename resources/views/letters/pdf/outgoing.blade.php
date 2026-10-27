@@ -17,7 +17,7 @@
 
         /* Gunakan pt, bukan px. 12px sebelumnya hanya sekitar 9pt di PDF. */
         .letterhead {
-            border-bottom: 1.6px solid #000;
+            border-bottom: 3px double #000;
             margin-bottom: 4mm;
             min-height: 22mm;
             padding: 0 2mm 2.5mm;
@@ -36,14 +36,22 @@
         .letterhead-logo-right { right: 1mm; }
         .letterhead-title {
             font-family: "Times New Roman", Times, serif;
-            font-size: 14pt !important;
             font-weight: bold;
             line-height: 1.05;
             margin: 0 23mm;
         }
+        .letterhead-institution {
+            font-size: 13pt !important;
+        }
+        .letterhead-gudep {
+            font-size: 12pt !important;
+        }
+        .letterhead-base {
+            font-size: 12pt !important;
+        }
         .letterhead-address {
             font-family: "Times New Roman", Times, serif;
-            font-size: 10pt !important;
+            font-size: 9pt !important;
             line-height: 1.1;
             margin: .8mm 23mm 0;
         }

@@ -134,7 +134,7 @@
                                         style="width: 210mm; height: 297mm; padding: 12mm 16mm 27mm; zoom: .72;"
                                     >
                                         <header
-                                            style="position: relative; min-height: 22mm; border-bottom: 1.6px solid #000; margin-bottom: 4mm; padding: 0 2mm 2.5mm; text-align: center;"
+                                            style="position: relative; min-height: 22mm; border-bottom: 3px double #000; margin-bottom: 4mm; padding: 0 2mm 2.5mm; text-align: center; font-family: 'Times New Roman', Times, serif;"
                                         >
                                             <img
                                                 src="{{ asset('images/reports/logo-pramuka.png') }}"
@@ -147,32 +147,18 @@
                                                 style="position: absolute; top: 0; right: 1mm; height: 21mm; max-width: 23mm; object-fit: contain;"
                                             >
 
-                                            <div style="margin: 0 23mm; font-size: 14pt; font-weight: bold; line-height: 1.05;">
-                                                {{ $previewAdministrationProfile?->letterhead_title ?: 'GERAKAN PRAMUKA' }}<br>
-                                                @if (filled($previewAdministrationProfile?->letterhead_subtitle))
-                                                    {{ $previewAdministrationProfile->letterhead_subtitle }}<br>
-                                                @else
-                                                    @if ($administration_type === 'male')
-                                                        @if ($previewDocumentSetting?->gudep_male_number)
-                                                            GUGUSDEPAN {{ strtoupper($previewSchool?->city ?: '') }} {{ $previewDocumentSetting->gudep_male_number }}<br>
-                                                        @endif
-                                                    @elseif ($administration_type === 'female')
-                                                        @if ($previewDocumentSetting?->gudep_female_number)
-                                                            GUGUSDEPAN {{ strtoupper($previewSchool?->city ?: '') }} {{ $previewDocumentSetting->gudep_female_number }}<br>
-                                                        @endif
-                                                    @else
-                                                        @if ($previewDocumentSetting?->gudep_male_number)
-                                                            GUGUSDEPAN {{ strtoupper($previewSchool?->city ?: '') }} {{ $previewDocumentSetting->gudep_male_number }}<br>
-                                                        @endif
-                                                        @if ($previewDocumentSetting?->gudep_female_number)
-                                                            GUGUSDEPAN {{ strtoupper($previewSchool?->city ?: '') }} {{ $previewDocumentSetting->gudep_female_number }}<br>
-                                                        @endif
-                                                    @endif
-                                                    PANGKALAN {{ strtoupper($previewSchool?->name ?: 'SEKOLAH') }}
+                                            <div style="margin: 0 23mm; font-weight: bold; line-height: 1.05;">
+                                                <span style="font-size: 13pt;">{{ $previewAdministrationProfile?->letterhead_title ?: 'GERAKAN PRAMUKA' }}</span><br>
+                                                @if (in_array($administration_type, ['male', 'mabigus'], true) && filled($previewDocumentSetting?->gudep_male_number))
+                                                    <span style="font-size: 12pt;">GUGUSDEPAN {{ strtoupper($previewSchool?->city ?: '') }} {{ $previewDocumentSetting->gudep_male_number }}</span><br>
                                                 @endif
+                                                @if (in_array($administration_type, ['female', 'mabigus'], true) && filled($previewDocumentSetting?->gudep_female_number))
+                                                    <span style="font-size: 12pt;">GUGUSDEPAN {{ strtoupper($previewSchool?->city ?: '') }} {{ $previewDocumentSetting->gudep_female_number }}</span><br>
+                                                @endif
+                                                <span style="font-size: 12pt;">PANGKALAN {{ strtoupper($previewAdministrationProfile?->letterhead_subtitle ?: ($previewSchool?->name ?: 'SEKOLAH')) }}</span>
                                             </div>
 
-                                            <div style="margin: .8mm 23mm 0; font-size: 10pt; line-height: 1.1;">
+                                            <div style="margin: .8mm 23mm 0; font-family: 'Times New Roman', Times, serif; font-size: 9pt; line-height: 1.1;">
                                                 {{ $previewAdministrationProfile?->letterhead_address ?: $previewAddress }}
                                             </div>
                                         </header>
