@@ -36,8 +36,7 @@ class AttendanceController extends Controller
         $user = request()->user();
         $query = Activity::query()
             ->with(['academicYear', 'semester', 'coaches', 'scoutLevels'])
-            ->withCount('attendanceSessions')
-            ->where('approval_status', 'approved');
+            ->withCount('attendanceSessions');
 
         $filter->apply($query, $user, (int) $context->id(), $filter->defaultMode($user), null);
 
@@ -338,8 +337,7 @@ class AttendanceController extends Controller
     ): Activity {
         $user = request()->user();
         $query = Activity::query()
-            ->with('scoutLevels')
-            ->where('approval_status', 'approved');
+            ->with('scoutLevels');
         $filter->apply($query, $user, (int) $context->id(), $filter->defaultMode($user), null);
 
         return $query->findOrFail($activityId);
