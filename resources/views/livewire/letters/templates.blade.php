@@ -159,17 +159,17 @@
                                     <header style="position: relative; min-height: 22mm; border-bottom: 3px double #000; margin-bottom: 4mm; padding: 0 2mm 2.5mm; text-align: center;">
                                         <img src="{{ asset('images/reports/logo-pramuka.png') }}" alt="Logo Gerakan Pramuka" style="position: absolute; top: 0; left: 1mm; height: 21mm; max-width: 23mm; object-fit: contain;">
                                         <img src="{{ asset('images/reports/logo-wosm.png') }}" alt="Logo WOSM" style="position: absolute; top: 0; right: 1mm; height: 21mm; max-width: 23mm; object-fit: contain;">
-                                        <div style="margin: 0 23mm; font-size: 14pt; font-weight: bold; line-height: 1.05;">
-                                            {{ $previewAdministrationProfile?->letterhead_title ?: 'GERAKAN PRAMUKA' }}<br>
+                                        <div style="margin: 0 23mm; font-weight: bold; line-height: 1.05;">
+                                            <span style="font-size: 13pt;">{{ $previewAdministrationProfile?->letterhead_title ?: 'GERAKAN PRAMUKA' }}</span><br>
                                             @if (in_array($previewAdministrationType, ['male', 'mabigus'], true) && filled($previewDocumentSetting?->gudep_male_number))
-                                                GUGUSDEPAN {{ strtoupper($previewSchool?->city ?: '') }} {{ $previewDocumentSetting->gudep_male_number }}<br>
+                                                <span style="font-size: 12pt;">GUGUSDEPAN {{ strtoupper($previewSchool?->city ?: '') }} {{ $previewDocumentSetting->gudep_male_number }}</span><br>
                                             @endif
                                             @if (in_array($previewAdministrationType, ['female', 'mabigus'], true) && filled($previewDocumentSetting?->gudep_female_number))
-                                                GUGUSDEPAN {{ strtoupper($previewSchool?->city ?: '') }} {{ $previewDocumentSetting->gudep_female_number }}<br>
+                                                <span style="font-size: 12pt;">GUGUSDEPAN {{ strtoupper($previewSchool?->city ?: '') }} {{ $previewDocumentSetting->gudep_female_number }}</span><br>
                                             @endif
-                                            PANGKALAN {{ strtoupper($previewAdministrationProfile?->letterhead_subtitle ?: ($previewSchool?->name ?: 'SEKOLAH')) }}
+                                            <span style="font-size: 12pt;">PANGKALAN {{ strtoupper($previewAdministrationProfile?->letterhead_subtitle ?: ($previewSchool?->name ?: 'SEKOLAH')) }}</span>
                                         </div>
-                                        <div style="margin: .8mm 23mm 0; font-size: 10pt; line-height: 1.1;">{{ $previewAddress }}</div>
+                                        <div style="margin: .8mm 23mm 0; font-size: 9pt; line-height: 1.1;">{{ $previewAddress }}</div>
                                     </header>
 
                                     <table style="width: 100%; border-collapse: collapse; margin: 0 0 3mm; font-size: 12pt;">

@@ -51,13 +51,17 @@
         .letterhead-logo-left { left: 1mm; }
         .letterhead-logo-right { right: 1mm; }
         .letterhead-title {
-            font-size: 13px;
+            font-family: "Times New Roman", Times, serif;
             font-weight: bold;
-            line-height: 1.15;
+            line-height: 1.05;
             margin: 0 23mm;
         }
+        .letterhead-institution { font-size: 13pt; }
+        .letterhead-gudep { font-size: 12pt; }
+        .letterhead-base { font-size: 12pt; }
         .letterhead-address {
-            font-size: 9px;
+            font-family: "Times New Roman", Times, serif;
+            font-size: 9pt;
             margin: 1mm 23mm 0;
         }
 
