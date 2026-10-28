@@ -49,6 +49,9 @@ return [
         'InventoryLocation' => 'inventory', 'InventoryItem' => 'inventory',
         'InventoryAsset' => 'inventory', 'InventoryStockBalance' => 'inventory',
         'InventoryStockMovement' => 'inventory',
+        'InventoryLoan' => 'inventory', 'InventoryLoanItem' => 'inventory',
+        'InventoryLoanEvent' => 'inventory', 'InventoryLoanDocument' => 'inventory',
+        'InventoryLoanDocumentPrint' => 'inventory',
     ],
     'safe_fields' => [
         'id', 'school_id', 'student_id', 'user_id', 'coach_id', 'activity_id', 'journal_id',
