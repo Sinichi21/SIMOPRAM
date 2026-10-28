@@ -215,6 +215,10 @@ Route::middleware([
             ->middleware('can:roles.manage')
             ->name('roles.index');
 
+        Route::livewire('/inventaris', \\App\\Livewire\\Inventory\\Index::class)
+            ->middleware('can:inventory.view')
+            ->name('inventory.index');
+
         Route::view(
             '/master/tahun-ajaran',
             'master.academic-years'
