@@ -220,7 +220,7 @@ Route::middleware([
             ->middleware('can:inventory.view')
             ->name('inventory.index');
 
-        Route::get('/inventaris/peminjaman', \\App\\Livewire\\Inventory\\Loans::class)
+        Route::get('/inventaris/peminjaman', \App\Livewire\Inventory\Loans::class)
             ->middleware('can:inventory.view')
             ->name('inventory.loans.index');
 
