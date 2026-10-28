@@ -6,7 +6,6 @@ use App\Models\InventoryItem;
 use App\Models\InventoryLoan;
 use App\Models\InventoryLocation;
 use App\Models\InventoryOwner;
-use App\Models\InventoryStockBalance;
 use App\Services\Inventory\InventoryLoanService;
 use App\Support\SchoolContext;
 use Illuminate\Contracts\View\View;
