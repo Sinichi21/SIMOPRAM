@@ -45,15 +45,26 @@ class InventoryLoanService
         }
 
         if ($type === 'internal') {
-            if (empty($borrower['user_id']) || ! DB::table('users')->where('id', $borrower['user_id'])->exists()) {
-                throw ValidationException::withMessages(['borrower.user_id' => 'Pilih akun peminjam internal yang valid.']);
+            $userId = (int) ($borrower['user_id'] ?? 0);
+            $memberName = DB::table('users')
+                ->join('school_user_memberships', 'school_user_memberships.user_id', '=', 'users.id')
+                ->where('school_user_memberships.school_id', $schoolId)
+                ->where('school_user_memberships.user_id', $userId)
+                ->where('school_user_memberships.is_active', true)
+                ->whereNull('school_user_memberships.left_at')
+                ->value('users.name');
+
+            if (! $userId || ! $memberName) {
+                throw ValidationException::withMessages(['borrower.user_id' => 'Peminjam internal harus merupakan anggota aktif sekolah ini.']);
             }
+            $borrower['name'] = $memberName;
         } elseif ($type === 'registered_gudep') {
             if (empty($borrower['scout_group_id'])) {
                 throw ValidationException::withMessages(['borrower.scout_group_id' => 'Pilih Gudep peminjam yang terdaftar.']);
             }
 
-            ScoutGroup::query()->where('school_id', $schoolId)->findOrFail((int) $borrower['scout_group_id']);
+            $registeredGroup = ScoutGroup::query()->where('school_id', $schoolId)->findOrFail((int) $borrower['scout_group_id']);
+            $borrower['name'] = $borrower['name'] ?? $registeredGroup->name;
         } elseif (trim((string) ($borrower['name'] ?? '')) === '') {
             throw ValidationException::withMessages(['borrower.name' => 'Nama peminjam eksternal wajib diisi.']);
         }
