@@ -19,7 +19,11 @@
     </style>
 </head>
 <body>
-    <div class="draft">DRAFT — BELUM DITERBITKAN / BELUM DITANDATANGANI</div>
+    @if (empty($issued))
+        <div class="draft">DRAFT — BELUM DITERBITKAN / BELUM DITANDATANGANI</div>
+    @else
+        <div class="subtitle"><strong>Nomor: {{ $documentNumber }}</strong> — Dokumen diterbitkan dari catatan SIMPRAM; tanda tangan basah belum diverifikasi</div>
+    @endif
     <h1>BERITA ACARA {{ $type === 'handover' ? 'SERAH-TERIMA' : 'PENGEMBALIAN' }} INVENTARIS</h1>
     <div class="subtitle">Referensi peminjaman: {{ $loan->loan_number }}</div>
     <p><strong>Nama peminjam:</strong> {{ $loan->borrower_name }}</p>
@@ -49,7 +53,11 @@
         </tbody>
     </table>
     <p class="small">Jumlah dan kondisi mengikuti event yang dicatat, bukan total permohonan. Transaksi dapat terjadi bertahap; setiap baris menunjukkan satu event. Untuk pengembalian, nilai jumlah mengikuti catatan event sistem.</p>
-    <p class="small">Dokumen ini merupakan pratinjau dari catatan transaksi SIMPRAM, bukan berita acara resmi. Untuk transaksi pengembalian dengan selisih/hilang, periksa rincian pada sistem sebelum menerbitkan berita acara final.</p>
+    @if (empty($issued))
+        <p class="small">Dokumen ini merupakan pratinjau dari catatan transaksi SIMPRAM, bukan berita acara resmi. Untuk transaksi pengembalian dengan selisih/hilang, periksa rincian pada sistem sebelum menerbitkan berita acara final.</p>
+    @else
+        <p class="small">Dokumen diterbitkan oleh SIMPRAM sebagai salinan tetap dari transaksi yang tercatat. Kolom tanda tangan harus ditandatangani oleh pihak terkait sebelum menjadi bukti serah-terima yang lengkap.</p>
+    @endif
     <table class="signatures">
         <tr>
             <td>Petugas / Pihak yang menyerahkan<br><div class="space"></div>(........................................)</td>
