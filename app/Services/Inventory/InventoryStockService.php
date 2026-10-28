@@ -39,7 +39,7 @@ class InventoryStockService
 
         $amount = (float) $quantity;
 
-        if (! is_finite($amount) || $amount <= 0) {
+        if (! is_finite($amount) || $amount <= 0 || round($amount, 3) !== $amount) {
             throw ValidationException::withMessages([
                 'quantity' => 'Jumlah harus lebih besar dari nol.',
             ]);
@@ -135,6 +135,7 @@ class InventoryStockService
                 ]);
             }
 
+            $movementQuantity = $type === 'adjustment' ? abs($next - $current) : $amount;
             $balance->quantity_on_hand = $next;
             $balance->save();
 
@@ -144,7 +145,7 @@ class InventoryStockService
                 'owner_id' => $owner->id,
                 'location_id' => $location->id,
                 'movement_type' => $type,
-                'quantity' => $amount,
+                'quantity' => $movementQuantity,
                 'balance_after' => $next,
                 'reference' => $reference,
                 'notes' => $notes,
