@@ -7,6 +7,7 @@ use App\Http\Controllers\ActivityLogExportController;
 use App\Http\Controllers\ActivityParticipantPortalController;
 use App\Http\Controllers\ActivityRegistrationController;
 use App\Http\Controllers\ComplaintController;
+use App\Http\Controllers\InventoryLoanDocumentPreviewController;
 use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\LpjReportController;
 use App\Http\Controllers\PublicContentMediaController;
@@ -224,6 +225,12 @@ Route::middleware([
         Route::get('/inventaris/peminjaman', Loans::class)
             ->middleware('can:inventory.view')
             ->name('inventory.loans.index');
+
+        Route::get('/inventaris/peminjaman/{loan}/dokumen/{type}/pratinjau', InventoryLoanDocumentPreviewController::class)
+            ->whereNumber('loan')
+            ->whereIn('type', ['handover', 'return'])
+            ->middleware(['can:inventory.view', 'throttle:20,1'])
+            ->name('inventory.loans.documents.preview');
 
         Route::view(
             '/master/tahun-ajaran',
