@@ -53,6 +53,31 @@ class InventoryStockService
             $owner = InventoryOwner::query()->where('school_id', $schoolId)->findOrFail($ownerId);
             $location = InventoryLocation::query()->where('school_id', $schoolId)->findOrFail($locationId);
 
+            if (! $item->category()->where('school_id', $schoolId)->exists()) {
+                throw ValidationException::withMessages([
+                    'item_id' => 'Kategori barang tidak sesuai dengan sekolah aktif.',
+                ]);
+            }
+
+            if ($owner->owner_type === 'school' && $owner->scout_group_id !== null) {
+                throw ValidationException::withMessages([
+                    'owner_id' => 'Kepemilikan sekolah tidak boleh menunjuk ke Gudep tertentu.',
+                ]);
+            }
+
+            if ($owner->owner_type === 'gudep') {
+                abort_unless($owner->scout_group_id, 422, 'Pemilik Gudep harus memiliki referensi Gudep.');
+                \\App\\Models\\ScoutGroup::query()
+                    ->where('school_id', $schoolId)
+                    ->findOrFail($owner->scout_group_id);
+            }
+
+            if ($location->scout_group_id) {
+                \\App\\Models\\ScoutGroup::query()
+                    ->where('school_id', $schoolId)
+                    ->findOrFail($location->scout_group_id);
+            }
+
             if ($item->tracking_type !== 'quantity') {
                 throw ValidationException::withMessages([
                     'item_id' => 'Barang yang dilacak per unit harus dikelola melalui data aset, bukan saldo kuantitas.',
