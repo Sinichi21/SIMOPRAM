@@ -64,7 +64,7 @@ class Index extends Component
         $this->authorizeManage();
         $schoolId = $this->schoolId();
         $validated = $this->validate([
-            'categoryName' => ['required', 'string', 'max:100', Rule::unique('inventory_categories', 'name')->where('school_id', $schoolId)->whereNull('deleted_at')],
+            'categoryName' => ['required', 'string', 'max:100', Rule::unique('inventory_categories', 'name')->where('school_id', $schoolId)],
             'categoryDescription' => ['nullable', 'string', 'max:2000'],
         ]);
 
@@ -121,7 +121,7 @@ class Index extends Component
             'ownerScoutGroupId' => [
                 Rule::requiredIf($this->ownerType === 'gudep'),
                 'nullable', 'integer',
-                Rule::exists('scout_groups', 'id')->where('school_id', $schoolId)->whereNull('deleted_at'),
+                Rule::exists('scout_groups', 'id')->where('school_id', $schoolId),
             ],
             'ownerDisplayName' => ['required', 'string', 'max:150'],
         ]);
