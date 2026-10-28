@@ -146,6 +146,33 @@
                                 @endif
                             </td>
                         </tr>
+                        @if ($loan->events->isNotEmpty())
+                            <tr wire:key="loan-events-{{ $loan->id }}" class="border-b bg-zinc-50/50 dark:bg-zinc-900/30">
+                                <td colspan="5" class="px-3 py-2">
+                                    <details>
+                                        <summary class="cursor-pointer text-xs font-medium">Riwayat transaksi ({{ $loan->events->count() }})</summary>
+                                        <div class="mt-2 overflow-x-auto">
+                                            <table class="w-full text-xs">
+                                                <thead><tr><th class="p-2 text-left">Kejadian</th><th class="p-2 text-left">Dicatat</th><th class="p-2 text-left">Jenis</th><th class="p-2 text-left">Jumlah</th><th class="p-2 text-left">Kondisi</th><th class="p-2 text-left">Metode</th><th class="p-2 text-left">Catatan</th></tr></thead>
+                                                <tbody>
+                                                    @foreach ($loan->events->sortBy('recorded_at') as $event)
+                                                        <tr class="border-t" wire:key="loan-event-{{ $event->id }}">
+                                                            <td class="p-2">{{ $event->occurred_at?->format('d/m/Y H:i') }}</td>
+                                                            <td class="p-2">{{ $event->recorded_at?->format('d/m/Y H:i') }}</td>
+                                                            <td class="p-2">{{ ['handover' => 'Serah-terima', 'return' => 'Pengembalian', 'loss' => 'Hilang', 'damage' => 'Rusak', 'offline_entry' => 'Entri offline'][$event->event_type] ?? $event->event_type }}</td>
+                                                            <td class="p-2">{{ $event->quantity ?? '-' }}</td>
+                                                            <td class="p-2">{{ $event->condition ?? '-' }}</td>
+                                                            <td class="p-2">{{ $event->recording_method }}</td>
+                                                            <td class="p-2">{{ $event->notes ?? '-' }}</td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </details>
+                                </td>
+                            </tr>
+                        @endif
                     @empty
                         <tr><td colspan="5" class="px-3 py-8 text-center text-zinc-500">Belum ada permohonan peminjaman.</td></tr>
                     @endforelse
