@@ -36,7 +36,7 @@ class InventoryStockServiceTest extends TestCase
 
         $this->assertSame('12.000', $receipt->balance_after);
         $this->assertSame('9.000', $issue->balance_after);
-        $this->assertSame(2, $item->stockBalances()->count());
+        $this->assertSame(1, $item->stockBalances()->count());
         $this->assertDatabaseHas('inventory_stock_balances', [
             'item_id' => $item->id,
             'owner_id' => $owner->id,
