@@ -25,7 +25,7 @@ return new class extends Migration
 
             $table->index(['school_id', 'item_id', 'occurred_at']);
             $table->index(['school_id', 'owner_id', 'location_id']);
-            $table->index(['school_id', 'movement_type', 'occurred_at']);
+            $table->index(['school_id', 'movement_type', 'occurred_at'], 'inv_mov_school_type_date_idx');
         });
     }
 
