@@ -443,6 +443,20 @@ MENU MASTER DATA
     </a>
 
 @endcan
+    @can('inventory.view')
+        <a
+            href="{{ route('inventory.index') }}"
+            wire:navigate
+            @class([
+                'block rounded-lg px-3 py-2 text-sm font-medium transition',
+                'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' => request()->routeIs('inventory.*'),
+                'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white' => ! request()->routeIs('inventory.*'),
+            ])
+        >
+            Inventaris
+        </a>
+    @endcan
+
 </div>
 
 <flux:sidebar.nav>
