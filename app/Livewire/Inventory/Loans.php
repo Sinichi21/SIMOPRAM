@@ -8,8 +8,8 @@ use App\Models\InventoryLocation;
 use App\Models\InventoryOwner;
 use App\Services\Inventory\InventoryLoanService;
 use App\Support\SchoolContext;
-use Illuminate\Support\Carbon;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -164,7 +164,7 @@ class Loans extends Component
                 'quantity_missing' => $data['missingQuantity'],
                 'condition' => $data['returnCondition'],
                 'condition_notes' => $notes,
-            ]], now(), $data['recordingMethod'], $notes);
+            ]], $occurredAt, $data['recordingMethod'], $notes);
         }
 
         $this->reset('activeLoanId', 'activeLoanItemId', 'transactionMode', 'transactionNotes');
