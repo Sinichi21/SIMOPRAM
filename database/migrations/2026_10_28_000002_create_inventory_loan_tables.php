@@ -31,7 +31,7 @@ return new class extends Migration
 
             $table->unique(['school_id', 'loan_number']);
             $table->index(['school_id', 'status', 'requested_at']);
-            $table->index(['school_id', 'borrower_type', 'borrower_scout_group_id']);
+            $table->index(['school_id', 'borrower_type', 'borrower_scout_group_id'], 'inv_loan_borrower_idx');
         });
 
         Schema::create('inventory_loan_items', function (Blueprint $table): void {
@@ -71,7 +71,7 @@ return new class extends Migration
             $table->string('recording_method', 20)->default('online'); // online | offline
             $table->timestamps();
 
-            $table->index(['school_id', 'loan_id', 'event_type', 'occurred_at']);
+            $table->index(['school_id', 'loan_id', 'event_type', 'occurred_at'], 'inv_loan_event_type_date_idx');
             $table->index(['school_id', 'recorded_at']);
         });
 
@@ -90,7 +90,7 @@ return new class extends Migration
             $table->text('correction_reason')->nullable();
             $table->timestamps();
 
-            $table->unique(['school_id', 'document_type', 'document_number']);
+            $table->unique(['school_id', 'document_type', 'document_number'], 'inv_doc_number_unique');
             $table->unique(['loan_id', 'document_type', 'version']);
             $table->index(['school_id', 'loan_id', 'document_type']);
         });
@@ -105,7 +105,7 @@ return new class extends Migration
             $table->text('reason')->nullable();
             $table->timestamps();
 
-            $table->index(['school_id', 'document_id', 'printed_at']);
+            $table->index(['school_id', 'document_id', 'printed_at'], 'inv_doc_print_date_idx');
         });
     }
 
