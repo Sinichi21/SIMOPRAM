@@ -85,7 +85,7 @@ class InventoryStockServiceTest extends TestCase
 
         app(SchoolContext::class)->set($this->school);
 
-        $this->expectException(\\Illuminate\\Database\\Eloquent\\ModelNotFoundException::class);
+        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
 
         app(InventoryStockService::class)->recordMovement(
             $foreignItem->id,
