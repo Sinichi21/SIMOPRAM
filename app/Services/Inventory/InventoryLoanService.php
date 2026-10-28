@@ -173,6 +173,58 @@ class InventoryLoanService
                 throw ValidationException::withMessages(['status' => 'Hanya permohonan berstatus menunggu yang dapat disetujui.']);
             }
 
+            // Serialize approvals against the same school stock balance. Approved loans
+            // consume approval capacity until their quantities are handed over.
+            foreach ($loan->items()->orderBy('id')->get() as $line) {
+                $item = InventoryItem::query()->where('school_id', $schoolId)->findOrFail($line->item_id);
+
+                if ($item->tracking_type === 'individual') {
+                    $alreadyApproved = InventoryLoanItem::query()
+                        ->join('inventory_loans', 'inventory_loans.id', '=', 'inventory_loan_items.loan_id')
+                        ->where('inventory_loan_items.school_id', $schoolId)
+                        ->where('inventory_loan_items.asset_id', $line->asset_id)
+                        ->where('inventory_loans.id', '!=', $loan->id)
+                        ->whereIn('inventory_loans.status', ['approved', 'partially_handed_over', 'handed_over', 'partially_returned', 'discrepancy'])
+                        ->whereColumn('inventory_loan_items.quantity_requested', '>', 'inventory_loan_items.quantity_handed_over')
+                        ->exists();
+
+                    if ($alreadyApproved) {
+                        throw ValidationException::withMessages(['items' => 'Aset sudah dialokasikan untuk peminjaman lain.']);
+                    }
+
+                    continue;
+                }
+
+                $balance = InventoryStockBalance::query()
+                    ->where('school_id', $schoolId)
+                    ->where('item_id', $line->item_id)
+                    ->where('owner_id', $line->owner_id)
+                    ->where('location_id', $line->location_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                $otherPending = (float) InventoryLoanItem::query()
+                    ->join('inventory_loans', 'inventory_loans.id', '=', 'inventory_loan_items.loan_id')
+                    ->where('inventory_loan_items.school_id', $schoolId)
+                    ->where('inventory_loan_items.item_id', $line->item_id)
+                    ->where('inventory_loan_items.owner_id', $line->owner_id)
+                    ->where('inventory_loan_items.location_id', $line->location_id)
+                    ->where('inventory_loans.id', '!=', $loan->id)
+                    ->whereIn('inventory_loans.status', ['approved', 'partially_handed_over'])
+                    ->selectRaw('COALESCE(SUM(inventory_loan_items.quantity_requested - inventory_loan_items.quantity_handed_over), 0) AS pending')
+                    ->value('pending');
+
+                $thisPending = (float) $loan->items()
+                    ->where('item_id', $line->item_id)
+                    ->where('owner_id', $line->owner_id)
+                    ->where('location_id', $line->location_id)
+                    ->sum('quantity_requested');
+
+                if (! $balance || (float) $balance->quantity_on_hand - (float) $balance->quantity_reserved < $otherPending + $thisPending) {
+                    throw ValidationException::withMessages(['items' => 'Stok tidak cukup untuk menyetujui seluruh permohonan.']);
+                }
+            }
+
             $loan->forceFill([
                 'status' => 'approved',
                 'approved_by' => auth()->id(),
