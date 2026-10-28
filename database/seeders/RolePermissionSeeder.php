@@ -314,22 +314,9 @@ class RolePermissionSeeder extends Seeder
             ]);
         }
 
-        // Add the initial inventory capabilities to existing administrator roles
-        // without replacing any school-specific permission customizations.
-        $inventoryAdminPermissions = [
-            'inventory.view',
-            'inventory.manage',
-            'inventory.stock.manage',
-            'inventory.loans.approve',
-            'inventory.loans.record_manual',
-            'inventory.handover.process',
-            'inventory.returns.process',
-            'inventory.labels.print',
-            'inventory.documents.reprint',
-            'inventory.audit.view',
-        ];
-        $scoutAdmin->givePermissionTo($inventoryAdminPermissions);
-        $schoolAdmin->givePermissionTo($inventoryAdminPermissions);
+        // Existing built-in roles may have been customized by a system administrator.
+        // Inventory permissions are included in the initial Permission::all() grant
+        // when administrator roles are first created; never re-grant them on reseed.
 
         if ($student->wasRecentlyCreated) {
             $student->syncPermissions([
