@@ -138,6 +138,26 @@
                                         <flux:button size="sm" variant="outline" wire:click="openTransaction({{ $loan->id }}, 'return')">Pengembalian</flux:button>
                                     @endif
                                 @endcan
+                                @foreach (['handover' => 'Serah-terima', 'return' => 'Pengembalian'] as $documentType => $documentLabel)
+                                    @php($issuedDocument = $loan->documents->first(fn ($document) => $document->document_type === $documentType && $document->status === 'issued'))
+                                    @if ($issuedDocument)
+                                        <a class="inline-block rounded border px-2 py-1 text-xs underline" href="{{ route('inventory.loans.documents.show', ['document' => $issuedDocument->id]) }}" target="_blank" rel="noopener">BA Terbit: {{ $documentLabel }}</a>
+                                        @can('inventory.documents.reprint')
+                                            <form method="POST" action="{{ route('inventory.loans.documents.reprint', ['document' => $issuedDocument->id]) }}" class="mt-1 flex flex-wrap items-center gap-1">
+                                                @csrf
+                                                <input name="reason" maxlength="500" required placeholder="Alasan cetak ulang" aria-label="Alasan cetak ulang {{ $documentLabel }}" class="rounded border px-2 py-1 text-xs dark:bg-zinc-900" />
+                                                <button type="submit" class="rounded border px-2 py-1 text-xs">Catat cetak ulang</button>
+                                            </form>
+                                        @endcan
+                                    @elseif ($loan->events->contains('event_type', $documentType))
+                                        @can('inventory.documents.reprint')
+                                            <form method="POST" action="{{ route('inventory.loans.documents.issue', ['loan' => $loan->id, 'type' => $documentType]) }}" class="inline-block">
+                                                @csrf
+                                                <button type="submit" class="rounded border px-2 py-1 text-xs" onclick="return confirm('Terbitkan snapshot BA dari transaksi saat ini? Dokumen tidak dapat diubah langsung.')">Terbitkan BA {{ $documentLabel }}</button>
+                                            </form>
+                                        @endcan
+                                    @endif
+                                @endforeach
                                 @if ($loan->events->contains('event_type', 'handover'))
                                     <a class="inline-block rounded border px-2 py-1 text-xs underline" href="{{ route('inventory.loans.documents.preview', ['loan' => $loan->id, 'type' => 'handover']) }}" target="_blank" rel="noopener">Draft BA Serah-terima</a>
                                 @endif
