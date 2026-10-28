@@ -56,6 +56,38 @@
         </flux:card>
     @endif
 
+    @if ($activeLoan && $transactionMode !== '')
+        <flux:card class="space-y-4">
+            <flux:heading size="lg">{{ $transactionMode === 'handover' ? 'Catat Serah-Terima' : 'Catat Pengembalian' }} — {{ $activeLoan->loan_number }}</flux:heading>
+            <form wire:submit="saveTransaction" class="grid gap-4 md:grid-cols-2">
+                <flux:select label="Barang" wire:model="activeLoanItemId" placeholder="Pilih barang dalam peminjaman" required>
+                    @foreach ($activeLoan->items as $line)
+                        <flux:select.option value="{{ $line->id }}">{{ $line->item?->name }} — diminta {{ $line->quantity_requested }}, diserahkan {{ $line->quantity_handed_over }}, kembali {{ $line->quantity_returned }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+                <flux:select label="Metode pencatatan" wire:model="recordingMethod">
+                    <flux:select.option value="online">Online</flux:select.option>
+                    <flux:select.option value="offline">Dicatat setelah transaksi offline</flux:select.option>
+                </flux:select>
+                @if ($transactionMode === 'handover')
+                    <flux:input label="Jumlah diserahkan" type="number" min="0.001" step="0.001" wire:model="handoverQuantity" required />
+                @else
+                    <flux:input label="Jumlah dikembalikan" type="number" min="0" step="0.001" wire:model="returnQuantity" required />
+                    <flux:input label="Jumlah hilang" type="number" min="0" step="0.001" wire:model="missingQuantity" required />
+                    <flux:select label="Kondisi barang kembali" wire:model="returnCondition">
+                        <flux:select.option value="good">Baik</flux:select.option>
+                        <flux:select.option value="damaged">Rusak</flux:select.option>
+                    </flux:select>
+                @endif
+                <flux:textarea label="Catatan" wire:model="transactionNotes" />
+                <div class="flex gap-2 md:col-span-2">
+                    <flux:button type="submit" variant="primary" wire:confirm="Pastikan jumlah dan kondisi sudah sesuai pemeriksaan fisik. Simpan transaksi?">Simpan Transaksi</flux:button>
+                    <flux:button type="button" variant="ghost" wire:click="$set('transactionMode', '')">Batal</flux:button>
+                </div>
+            </form>
+        </flux:card>
+    @endif
+
     <flux:card class="space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <flux:heading size="lg">Daftar Permohonan</flux:heading>
@@ -90,6 +122,16 @@
                                 @can('inventory.loans.approve')
                                     @if ($loan->status === 'requested')
                                         <flux:button size="sm" variant="outline" wire:click="approveLoan({{ $loan->id }})" wire:confirm="Setujui permohonan ini?">Setujui</flux:button>
+                                    @endif
+                                @endcan
+                                @can('inventory.handover.process')
+                                    @if (in_array($loan->status, ['approved', 'partially_handed_over'], true))
+                                        <flux:button size="sm" variant="outline" wire:click="openTransaction({{ $loan->id }}, 'handover')">Serah-terima</flux:button>
+                                    @endif
+                                @endcan
+                                @can('inventory.returns.process')
+                                    @if (in_array($loan->status, ['handed_over', 'partially_handed_over', 'partially_returned', 'discrepancy'], true))
+                                        <flux:button size="sm" variant="outline" wire:click="openTransaction({{ $loan->id }}, 'return')">Pengembalian</flux:button>
                                     @endif
                                 @endcan
                             </td>
