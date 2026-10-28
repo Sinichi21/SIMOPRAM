@@ -154,6 +154,47 @@
         <div>{{ $items->links() }}</div>
     </flux:card>
 
+    <div class="grid gap-4 xl:grid-cols-2">
+        <flux:card class="space-y-3">
+            <flux:heading size="lg">Pemilik Inventaris</flux:heading>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead><tr class="border-b text-left"><th class="px-3 py-2 font-medium">Nama Pemilik</th><th class="px-3 py-2 font-medium">Jenis</th><th class="px-3 py-2 font-medium">Gudep</th></tr></thead>
+                    <tbody>
+                        @forelse ($owners as $owner)
+                            <tr wire:key="inventory-owner-{{ $owner->id }}" class="border-b last:border-0">
+                                <td class="px-3 py-2">{{ $owner->display_name }}</td>
+                                <td class="px-3 py-2">{{ $owner->owner_type === 'gudep' ? 'Gudep' : 'Sekolah' }}</td>
+                                <td class="px-3 py-2">{{ $owner->scoutGroup?->name ?? '—' }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="3" class="px-3 py-6 text-center text-zinc-500">Belum ada pemilik inventaris.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </flux:card>
+        <flux:card class="space-y-3">
+            <flux:heading size="lg">Lokasi Penyimpanan</flux:heading>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead><tr class="border-b text-left"><th class="px-3 py-2 font-medium">Nama Lokasi</th><th class="px-3 py-2 font-medium">Jenis</th><th class="px-3 py-2 font-medium">Gudep</th></tr></thead>
+                    <tbody>
+                        @forelse ($locations as $location)
+                            <tr wire:key="inventory-location-{{ $location->id }}" class="border-b last:border-0">
+                                <td class="px-3 py-2">{{ $location->name }}</td>
+                                <td class="px-3 py-2">{{ ['storage' => 'Gudang', 'room' => 'Ruangan', 'vehicle' => 'Kendaraan', 'other' => 'Lainnya'][$location->location_type] ?? $location->location_type }}</td>
+                                <td class="px-3 py-2">{{ $location->scoutGroup?->name ?? 'Umum' }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="3" class="px-3 py-6 text-center text-zinc-500">Belum ada lokasi penyimpanan.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </flux:card>
+    </div>
+
     <flux:card class="space-y-4">
         <flux:heading size="lg">Pergerakan Stok Terbaru</flux:heading>
         <div class="overflow-x-auto">
