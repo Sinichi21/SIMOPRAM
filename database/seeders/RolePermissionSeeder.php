@@ -159,6 +159,18 @@ class RolePermissionSeeder extends Seeder
 
             'semester_closures.view',
             'semester_closures.manage',
+
+            'inventory.view',
+            'inventory.manage',
+            'inventory.stock.manage',
+            'inventory.loans.request',
+            'inventory.loans.approve',
+            'inventory.loans.record_manual',
+            'inventory.handover.process',
+            'inventory.returns.process',
+            'inventory.labels.print',
+            'inventory.documents.reprint',
+            'inventory.audit.view',
         ];
 
         foreach ($permissions as $permission) {
