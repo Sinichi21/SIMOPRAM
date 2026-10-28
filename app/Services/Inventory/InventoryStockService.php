@@ -96,7 +96,7 @@ class InventoryStockService
                 ]);
             }
 
-            if ($owner->scout_group_id && $owner->scout_group_id !== $location->scout_group_id) {
+            if ($location->scout_group_id && $owner->scout_group_id !== $location->scout_group_id) {
                 throw ValidationException::withMessages([
                     'location_id' => 'Lokasi harus sesuai dengan Gudep pemilik.',
                 ]);
@@ -136,6 +136,13 @@ class InventoryStockService
             }
 
             $movementQuantity = $type === 'adjustment' ? abs($next - $current) : $amount;
+
+            if ($type === 'adjustment' && $movementQuantity == 0.0) {
+                throw ValidationException::withMessages([
+                    'quantity' => 'Jumlah hasil penyesuaian sama dengan saldo saat ini; tidak ada perubahan untuk dicatat.',
+                ]);
+            }
+
             $balance->quantity_on_hand = $next;
             $balance->save();
 
