@@ -1770,6 +1770,14 @@
                     >
                         Kelola Inventaris
                     </flux:sidebar.item>
+                    <flux:sidebar.item
+                        icon="clipboard-document-list"
+                        :href="route('inventory.loans.index')"
+                        :current="request()->routeIs('inventory.loans.*')"
+                        wire:navigate
+                    >
+                        Peminjaman
+                    </flux:sidebar.item>
                 </flux:sidebar.group>
             </flux:sidebar.nav>
         @endcan
