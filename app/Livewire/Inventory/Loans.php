@@ -8,6 +8,7 @@ use App\Models\InventoryLocation;
 use App\Models\InventoryOwner;
 use App\Services\Inventory\InventoryLoanService;
 use App\Support\SchoolContext;
+use Illuminate\Support\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
@@ -52,6 +53,8 @@ class Loans extends Component
     public string $recordingMethod = 'online';
 
     public string $transactionNotes = '';
+
+    public string $occurredAt = '';
 
     public string $transactionMode = '';
 
@@ -112,12 +115,13 @@ class Loans extends Component
             : in_array($loan->status, ['handed_over', 'partially_handed_over', 'partially_returned', 'discrepancy'], true);
         abort_unless($allowed, 422, 'Status peminjaman tidak memungkinkan transaksi ini.');
 
-        $this->reset('activeLoanItemId', 'handoverQuantity', 'returnQuantity', 'missingQuantity', 'returnCondition', 'recordingMethod', 'transactionNotes');
+        $this->reset('activeLoanItemId', 'handoverQuantity', 'returnQuantity', 'missingQuantity', 'returnCondition', 'recordingMethod', 'transactionNotes', 'occurredAt');
         $this->handoverQuantity = '1';
         $this->returnQuantity = '1';
         $this->missingQuantity = '0';
         $this->returnCondition = 'good';
         $this->recordingMethod = 'online';
+        $this->occurredAt = now()->format('Y-m-d\\TH:i');
         $this->activeLoanId = $loan->id;
         $this->transactionMode = $mode;
     }
@@ -137,18 +141,22 @@ class Loans extends Component
             'returnCondition' => ['required', Rule::in(['good', 'damaged'])],
             'recordingMethod' => ['required', Rule::in(['online', 'offline'])],
             'transactionNotes' => ['nullable', 'string', 'max:2000'],
+            'occurredAt' => [Rule::requiredIf($this->recordingMethod === 'offline'), 'nullable', 'date_format:Y-m-d\\TH:i', 'before_or_equal:now'],
         ]);
 
         $loan = InventoryLoan::query()->where('school_id', $this->schoolId())->findOrFail($data['activeLoanId']);
         $line = $loan->items()->whereKey($data['activeLoanItemId'])->firstOrFail();
         $notes = trim($data['transactionNotes']) ?: null;
+        $occurredAt = $data['recordingMethod'] === 'offline'
+            ? Carbon::createFromFormat('!Y-m-d\\TH:i', $data['occurredAt'], config('app.timezone'))
+            : now();
 
         if ($this->transactionMode === 'handover') {
             $service->recordHandover($loan->id, [[
                 'loan_item_id' => $line->id,
                 'quantity' => $data['handoverQuantity'],
                 'condition' => 'good',
-            ]], now(), $data['recordingMethod'], $notes);
+            ]], $occurredAt, $data['recordingMethod'], $notes);
         } else {
             $service->recordReturn($loan->id, [[
                 'loan_item_id' => $line->id,
