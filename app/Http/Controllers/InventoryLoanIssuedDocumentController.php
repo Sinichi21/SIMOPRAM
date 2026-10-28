@@ -9,7 +9,6 @@ use App\Support\SchoolContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\ValidationException;
 
 class InventoryLoanIssuedDocumentController extends Controller
 {
@@ -21,6 +20,27 @@ class InventoryLoanIssuedDocumentController extends Controller
         $document = $service->issue($loan, $type);
 
         return redirect()->route('inventory.loans.documents.show', ['document' => $document->id]);
+    }
+
+    public function logReprint(Request $request, int $document): \Illuminate\Http\RedirectResponse
+    {
+        abort_unless($request->user()?->can('inventory.documents.reprint'), 403);
+        $schoolId = app(SchoolContext::class)->id();
+        abort_unless($schoolId, 409);
+        $data = $request->validate(['reason' => ['required', 'string', 'max:500']]);
+        $record = InventoryLoanDocument::query()->where('school_id', $schoolId)
+            ->where('status', 'issued')->findOrFail($document);
+
+        InventoryLoanDocumentPrint::query()->create([
+            'school_id' => $schoolId,
+            'document_id' => $record->id,
+            'printed_by' => $request->user()->id,
+            'printed_at' => now(),
+            'purpose' => 'reprint',
+            'reason' => trim($data['reason']),
+        ]);
+
+        return redirect()->route('inventory.loans.documents.show', ['document' => $record->id]);
     }
 
     public function show(Request $request, int $document): Response
@@ -41,21 +61,6 @@ class InventoryLoanIssuedDocumentController extends Controller
             abort(409, 'Integritas berkas berita acara tidak sesuai.');
         }
 
-        if ($request->boolean('print')) {
-            abort_unless($request->user()?->can('inventory.documents.reprint'), 403);
-            $reason = trim((string) $request->query('reason', ''));
-            if ($reason === '' || mb_strlen($reason) > 500) {
-                throw ValidationException::withMessages(['reason' => 'Alasan cetak ulang wajib diisi (maksimal 500 karakter).']);
-            }
-            InventoryLoanDocumentPrint::query()->create([
-                'school_id' => $schoolId,
-                'document_id' => $record->id,
-                'printed_by' => $request->user()->id,
-                'printed_at' => now(),
-                'purpose' => 'reprint',
-                'reason' => $reason,
-            ]);
-        }
 
         return response($bytes, 200, [
             'Content-Type' => 'application/pdf',
