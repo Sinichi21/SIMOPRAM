@@ -105,6 +105,33 @@ class InventoryLoanServiceTest extends TestCase
         ]);
     }
 
+    public function test_approval_rejects_overlapping_stock_allocations(): void
+    {
+        [$item, $owner, $location] = $this->makeStock();
+        app(InventoryStockService::class)->recordMovement($item->id, $owner->id, $location->id, 'receipt', 10);
+
+        $service = app(InventoryLoanService::class);
+        $borrower = ['type' => 'manual_external', 'name' => 'Peminjam'];
+        $first = $service->requestLoan($borrower, [
+            ['item_id' => $item->id, 'owner_id' => $owner->id, 'location_id' => $location->id, 'quantity' => 7],
+        ]);
+        $second = $service->requestLoan($borrower, [
+            ['item_id' => $item->id, 'owner_id' => $owner->id, 'location_id' => $location->id, 'quantity' => 6],
+        ]);
+
+        $service->approve($first->id);
+
+        try {
+            $service->approve($second->id);
+            $this->fail('Persetujuan kedua harus ditolak karena alokasi melebihi stok.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('items', $exception->errors());
+        }
+
+        $this->assertSame('approved', $first->fresh()->status);
+        $this->assertSame('requested', $second->fresh()->status);
+    }
+
     private function makeStock(): array
     {
         $category = InventoryCategory::query()->create(['name' => 'Peralatan', 'is_active' => true]);
