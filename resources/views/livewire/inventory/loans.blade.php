@@ -65,7 +65,7 @@
                         <flux:select.option value="{{ $line->id }}">{{ $line->item?->name }} — diminta {{ $line->quantity_requested }}, diserahkan {{ $line->quantity_handed_over }}, kembali {{ $line->quantity_returned }}</flux:select.option>
                     @endforeach
                 </flux:select>
-                <flux:select label="Metode pencatatan" wire:model="recordingMethod">
+                <flux:select label="Metode pencatatan" wire:model.live="recordingMethod">
                     <flux:select.option value="online">Online</flux:select.option>
                     <flux:select.option value="offline">Dicatat setelah transaksi offline</flux:select.option>
                 </flux:select>
@@ -78,6 +78,10 @@
                         <flux:select.option value="good">Baik</flux:select.option>
                         <flux:select.option value="damaged">Rusak</flux:select.option>
                     </flux:select>
+                @endif
+                @if ($recordingMethod === 'offline')
+                    <flux:input label="Waktu kejadian fisik (WITA sesuai zona aplikasi)" type="datetime-local" wire:model="occurredAt" required />
+                    <flux:text size="sm" class="md:col-span-2">Isi waktu kejadian sebenarnya. Waktu pencatatan sistem disimpan terpisah untuk audit.</flux:text>
                 @endif
                 <flux:textarea label="Catatan" wire:model="transactionNotes" />
                 <div class="flex gap-2 md:col-span-2">
