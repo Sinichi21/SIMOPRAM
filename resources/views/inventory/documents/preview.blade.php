@@ -30,7 +30,7 @@
     <h2>Rincian transaksi</h2>
     <table>
         <thead>
-            <tr><th>No.</th><th>Barang</th><th>Pemilik</th><th>Lokasi asal</th><th>Jumlah</th><th>Kondisi</th><th>Catatan</th></tr>
+            <tr><th>No.</th><th>Barang</th><th>Pemilik</th><th>Lokasi asal</th><th>Waktu</th><th>Jumlah</th><th>Kondisi</th><th>Catatan</th></tr>
         </thead>
         <tbody>
             @foreach ($events as $event)
@@ -40,6 +40,7 @@
                     <td>{{ $line?->item?->name ?? '-' }}</td>
                     <td>{{ $line?->owner?->display_name ?? '-' }}</td>
                     <td>{{ $line?->location?->name ?? '-' }}</td>
+                    <td>{{ $event->occurred_at?->format('d/m/Y H:i') ?? '-' }}</td>
                     <td>{{ $event->quantity ?? '-' }}</td>
                     <td>{{ $event->condition ?? '-' }}</td>
                     <td>{{ $event->notes ?? '-' }}</td>
@@ -47,6 +48,7 @@
             @endforeach
         </tbody>
     </table>
+    <p class="small">Jumlah dan kondisi mengikuti event yang dicatat, bukan total permohonan. Transaksi dapat terjadi bertahap; setiap baris menunjukkan satu event. Untuk pengembalian, nilai jumlah mengikuti catatan event sistem.</p>
     <p class="small">Dokumen ini merupakan pratinjau dari catatan transaksi SIMPRAM, bukan berita acara resmi. Untuk transaksi pengembalian dengan selisih/hilang, periksa rincian pada sistem sebelum menerbitkan berita acara final.</p>
     <table class="signatures">
         <tr>
