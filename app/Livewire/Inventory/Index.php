@@ -22,36 +22,61 @@ class Index extends Component
     use WithPagination;
 
     public string $search = '';
+
     public bool $showCategoryForm = false;
+
     public bool $showItemForm = false;
+
     public bool $showOwnerForm = false;
+
     public bool $showLocationForm = false;
+
     public bool $showMovementForm = false;
 
     public string $categoryName = '';
+
     public string $categoryDescription = '';
+
     public string $itemCode = '';
+
     public string $itemName = '';
+
     public string $itemDescription = '';
+
     public string $trackingType = 'quantity';
+
     public string $unit = 'unit';
+
     public string $minimumStock = '0';
+
     public ?int $categoryId = null;
 
     public string $ownerType = 'school';
+
     public ?int $ownerScoutGroupId = null;
+
     public string $ownerDisplayName = '';
+
     public string $locationName = '';
+
     public string $locationType = 'storage';
+
     public ?int $locationScoutGroupId = null;
+
     public string $locationDescription = '';
 
     public ?int $movementItemId = null;
+
     public ?int $movementOwnerId = null;
+
     public ?int $movementLocationId = null;
+
     public string $movementType = 'receipt';
+
     public string $movementQuantity = '1';
+
     public string $movementReference = '';
+
     public string $movementNotes = '';
 
     public function mount(): void

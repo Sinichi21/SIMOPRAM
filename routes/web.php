@@ -18,6 +18,7 @@ use App\Http\Controllers\SchoolSwitchController;
 use App\Http\Controllers\StudentDocumentController;
 use App\Http\Middleware\SetGlobalContentContext;
 use App\Livewire\Auth\Register;
+use App\Livewire\Inventory\Index;
 use App\Livewire\PeopleMerge\Index as PeopleMergeIndex;
 use App\Livewire\RoleManagement\Index as RoleManagementIndex;
 use App\Livewire\Settings\LandingContent;
@@ -215,7 +216,7 @@ Route::middleware([
             ->middleware('can:roles.manage')
             ->name('roles.index');
 
-        Route::get('/inventaris', \App\Livewire\Inventory\Index::class)
+        Route::get('/inventaris', Index::class)
             ->middleware('can:inventory.view')
             ->name('inventory.index');
 

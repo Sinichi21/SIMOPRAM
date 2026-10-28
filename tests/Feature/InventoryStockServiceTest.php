@@ -6,10 +6,10 @@ use App\Models\InventoryCategory;
 use App\Models\InventoryItem;
 use App\Models\InventoryLocation;
 use App\Models\InventoryOwner;
-use App\Models\InventoryStockBalance;
 use App\Models\School;
 use App\Services\Inventory\InventoryStockService;
 use App\Support\SchoolContext;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
@@ -85,7 +85,7 @@ class InventoryStockServiceTest extends TestCase
 
         app(SchoolContext::class)->set($this->school);
 
-        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+        $this->expectException(ModelNotFoundException::class);
 
         app(InventoryStockService::class)->recordMovement(
             $foreignItem->id,

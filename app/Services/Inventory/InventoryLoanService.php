@@ -22,14 +22,13 @@ class InventoryLoanService
     public function __construct(
         private readonly InventoryStockService $stockService,
         private readonly SchoolContext $schoolContext,
-    ) {
-    }
+    ) {}
 
     /**
      * Register a loan request. Physical stock is changed only at actual handover.
      *
-     * @param array<string, mixed> $borrower
-     * @param array<int, array<string, mixed>> $items
+     * @param  array<string, mixed>  $borrower
+     * @param  array<int, array<string, mixed>>  $items
      */
     public function requestLoan(array $borrower, array $items, ?string $purpose = null, ?string $notes = null): InventoryLoan
     {
@@ -187,7 +186,7 @@ class InventoryLoanService
     /**
      * Record physical handover. Each entry: loan_item_id, quantity, condition.
      *
-     * @param array<int, array<string, mixed>> $lines
+     * @param  array<int, array<string, mixed>>  $lines
      */
     public function recordHandover(int $loanId, array $lines, DateTimeInterface $occurredAt, string $recordingMethod = 'online', ?string $notes = null): InventoryLoan
     {
@@ -266,7 +265,7 @@ class InventoryLoanService
     /**
      * Record a partial or complete return. Missing quantities are explicitly recorded as discrepancies.
      *
-     * @param array<int, array<string, mixed>> $lines
+     * @param  array<int, array<string, mixed>>  $lines
      */
     public function recordReturn(int $loanId, array $lines, DateTimeInterface $occurredAt, string $recordingMethod = 'online', ?string $notes = null): InventoryLoan
     {
@@ -360,11 +359,9 @@ class InventoryLoanService
             }
 
             $loan->refresh()->load('items');
-            $hasOutstanding = $loan->items->contains(fn (InventoryLoanItem $item): bool =>
-                (float) $item->quantity_handed_over - (float) $item->quantity_returned - (float) $item->quantity_missing > 0
+            $hasOutstanding = $loan->items->contains(fn (InventoryLoanItem $item): bool => (float) $item->quantity_handed_over - (float) $item->quantity_returned - (float) $item->quantity_missing > 0
             );
-            $hasDiscrepancy = $loan->items->contains(fn (InventoryLoanItem $item): bool =>
-                (float) $item->quantity_missing > 0 || ($item->condition_in !== null && $item->condition_in !== 'good')
+            $hasDiscrepancy = $loan->items->contains(fn (InventoryLoanItem $item): bool => (float) $item->quantity_missing > 0 || ($item->condition_in !== null && $item->condition_in !== 'good')
             );
 
             $nextStatus = $hasDiscrepancy ? 'discrepancy' : ($hasOutstanding ? 'partially_returned' : 'returned');

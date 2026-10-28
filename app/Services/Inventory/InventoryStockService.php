@@ -7,6 +7,7 @@ use App\Models\InventoryLocation;
 use App\Models\InventoryOwner;
 use App\Models\InventoryStockBalance;
 use App\Models\InventoryStockMovement;
+use App\Models\ScoutGroup;
 use App\Support\SchoolContext;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -67,13 +68,13 @@ class InventoryStockService
 
             if ($owner->owner_type === 'gudep') {
                 abort_unless($owner->scout_group_id, 422, 'Pemilik Gudep harus memiliki referensi Gudep.');
-                \App\Models\ScoutGroup::query()
+                ScoutGroup::query()
                     ->where('school_id', $schoolId)
                     ->findOrFail($owner->scout_group_id);
             }
 
             if ($location->scout_group_id) {
-                \App\Models\ScoutGroup::query()
+                ScoutGroup::query()
                     ->where('school_id', $schoolId)
                     ->findOrFail($location->scout_group_id);
             }
