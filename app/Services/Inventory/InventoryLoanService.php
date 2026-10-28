@@ -243,6 +243,15 @@ class InventoryLoanService
     public function recordHandover(int $loanId, array $lines, DateTimeInterface $occurredAt, string $recordingMethod = 'online', ?string $notes = null): InventoryLoan
     {
         $schoolId = $this->schoolId();
+        if ($lines === []) {
+            throw ValidationException::withMessages(['lines' => 'Pilih minimal satu barang untuk dicatat.']);
+        }
+
+        $lineIds = array_map(static fn (array $line): int => (int) ($line['loan_item_id'] ?? 0), $lines);
+        if (count($lineIds) !== count(array_unique($lineIds))) {
+            throw ValidationException::withMessages(['lines' => 'Barang yang sama tidak boleh dicatat dua kali dalam satu transaksi.']);
+        }
+
         $this->validateRecordingMethod($recordingMethod);
 
         return DB::transaction(function () use ($schoolId, $loanId, $lines, $occurredAt, $recordingMethod, $notes): InventoryLoan {
@@ -322,6 +331,15 @@ class InventoryLoanService
     public function recordReturn(int $loanId, array $lines, DateTimeInterface $occurredAt, string $recordingMethod = 'online', ?string $notes = null): InventoryLoan
     {
         $schoolId = $this->schoolId();
+        if ($lines === []) {
+            throw ValidationException::withMessages(['lines' => 'Pilih minimal satu barang untuk dicatat.']);
+        }
+
+        $lineIds = array_map(static fn (array $line): int => (int) ($line['loan_item_id'] ?? 0), $lines);
+        if (count($lineIds) !== count(array_unique($lineIds))) {
+            throw ValidationException::withMessages(['lines' => 'Barang yang sama tidak boleh dicatat dua kali dalam satu transaksi.']);
+        }
+
         $this->validateRecordingMethod($recordingMethod);
 
         return DB::transaction(function () use ($schoolId, $loanId, $lines, $occurredAt, $recordingMethod, $notes): InventoryLoan {
