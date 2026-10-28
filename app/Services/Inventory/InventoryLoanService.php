@@ -284,8 +284,8 @@ class InventoryLoanService
                 }
 
                 $item = InventoryItem::query()->where('school_id', $schoolId)->findOrFail($loanItem->item_id);
-                if ($item->tracking_type === 'individual' && ($returned + $missing) !== 1.0) {
-                    throw ValidationException::withMessages(["lines.$index.quantity_returned" => 'Aset individual diproses satu unit per transaksi.']);
+                if ($item->tracking_type === 'individual' && (($returned + $missing) !== 1.0 || ! in_array($returned, [0.0, 1.0], true) || ! in_array($missing, [0.0, 1.0], true))) {
+                    throw ValidationException::withMessages(["lines.$index.quantity_returned" => 'Aset individual harus dicatat sebagai satu unit utuh: kembali atau hilang.']);
                 }
 
                 if ($returned > 0) {
@@ -324,6 +324,11 @@ class InventoryLoanService
                 }
 
                 if ($missing > 0) {
+                    if ($item->tracking_type === 'individual') {
+                        InventoryAsset::query()->where('school_id', $schoolId)->whereKey($loanItem->asset_id)->lockForUpdate()->firstOrFail()
+                            ->forceFill(['status' => 'missing', 'location_id' => null, 'condition' => 'missing'])
+                            ->save();
+                    }
                     $loanItem->quantity_missing = (float) $loanItem->quantity_missing + $missing;
                     InventoryLoanEvent::query()->create([
                         'school_id' => $schoolId,
@@ -351,9 +356,10 @@ class InventoryLoanService
                 (float) $item->quantity_missing > 0 || ($item->condition_in !== null && $item->condition_in !== 'good')
             );
 
+            $nextStatus = $hasDiscrepancy ? 'discrepancy' : ($hasOutstanding ? 'partially_returned' : 'returned');
             $loan->forceFill([
-                'status' => $hasDiscrepancy ? 'discrepancy' : ($hasOutstanding ? 'partially_returned' : 'returned'),
-                'actual_return_at' => ! $hasOutstanding ? $occurredAt : null,
+                'status' => $nextStatus,
+                'actual_return_at' => $nextStatus === 'returned' ? $occurredAt : null,
             ])->save();
 
             return $loan->refresh();
