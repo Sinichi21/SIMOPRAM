@@ -138,6 +138,12 @@
                                         <flux:button size="sm" variant="outline" wire:click="openTransaction({{ $loan->id }}, 'return')">Pengembalian</flux:button>
                                     @endif
                                 @endcan
+                                @if ($loan->events->contains('event_type', 'handover'))
+                                    <a class="inline-block rounded border px-2 py-1 text-xs underline" href="{{ route('inventory.loans.documents.preview', ['loan' => $loan->id, 'type' => 'handover']) }}" target="_blank" rel="noopener">Draft BA Serah-terima</a>
+                                @endif
+                                @if ($loan->events->contains('event_type', 'return'))
+                                    <a class="inline-block rounded border px-2 py-1 text-xs underline" href="{{ route('inventory.loans.documents.preview', ['loan' => $loan->id, 'type' => 'return']) }}" target="_blank" rel="noopener">Draft BA Pengembalian</a>
+                                @endif
                             </td>
                         </tr>
                     @empty
