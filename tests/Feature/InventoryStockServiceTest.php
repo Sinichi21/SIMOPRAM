@@ -18,12 +18,14 @@ class InventoryStockServiceTest extends TestCase
 {
     use RefreshDatabase;
 
+    private School $school;
+
     protected function setUp(): void
     {
         parent::setUp();
 
-        $school = School::factory()->create();
-        app(SchoolContext::class)->set($school);
+        $this->school = School::factory()->create();
+        app(SchoolContext::class)->set($this->school);
     }
 
     public function test_receipt_and_issue_update_the_balance_and_record_movements(): void
@@ -73,6 +75,25 @@ class InventoryStockServiceTest extends TestCase
 
         $this->assertSame('2.000', $adjustment->quantity);
         $this->assertSame('6.000', $adjustment->balance_after);
+    }
+
+    public function test_item_from_another_school_cannot_be_moved_in_current_school_context(): void
+    {
+        $otherSchool = School::factory()->create();
+        app(SchoolContext::class)->set($otherSchool);
+        [$foreignItem, $foreignOwner, $foreignLocation] = $this->makeQuantityStock();
+
+        app(SchoolContext::class)->set($this->school);
+
+        $this->expectException(\\Illuminate\\Database\\Eloquent\\ModelNotFoundException::class);
+
+        app(InventoryStockService::class)->recordMovement(
+            $foreignItem->id,
+            $foreignOwner->id,
+            $foreignLocation->id,
+            'receipt',
+            1,
+        );
     }
 
     public function test_individual_asset_item_cannot_use_quantity_stock_service(): void
