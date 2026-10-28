@@ -215,7 +215,7 @@ Route::middleware([
             ->middleware('can:roles.manage')
             ->name('roles.index');
 
-        Route::livewire('/inventaris', \App\Livewire\Inventory\Index::class)
+        Route::get('/inventaris', \App\Livewire\Inventory\Index::class)
             ->middleware('can:inventory.view')
             ->name('inventory.index');
 
