@@ -96,7 +96,7 @@ class InventoryStockService
                 ]);
             }
 
-            if ($location->scout_group_id && $owner->scout_group_id !== $location->scout_group_id) {
+            if ($owner->scout_group_id && $location->scout_group_id && $owner->scout_group_id !== $location->scout_group_id) {
                 throw ValidationException::withMessages([
                     'location_id' => 'Lokasi harus sesuai dengan Gudep pemilik.',
                 ]);
