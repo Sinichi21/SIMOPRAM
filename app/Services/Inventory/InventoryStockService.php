@@ -67,13 +67,13 @@ class InventoryStockService
 
             if ($owner->owner_type === 'gudep') {
                 abort_unless($owner->scout_group_id, 422, 'Pemilik Gudep harus memiliki referensi Gudep.');
-                \\App\\Models\\ScoutGroup::query()
+                \App\Models\ScoutGroup::query()
                     ->where('school_id', $schoolId)
                     ->findOrFail($owner->scout_group_id);
             }
 
             if ($location->scout_group_id) {
-                \\App\\Models\\ScoutGroup::query()
+                \App\Models\ScoutGroup::query()
                     ->where('school_id', $schoolId)
                     ->findOrFail($location->scout_group_id);
             }
