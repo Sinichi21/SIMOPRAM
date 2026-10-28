@@ -1781,6 +1781,23 @@
             inset="left"
         />
 
+        {{-- Inventaris: navigasi utama menggunakan komponen sidebar yang aktif. --}}
+        @can('inventory.view')
+            <flux:sidebar.nav data-school-menu
+                @class(['opacity-60 [&_*]:cursor-not-allowed' => ! $hasActiveSchool])>
+                <flux:sidebar.group heading="Inventaris" class="grid">
+                    <flux:sidebar.item
+                        icon="archive-box"
+                        :href="route('inventory.index')"
+                        :current="request()->routeIs('inventory.*')"
+                        wire:navigate
+                    >
+                        Kelola Inventaris
+                    </flux:sidebar.item>
+                </flux:sidebar.group>
+            </flux:sidebar.nav>
+        @endcan
+
         <flux:spacer />
 
         <x-area-navigation />
