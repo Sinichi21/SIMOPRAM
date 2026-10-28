@@ -86,6 +86,9 @@ class InventoryLoanService
                 'notes' => $notes,
             ]);
 
+            $selectedAssetIds = [];
+            $requestedStockQuantities = [];
+
             foreach ($items as $index => $line) {
                 $item = InventoryItem::query()->where('school_id', $schoolId)->findOrFail((int) ($line['item_id'] ?? 0));
                 $owner = InventoryOwner::query()->where('school_id', $schoolId)->findOrFail((int) ($line['owner_id'] ?? 0));
@@ -110,6 +113,11 @@ class InventoryLoanService
                         throw ValidationException::withMessages(["items.$index.asset_id" => 'Aset individual harus dipilih satu per satu.']);
                     }
 
+                    if (in_array($assetId, $selectedAssetIds, true)) {
+                        throw ValidationException::withMessages(["items.$index.asset_id" => 'Aset yang sama tidak boleh dimasukkan lebih dari sekali.']);
+                    }
+                    $selectedAssetIds[] = $assetId;
+
                     $asset = InventoryAsset::query()
                         ->where('school_id', $schoolId)
                         ->where('item_id', $item->id)
@@ -129,7 +137,10 @@ class InventoryLoanService
                         ->where('location_id', $location->id)
                         ->first();
 
-                    if (! $balance || (float) $balance->quantity_on_hand - (float) $balance->quantity_reserved < $quantity) {
+                    $stockKey = $item->id.':'.$owner->id.':'.$location->id;
+                    $requestedStockQuantities[$stockKey] = ($requestedStockQuantities[$stockKey] ?? 0) + $quantity;
+
+                    if (! $balance || (float) $balance->quantity_on_hand - (float) $balance->quantity_reserved < $requestedStockQuantities[$stockKey]) {
                         throw ValidationException::withMessages(["items.$index.quantity" => 'Stok yang tersedia tidak mencukupi untuk permohonan ini.']);
                     }
                 }
