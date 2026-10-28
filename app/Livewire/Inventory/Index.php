@@ -63,6 +63,7 @@ class Index extends Component
     {
         $this->authorizeManage();
         $schoolId = $this->schoolId();
+        $this->categoryName = trim($this->categoryName);
         $validated = $this->validate([
             'categoryName' => ['required', 'string', 'max:100', Rule::unique('inventory_categories', 'name')->where('school_id', $schoolId)],
             'categoryDescription' => ['nullable', 'string', 'max:2000'],
@@ -83,6 +84,9 @@ class Index extends Component
     {
         $this->authorizeManage();
         $schoolId = $this->schoolId();
+        $this->itemCode = strtoupper(trim($this->itemCode));
+        $this->itemName = trim($this->itemName);
+        $this->unit = trim($this->unit);
         $validated = $this->validate([
             'categoryId' => ['required', 'integer', Rule::exists('inventory_categories', 'id')->where('school_id', $schoolId)->whereNull('deleted_at')],
             'itemCode' => ['required', 'string', 'max:60', Rule::unique('inventory_items', 'item_code')->where('school_id', $schoolId)->whereNull('deleted_at')],
@@ -116,6 +120,7 @@ class Index extends Component
     {
         $this->authorizeManage();
         $schoolId = $this->schoolId();
+        $this->ownerDisplayName = trim($this->ownerDisplayName);
         $validated = $this->validate([
             'ownerType' => ['required', Rule::in(['school', 'gudep'])],
             'ownerScoutGroupId' => [
@@ -143,6 +148,7 @@ class Index extends Component
     {
         $this->authorizeManage();
         $schoolId = $this->schoolId();
+        $this->locationName = trim($this->locationName);
         $validated = $this->validate([
             'locationName' => ['required', 'string', 'max:120', Rule::unique('inventory_locations', 'name')->where('school_id', $schoolId)->whereNull('deleted_at')],
             'locationType' => ['required', Rule::in(['storage', 'room', 'vehicle', 'other'])],
