@@ -19,6 +19,7 @@ use App\Http\Controllers\StudentDocumentController;
 use App\Http\Middleware\SetGlobalContentContext;
 use App\Livewire\Auth\Register;
 use App\Livewire\Inventory\Index;
+use App\Livewire\Inventory\Loans;
 use App\Livewire\PeopleMerge\Index as PeopleMergeIndex;
 use App\Livewire\RoleManagement\Index as RoleManagementIndex;
 use App\Livewire\Settings\LandingContent;
@@ -220,7 +221,7 @@ Route::middleware([
             ->middleware('can:inventory.view')
             ->name('inventory.index');
 
-        Route::get('/inventaris/peminjaman', \App\Livewire\Inventory\Loans::class)
+        Route::get('/inventaris/peminjaman', Loans::class)
             ->middleware('can:inventory.view')
             ->name('inventory.loans.index');
 
