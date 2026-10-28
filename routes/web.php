@@ -8,6 +8,7 @@ use App\Http\Controllers\ActivityParticipantPortalController;
 use App\Http\Controllers\ActivityRegistrationController;
 use App\Http\Controllers\ComplaintController;
 use App\Http\Controllers\InventoryLoanDocumentPreviewController;
+use App\Http\Controllers\InventoryLoanIssuedDocumentController;
 use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\LpjReportController;
 use App\Http\Controllers\PublicContentMediaController;
@@ -231,6 +232,19 @@ Route::middleware([
             ->whereIn('type', ['handover', 'return'])
             ->middleware(['can:inventory.view', 'throttle:20,1'])
             ->name('inventory.loans.documents.preview');
+
+        Route::post('/inventaris/peminjaman/{loan}/dokumen/{type}/terbitkan', [InventoryLoanIssuedDocumentController::class, 'issue'])
+            ->whereNumber('loan')->whereIn('type', ['handover', 'return'])
+            ->middleware(['can:inventory.documents.reprint', 'throttle:10,1'])
+            ->name('inventory.loans.documents.issue');
+
+        Route::get('/inventaris/dokumen/{document}', [InventoryLoanIssuedDocumentController::class, 'show'])
+            ->whereNumber('document')->middleware('can:inventory.view')
+            ->name('inventory.loans.documents.show');
+
+        Route::post('/inventaris/dokumen/{document}/cetak-ulang', [InventoryLoanIssuedDocumentController::class, 'logReprint'])
+            ->whereNumber('document')->middleware(['can:inventory.documents.reprint', 'throttle:10,1'])
+            ->name('inventory.loans.documents.reprint');
 
         Route::view(
             '/master/tahun-ajaran',
