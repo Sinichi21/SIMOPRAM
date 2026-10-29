@@ -78,6 +78,38 @@ class InventoryLoanDocumentServiceTest extends TestCase
         app(InventoryLoanDocumentService::class)->issue($loan->id, 'handover');
     }
 
+    public function test_issued_pdf_can_be_opened_with_matching_checksum(): void
+    {
+        $loan = $this->makeLoan(true);
+        $document = app(InventoryLoanDocumentService::class)->issue($loan->id, 'handover');
+
+        $response = $this->get(route('inventory.loans.documents.show', ['document' => $document->id]));
+
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'application/pdf');
+        $this->assertSame(Storage::disk('local')->get($document->storage_path), $response->streamedContent() ?: $response->getContent());
+    }
+
+    public function test_tampered_pdf_is_rejected_before_download(): void
+    {
+        $loan = $this->makeLoan(true);
+        $document = app(InventoryLoanDocumentService::class)->issue($loan->id, 'handover');
+        Storage::disk('local')->put($document->storage_path, 'tampered');
+
+        $this->get(route('inventory.loans.documents.show', ['document' => $document->id]))
+            ->assertStatus(409);
+    }
+
+    public function test_issued_pdf_cannot_be_opened_from_another_school(): void
+    {
+        $loan = $this->makeLoan(true);
+        $document = app(InventoryLoanDocumentService::class)->issue($loan->id, 'handover');
+        app(SchoolContext::class)->set(School::factory()->create());
+
+        $this->get(route('inventory.loans.documents.show', ['document' => $document->id]))
+            ->assertNotFound();
+    }
+
     private function makeLoan(bool $handover): InventoryLoan
     {
         $category = InventoryCategory::query()->create(['name' => 'Peralatan', 'is_active' => true]);
