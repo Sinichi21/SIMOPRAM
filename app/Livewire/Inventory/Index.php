@@ -7,8 +7,8 @@ use App\Models\InventoryCategory;
 use App\Models\InventoryItem;
 use App\Models\InventoryLocation;
 use App\Models\InventoryOwner;
-use App\Models\School;
 use App\Models\InventoryStockMovement;
+use App\Models\School;
 use App\Models\ScoutGroup;
 use App\Services\Inventory\InventoryAssetService;
 use App\Services\Inventory\InventoryStockService;
@@ -54,6 +54,8 @@ class Index extends Component
     public string $assetSerialNumber = '';
 
     public string $assetNotes = '';
+
+    public array $lastCreatedAssetIds = [];
 
     public bool $showItemForm = false;
 
@@ -198,7 +200,7 @@ class Index extends Component
             ]);
         }
 
-        DB::transaction(function () use ($schoolId, $validated, $prefix, $quantity, $lastNumber): void {
+        $createdIds = DB::transaction(function () use ($schoolId, $validated, $prefix, $quantity, $lastNumber): array {
             // Lock the school row so concurrent batch registrations cannot generate overlapping codes.
             School::query()->whereKey($schoolId)->lockForUpdate()->firstOrFail();
 
@@ -218,9 +220,10 @@ class Index extends Component
                 ]);
             }
 
+            $createdIds = [];
             for ($index = 0; $index < $quantity; $index++) {
                 $number = $startNumber + $index;
-                InventoryAsset::query()->create([
+                $asset = InventoryAsset::query()->create([
                     'school_id' => $schoolId,
                     'item_id' => $validated['assetItemId'],
                     'owner_id' => $validated['assetOwnerId'],
@@ -231,13 +234,49 @@ class Index extends Component
                     'status' => 'available',
                     'notes' => $validated['assetNotes'] ?: null,
                 ]);
+                $createdIds[] = $asset->id;
             }
+
+            return $createdIds;
         }, 3);
+        $this->lastCreatedAssetIds = $createdIds;
 
         $this->reset('assetItemId', 'assetOwnerId', 'assetLocationId', 'assetCode', 'assetQuantity', 'assetLastNumber', 'assetSerialNumber', 'assetNotes', 'showAssetForm');
         $this->assetQuantity = '1';
         $this->assetLastNumber = '0';
         session()->flash('status', $quantity.' unit aset berhasil didaftarkan dengan kode otomatis.');
+    }
+
+    public function getAssetCodePreviewProperty(): array
+    {
+        $prefix = strtoupper(trim($this->assetCode));
+        if (! preg_match('/^[A-Z0-9]+(?:-[A-Z0-9]+)*$/', $prefix)) {
+            return [];
+        }
+
+        $quantity = filter_var($this->assetQuantity, FILTER_VALIDATE_INT);
+        $last = filter_var($this->assetLastNumber, FILTER_VALIDATE_INT);
+        if ($quantity === false || $quantity < 1 || $quantity > 500 || $last === false || $last < 0) {
+            return [];
+        }
+
+        $existing = InventoryAsset::withTrashed()->where('school_id', $this->schoolId())
+            ->where('asset_code', 'like', $prefix.'-%')->pluck('asset_code');
+        $highest = $existing->reduce(function (int $max, string $code) use ($prefix): int {
+            $suffix = substr($code, strlen($prefix) + 1);
+
+            return ctype_digit($suffix) ? max($max, (int) $suffix) : $max;
+        }, 0);
+        $start = max($highest, $last) + 1;
+        if ($start + $quantity - 1 > 999999999) {
+            return [];
+        }
+
+        return [
+            'first' => $prefix.'-'.str_pad((string) $start, 4, '0', STR_PAD_LEFT),
+            'last' => $prefix.'-'.str_pad((string) ($start + $quantity - 1), 4, '0', STR_PAD_LEFT),
+            'count' => $quantity,
+        ];
     }
 
     public function editAsset(int $assetId): void
