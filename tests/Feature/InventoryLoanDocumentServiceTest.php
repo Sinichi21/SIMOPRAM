@@ -27,9 +27,11 @@ class InventoryLoanDocumentServiceTest extends TestCase
     {
         parent::setUp();
 
-        app(SchoolContext::class)->set(School::factory()->create());
+        $school = School::factory()->create();
+        app(SchoolContext::class)->set($school);
         Storage::fake('local');
-        $this->actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->create(['system_role' => 'super_admin']))
+            ->withSession(['active_school_id' => $school->id]);
     }
 
     public function test_issued_handover_pdf_is_stored_with_matching_hash_and_is_idempotent(): void
@@ -104,7 +106,9 @@ class InventoryLoanDocumentServiceTest extends TestCase
     {
         $loan = $this->makeLoan(true);
         $document = app(InventoryLoanDocumentService::class)->issue($loan->id, 'handover');
-        app(SchoolContext::class)->set(School::factory()->create());
+        $otherSchool = School::factory()->create();
+        app(SchoolContext::class)->set($otherSchool);
+        $this->withSession(['active_school_id' => $otherSchool->id]);
 
         $this->get(route('inventory.loans.documents.show', ['document' => $document->id]))
             ->assertNotFound();
