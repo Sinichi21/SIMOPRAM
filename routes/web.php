@@ -247,7 +247,7 @@ Route::middleware([
             ->name('inventory.loans.documents.reprint');
 
         Route::post('/inventaris/dokumen/{document}/koreksi', [InventoryLoanIssuedDocumentController::class, 'correct'])
-            ->whereNumber('document')->middleware(['can:inventory.documents.reprint', 'throttle:5,1'])
+            ->whereNumber('document')->middleware(['can:inventory.documents.correct', 'throttle:5,1'])
             ->name('inventory.loans.documents.correct');
 
         Route::view(
