@@ -114,9 +114,9 @@
                     <flux:select.option value="thermal80">Thermal 80 mm</flux:select.option>
                 </flux:select>
                 <div class="md:col-span-2 flex gap-2">
-                    <flux:button type="submit" variant="primary" wire:click="$set('printAfterSave', false)">Simpan Unit Aset</flux:button>
+                    <flux:button type="submit" variant="primary">Simpan Unit Aset</flux:button>
                     @can('inventory.labels.print')
-                        <flux:button type="submit" variant="outline" wire:click="$set('printAfterSave', true)">Simpan + Cetak QR</flux:button>
+                        <flux:button type="button" variant="outline" wire:click="createAssetAndPrint">Simpan + Cetak QR</flux:button>
                     @endcan
                     <flux:button type="button" variant="ghost" wire:click="$set('showAssetForm', false)">Batal</flux:button>
                 </div>
