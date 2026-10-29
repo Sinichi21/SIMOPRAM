@@ -125,6 +125,52 @@ class InventoryAssetManagementTest extends TestCase
         $this->assertDatabaseCount('inventory_asset_events', 0);
     }
 
+    public function test_unavailable_asset_cannot_be_changed_manually_or_audited(): void
+    {
+        [$item, $owner, $location] = $this->makeReferences();
+        $asset = InventoryAsset::query()->create([
+            'item_id' => $item->id, 'owner_id' => $owner->id, 'location_id' => $location->id,
+            'asset_code' => 'KOMPAS-005', 'condition' => 'good', 'status' => 'borrowed',
+        ]);
+
+        Livewire::test(Index::class)
+            ->call('editAsset', $asset->id)
+            ->set('editingAssetCondition', 'damaged')
+            ->set('editingAssetReason', 'Kerusakan dilaporkan ketika aset masih dipinjam.')
+            ->call('saveAssetChange')
+            ->assertHasErrors(['editingAssetId']);
+
+        $this->assertSame('good', $asset->fresh()->condition);
+        $this->assertSame($location->id, $asset->fresh()->location_id);
+        $this->assertDatabaseCount('inventory_asset_events', 0);
+    }
+
+    public function test_asset_change_rejects_location_from_another_school(): void
+    {
+        [$item, $owner, $location] = $this->makeReferences();
+        $asset = InventoryAsset::query()->create([
+            'item_id' => $item->id, 'owner_id' => $owner->id, 'location_id' => $location->id,
+            'asset_code' => 'KOMPAS-006', 'condition' => 'good', 'status' => 'available',
+        ]);
+        $otherSchool = School::factory()->create();
+        app(SchoolContext::class)->set($otherSchool);
+        $foreignLocation = InventoryLocation::query()->create([
+            'name' => 'Gudang sekolah lain', 'location_type' => 'storage', 'is_active' => true,
+        ]);
+        app(SchoolContext::class)->set(School::query()->findOrFail($item->school_id));
+        $this->withSession(['active_school_id' => $item->school_id]);
+
+        Livewire::test(Index::class)
+            ->call('editAsset', $asset->id)
+            ->set('editingAssetLocationId', $foreignLocation->id)
+            ->set('editingAssetReason', 'Percobaan pemindahan ke lokasi sekolah lain.')
+            ->call('saveAssetChange')
+            ->assertHasErrors(['editingAssetLocationId']);
+
+        $this->assertSame($location->id, $asset->fresh()->location_id);
+        $this->assertDatabaseCount('inventory_asset_events', 0);
+    }
+
     private function makeReferences(): array
     {
         $category = InventoryCategory::query()->create(['name' => 'Alat', 'is_active' => true]);
