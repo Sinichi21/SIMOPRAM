@@ -46,7 +46,8 @@
                     <flux:select.option value="gudep">Gugus Depan (Gudep)</flux:select.option>
                 </flux:select>
                 @if ($ownerType === 'gudep')
-                    <flux:select label="Gudep" wire:model="ownerScoutGroupId" placeholder="Pilih Gudep" required>
+                    <flux:select label="Gudep" wire:model="ownerScoutGroupId" required>
+                    <flux:select.option value="">Pilih Gudep</flux:select.option>
                         @foreach ($groups as $group)<flux:select.option value="{{ $group->id }}">{{ $group->name }}</flux:select.option>@endforeach
                     </flux:select>
                 @endif
@@ -67,7 +68,8 @@
                     <flux:select.option value="vehicle">Kendaraan</flux:select.option>
                     <flux:select.option value="other">Lainnya</flux:select.option>
                 </flux:select>
-                <flux:select label="Gudep terkait (opsional)" wire:model="locationScoutGroupId" placeholder="Lokasi umum sekolah">
+                <flux:select label="Gudep terkait (opsional)" wire:model="locationScoutGroupId">
+                    <flux:select.option value="">Lokasi umum sekolah</flux:select.option>
                     @foreach ($groups as $group)<flux:select.option value="{{ $group->id }}">{{ $group->name }}</flux:select.option>@endforeach
                 </flux:select>
                 <flux:textarea label="Deskripsi (opsional)" wire:model="locationDescription" />
@@ -80,7 +82,8 @@
         <flux:card class="space-y-4">
             <flux:heading size="lg">Barang Baru</flux:heading>
             <form wire:submit="createItem" class="grid gap-4 md:grid-cols-2">
-                <flux:select label="Kategori" wire:model="categoryId" placeholder="Pilih kategori" required>
+                <flux:select label="Kategori" wire:model="categoryId" required>
+                    <flux:select.option value="">Pilih kategori</flux:select.option>
                     @foreach ($categories as $category)<flux:select.option value="{{ $category->id }}">{{ $category->name }}</flux:select.option>@endforeach
                 </flux:select>
                 <flux:input label="Kode barang" wire:model="itemCode" required maxlength="60" placeholder="CONTOH: TENDA-001" />
@@ -102,13 +105,16 @@
             <flux:heading size="lg">Catat Pergerakan Stok</flux:heading>
             <flux:callout icon="information-circle">Penyesuaian stok memasukkan jumlah akhir hasil pemeriksaan fisik, bukan nilai selisih. Catatan dan referensi dianjurkan untuk setiap transaksi.</flux:callout>
             <form wire:submit="recordMovement" class="grid gap-4 md:grid-cols-2">
-                <flux:select label="Barang" wire:model="movementItemId" placeholder="Pilih barang" required>
+                <flux:select label="Barang" wire:model="movementItemId" required>
+                    <flux:select.option value="">Pilih barang</flux:select.option>
                     @foreach ($quantityItems as $item)<flux:select.option value="{{ $item->id }}">{{ $item->item_code }} — {{ $item->name }}</flux:select.option>@endforeach
                 </flux:select>
-                <flux:select label="Pemilik" wire:model="movementOwnerId" placeholder="Pilih pemilik" required>
+                <flux:select label="Pemilik" wire:model="movementOwnerId" required>
+                    <flux:select.option value="">Pilih pemilik</flux:select.option>
                     @foreach ($owners as $owner)<flux:select.option value="{{ $owner->id }}">{{ $owner->display_name }}</flux:select.option>@endforeach
                 </flux:select>
-                <flux:select label="Lokasi" wire:model="movementLocationId" placeholder="Pilih lokasi" required>
+                <flux:select label="Lokasi" wire:model="movementLocationId" required>
+                    <flux:select.option value="">Pilih lokasi</flux:select.option>
                     @foreach ($locations as $location)<flux:select.option value="{{ $location->id }}">{{ $location->name }}</flux:select.option>@endforeach
                 </flux:select>
                 <flux:select label="Jenis pergerakan" wire:model="movementType" required>
