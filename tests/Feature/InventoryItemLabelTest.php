@@ -74,6 +74,46 @@ class InventoryItemLabelTest extends TestCase
         $this->get(route('inventory.items.labels', ['item' => $item->id]))->assertForbidden();
     }
 
+    public function test_authenticated_user_can_verify_item_from_active_school(): void
+    {
+        $item = $this->makeItem();
+        $schoolId = app(SchoolContext::class)->id();
+
+        $this->get(route('inventory.items.verify', ['school' => $schoolId, 'item' => $item->id]))
+            ->assertOk()
+            ->assertSee('Verifikasi Barang Inventaris')
+            ->assertSee('LABEL-001');
+    }
+
+    public function test_verification_rejects_other_school_id(): void
+    {
+        $item = $this->makeItem();
+        $otherSchool = School::factory()->create();
+
+        $this->get(route('inventory.items.verify', [
+            'school' => $otherSchool->id,
+            'item' => $item->id,
+        ]))->assertNotFound();
+    }
+
+    public function test_member_without_inventory_view_cannot_verify_qr(): void
+    {
+        $item = $this->makeItem();
+        $schoolId = app(SchoolContext::class)->id();
+        $member = User::factory()->create(['system_role' => null]);
+        SchoolUserMembership::query()->create([
+            'school_id' => $schoolId,
+            'user_id' => $member->id,
+            'is_active' => true,
+        ]);
+        $this->actingAs($member)->withSession(['active_school_id' => $schoolId]);
+
+        $this->get(route('inventory.items.verify', [
+            'school' => $schoolId,
+            'item' => $item->id,
+        ]))->assertForbidden();
+    }
+
     private function makeItem(): InventoryItem
     {
         $category = InventoryCategory::query()->create([
