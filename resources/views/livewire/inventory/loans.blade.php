@@ -169,14 +169,31 @@
                                         @endcan
                                     @endif
                                 @endforeach
-                                @if ($loan->documents->where('status', 'superseded')->isNotEmpty())
+                                @if ($loan->documents->isNotEmpty())
                                     <details class="mt-2 text-xs">
-                                        <summary class="cursor-pointer">Riwayat versi BA ({{ $loan->documents->where('status', 'superseded')->count() }} arsip)</summary>
-                                        @foreach ($loan->documents->where('status', 'superseded')->sortByDesc('version') as $oldDocument)
-                                            <div class="mt-1">
-                                                <a class="underline" target="_blank" rel="noopener" href="{{ route('inventory.loans.documents.show', ['document' => $oldDocument->id]) }}">{{ $oldDocument->document_number }} (versi {{ $oldDocument->version }})</a>
-                                            </div>
-                                        @endforeach
+                                        <summary class="cursor-pointer">Audit dokumen BA ({{ $loan->documents->count() }} versi)</summary>
+                                        <div class="mt-2 space-y-2">
+                                            @foreach ($loan->documents->sortByDesc('id') as $historyDocument)
+                                                <div class="rounded border p-2" wire:key="ba-history-{{ $historyDocument->id }}">
+                                                    <a class="underline" target="_blank" rel="noopener" href="{{ route('inventory.loans.documents.show', ['document' => $historyDocument->id]) }}">{{ $historyDocument->document_number }} — v{{ $historyDocument->version }}</a>
+                                                    <span>({{ $historyDocument->status === 'issued' ? 'Aktif' : 'Arsip' }})</span>
+                                                    <div>Jenis: {{ $historyDocument->document_type === 'handover' ? 'Serah-terima' : 'Pengembalian' }}</div>
+                                                    <div>Penerbit: {{ $historyDocument->issuer?->name ?? 'Akun tidak tersedia' }} | {{ $historyDocument->issued_at?->format('d/m/Y H:i') ?? '-' }}</div>
+                                                    @if ($historyDocument->correction_reason)
+                                                        <div>Alasan koreksi: {{ $historyDocument->correction_reason }}</div>
+                                                    @endif
+                                                    <div>SHA-256: <span class="font-mono break-all">{{ $historyDocument->sha256 ?? '-' }}</span></div>
+                                                    @if ($historyDocument->prints->isNotEmpty())
+                                                        <details class="mt-1">
+                                                            <summary class="cursor-pointer">Catatan cetak ulang ({{ $historyDocument->prints->count() }})</summary>
+                                                            @foreach ($historyDocument->prints->sortByDesc('printed_at') as $print)
+                                                                <div class="mt-1"> {{ $print->printed_at?->format('d/m/Y H:i') ?? '-' }} — {{ $print->reason ?: '-' }}</div>
+                                                            @endforeach
+                                                        </details>
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                        </div>
                                     </details>
                                 @endif
                                 @if ($loan->events->contains('event_type', 'handover'))
