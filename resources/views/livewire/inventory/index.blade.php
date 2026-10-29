@@ -213,6 +213,9 @@
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div><flux:heading size="lg">Daftar Barang</flux:heading><flux:text size="sm" class="text-zinc-500">Barang individual dapat dibuka untuk melihat kode unik setiap unit tanpa tabel terpisah.</flux:text></div>
             <div class="flex gap-2">
+                @can('inventory.labels.print')
+                    <a href="{{ route('inventory.assets.batch-labels', ['scope' => 'all', 'format' => 'a4']) }}" target="_blank" rel="noopener" class="rounded border px-3 py-2 text-sm">Cetak QR Semua Unit (A4)</a>
+                @endcan
                 <a href="{{ route('inventory.items.scan') }}" class="rounded border px-3 py-2 text-sm">Pindai QR</a>
                 @can('inventory.stock.manage')<flux:button icon="arrows-right-left" variant="outline" wire:click="$set('showMovementForm', true)">Pergerakan Stok</flux:button>@endcan
                 <div class="w-full sm:w-72"><flux:input icon="magnifying-glass" placeholder="Cari nama atau kode barang..." wire:model.live.debounce.300ms="search" /></div>
@@ -230,7 +233,7 @@
                             <td class="px-3 py-3">{{ $item->tracking_type === 'individual' ? 'Per unit' : 'Kuantitas' }}</td>
                             <td class="px-3 py-3 text-right tabular-nums">{{ $item->tracking_type === 'individual' ? number_format($item->assets_count).' aset' : number_format((float) ($item->total_quantity ?? 0), 3).' '.$item->unit }}</td>
                             <td class="px-3 py-3">@if ($item->is_active)<flux:badge color="green">Aktif</flux:badge>@else<flux:badge color="zinc">Nonaktif</flux:badge>@endif</td>
-                            <td class="px-3 py-3">@can('inventory.labels.print')<a href="{{ route('inventory.items.labels', ['item' => $item->id, 'format' => 'a4']) }}" target="_blank" rel="noopener" class="text-xs underline">Cetak A4</a> <a href="{{ route('inventory.items.labels', ['item' => $item->id, 'format' => 'thermal58']) }}" target="_blank" rel="noopener" class="text-xs underline">58 mm</a> <a href="{{ route('inventory.items.labels', ['item' => $item->id, 'format' => 'thermal80']) }}" target="_blank" rel="noopener" class="text-xs underline">80 mm</a>@endcan</td>
+                            <td class="px-3 py-3">@can('inventory.labels.print')@if ($item->tracking_type === 'individual')<a href="{{ route('inventory.assets.batch-labels', ['scope' => 'item', 'item_id' => $item->id, 'format' => 'a4']) }}" target="_blank" rel="noopener" class="text-xs underline">Cetak semua unit grup</a> @else<a href="{{ route('inventory.items.labels', ['item' => $item->id, 'format' => 'a4']) }}" target="_blank" rel="noopener" class="text-xs underline">Cetak A4</a> <a href="{{ route('inventory.items.labels', ['item' => $item->id, 'format' => 'thermal58']) }}" target="_blank" rel="noopener" class="text-xs underline">58 mm</a> <a href="{{ route('inventory.items.labels', ['item' => $item->id, 'format' => 'thermal80']) }}" target="_blank" rel="noopener" class="text-xs underline">80 mm</a>@endif @endcan</td>
                         </tr>
                         @if ($item->tracking_type === 'individual' && $expandedItemId === $item->id)
                             <tr wire:key="inventory-item-units-{{ $item->id }}" class="border-b bg-zinc-50/50 dark:bg-zinc-800/30">
