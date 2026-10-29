@@ -12,6 +12,85 @@ use Illuminate\Validation\ValidationException;
 
 class InventoryLoanDocumentService
 {
+    public function correct(int $documentId, string $reason): InventoryLoanDocument
+    {
+        $reason = trim($reason);
+        if (mb_strlen($reason) < 10 || mb_strlen($reason) > 2000) {
+            throw ValidationException::withMessages(['reason' => 'Alasan koreksi wajib 10–2000 karakter.']);
+        }
+
+        $schoolId = app(SchoolContext::class)->id();
+        abort_unless($schoolId, 409, 'Pilih sekolah aktif terlebih dahulu.');
+
+        return DB::transaction(function () use ($documentId, $reason, $schoolId): InventoryLoanDocument {
+            $original = InventoryLoanDocument::query()->where('school_id', $schoolId)->findOrFail($documentId);
+            $loan = InventoryLoan::query()->where('school_id', $schoolId)
+                ->lockForUpdate()->with(['items.item', 'items.owner', 'items.location', 'events'])
+                ->findOrFail($original->loan_id);
+
+            $current = InventoryLoanDocument::query()
+                ->where('school_id', $schoolId)->where('loan_id', $loan->id)
+                ->where('document_type', $original->document_type)->where('status', 'issued')
+                ->lockForUpdate()->first();
+
+            if (! $current || $current->id !== $original->id) {
+                throw ValidationException::withMessages(['document' => 'Hanya versi aktif terbaru yang dapat dikoreksi.']);
+            }
+
+            $disk = Storage::disk('local');
+            if (! $current->storage_path || ! $disk->exists($current->storage_path)
+                || ! hash_equals((string) $current->sha256, hash('sha256', $disk->get($current->storage_path)))) {
+                throw ValidationException::withMessages(['document' => 'Berkas versi sebelumnya tidak valid.']);
+            }
+
+            $events = $loan->events->where('event_type', $current->document_type)->sortBy('occurred_at');
+            if ($events->isEmpty()) {
+                throw ValidationException::withMessages(['document' => 'Tidak ada transaksi untuk berita acara.']);
+            }
+
+            $version = $current->version + 1;
+            $documentNumber = $current->document_number.'-REV'.$version;
+            $pdf = Pdf::loadView('inventory.documents.preview', [
+                'loan' => $loan,
+                'type' => $current->document_type,
+                'events' => $events,
+                'issued' => true,
+                'documentNumber' => $documentNumber,
+                'correctionReason' => $reason,
+            ])->setPaper('a4')->output();
+
+            $path = sprintf('inventory/%d/loan-documents/%d-%s-v%d.pdf', $schoolId, $loan->id, $current->document_type, $version);
+            if ($disk->exists($path)) {
+                throw ValidationException::withMessages(['document' => 'Berkas versi koreksi sudah ada. Periksa secara manual.']);
+            }
+            if (! $disk->put($path, $pdf)) {
+                throw ValidationException::withMessages(['document' => 'Gagal menyimpan berkas koreksi.']);
+            }
+
+            try {
+                $new = InventoryLoanDocument::query()->create([
+                    'school_id' => $schoolId,
+                    'loan_id' => $loan->id,
+                    'document_type' => $current->document_type,
+                    'version' => $version,
+                    'document_number' => $documentNumber,
+                    'storage_path' => $path,
+                    'sha256' => hash('sha256', $pdf),
+                    'status' => 'issued',
+                    'issued_by' => auth()->id(),
+                    'issued_at' => now(),
+                    'correction_reason' => $reason,
+                ]);
+                $current->update(['status' => 'superseded']);
+
+                return $new;
+            } catch (\Throwable $exception) {
+                $disk->delete($path);
+                throw $exception;
+            }
+        }, 3);
+    }
+
     public function issue(int $loanId, string $type): InventoryLoanDocument
     {
         if (! in_array($type, ['handover', 'return'], true)) {
