@@ -28,6 +28,12 @@ class InventoryAssetService
 
         return DB::transaction(function () use ($assetId, $locationId, $condition, $reason, $schoolId): InventoryAsset {
             $asset = InventoryAsset::query()->where('school_id', $schoolId)->lockForUpdate()->findOrFail($assetId);
+            if ($asset->status !== 'available') {
+                throw ValidationException::withMessages([
+                    'editingAssetId' => 'Aset yang sedang tidak tersedia harus diproses melalui alur peminjaman atau pengembalian.',
+                ]);
+            }
+
             $location = InventoryLocation::query()->where('school_id', $schoolId)->where('is_active', true)->findOrFail($locationId);
 
             if ($asset->location_id === $location->id && $asset->condition === $condition) {
