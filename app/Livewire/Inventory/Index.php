@@ -57,6 +57,8 @@ class Index extends Component
 
     public array $lastCreatedAssetIds = [];
 
+    public ?int $expandedItemId = null;
+
     public bool $showItemForm = false;
 
     public bool $showOwnerForm = false;
@@ -247,6 +249,26 @@ class Index extends Component
         session()->flash('status', $quantity.' unit aset berhasil didaftarkan dengan kode otomatis.');
     }
 
+    public function toggleItemUnits(int $itemId): void
+    {
+        $this->authorizeAccess();
+        InventoryItem::query()->where('school_id', $this->schoolId())
+            ->where('tracking_type', 'individual')->findOrFail($itemId);
+        $this->expandedItemId = $this->expandedItemId === $itemId ? null : $itemId;
+    }
+
+    public function addUnitsToItem(int $itemId): void
+    {
+        $this->authorizeManage();
+        $item = InventoryItem::query()->where('school_id', $this->schoolId())
+            ->where('tracking_type', 'individual')->where('is_active', true)->findOrFail($itemId);
+        $this->assetItemId = $item->id;
+        $this->assetCode = strtoupper(preg_replace('/[^A-Za-z0-9-]/', '', $item->item_code));
+        $this->assetLastNumber = '0';
+        $this->assetQuantity = '1';
+        $this->showAssetForm = true;
+    }
+
     public function getAssetCodePreviewProperty(): array
     {
         $prefix = strtoupper(trim($this->assetCode));
@@ -411,7 +433,11 @@ class Index extends Component
         $owners = InventoryOwner::query()->where('school_id', $schoolId)->where('is_active', true)->with('scoutGroup')->orderBy('display_name')->get();
         $locations = InventoryLocation::query()->where('school_id', $schoolId)->where('is_active', true)->with('scoutGroup')->orderBy('name')->get();
         $individualItems = InventoryItem::query()->where('school_id', $schoolId)->where('is_active', true)->where('tracking_type', 'individual')->orderBy('name')->get();
-        $assets = InventoryAsset::query()->where('school_id', $schoolId)->with(['item:id,name,item_code', 'owner:id,display_name', 'location:id,name', 'events.actor:id,name', 'events.fromLocation:id,name', 'events.toLocation:id,name'])->latest('id')->limit(30)->get();
+        $assets = $this->expandedItemId
+            ? InventoryAsset::query()->where('school_id', $schoolId)->where('item_id', $this->expandedItemId)
+                ->with(['owner:id,display_name', 'location:id,name', 'events.actor:id,name', 'events.fromLocation:id,name', 'events.toLocation:id,name'])
+                ->orderBy('asset_code')->limit(500)->get()
+            : collect();
         $quantityItems = InventoryItem::query()->where('school_id', $schoolId)->where('is_active', true)->where('tracking_type', 'quantity')->orderBy('name')->get();
 
         $items = InventoryItem::query()
