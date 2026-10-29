@@ -187,7 +187,7 @@
                                                         <details class="mt-1">
                                                             <summary class="cursor-pointer">Catatan cetak ulang ({{ $historyDocument->prints->count() }})</summary>
                                                             @foreach ($historyDocument->prints->sortByDesc('printed_at') as $print)
-                                                                <div class="mt-1"> {{ $print->printed_at?->format('d/m/Y H:i') ?? '-' }} — {{ $print->reason ?: '-' }}</div>
+                                                                <div class="mt-1"> {{ $print->printed_at?->format('d/m/Y H:i') ?? '-' }} — {{ $print->printer?->name ?? 'Akun tidak tersedia' }} — {{ $print->reason ?: '-' }}</div>
                                                             @endforeach
                                                         </details>
                                                     @endif
