@@ -46,7 +46,8 @@
             function navigate(raw) {
                 try {
                     const url = new URL(raw.trim());
-                    if (url.origin !== window.location.origin || !/^\\/inventaris\\/verifikasi\\/\\d+\\/\\d+\\/?$/.test(url.pathname) || url.search || url.hash) {
+                    const segments = url.pathname.split('/').filter(Boolean);
+                    if (url.origin !== window.location.origin || segments.length !== 4 || segments[0] !== 'inventaris' || segments[1] !== 'verifikasi' || !/^[0-9]+$/.test(segments[2]) || !/^[0-9]+$/.test(segments[3]) || url.search || url.hash) {
                         throw new Error('QR bukan tautan verifikasi inventaris SIMPRAM pada server ini.');
                     }
                     stop();
