@@ -45,6 +45,10 @@ class Index extends Component
 
     public string $assetCode = '';
 
+    public string $assetQuantity = '1';
+
+    public string $assetLastNumber = '0';
+
     public string $assetSerialNumber = '';
 
     public string $assetNotes = '';
@@ -174,27 +178,64 @@ class Index extends Component
 
         $validated = $this->validate([
             'assetItemId' => ['required', 'integer', Rule::exists('inventory_items', 'id')->where('school_id', $schoolId)->where('tracking_type', 'individual')->whereNull('deleted_at')],
-            'assetOwnerId' => ['required', 'integer', Rule::exists('inventory_owners', 'id')->where('school_id', $schoolId)->whereNull('deleted_at')],
-            'assetLocationId' => ['required', 'integer', Rule::exists('inventory_locations', 'id')->where('school_id', $schoolId)->whereNull('deleted_at')],
-            'assetCode' => ['required', 'string', 'max:80', Rule::unique('inventory_assets', 'asset_code')->where('school_id', $schoolId)->whereNull('deleted_at')],
+            'assetOwnerId' => ['required', 'integer', Rule::exists('inventory_owners', 'id')->where('school_id', $schoolId)->where('is_active', true)->whereNull('deleted_at')],
+            'assetLocationId' => ['required', 'integer', Rule::exists('inventory_locations', 'id')->where('school_id', $schoolId)->where('is_active', true)->whereNull('deleted_at')],
+            'assetCode' => ['required', 'string', 'max:65', 'regex:/^[A-Z0-9]+(?:-[A-Z0-9]+)*$/'],
+            'assetQuantity' => ['required', 'integer', 'min:1', 'max:500'],
+            'assetLastNumber' => ['required', 'integer', 'min:0', 'max:999999999'],
             'assetSerialNumber' => ['nullable', 'string', 'max:120'],
             'assetNotes' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        InventoryAsset::query()->create([
-            'school_id' => $schoolId,
-            'item_id' => $validated['assetItemId'],
-            'owner_id' => $validated['assetOwnerId'],
-            'location_id' => $validated['assetLocationId'],
-            'asset_code' => $validated['assetCode'],
-            'serial_number' => $validated['assetSerialNumber'] ?: null,
-            'condition' => 'good',
-            'status' => 'available',
-            'notes' => $validated['assetNotes'] ?: null,
-        ]);
+        $quantity = (int) $validated['assetQuantity'];
+        $lastNumber = (int) $validated['assetLastNumber'];
+        $prefix = $validated['assetCode'];
+        if ($lastNumber + $quantity > 999999999) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'assetQuantity' => 'Nomor urut melebihi batas yang diperbolehkan.',
+            ]);
+        }
 
-        $this->reset('assetItemId', 'assetOwnerId', 'assetLocationId', 'assetCode', 'assetSerialNumber', 'assetNotes', 'showAssetForm');
-        session()->flash('status', 'Unit aset berhasil didaftarkan.');
+        DB::transaction(function () use ($schoolId, $validated, $prefix, $quantity, $lastNumber): void {
+            // Lock the school row so concurrent batch registrations cannot generate overlapping codes.
+            \App\Models\School::query()->whereKey($schoolId)->lockForUpdate()->firstOrFail();
+
+            $existingCodes = InventoryAsset::withTrashed()->where('school_id', $schoolId)
+                ->where('asset_code', 'like', $prefix.'-%')
+                ->pluck('asset_code');
+            $highest = $existingCodes->reduce(function (int $max, string $code) use ($prefix): int {
+                $suffix = substr($code, strlen($prefix) + 1);
+
+                return ctype_digit($suffix) ? max($max, (int) $suffix) : $max;
+            }, 0);
+            $startNumber = max($highest, $lastNumber) + 1;
+
+            if ($startNumber + $quantity - 1 > 999999999) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'assetQuantity' => 'Rentang nomor urut telah mencapai batas.',
+                ]);
+            }
+
+            for ($index = 0; $index < $quantity; $index++) {
+                $number = $startNumber + $index;
+                InventoryAsset::query()->create([
+                    'school_id' => $schoolId,
+                    'item_id' => $validated['assetItemId'],
+                    'owner_id' => $validated['assetOwnerId'],
+                    'location_id' => $validated['assetLocationId'],
+                    'asset_code' => $prefix.'-'.str_pad((string) $number, 4, '0', STR_PAD_LEFT),
+                    'serial_number' => $quantity === 1 ? ($validated['assetSerialNumber'] ?: null) : null,
+                    'condition' => 'good',
+                    'status' => 'available',
+                    'notes' => $validated['assetNotes'] ?: null,
+                ]);
+            }
+        }, 3);
+
+        $this->reset('assetItemId', 'assetOwnerId', 'assetLocationId', 'assetCode', 'assetQuantity', 'assetLastNumber', 'assetSerialNumber', 'assetNotes', 'showAssetForm');
+        $this->assetQuantity = '1';
+        $this->assetLastNumber = '0';
+        session()->flash('status', $quantity.' unit aset berhasil didaftarkan dengan kode otomatis.');
     }
 
     public function editAsset(int $assetId): void
