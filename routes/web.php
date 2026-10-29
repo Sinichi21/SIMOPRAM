@@ -7,6 +7,7 @@ use App\Http\Controllers\ActivityLogExportController;
 use App\Http\Controllers\ActivityParticipantPortalController;
 use App\Http\Controllers\ActivityRegistrationController;
 use App\Http\Controllers\ComplaintController;
+use App\Http\Controllers\InventoryItemLabelController;
 use App\Http\Controllers\InventoryLoanDocumentPreviewController;
 use App\Http\Controllers\InventoryLoanIssuedDocumentController;
 use App\Http\Controllers\LandingPageController;
@@ -223,7 +224,7 @@ Route::middleware([
             ->middleware('can:inventory.view')
             ->name('inventory.index');
 
-        Route::get('/inventaris/barang/{item}/label', \App\Http\Controllers\InventoryItemLabelController::class)
+        Route::get('/inventaris/barang/{item}/label', InventoryItemLabelController::class)
             ->whereNumber('item')->middleware(['can:inventory.labels.print', 'throttle:30,1'])
             ->name('inventory.items.labels');
 
