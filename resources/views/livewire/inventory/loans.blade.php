@@ -32,17 +32,20 @@
                 <flux:input label="Organisasi (opsional)" wire:model="borrowerOrganization" />
                 <flux:input label="Kontak (opsional)" wire:model="borrowerContact" />
                 <flux:textarea label="Keperluan (opsional)" wire:model="purpose" />
-                <flux:select label="Barang" wire:model="itemId" placeholder="Pilih barang" required>
+                <flux:select label="Barang" wire:model="itemId" required>
+                    <flux:select.option value="">Pilih barang</flux:select.option>
                     @foreach ($items as $item)
                         <flux:select.option value="{{ $item->id }}">{{ $item->item_code }} — {{ $item->name }}</flux:select.option>
                     @endforeach
                 </flux:select>
-                <flux:select label="Pemilik" wire:model="ownerId" placeholder="Pilih pemilik" required>
+                <flux:select label="Pemilik" wire:model="ownerId" required>
+                    <flux:select.option value="">Pilih pemilik</flux:select.option>
                     @foreach ($owners as $owner)
                         <flux:select.option value="{{ $owner->id }}">{{ $owner->display_name }}</flux:select.option>
                     @endforeach
                 </flux:select>
-                <flux:select label="Lokasi" wire:model="locationId" placeholder="Pilih lokasi" required>
+                <flux:select label="Lokasi" wire:model="locationId" required>
+                    <flux:select.option value="">Pilih lokasi</flux:select.option>
                     @foreach ($locations as $location)
                         <flux:select.option value="{{ $location->id }}">{{ $location->name }}</flux:select.option>
                     @endforeach
@@ -60,7 +63,8 @@
         <flux:card class="space-y-4">
             <flux:heading size="lg">{{ $transactionMode === 'handover' ? 'Catat Serah-Terima' : 'Catat Pengembalian' }} — {{ $activeLoan->loan_number }}</flux:heading>
             <form wire:submit="saveTransaction" class="grid gap-4 md:grid-cols-2">
-                <flux:select label="Barang" wire:model="activeLoanItemId" placeholder="Pilih barang dalam peminjaman" required>
+                <flux:select label="Barang" wire:model="activeLoanItemId" required>
+                    <flux:select.option value="">Pilih barang dalam peminjaman</flux:select.option>
                     @foreach ($activeLoan->items as $line)
                         <flux:select.option value="{{ $line->id }}">{{ $line->item?->name }} — diminta {{ $line->quantity_requested }}, diserahkan {{ $line->quantity_handed_over }}, kembali {{ $line->quantity_returned }}</flux:select.option>
                     @endforeach
