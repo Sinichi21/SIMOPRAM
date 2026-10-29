@@ -38,6 +38,20 @@
         </flux:card>
     @endif
 
+    @if (count($lastCreatedAssetIds) > 0)
+        <flux:card class="space-y-3">
+            <flux:heading size="lg">Label QR Aset Baru</flux:heading>
+            <flux:text size="sm">{{ count($lastCreatedAssetIds) }} unit berhasil didaftarkan. Cetak label QR per unit atau dalam satu lembar.</flux:text>
+            @can('inventory.labels.print')
+                <div class="flex flex-wrap gap-2">
+                    @foreach (['a4' => 'Cetak A4', 'thermal58' => 'Thermal 58 mm', 'thermal80' => 'Thermal 80 mm'] as $format => $label)
+                        <a class="rounded border px-3 py-2 text-sm underline" target="_blank" rel="noopener" href="{{ route('inventory.assets.batch-labels', ['format' => $format, 'ids' => implode(',', $lastCreatedAssetIds)]) }}">{{ $label }}</a>
+                    @endforeach
+                </div>
+            @endcan
+        </flux:card>
+    @endif
+
     @if ($editingAssetId)
         <flux:card class="space-y-3">
             <flux:heading size="lg">Perbarui Lokasi / Kondisi Aset</flux:heading>
@@ -73,9 +87,16 @@
                         <flux:select.option value="{{ $individualItem->id }}">{{ $individualItem->name }} ({{ $individualItem->item_code }})</flux:select.option>
                     @endforeach
                 </flux:select>
-                <flux:input label="Format / awalan kode aset" wire:model="assetCode" required maxlength="65" placeholder="KOMPAS" description="Contoh: KOMPAS akan menghasilkan KOMPAS-0001, KOMPAS-0002, dst." />
-                <flux:input label="Jumlah unit yang didaftarkan" type="number" min="1" max="500" step="1" wire:model="assetQuantity" required />
-                <flux:input label="Nomor urut terakhir (opsional, isi 0 jika baru)" type="number" min="0" max="999999999" step="1" wire:model="assetLastNumber" required />
+                <flux:input label="Format / awalan kode aset" wire:model.live.debounce.400ms="assetCode" required maxlength="65" placeholder="KOMPAS" description="Contoh: KOMPAS akan menghasilkan KOMPAS-0001, KOMPAS-0002, dst." />
+                <flux:input label="Jumlah unit yang didaftarkan" type="number" min="1" max="500" step="1" wire:model.live.debounce.400ms="assetQuantity" required />
+                <flux:input label="Nomor urut terakhir (opsional, isi 0 jika baru)" type="number" min="0" max="999999999" step="1" wire:model.live.debounce.400ms="assetLastNumber" required />
+                @if ($this->assetCodePreview)
+                    <div class="md:col-span-2 rounded-lg border p-3 text-sm">
+                        <div class="font-medium">Pratinjau {{ $this->assetCodePreview['count'] }} kode aset</div>
+                        <div class="font-mono">{{ $this->assetCodePreview['first'] }} → {{ $this->assetCodePreview['last'] }}</div>
+                        <div class="mt-1 text-xs text-zinc-500">Nomor akhir akan dihitung ulang saat disimpan untuk menghindari benturan.</div>
+                    </div>
+                @endif
                 <div class="md:col-span-2 text-xs text-zinc-500">Sistem melanjutkan nomor terbesar yang sudah ada pada sekolah ini atau nomor terakhir yang Anda masukkan, mana yang lebih tinggi. Nomor seri manual hanya disimpan untuk pendaftaran satu unit.</div>
                 <flux:select label="Pemilik" wire:model="assetOwnerId" required>
                     <flux:select.option value="">Pilih pemilik</flux:select.option>
