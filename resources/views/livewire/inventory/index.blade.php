@@ -9,6 +9,7 @@
                 <flux:button variant="outline" icon="tag" wire:click="$set('showCategoryForm', true)">Kategori</flux:button>
                 <flux:button variant="outline" icon="users" wire:click="$set('showOwnerForm', true)">Pemilik</flux:button>
                 <flux:button variant="outline" icon="map-pin" wire:click="$set('showLocationForm', true)">Lokasi</flux:button>
+                <flux:button variant="outline" icon="qr-code" wire:click="$set('showAssetForm', true)">Tambah Unit Aset</flux:button>
                 <flux:button variant="primary" icon="plus" wire:click="$set('showItemForm', true)">Tambah Barang</flux:button>
             </div>
         @endcan
@@ -33,6 +34,35 @@
                 <flux:input label="Nama kategori" wire:model="categoryName" required maxlength="100" />
                 <flux:textarea label="Deskripsi (opsional)" wire:model="categoryDescription" />
                 <div class="flex gap-2"><flux:button type="submit" variant="primary">Simpan Kategori</flux:button><flux:button type="button" variant="ghost" wire:click="$set('showCategoryForm', false)">Batal</flux:button></div>
+            </form>
+        </flux:card>
+    @endif
+
+    @if ($showAssetForm)
+        <flux:card class="space-y-4">
+            <flux:heading size="lg">Daftarkan Unit Aset Individual</flux:heading>
+            <form wire:submit="createAsset" class="grid gap-4 md:grid-cols-2">
+                <flux:select label="Jenis barang" wire:model="assetItemId" required>
+                    <flux:select.option value="">Pilih barang individual</flux:select.option>
+                    @foreach ($individualItems as $individualItem)
+                        <flux:select.option value="{{ $individualItem->id }}">{{ $individualItem->name }} ({{ $individualItem->item_code }})</flux:select.option>
+                    @endforeach
+                </flux:select>
+                <flux:input label="Kode unik aset" wire:model="assetCode" required maxlength="80" placeholder="KOMPAS-001" />
+                <flux:select label="Pemilik" wire:model="assetOwnerId" required>
+                    <flux:select.option value="">Pilih pemilik</flux:select.option>
+                    @foreach ($owners as $owner)<flux:select.option value="{{ $owner->id }}">{{ $owner->display_name }}</flux:select.option>@endforeach
+                </flux:select>
+                <flux:select label="Lokasi" wire:model="assetLocationId" required>
+                    <flux:select.option value="">Pilih lokasi</flux:select.option>
+                    @foreach ($locations as $location)<flux:select.option value="{{ $location->id }}">{{ $location->name }}</flux:select.option>@endforeach
+                </flux:select>
+                <flux:input label="Nomor seri (opsional)" wire:model="assetSerialNumber" maxlength="120" />
+                <flux:textarea label="Catatan (opsional)" wire:model="assetNotes" />
+                <div class="md:col-span-2 flex gap-2">
+                    <flux:button type="submit" variant="primary">Simpan Unit Aset</flux:button>
+                    <flux:button type="button" variant="ghost" wire:click="$set('showAssetForm', false)">Batal</flux:button>
+                </div>
             </form>
         </flux:card>
     @endif
@@ -160,6 +190,32 @@
             </table>
         </div>
         <div>{{ $items->links() }}</div>
+    </flux:card>
+
+    <flux:card class="space-y-3">
+        <flux:heading size="lg">Unit Aset Individual Terbaru</flux:heading>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead><tr class="border-b text-left"><th class="px-3 py-2">Kode aset</th><th class="px-3 py-2">Barang</th><th class="px-3 py-2">Pemilik / Lokasi</th><th class="px-3 py-2">Kondisi / Status</th><th class="px-3 py-2">Label QR</th></tr></thead>
+                <tbody>
+                    @forelse ($assets as $asset)
+                        <tr wire:key="inventory-asset-{{ $asset->id }}" class="border-b last:border-0">
+                            <td class="px-3 py-2 font-mono">{{ $asset->asset_code }}</td>
+                            <td class="px-3 py-2">{{ $asset->item?->name ?? '—' }}<div class="text-xs text-zinc-500">{{ $asset->serial_number }}</div></td>
+                            <td class="px-3 py-2">{{ $asset->owner?->display_name ?? '—' }}<div class="text-xs text-zinc-500">{{ $asset->location?->name }}</div></td>
+                            <td class="px-3 py-2">{{ $asset->condition }} / {{ $asset->status }}</td>
+                            <td class="px-3 py-2">@can('inventory.labels.print')
+                                <a class="underline text-xs" target="_blank" rel="noopener" href="{{ route('inventory.assets.labels', ['asset' => $asset->id, 'format' => 'a4']) }}">A4</a>
+                                <a class="underline text-xs" target="_blank" rel="noopener" href="{{ route('inventory.assets.labels', ['asset' => $asset->id, 'format' => 'thermal58']) }}">58 mm</a>
+                                <a class="underline text-xs" target="_blank" rel="noopener" href="{{ route('inventory.assets.labels', ['asset' => $asset->id, 'format' => 'thermal80']) }}">80 mm</a>
+                            @endcan</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="5" class="px-3 py-6 text-center text-zinc-500">Belum ada unit aset individual.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
     </flux:card>
 
     <div class="grid gap-4 xl:grid-cols-2">
