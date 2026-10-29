@@ -27,7 +27,9 @@
     <h1>BERITA ACARA {{ $type === 'handover' ? 'SERAH-TERIMA' : 'PENGEMBALIAN' }} INVENTARIS</h1>
     <div class="subtitle">Referensi peminjaman: {{ $loan->loan_number }}</div>
     @if (! empty($correctionReason))
-        <p><strong>BA koreksi:</strong> {{ $correctionReason }}</p>
+        <p><strong>Koreksi dari BA:</strong> {{ $previousDocumentNumber ?? '-' }}</p>
+        <p><strong>Alasan koreksi:</strong> {{ $correctionReason }}</p>
+        <p><strong>Diterbitkan oleh:</strong> {{ $correctionIssuedBy ?? '-' }} | <strong>Waktu penerbitan:</strong> {{ $correctionIssuedAt ?? '-' }}</p>
     @endif
     <p><strong>Nama peminjam:</strong> {{ $loan->borrower_name }}</p>
     <p><strong>Instansi/organisasi:</strong> {{ $loan->borrower_organization ?: '-' }}</p>
