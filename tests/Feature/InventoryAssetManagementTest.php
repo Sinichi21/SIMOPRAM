@@ -114,6 +114,29 @@ class InventoryAssetManagementTest extends TestCase
         );
     }
 
+    public function test_save_and_print_creates_assets_and_redirects_to_their_labels(): void
+    {
+        [$item, $owner, $location] = $this->makeReferences();
+
+        $component = Livewire::test(Index::class)
+            ->set('assetItemId', $item->id)
+            ->set('assetOwnerId', $owner->id)
+            ->set('assetLocationId', $location->id)
+            ->set('assetCode', 'TENDA')
+            ->set('assetQuantity', '2')
+            ->set('labelPrintFormat', 'thermal58')
+            ->call('createAssetAndPrint')
+            ->assertHasNoErrors();
+
+        $ids = $component->get('lastCreatedAssetIds');
+        $this->assertCount(2, $ids);
+        $component->assertRedirect(route('inventory.assets.batch-labels', [
+            'format' => 'thermal58',
+            'ids' => implode(',', $ids),
+        ]));
+        $this->assertDatabaseCount('inventory_assets', 2);
+    }
+
     public function test_cannot_register_asset_against_other_school_owner(): void
     {
         [$item, , $location] = $this->makeReferences();
