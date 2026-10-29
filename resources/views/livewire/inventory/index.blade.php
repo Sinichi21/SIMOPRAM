@@ -211,7 +211,7 @@
 
     <flux:card class="space-y-4">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div><flux:heading size="lg">Daftar Barang</flux:heading><flux:text size="sm" class="text-zinc-500">Saldo kuantitas dan jumlah aset individual ditampilkan terpisah.</flux:text></div>
+            <div><flux:heading size="lg">Daftar Barang</flux:heading><flux:text size="sm" class="text-zinc-500">Barang individual dapat dibuka untuk melihat kode unik setiap unit tanpa tabel terpisah.</flux:text></div>
             <div class="flex gap-2">
                 <a href="{{ route('inventory.items.scan') }}" class="rounded border px-3 py-2 text-sm">Pindai QR</a>
                 @can('inventory.stock.manage')<flux:button icon="arrows-right-left" variant="outline" wire:click="$set('showMovementForm', true)">Pergerakan Stok</flux:button>@endcan
@@ -225,24 +225,23 @@
                     @forelse ($items as $item)
                         <tr wire:key="inventory-item-{{ $item->id }}" class="border-b last:border-0">
                             <td class="px-3 py-3 font-mono">{{ $item->item_code }}</td>
-                            <td class="px-3 py-3"><div class="font-medium">{{ $item->name }}</div>@if ($item->description)<div class="mt-1 max-w-md text-xs text-zinc-500">{{ $item->description }}</div>@endif</td>
+                            <td class="px-3 py-3"><div class="font-medium">@if ($item->tracking_type === 'individual')<button type="button" class="text-left underline" wire:click="toggleItemUnits({{ $item->id }})">{{ $expandedItemId === $item->id ? '▾' : '▸' }} {{ $item->name }}</button>@else{{ $item->name }}@endif</div>@if ($item->description)<div class="mt-1 max-w-md text-xs text-zinc-500">{{ $item->description }}</div>@endif</td>
                             <td class="px-3 py-3">{{ $item->category?->name ?? '—' }}</td>
                             <td class="px-3 py-3">{{ $item->tracking_type === 'individual' ? 'Per unit' : 'Kuantitas' }}</td>
                             <td class="px-3 py-3 text-right tabular-nums">{{ $item->tracking_type === 'individual' ? number_format($item->assets_count).' aset' : number_format((float) ($item->total_quantity ?? 0), 3).' '.$item->unit }}</td>
                             <td class="px-3 py-3">@if ($item->is_active)<flux:badge color="green">Aktif</flux:badge>@else<flux:badge color="zinc">Nonaktif</flux:badge>@endif</td>
                             <td class="px-3 py-3">@can('inventory.labels.print')<a href="{{ route('inventory.items.labels', ['item' => $item->id, 'format' => 'a4']) }}" target="_blank" rel="noopener" class="text-xs underline">Cetak A4</a> <a href="{{ route('inventory.items.labels', ['item' => $item->id, 'format' => 'thermal58']) }}" target="_blank" rel="noopener" class="text-xs underline">58 mm</a> <a href="{{ route('inventory.items.labels', ['item' => $item->id, 'format' => 'thermal80']) }}" target="_blank" rel="noopener" class="text-xs underline">80 mm</a>@endcan</td>
                         </tr>
-                    @empty
-                        <tr><td colspan="7" class="px-3 py-10 text-center text-zinc-500">Belum ada barang inventaris. Tambahkan kategori lalu daftarkan barang pertama.</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-        <div>{{ $items->links() }}</div>
-    </flux:card>
-
-    <flux:card class="space-y-3">
-        <flux:heading size="lg">Unit Aset Individual Terbaru</flux:heading>
+                        @if ($item->tracking_type === 'individual' && $expandedItemId === $item->id)
+                            <tr wire:key="inventory-item-units-{{ $item->id }}" class="border-b bg-zinc-50/50 dark:bg-zinc-800/30">
+                                <td colspan="7" class="p-4">
+                                    <div class="mb-3 flex items-center justify-between">
+                                        <strong>Unit {{ $item->name }} (maksimal 500 ditampilkan)</strong>
+                                        @can('inventory.manage')
+                                            <flux:button size="sm" icon="plus" wire:click="addUnitsToItem({{ $item->id }})">Tambah Unit</flux:button>
+                                        @endcan
+                                    </div>
+                                    <div class="space-y-3">
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead><tr class="border-b text-left"><th class="px-3 py-2">Kode aset</th><th class="px-3 py-2">Barang</th><th class="px-3 py-2">Pemilik / Lokasi</th><th class="px-3 py-2">Kondisi / Status</th><th class="px-3 py-2">Label QR</th></tr></thead>
@@ -283,6 +282,17 @@
                 </tbody>
             </table>
         </div>
+</div>
+                                </td>
+                            </tr>
+                        @endif
+                    @empty
+                        <tr><td colspan="7" class="px-3 py-10 text-center text-zinc-500">Belum ada barang inventaris. Tambahkan kategori lalu daftarkan barang pertama.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        <div>{{ $items->links() }}</div>
     </flux:card>
 
     <div class="grid gap-4 xl:grid-cols-2">
