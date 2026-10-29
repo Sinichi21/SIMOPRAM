@@ -49,7 +49,8 @@ class InventoryLoanDocumentService
             }
 
             $version = $current->version + 1;
-            $documentNumber = $current->document_number.'-REV'.$version;
+            $baseNumber = preg_replace('/-REV\\d+$/', '', $current->document_number);
+            $documentNumber = $baseNumber.'-REV'.$version;
             $pdf = Pdf::loadView('inventory.documents.preview', [
                 'loan' => $loan,
                 'type' => $current->document_type,
@@ -57,6 +58,9 @@ class InventoryLoanDocumentService
                 'issued' => true,
                 'documentNumber' => $documentNumber,
                 'correctionReason' => $reason,
+                'previousDocumentNumber' => $current->document_number,
+                'correctionIssuedBy' => auth()->user()?->name,
+                'correctionIssuedAt' => now()->format('d/m/Y H:i'),
             ])->setPaper('a4')->output();
 
             $path = sprintf('inventory/%d/loan-documents/%d-%s-v%d.pdf', $schoolId, $loan->id, $current->document_type, $version);
@@ -110,7 +114,7 @@ class InventoryLoanDocumentService
                 throw ValidationException::withMessages(['document' => 'Belum ada transaksi fisik untuk jenis berita acara ini.']);
             }
 
-            // One issued snapshot per loan and type until a separate, reviewed correction workflow exists.
+            // Return the current issued version; corrections are created through correct().
             $existing = InventoryLoanDocument::query()->where('school_id', $schoolId)
                 ->where('loan_id', $loanId)->where('document_type', $type)
                 ->where('status', 'issued')->first();
