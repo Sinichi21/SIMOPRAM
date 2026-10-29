@@ -8,6 +8,7 @@ use App\Models\InventoryLoan;
 use App\Models\InventoryLocation;
 use App\Models\InventoryOwner;
 use App\Models\School;
+use App\Models\SchoolUserMembership;
 use App\Models\User;
 use App\Services\Inventory\InventoryLoanDocumentService;
 use App\Services\Inventory\InventoryLoanService;
@@ -134,6 +135,36 @@ class InventoryLoanDocumentServiceTest extends TestCase
         $this->post(route('inventory.loans.documents.reprint', [
             'document' => $document->id,
         ]), ['reason' => 'Salinan'])->assertStatus(409);
+    }
+
+    public function test_school_member_without_document_permissions_receives_403(): void
+    {
+        $loan = $this->makeLoan(true);
+        $document = app(InventoryLoanDocumentService::class)->issue($loan->id, 'handover');
+        $schoolId = app(SchoolContext::class)->id();
+
+        $member = User::factory()->create(['system_role' => null]);
+        SchoolUserMembership::query()->create([
+            'school_id' => $schoolId,
+            'user_id' => $member->id,
+            'is_active' => true,
+        ]);
+        $this->actingAs($member)->withSession(['active_school_id' => $schoolId]);
+
+        $this->get(route('inventory.loans.documents.show', [
+            'document' => $document->id,
+        ]))->assertForbidden();
+
+        $this->post(route('inventory.loans.documents.issue', [
+            'loan' => $loan->id,
+            'type' => 'handover',
+        ]))->assertForbidden();
+
+        $this->post(route('inventory.loans.documents.reprint', [
+            'document' => $document->id,
+        ]), ['reason' => 'Arsip'])->assertForbidden();
+
+        $this->assertDatabaseCount('inventory_loan_document_prints', 0);
     }
 
     public function test_reprint_requires_reason_and_creates_audit_record(): void
