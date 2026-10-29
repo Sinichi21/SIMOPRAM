@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 class InventoryLoanDocumentServiceTest extends TestCase
@@ -256,6 +257,46 @@ class InventoryLoanDocumentServiceTest extends TestCase
         $this->post(route('inventory.loans.documents.correct', [
             'document' => $first->id,
         ]), ['reason' => 'singkat'])->assertSessionHasErrors('reason');
+
+        $this->assertDatabaseCount('inventory_loan_documents', 1);
+    }
+
+    public function test_reprint_permission_does_not_allow_correction(): void
+    {
+        $loan = $this->makeLoan(true);
+        $document = app(InventoryLoanDocumentService::class)->issue($loan->id, 'handover');
+        $schoolId = app(SchoolContext::class)->id();
+
+        $member = User::factory()->create(['system_role' => null]);
+        SchoolUserMembership::query()->create([
+            'school_id' => $schoolId,
+            'user_id' => $member->id,
+            'is_active' => true,
+        ]);
+        setPermissionsTeamId($schoolId);
+        Permission::findOrCreate('inventory.documents.reprint', 'web');
+        $member->givePermissionTo('inventory.documents.reprint');
+        $this->actingAs($member)->withSession(['active_school_id' => $schoolId]);
+
+        $this->post(route('inventory.loans.documents.correct', [
+            'document' => $document->id,
+        ]), ['reason' => 'Perbaikan administrasi dokumen.'])->assertForbidden();
+
+        $this->assertDatabaseCount('inventory_loan_documents', 1);
+        $this->assertSame('issued', $document->fresh()->status);
+    }
+
+    public function test_correction_of_another_school_document_is_not_found(): void
+    {
+        $loan = $this->makeLoan(true);
+        $document = app(InventoryLoanDocumentService::class)->issue($loan->id, 'handover');
+        $otherSchool = School::factory()->create();
+        app(SchoolContext::class)->set($otherSchool);
+        $this->withSession(['active_school_id' => $otherSchool->id]);
+
+        $this->post(route('inventory.loans.documents.correct', [
+            'document' => $document->id,
+        ]), ['reason' => 'Koreksi administrasi dokumen sekolah.'])->assertNotFound();
 
         $this->assertDatabaseCount('inventory_loan_documents', 1);
     }
