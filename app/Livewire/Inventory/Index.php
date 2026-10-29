@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Inventory;
 
+use App\Models\InventoryAsset;
 use App\Models\InventoryCategory;
 use App\Models\InventoryItem;
 use App\Models\InventoryLocation;
@@ -24,6 +25,20 @@ class Index extends Component
     public string $search = '';
 
     public bool $showCategoryForm = false;
+
+    public bool $showAssetForm = false;
+
+    public ?int $assetItemId = null;
+
+    public ?int $assetOwnerId = null;
+
+    public ?int $assetLocationId = null;
+
+    public string $assetCode = '';
+
+    public string $assetSerialNumber = '';
+
+    public string $assetNotes = '';
 
     public bool $showItemForm = false;
 
@@ -141,6 +156,38 @@ class Index extends Component
         session()->flash('status', 'Barang inventaris berhasil ditambahkan.');
     }
 
+    public function createAsset(): void
+    {
+        $this->authorizeManage();
+        $schoolId = $this->schoolId();
+        $this->assetCode = strtoupper(trim($this->assetCode));
+        $this->assetSerialNumber = trim($this->assetSerialNumber);
+
+        $validated = $this->validate([
+            'assetItemId' => ['required', 'integer', Rule::exists('inventory_items', 'id')->where('school_id', $schoolId)->where('tracking_type', 'individual')->whereNull('deleted_at')],
+            'assetOwnerId' => ['required', 'integer', Rule::exists('inventory_owners', 'id')->where('school_id', $schoolId)->whereNull('deleted_at')],
+            'assetLocationId' => ['required', 'integer', Rule::exists('inventory_locations', 'id')->where('school_id', $schoolId)->whereNull('deleted_at')],
+            'assetCode' => ['required', 'string', 'max:80', Rule::unique('inventory_assets', 'asset_code')->where('school_id', $schoolId)->whereNull('deleted_at')],
+            'assetSerialNumber' => ['nullable', 'string', 'max:120'],
+            'assetNotes' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        InventoryAsset::query()->create([
+            'school_id' => $schoolId,
+            'item_id' => $validated['assetItemId'],
+            'owner_id' => $validated['assetOwnerId'],
+            'location_id' => $validated['assetLocationId'],
+            'asset_code' => $validated['assetCode'],
+            'serial_number' => $validated['assetSerialNumber'] ?: null,
+            'condition' => 'good',
+            'status' => 'available',
+            'notes' => $validated['assetNotes'] ?: null,
+        ]);
+
+        $this->reset('assetItemId', 'assetOwnerId', 'assetLocationId', 'assetCode', 'assetSerialNumber', 'assetNotes', 'showAssetForm');
+        session()->flash('status', 'Unit aset berhasil didaftarkan.');
+    }
+
     public function createOwner(): void
     {
         $this->authorizeManage();
@@ -240,6 +287,8 @@ class Index extends Component
         $groups = ScoutGroup::query()->where('school_id', $schoolId)->orderBy('name')->get();
         $owners = InventoryOwner::query()->where('school_id', $schoolId)->where('is_active', true)->with('scoutGroup')->orderBy('display_name')->get();
         $locations = InventoryLocation::query()->where('school_id', $schoolId)->where('is_active', true)->with('scoutGroup')->orderBy('name')->get();
+        $individualItems = InventoryItem::query()->where('school_id', $schoolId)->where('is_active', true)->where('tracking_type', 'individual')->orderBy('name')->get();
+        $assets = InventoryAsset::query()->where('school_id', $schoolId)->with(['item:id,name,item_code', 'owner:id,display_name', 'location:id,name'])->latest('id')->limit(30)->get();
         $quantityItems = InventoryItem::query()->where('school_id', $schoolId)->where('is_active', true)->where('tracking_type', 'quantity')->orderBy('name')->get();
 
         $items = InventoryItem::query()
@@ -261,7 +310,7 @@ class Index extends Component
             ->limit(10)
             ->get();
 
-        return view('livewire.inventory.index', compact('categories', 'groups', 'owners', 'locations', 'quantityItems', 'items', 'movements'));
+        return view('livewire.inventory.index', compact('categories', 'groups', 'owners', 'locations', 'quantityItems', 'individualItems', 'assets', 'items', 'movements'));
     }
 
     private function authorizeAccess(): void
