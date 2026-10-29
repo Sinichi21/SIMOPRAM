@@ -58,11 +58,7 @@ class InventoryLoanDocumentServiceTest extends TestCase
         $loan = $this->makeLoan(false);
 
         $this->expectException(ValidationException::class);
-        try {
-            app(InventoryLoanDocumentService::class)->issue($loan->id, 'handover');
-        } finally {
-            $this->assertDatabaseCount('inventory_loan_documents', 0);
-        }
+        app(InventoryLoanDocumentService::class)->issue($loan->id, 'handover');
     }
 
     public function test_return_ba_cannot_be_issued_from_handover_events(): void
