@@ -26,6 +26,9 @@
     @endif
     <h1>BERITA ACARA {{ $type === 'handover' ? 'SERAH-TERIMA' : 'PENGEMBALIAN' }} INVENTARIS</h1>
     <div class="subtitle">Referensi peminjaman: {{ $loan->loan_number }}</div>
+    @if (! empty($correctionReason))
+        <p><strong>BA koreksi:</strong> {{ $correctionReason }}</p>
+    @endif
     <p><strong>Nama peminjam:</strong> {{ $loan->borrower_name }}</p>
     <p><strong>Instansi/organisasi:</strong> {{ $loan->borrower_organization ?: '-' }}</p>
     <p><strong>Kontak:</strong> {{ $loan->borrower_contact ?: '-' }}</p>
