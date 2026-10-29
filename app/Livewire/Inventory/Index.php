@@ -59,6 +59,10 @@ class Index extends Component
 
     public ?int $expandedItemId = null;
 
+    public bool $printAfterSave = false;
+
+    public string $labelPrintFormat = 'a4';
+
     public bool $showItemForm = false;
 
     public bool $showOwnerForm = false;
@@ -191,6 +195,7 @@ class Index extends Component
             'assetLastNumber' => ['required', 'integer', 'min:0', 'max:999999999'],
             'assetSerialNumber' => ['nullable', 'string', 'max:120'],
             'assetNotes' => ['nullable', 'string', 'max:2000'],
+            'labelPrintFormat' => ['required', Rule::in(['a4', 'thermal58', 'thermal80'])],
         ]);
 
         $quantity = (int) $validated['assetQuantity'];
@@ -242,11 +247,21 @@ class Index extends Component
             return $createdIds;
         }, 3);
         $this->lastCreatedAssetIds = $createdIds;
+        $printAfterSave = $this->printAfterSave;
+        $printFormat = $validated['labelPrintFormat'];
 
         $this->reset('assetItemId', 'assetOwnerId', 'assetLocationId', 'assetCode', 'assetQuantity', 'assetLastNumber', 'assetSerialNumber', 'assetNotes', 'showAssetForm');
         $this->assetQuantity = '1';
         $this->assetLastNumber = '0';
+        $this->printAfterSave = false;
         session()->flash('status', $quantity.' unit aset berhasil didaftarkan dengan kode otomatis.');
+
+        if ($printAfterSave && auth()->user()?->can('inventory.labels.print')) {
+            $this->redirectRoute('inventory.assets.batch-labels', [
+                'format' => $printFormat,
+                'ids' => implode(',', $createdIds),
+            ], navigate: false);
+        }
     }
 
     public function toggleItemUnits(int $itemId): void
