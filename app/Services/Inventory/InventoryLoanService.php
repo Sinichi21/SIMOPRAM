@@ -179,6 +179,15 @@ class InventoryLoanService
                 $item = InventoryItem::query()->where('school_id', $schoolId)->findOrFail($line->item_id);
 
                 if ($item->tracking_type === 'individual') {
+                    $asset = InventoryAsset::query()->where('school_id', $schoolId)
+                        ->lockForUpdate()->findOrFail($line->asset_id);
+                    if ($asset->status !== 'available' || $asset->condition !== 'good'
+                        || $asset->item_id !== $line->item_id
+                        || $asset->owner_id !== $line->owner_id
+                        || $asset->location_id !== $line->location_id) {
+                        throw ValidationException::withMessages(['items' => 'Aset tidak lagi tersedia atau dalam kondisi layak untuk disetujui.']);
+                    }
+
                     $alreadyApproved = InventoryLoanItem::query()
                         ->join('inventory_loans', 'inventory_loans.id', '=', 'inventory_loan_items.loan_id')
                         ->where('inventory_loan_items.school_id', $schoolId)
@@ -287,8 +296,11 @@ class InventoryLoanService
                     );
                 } else {
                     $asset = InventoryAsset::query()->where('school_id', $schoolId)->lockForUpdate()->findOrFail($loanItem->asset_id);
-                    if ($asset->status !== 'available') {
-                        throw ValidationException::withMessages(["lines.$index.asset_id" => 'Aset sudah tidak tersedia.']);
+                    if ($asset->status !== 'available' || $asset->condition !== 'good'
+                        || $asset->item_id !== $loanItem->item_id
+                        || $asset->owner_id !== $loanItem->owner_id
+                        || $asset->location_id !== $loanItem->location_id) {
+                        throw ValidationException::withMessages(["lines.$index.asset_id" => 'Aset tidak tersedia atau sudah berubah kondisi/lokasi.']);
                     }
                     $asset->forceFill(['status' => 'on_loan', 'location_id' => null])->save();
                 }
