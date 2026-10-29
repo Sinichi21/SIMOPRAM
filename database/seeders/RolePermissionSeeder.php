@@ -170,6 +170,7 @@ class RolePermissionSeeder extends Seeder
             'inventory.returns.process',
             'inventory.labels.print',
             'inventory.documents.reprint',
+            'inventory.documents.correct',
             'inventory.audit.view',
         ];
 
