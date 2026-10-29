@@ -100,7 +100,7 @@
     @if ($showMovementForm)
         <flux:card class="space-y-4">
             <flux:heading size="lg">Catat Pergerakan Stok</flux:heading>
-            <flux:callout icon="info">Penyesuaian stok memasukkan jumlah akhir hasil pemeriksaan fisik, bukan nilai selisih. Catatan dan referensi dianjurkan untuk setiap transaksi.</flux:callout>
+            <flux:callout icon="information-circle">Penyesuaian stok memasukkan jumlah akhir hasil pemeriksaan fisik, bukan nilai selisih. Catatan dan referensi dianjurkan untuk setiap transaksi.</flux:callout>
             <form wire:submit="recordMovement" class="grid gap-4 md:grid-cols-2">
                 <flux:select label="Barang" wire:model="movementItemId" placeholder="Pilih barang" required>
                     @foreach ($quantityItems as $item)<flux:select.option value="{{ $item->id }}">{{ $item->item_code }} — {{ $item->name }}</flux:select.option>@endforeach
