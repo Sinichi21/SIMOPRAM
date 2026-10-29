@@ -7,8 +7,8 @@ use App\Support\SchoolContext;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\PngWriter;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
 use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
 
 class InventoryAssetBatchLabelController extends Controller
 {
