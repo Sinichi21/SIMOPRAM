@@ -187,6 +187,74 @@ class InventoryLoanServiceTest extends TestCase
         $this->assertDatabaseCount('inventory_loan_events', 0);
     }
 
+    public function test_individual_asset_handover_and_good_return_create_audit_history(): void
+    {
+        [$item, $owner, $location, $asset] = $this->makeIndividualAsset();
+        $service = app(InventoryLoanService::class);
+        $loan = $service->requestLoan(
+            ['type' => 'manual_external', 'name' => 'Peminjam'],
+            [[
+                'item_id' => $item->id, 'owner_id' => $owner->id,
+                'location_id' => $location->id, 'asset_id' => $asset->id, 'quantity' => 1,
+            ]],
+        );
+        $service->approve($loan->id);
+        $lineId = $loan->items->first()->id;
+
+        $service->recordHandover($loan->id, [['loan_item_id' => $lineId, 'quantity' => 1]], now());
+        $this->assertSame('on_loan', $asset->fresh()->status);
+        $this->assertDatabaseHas('inventory_asset_events', [
+            'asset_id' => $asset->id,
+            'from_location_id' => $location->id,
+            'to_location_id' => null,
+            'from_condition' => 'good',
+            'to_condition' => 'good',
+        ]);
+
+        $service->recordReturn($loan->id, [
+            ['loan_item_id' => $lineId, 'quantity_returned' => 1, 'condition' => 'good'],
+        ], now());
+        $this->assertSame('available', $asset->fresh()->status);
+        $this->assertSame($location->id, $asset->fresh()->location_id);
+        $this->assertDatabaseHas('inventory_asset_events', [
+            'asset_id' => $asset->id,
+            'from_location_id' => null,
+            'to_location_id' => $location->id,
+            'to_condition' => 'good',
+        ]);
+        $this->assertDatabaseCount('inventory_asset_events', 2);
+    }
+
+    public function test_individual_asset_loss_creates_audit_and_marks_missing(): void
+    {
+        [$item, $owner, $location, $asset] = $this->makeIndividualAsset();
+        $service = app(InventoryLoanService::class);
+        $loan = $service->requestLoan(
+            ['type' => 'manual_external', 'name' => 'Peminjam'],
+            [[
+                'item_id' => $item->id, 'owner_id' => $owner->id,
+                'location_id' => $location->id, 'asset_id' => $asset->id, 'quantity' => 1,
+            ]],
+        );
+        $service->approve($loan->id);
+        $lineId = $loan->items->first()->id;
+        $service->recordHandover($loan->id, [['loan_item_id' => $lineId, 'quantity' => 1]], now());
+        $service->recordReturn($loan->id, [
+            ['loan_item_id' => $lineId, 'quantity_returned' => 0, 'quantity_missing' => 1],
+        ], now());
+
+        $this->assertSame('missing', $asset->fresh()->status);
+        $this->assertSame('missing', $asset->fresh()->condition);
+        $this->assertSame('discrepancy', $loan->fresh()->status);
+        $this->assertDatabaseHas('inventory_asset_events', [
+            'asset_id' => $asset->id,
+            'from_location_id' => null,
+            'to_location_id' => null,
+            'to_condition' => 'missing',
+        ]);
+        $this->assertDatabaseCount('inventory_asset_events', 2);
+    }
+
     private function makeIndividualAsset(): array
     {
         [$item, $owner, $location] = $this->makeStock();
