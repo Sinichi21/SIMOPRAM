@@ -87,6 +87,33 @@ class InventoryAssetManagementTest extends TestCase
         $this->assertDatabaseCount('inventory_assets', 5);
     }
 
+    public function test_asset_code_preview_matches_batch_and_generated_label_ids(): void
+    {
+        [$item, $owner, $location] = $this->makeReferences();
+
+        $component = Livewire::test(Index::class)
+            ->set('assetItemId', $item->id)
+            ->set('assetOwnerId', $owner->id)
+            ->set('assetLocationId', $location->id)
+            ->set('assetCode', 'KOMPAS')
+            ->set('assetQuantity', '3')
+            ->set('assetLastNumber', '7');
+
+        $this->assertSame([
+            'first' => 'KOMPAS-0008',
+            'last' => 'KOMPAS-0010',
+            'count' => 3,
+        ], $component->instance()->assetCodePreview);
+
+        $component->call('createAsset')->assertHasNoErrors();
+        $ids = $component->get('lastCreatedAssetIds');
+        $this->assertCount(3, $ids);
+        $this->assertSame(
+            ['KOMPAS-0008', 'KOMPAS-0009', 'KOMPAS-0010'],
+            InventoryAsset::query()->whereIn('id', $ids)->orderBy('id')->pluck('asset_code')->all(),
+        );
+    }
+
     public function test_cannot_register_asset_against_other_school_owner(): void
     {
         [$item, , $location] = $this->makeReferences();
