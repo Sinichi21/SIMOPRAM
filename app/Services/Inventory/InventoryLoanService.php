@@ -3,6 +3,7 @@
 namespace App\Services\Inventory;
 
 use App\Models\InventoryAsset;
+use App\Models\InventoryAssetEvent;
 use App\Models\InventoryItem;
 use App\Models\InventoryLoan;
 use App\Models\InventoryLoanEvent;
@@ -302,6 +303,7 @@ class InventoryLoanService
                         || $asset->location_id !== $loanItem->location_id) {
                         throw ValidationException::withMessages(["lines.$index.asset_id" => 'Aset tidak tersedia atau sudah berubah kondisi/lokasi.']);
                     }
+                    $this->recordAssetEvent($asset, null, $asset->condition, 'Serah-terima peminjaman '.$loan->loan_number, $occurredAt);
                     $asset->forceFill(['status' => 'on_loan', 'location_id' => null])->save();
                 }
 
@@ -389,10 +391,15 @@ class InventoryLoanService
                         );
                     } else {
                         $asset = InventoryAsset::query()->where('school_id', $schoolId)->lockForUpdate()->findOrFail($loanItem->asset_id);
+                        $returnCondition = $line['condition'] ?? 'good';
+                        $this->recordAssetEvent(
+                            $asset, $loanItem->location_id, $returnCondition,
+                            'Pengembalian peminjaman '.$loan->loan_number, $occurredAt,
+                        );
                         $asset->forceFill([
-                            'status' => ($line['condition'] ?? 'good') === 'good' ? 'available' : 'damaged',
+                            'status' => $returnCondition === 'good' ? 'available' : 'damaged',
                             'location_id' => $loanItem->location_id,
-                            'condition' => $line['condition'] ?? 'good',
+                            'condition' => $returnCondition,
                         ])->save();
                     }
 
@@ -417,9 +424,13 @@ class InventoryLoanService
 
                 if ($missing > 0) {
                     if ($item->tracking_type === 'individual') {
-                        InventoryAsset::query()->where('school_id', $schoolId)->whereKey($loanItem->asset_id)->lockForUpdate()->firstOrFail()
-                            ->forceFill(['status' => 'missing', 'location_id' => null, 'condition' => 'missing'])
-                            ->save();
+                        $asset = InventoryAsset::query()->where('school_id', $schoolId)
+                            ->whereKey($loanItem->asset_id)->lockForUpdate()->firstOrFail();
+                        $this->recordAssetEvent(
+                            $asset, null, 'missing',
+                            'Kehilangan pada peminjaman '.$loan->loan_number, $occurredAt,
+                        );
+                        $asset->forceFill(['status' => 'missing', 'location_id' => null, 'condition' => 'missing'])->save();
                     }
                     $loanItem->quantity_missing = (float) $loanItem->quantity_missing + $missing;
                     InventoryLoanEvent::query()->create([
@@ -454,6 +465,26 @@ class InventoryLoanService
 
             return $loan->refresh();
         }, 3);
+    }
+
+    private function recordAssetEvent(
+        InventoryAsset $asset,
+        ?int $toLocationId,
+        string $toCondition,
+        string $reason,
+        DateTimeInterface $occurredAt,
+    ): void {
+        InventoryAssetEvent::query()->create([
+            'school_id' => $asset->school_id,
+            'asset_id' => $asset->id,
+            'actor_id' => auth()->id(),
+            'from_location_id' => $asset->location_id,
+            'to_location_id' => $toLocationId,
+            'from_condition' => $asset->condition,
+            'to_condition' => $toCondition,
+            'reason' => $reason,
+            'occurred_at' => $occurredAt,
+        ]);
     }
 
     private function schoolId(): int
