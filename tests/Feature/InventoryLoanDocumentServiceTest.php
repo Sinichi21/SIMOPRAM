@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\InventoryCategory;
 use App\Models\InventoryItem;
 use App\Models\InventoryLocation;
+use App\Models\InventoryLoan;
 use App\Models\InventoryOwner;
 use App\Models\School;
 use App\Models\User;
@@ -12,6 +13,7 @@ use App\Services\Inventory\InventoryLoanDocumentService;
 use App\Services\Inventory\InventoryLoanService;
 use App\Services\Inventory\InventoryStockService;
 use App\Support\SchoolContext;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -71,7 +73,16 @@ class InventoryLoanDocumentServiceTest extends TestCase
         app(InventoryLoanDocumentService::class)->issue($loan->id, 'return');
     }
 
-    private function makeLoan(bool $handover): \App\Models\InventoryLoan
+    public function test_cannot_issue_document_for_another_school(): void
+    {
+        $loan = $this->makeLoan(true);
+        app(SchoolContext::class)->set(School::factory()->create());
+
+        $this->expectException(ModelNotFoundException::class);
+        app(InventoryLoanDocumentService::class)->issue($loan->id, 'handover');
+    }
+
+    private function makeLoan(bool $handover): InventoryLoan
     {
         $category = InventoryCategory::query()->create(['name' => 'Peralatan', 'is_active' => true]);
         $item = InventoryItem::query()->create([
