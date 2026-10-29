@@ -32,6 +32,9 @@ class InventoryLoanIssuedDocumentController extends Controller
         $record = InventoryLoanDocument::query()->where('school_id', $schoolId)
             ->where('status', 'issued')->findOrFail($document);
 
+        // Audit the reprint only if the immutable PDF still exists and passes integrity verification.
+        $this->verifiedPdf($record);
+
         InventoryLoanDocumentPrint::query()->create([
             'school_id' => $schoolId,
             'document_id' => $record->id,
@@ -52,15 +55,7 @@ class InventoryLoanIssuedDocumentController extends Controller
 
         $record = InventoryLoanDocument::query()->where('school_id', $schoolId)
             ->where('status', 'issued')->findOrFail($document);
-        $disk = Storage::disk('local');
-        if (! $record->storage_path || ! $disk->exists($record->storage_path)) {
-            abort(404, 'Berkas berita acara tidak tersedia.');
-        }
-
-        $bytes = $disk->get($record->storage_path);
-        if (! hash_equals((string) $record->sha256, hash('sha256', $bytes))) {
-            abort(409, 'Integritas berkas berita acara tidak sesuai.');
-        }
+        $bytes = $this->verifiedPdf($record);
 
         return response($bytes, 200, [
             'Content-Type' => 'application/pdf',
@@ -69,4 +64,19 @@ class InventoryLoanIssuedDocumentController extends Controller
             'X-Content-Type-Options' => 'nosniff',
         ]);
     }
+    private function verifiedPdf(InventoryLoanDocument $record): string
+    {
+        $disk = Storage::disk('local');
+        if (! $record->storage_path || ! $disk->exists($record->storage_path)) {
+            abort(404, 'Berkas berita acara tidak tersedia.');
+        }
+
+        $bytes = $disk->get($record->storage_path);
+        if (! is_string($bytes) || ! $record->sha256 || ! hash_equals((string) $record->sha256, hash('sha256', $bytes))) {
+            abort(409, 'Integritas berkas berita acara tidak sesuai.');
+        }
+
+        return $bytes;
+    }
+
 }
