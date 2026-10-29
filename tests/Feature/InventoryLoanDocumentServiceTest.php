@@ -89,7 +89,7 @@ class InventoryLoanDocumentServiceTest extends TestCase
 
         $response->assertOk();
         $response->assertHeader('Content-Type', 'application/pdf');
-        $this->assertSame(Storage::disk('local')->get($document->storage_path), $response->streamedContent() ?: $response->getContent());
+        $this->assertSame(Storage::disk('local')->get($document->storage_path), $response->getContent());
     }
 
     public function test_tampered_pdf_is_rejected_before_download(): void
