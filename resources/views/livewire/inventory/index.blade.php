@@ -38,6 +38,31 @@
         </flux:card>
     @endif
 
+    @if ($editingAssetId)
+        <flux:card class="space-y-3">
+            <flux:heading size="lg">Perbarui Lokasi / Kondisi Aset</flux:heading>
+            <form wire:submit="saveAssetChange" class="grid gap-3 md:grid-cols-2">
+                <flux:select label="Lokasi baru" wire:model="editingAssetLocationId" required>
+                    @foreach ($locations as $location)
+                        <flux:select.option value="{{ $location->id }}">{{ $location->name }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+                <flux:select label="Kondisi" wire:model="editingAssetCondition" required>
+                    <flux:select.option value="good">Baik</flux:select.option>
+                    <flux:select.option value="damaged">Rusak</flux:select.option>
+                    <flux:select.option value="lost">Hilang</flux:select.option>
+                </flux:select>
+                <div class="md:col-span-2">
+                    <flux:textarea label="Alasan perubahan (minimal 10 karakter)" wire:model="editingAssetReason" required />
+                </div>
+                <div class="md:col-span-2 flex gap-2">
+                    <flux:button type="submit" variant="primary">Simpan Perubahan</flux:button>
+                    <flux:button type="button" variant="ghost" wire:click="$set('editingAssetId', null)">Batal</flux:button>
+                </div>
+            </form>
+        </flux:card>
+    @endif
+
     @if ($showAssetForm)
         <flux:card class="space-y-4">
             <flux:heading size="lg">Daftarkan Unit Aset Individual</flux:heading>
@@ -203,7 +228,25 @@
                             <td class="px-3 py-2 font-mono">{{ $asset->asset_code }}</td>
                             <td class="px-3 py-2">{{ $asset->item?->name ?? '—' }}<div class="text-xs text-zinc-500">{{ $asset->serial_number }}</div></td>
                             <td class="px-3 py-2">{{ $asset->owner?->display_name ?? '—' }}<div class="text-xs text-zinc-500">{{ $asset->location?->name }}</div></td>
-                            <td class="px-3 py-2">{{ $asset->condition }} / {{ $asset->status }}</td>
+                            <td class="px-3 py-2">
+                                {{ $asset->condition }} / {{ $asset->status }}
+                                @can('inventory.manage')
+                                    <button type="button" wire:click="editAsset({{ $asset->id }})" class="ml-2 text-xs underline">Ubah</button>
+                                @endcan
+                                @if ($asset->events->isNotEmpty())
+                                    <details class="mt-1 text-xs">
+                                        <summary class="cursor-pointer">Riwayat ({{ $asset->events->count() }})</summary>
+                                        @foreach ($asset->events as $event)
+                                            <div class="mt-1 border-t py-1">
+                                                {{ $event->occurred_at?->format('d/m/Y H:i') }} — {{ $event->actor?->name ?? 'Akun tidak tersedia' }}
+                                                <div>{{ $event->fromLocation?->name ?? '-' }} → {{ $event->toLocation?->name ?? '-' }}</div>
+                                                <div>{{ $event->from_condition }} → {{ $event->to_condition }}</div>
+                                                <div>{{ $event->reason }}</div>
+                                            </div>
+                                        @endforeach
+                                    </details>
+                                @endif
+                            </td>
                             <td class="px-3 py-2">@can('inventory.labels.print')
                                 <a class="underline text-xs" target="_blank" rel="noopener" href="{{ route('inventory.assets.labels', ['asset' => $asset->id, 'format' => 'a4']) }}">A4</a>
                                 <a class="underline text-xs" target="_blank" rel="noopener" href="{{ route('inventory.assets.labels', ['asset' => $asset->id, 'format' => 'thermal58']) }}">58 mm</a>
