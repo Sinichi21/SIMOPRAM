@@ -223,6 +223,10 @@ Route::middleware([
             ->middleware('can:inventory.view')
             ->name('inventory.index');
 
+        Route::get('/inventaris/barang/{item}/label', \\App\\Http\\Controllers\\InventoryItemLabelController::class)
+            ->whereNumber('item')->middleware(['can:inventory.labels.print', 'throttle:30,1'])
+            ->name('inventory.items.labels');
+
         Route::get('/inventaris/peminjaman', Loans::class)
             ->middleware('can:inventory.view')
             ->name('inventory.loans.index');
