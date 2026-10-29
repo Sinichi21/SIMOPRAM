@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToSchool;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class InventoryAsset extends Model
@@ -20,6 +21,11 @@ class InventoryAsset extends Model
     protected function casts(): array
     {
         return ['purchased_at' => 'date'];
+    }
+
+    public function events(): HasMany
+    {
+        return $this->hasMany(InventoryAssetEvent::class, 'asset_id')->latest('occurred_at');
     }
 
     public function item(): BelongsTo
