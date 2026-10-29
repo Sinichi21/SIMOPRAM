@@ -6,13 +6,14 @@ use App\Models\InventoryLoanDocument;
 use App\Models\InventoryLoanDocumentPrint;
 use App\Services\Inventory\InventoryLoanDocumentService;
 use App\Support\SchoolContext;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
 
 class InventoryLoanIssuedDocumentController extends Controller
 {
-    public function issue(Request $request, int $loan, string $type, InventoryLoanDocumentService $service): \Illuminate\Http\RedirectResponse
+    public function issue(Request $request, int $loan, string $type, InventoryLoanDocumentService $service): RedirectResponse
     {
         abort_unless($request->user()?->can('inventory.documents.reprint'), 403);
         abort_unless(in_array($type, ['handover', 'return'], true), 404);
@@ -22,7 +23,7 @@ class InventoryLoanIssuedDocumentController extends Controller
         return redirect()->route('inventory.loans.documents.show', ['document' => $document->id]);
     }
 
-    public function logReprint(Request $request, int $document): \Illuminate\Http\RedirectResponse
+    public function logReprint(Request $request, int $document): RedirectResponse
     {
         abort_unless($request->user()?->can('inventory.documents.reprint'), 403);
         $schoolId = app(SchoolContext::class)->id();
@@ -60,7 +61,6 @@ class InventoryLoanIssuedDocumentController extends Controller
         if (! hash_equals((string) $record->sha256, hash('sha256', $bytes))) {
             abort(409, 'Integritas berkas berita acara tidak sesuai.');
         }
-
 
         return response($bytes, 200, [
             'Content-Type' => 'application/pdf',
