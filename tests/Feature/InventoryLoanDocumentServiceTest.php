@@ -320,6 +320,24 @@ class InventoryLoanDocumentServiceTest extends TestCase
         Storage::disk('local')->assertExists($third->storage_path);
     }
 
+    public function test_reprint_audit_records_the_operator_and_timestamp(): void
+    {
+        $loan = $this->makeLoan(true);
+        $document = app(InventoryLoanDocumentService::class)->issue($loan->id, 'handover');
+        $operatorId = auth()->id();
+
+        $this->post(route('inventory.loans.documents.reprint', [
+            'document' => $document->id,
+        ]), ['reason' => 'Penggantian salinan untuk arsip sekolah'])
+            ->assertRedirect(route('inventory.loans.documents.show', ['document' => $document->id]));
+
+        $print = $document->prints()->with('printer')->firstOrFail();
+        $this->assertSame($operatorId, $print->printed_by);
+        $this->assertSame($operatorId, $print->printer?->id);
+        $this->assertNotNull($print->printed_at);
+        $this->assertSame('reprint', $print->purpose);
+    }
+
     private function makeLoan(bool $handover): InventoryLoan
     {
         $category = InventoryCategory::query()->create(['name' => 'Peralatan', 'is_active' => true]);
