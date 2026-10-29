@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\InventoryAsset;
+use App\Models\InventoryItem;
 use App\Support\SchoolContext;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\PngWriter;
@@ -29,7 +30,7 @@ class InventoryAssetBatchLabelController extends Controller
         $query = InventoryAsset::query()->where('school_id', $schoolId)->with(['item', 'owner']);
         if ($scope === 'item') {
             $itemId = (int) $data['item_id'];
-            abort_unless(\\App\\Models\\InventoryItem::query()->where('school_id', $schoolId)
+            abort_unless(InventoryItem::query()->where('school_id', $schoolId)
                 ->where('tracking_type', 'individual')->whereKey($itemId)->exists(), 404);
             $query->where('item_id', $itemId);
         }
