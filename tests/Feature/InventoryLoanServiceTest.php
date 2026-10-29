@@ -255,6 +255,68 @@ class InventoryLoanServiceTest extends TestCase
         $this->assertDatabaseCount('inventory_asset_events', 2);
     }
 
+    public function test_damaged_individual_asset_return_is_audited_and_quarantined(): void
+    {
+        [$item, $owner, $location, $asset] = $this->makeIndividualAsset();
+        $service = app(InventoryLoanService::class);
+        $loan = $service->requestLoan(
+            ['type' => 'manual_external', 'name' => 'Peminjam'],
+            [[
+                'item_id' => $item->id, 'owner_id' => $owner->id,
+                'location_id' => $location->id, 'asset_id' => $asset->id, 'quantity' => 1,
+            ]],
+        );
+        $service->approve($loan->id);
+        $lineId = $loan->items->first()->id;
+        $service->recordHandover($loan->id, [['loan_item_id' => $lineId, 'quantity' => 1]], now());
+
+        $service->recordReturn($loan->id, [[
+            'loan_item_id' => $lineId, 'quantity_returned' => 1,
+            'condition' => 'damaged', 'condition_notes' => 'Jarum kompas macet dan kaca retak.',
+        ]], now());
+
+        $this->assertSame('damaged', $asset->fresh()->status);
+        $this->assertSame('damaged', $asset->fresh()->condition);
+        $this->assertSame('discrepancy', $loan->fresh()->status);
+        $this->assertDatabaseHas('inventory_asset_events', [
+            'asset_id' => $asset->id,
+            'from_location_id' => null,
+            'to_location_id' => $location->id,
+            'to_condition' => 'damaged',
+        ]);
+        $this->assertDatabaseCount('inventory_asset_events', 2);
+    }
+
+    public function test_damaged_individual_asset_return_without_explanation_is_rejected_atomically(): void
+    {
+        [$item, $owner, $location, $asset] = $this->makeIndividualAsset();
+        $service = app(InventoryLoanService::class);
+        $loan = $service->requestLoan(
+            ['type' => 'manual_external', 'name' => 'Peminjam'],
+            [[
+                'item_id' => $item->id, 'owner_id' => $owner->id,
+                'location_id' => $location->id, 'asset_id' => $asset->id, 'quantity' => 1,
+            ]],
+        );
+        $service->approve($loan->id);
+        $lineId = $loan->items->first()->id;
+        $service->recordHandover($loan->id, [['loan_item_id' => $lineId, 'quantity' => 1]], now());
+
+        try {
+            $service->recordReturn($loan->id, [[
+                'loan_item_id' => $lineId, 'quantity_returned' => 1,
+                'condition' => 'damaged', 'condition_notes' => 'Rusak',
+            ]], now());
+            $this->fail('Pengembalian rusak tanpa penjelasan yang cukup harus ditolak.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('lines.0.condition_notes', $exception->errors());
+        }
+
+        $this->assertSame('on_loan', $asset->fresh()->status);
+        $this->assertSame('handed_over', $loan->fresh()->status);
+        $this->assertDatabaseCount('inventory_asset_events', 1);
+    }
+
     private function makeIndividualAsset(): array
     {
         [$item, $owner, $location] = $this->makeStock();
