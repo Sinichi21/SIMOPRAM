@@ -9,6 +9,7 @@ use App\Models\InventoryLocation;
 use App\Models\InventoryOwner;
 use App\Models\InventoryStockMovement;
 use App\Models\ScoutGroup;
+use App\Services\Inventory\InventoryAssetService;
 use App\Services\Inventory\InventoryStockService;
 use App\Support\SchoolContext;
 use Illuminate\Contracts\View\View;
@@ -27,6 +28,14 @@ class Index extends Component
     public bool $showCategoryForm = false;
 
     public bool $showAssetForm = false;
+
+    public ?int $editingAssetId = null;
+
+    public ?int $editingAssetLocationId = null;
+
+    public string $editingAssetCondition = 'good';
+
+    public string $editingAssetReason = '';
 
     public ?int $assetItemId = null;
 
@@ -188,6 +197,38 @@ class Index extends Component
         session()->flash('status', 'Unit aset berhasil didaftarkan.');
     }
 
+    public function editAsset(int $assetId): void
+    {
+        $this->authorizeManage();
+        $asset = InventoryAsset::query()->where('school_id', $this->schoolId())->findOrFail($assetId);
+        $this->editingAssetId = $asset->id;
+        $this->editingAssetLocationId = $asset->location_id;
+        $this->editingAssetCondition = $asset->condition;
+        $this->editingAssetReason = '';
+    }
+
+    public function saveAssetChange(InventoryAssetService $service): void
+    {
+        $this->authorizeManage();
+        $schoolId = $this->schoolId();
+        $validated = $this->validate([
+            'editingAssetId' => ['required', 'integer', Rule::exists('inventory_assets', 'id')->where('school_id', $schoolId)->whereNull('deleted_at')],
+            'editingAssetLocationId' => ['required', 'integer', Rule::exists('inventory_locations', 'id')->where('school_id', $schoolId)->where('is_active', true)->whereNull('deleted_at')],
+            'editingAssetCondition' => ['required', Rule::in(['good', 'damaged', 'lost'])],
+            'editingAssetReason' => ['required', 'string', 'min:10', 'max:2000'],
+        ]);
+
+        $service->updateLocationAndCondition(
+            (int) $validated['editingAssetId'],
+            (int) $validated['editingAssetLocationId'],
+            $validated['editingAssetCondition'],
+            $validated['editingAssetReason'],
+        );
+
+        $this->reset('editingAssetId', 'editingAssetLocationId', 'editingAssetCondition', 'editingAssetReason');
+        session()->flash('status', 'Perubahan aset berhasil dicatat dalam riwayat audit.');
+    }
+
     public function createOwner(): void
     {
         $this->authorizeManage();
@@ -288,7 +329,7 @@ class Index extends Component
         $owners = InventoryOwner::query()->where('school_id', $schoolId)->where('is_active', true)->with('scoutGroup')->orderBy('display_name')->get();
         $locations = InventoryLocation::query()->where('school_id', $schoolId)->where('is_active', true)->with('scoutGroup')->orderBy('name')->get();
         $individualItems = InventoryItem::query()->where('school_id', $schoolId)->where('is_active', true)->where('tracking_type', 'individual')->orderBy('name')->get();
-        $assets = InventoryAsset::query()->where('school_id', $schoolId)->with(['item:id,name,item_code', 'owner:id,display_name', 'location:id,name'])->latest('id')->limit(30)->get();
+        $assets = InventoryAsset::query()->where('school_id', $schoolId)->with(['item:id,name,item_code', 'owner:id,display_name', 'location:id,name', 'events.actor:id,name', 'events.fromLocation:id,name', 'events.toLocation:id,name'])->latest('id')->limit(30)->get();
         $quantityItems = InventoryItem::query()->where('school_id', $schoolId)->where('is_active', true)->where('tracking_type', 'quantity')->orderBy('name')->get();
 
         $items = InventoryItem::query()
