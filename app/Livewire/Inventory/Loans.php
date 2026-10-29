@@ -183,7 +183,7 @@ class Loans extends Component
 
         $loans = InventoryLoan::query()
             ->where('school_id', $schoolId)
-            ->with(['items.item', 'events', 'documents.issuer', 'documents.prints'])
+            ->with(['items.item', 'events', 'documents.issuer', 'documents.prints.printer'])
             ->when($this->statusFilter !== '', fn ($query) => $query->where('status', $this->statusFilter))
             ->latest('requested_at')
             ->paginate(15);
