@@ -7,6 +7,7 @@ use App\Http\Controllers\ActivityLogExportController;
 use App\Http\Controllers\ActivityParticipantPortalController;
 use App\Http\Controllers\ActivityRegistrationController;
 use App\Http\Controllers\ComplaintController;
+use App\Http\Controllers\InventoryAssetBatchLabelController;
 use App\Http\Controllers\InventoryAssetLabelController;
 use App\Http\Controllers\InventoryAssetVerificationController;
 use App\Http\Controllers\InventoryItemLabelController;
@@ -236,6 +237,8 @@ Route::middleware([
             ->whereNumber(['school', 'item'])->middleware(['can:inventory.view', 'throttle:60,1'])
             ->name('inventory.items.verify');
 
+        Route::get('/inventaris/aset/label-massal', InventoryAssetBatchLabelController::class)
+            ->name('inventory.assets.batch-labels');
         Route::get('/inventaris/aset/{asset}/label', InventoryAssetLabelController::class)
             ->whereNumber('asset')->middleware(['can:inventory.labels.print', 'throttle:30,1'])
             ->name('inventory.assets.labels');
