@@ -37,7 +37,7 @@ class InventoryAssetManagementTest extends TestCase
             ->set('assetItemId', $item->id)
             ->set('assetOwnerId', $owner->id)
             ->set('assetLocationId', $location->id)
-            ->set('assetCode', 'KOMPAS-001')
+            ->set('assetCode', 'KOMPAS')
             ->set('assetSerialNumber', 'SERIAL-001')
             ->call('createAsset')
             ->assertHasNoErrors();
@@ -45,10 +45,46 @@ class InventoryAssetManagementTest extends TestCase
         $this->assertDatabaseHas('inventory_assets', [
             'school_id' => app(SchoolContext::class)->id(),
             'item_id' => $item->id,
-            'asset_code' => 'KOMPAS-001',
+            'asset_code' => 'KOMPAS-0001',
             'serial_number' => 'SERIAL-001',
             'status' => 'available',
         ]);
+    }
+
+    public function test_generates_multiple_asset_codes_after_last_number_and_continues_sequence(): void
+    {
+        [$item, $owner, $location] = $this->makeReferences();
+
+        Livewire::test(Index::class)
+            ->set('assetItemId', $item->id)
+            ->set('assetOwnerId', $owner->id)
+            ->set('assetLocationId', $location->id)
+            ->set('assetCode', 'TENDA')
+            ->set('assetQuantity', '3')
+            ->set('assetLastNumber', '12')
+            ->call('createAsset')
+            ->assertHasNoErrors();
+
+        foreach ([13, 14, 15] as $number) {
+            $this->assertDatabaseHas('inventory_assets', [
+                'school_id' => app(SchoolContext::class)->id(),
+                'asset_code' => 'TENDA-'.str_pad((string) $number, 4, '0', STR_PAD_LEFT),
+            ]);
+        }
+
+        Livewire::test(Index::class)
+            ->set('assetItemId', $item->id)
+            ->set('assetOwnerId', $owner->id)
+            ->set('assetLocationId', $location->id)
+            ->set('assetCode', 'TENDA')
+            ->set('assetQuantity', '2')
+            ->set('assetLastNumber', '0')
+            ->call('createAsset')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('inventory_assets', ['asset_code' => 'TENDA-0016']);
+        $this->assertDatabaseHas('inventory_assets', ['asset_code' => 'TENDA-0017']);
+        $this->assertDatabaseCount('inventory_assets', 5);
     }
 
     public function test_cannot_register_asset_against_other_school_owner(): void
@@ -69,7 +105,7 @@ class InventoryAssetManagementTest extends TestCase
             ->set('assetItemId', $item->id)
             ->set('assetOwnerId', $ownerId)
             ->set('assetLocationId', $location->id)
-            ->set('assetCode', 'KOMPAS-002')
+            ->set('assetCode', 'KOMPAS')
             ->call('createAsset')
             ->assertHasErrors(['assetOwnerId']);
 
