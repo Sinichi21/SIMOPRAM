@@ -7,6 +7,8 @@ use App\Http\Controllers\ActivityLogExportController;
 use App\Http\Controllers\ActivityParticipantPortalController;
 use App\Http\Controllers\ActivityRegistrationController;
 use App\Http\Controllers\ComplaintController;
+use App\Http\Controllers\InventoryAssetLabelController;
+use App\Http\Controllers\InventoryAssetVerificationController;
 use App\Http\Controllers\InventoryItemLabelController;
 use App\Http\Controllers\InventoryItemVerificationController;
 use App\Http\Controllers\InventoryQrScannerController;
@@ -233,6 +235,14 @@ Route::middleware([
         Route::get('/inventaris/verifikasi/{school}/{item}', InventoryItemVerificationController::class)
             ->whereNumber(['school', 'item'])->middleware(['can:inventory.view', 'throttle:60,1'])
             ->name('inventory.items.verify');
+
+        Route::get('/inventaris/aset/{asset}/label', InventoryAssetLabelController::class)
+            ->whereNumber('asset')->middleware(['can:inventory.labels.print', 'throttle:30,1'])
+            ->name('inventory.assets.labels');
+
+        Route::get('/inventaris/verifikasi-aset/{school}/{asset}', InventoryAssetVerificationController::class)
+            ->whereNumber(['school', 'asset'])->middleware(['can:inventory.view', 'throttle:60,1'])
+            ->name('inventory.assets.verify');
 
         Route::get('/inventaris/pindai', InventoryQrScannerController::class)
             ->middleware(['can:inventory.view', 'throttle:60,1'])
