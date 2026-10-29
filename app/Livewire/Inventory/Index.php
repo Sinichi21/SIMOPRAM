@@ -179,6 +179,12 @@ class Index extends Component
         session()->flash('status', 'Barang inventaris berhasil ditambahkan.');
     }
 
+    public function createAssetAndPrint(): void
+    {
+        $this->printAfterSave = true;
+        $this->createAsset();
+    }
+
     public function createAsset(): void
     {
         $this->authorizeManage();
