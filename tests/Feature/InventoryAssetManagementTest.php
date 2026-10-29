@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Inventory\Index;
+use App\Models\InventoryAsset;
 use App\Models\InventoryCategory;
 use App\Models\InventoryItem;
 use App\Models\InventoryLocation;
@@ -73,6 +74,55 @@ class InventoryAssetManagementTest extends TestCase
             ->assertHasErrors(['assetOwnerId']);
 
         $this->assertDatabaseCount('inventory_assets', 0);
+    }
+
+    public function test_asset_location_and_condition_change_is_audited(): void
+    {
+        [$item, $owner, $location] = $this->makeReferences();
+        $next = InventoryLocation::query()->create([
+            'name' => 'Ruang Peralatan', 'location_type' => 'room', 'is_active' => true,
+        ]);
+        $asset = InventoryAsset::query()->create([
+            'item_id' => $item->id, 'owner_id' => $owner->id, 'location_id' => $location->id,
+            'asset_code' => 'KOMPAS-003', 'condition' => 'good', 'status' => 'available',
+        ]);
+
+        Livewire::test(Index::class)
+            ->call('editAsset', $asset->id)
+            ->set('editingAssetLocationId', $next->id)
+            ->set('editingAssetCondition', 'damaged')
+            ->set('editingAssetReason', 'Kompas rusak setelah pemeriksaan.')
+            ->call('saveAssetChange')
+            ->assertHasNoErrors();
+
+        $this->assertSame($next->id, $asset->fresh()->location_id);
+        $this->assertSame('damaged', $asset->fresh()->condition);
+        $this->assertDatabaseHas('inventory_asset_events', [
+            'asset_id' => $asset->id,
+            'from_location_id' => $location->id,
+            'to_location_id' => $next->id,
+            'from_condition' => 'good',
+            'to_condition' => 'damaged',
+        ]);
+    }
+
+    public function test_asset_change_rejects_short_reason_without_mutating_asset(): void
+    {
+        [$item, $owner, $location] = $this->makeReferences();
+        $asset = InventoryAsset::query()->create([
+            'item_id' => $item->id, 'owner_id' => $owner->id, 'location_id' => $location->id,
+            'asset_code' => 'KOMPAS-004', 'condition' => 'good', 'status' => 'available',
+        ]);
+
+        Livewire::test(Index::class)
+            ->call('editAsset', $asset->id)
+            ->set('editingAssetCondition', 'damaged')
+            ->set('editingAssetReason', 'Singkat')
+            ->call('saveAssetChange')
+            ->assertHasErrors(['editingAssetReason']);
+
+        $this->assertSame('good', $asset->fresh()->condition);
+        $this->assertDatabaseCount('inventory_asset_events', 0);
     }
 
     private function makeReferences(): array
