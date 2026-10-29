@@ -4,8 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\InventoryCategory;
 use App\Models\InventoryItem;
-use App\Models\InventoryLocation;
 use App\Models\InventoryLoan;
+use App\Models\InventoryLocation;
 use App\Models\InventoryOwner;
 use App\Models\School;
 use App\Models\User;
