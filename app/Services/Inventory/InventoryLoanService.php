@@ -382,6 +382,17 @@ class InventoryLoanService
                     throw ValidationException::withMessages(["lines.$index.quantity_returned" => 'Aset individual harus dicatat sebagai satu unit utuh: kembali atau hilang.']);
                 }
 
+                if ($returned > 0 && $item->tracking_type === 'individual') {
+                    $returnCondition = $line['condition'] ?? 'good';
+                    if (! in_array($returnCondition, ['good', 'damaged'], true)) {
+                        throw ValidationException::withMessages(["lines.$index.condition" => 'Kondisi pengembalian aset harus baik atau rusak.']);
+                    }
+
+                    if ($returnCondition === 'damaged' && mb_strlen(trim((string) ($line['condition_notes'] ?? $notes ?? ''))) < 10) {
+                        throw ValidationException::withMessages(["lines.$index.condition_notes" => 'Jelaskan kerusakan aset minimal 10 karakter.']);
+                    }
+                }
+
                 if ($returned > 0) {
                     if ($item->tracking_type === 'quantity') {
                         $this->stockService->recordMovement(
