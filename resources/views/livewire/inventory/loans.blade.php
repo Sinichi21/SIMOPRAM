@@ -147,6 +147,13 @@
                                     @if ($issuedDocument)
                                         <a class="inline-block rounded border px-2 py-1 text-xs underline" href="{{ route('inventory.loans.documents.show', ['document' => $issuedDocument->id]) }}" target="_blank" rel="noopener">BA Terbit: {{ $documentLabel }}</a>
                                         @can('inventory.documents.reprint')
+                                            <form method="POST" action="{{ route('inventory.loans.documents.correct', ['document' => $issuedDocument->id]) }}" class="mt-1 flex flex-wrap items-center gap-1">
+                                                @csrf
+                                                <input name="reason" minlength="10" maxlength="2000" required placeholder="Alasan koreksi (min. 10 karakter)" aria-label="Alasan koreksi {{ $documentLabel }}" class="rounded border px-2 py-1 text-xs dark:bg-zinc-900" />
+                                                <button type="submit" class="rounded border px-2 py-1 text-xs" onclick="return confirm('Terbitkan BA versi koreksi? Versi sebelumnya akan tetap tersimpan sebagai arsip.')">Koreksi BA</button>
+                                            </form>
+                                        @endcan
+                                        @can('inventory.documents.reprint')
                                             <form method="POST" action="{{ route('inventory.loans.documents.reprint', ['document' => $issuedDocument->id]) }}" class="mt-1 flex flex-wrap items-center gap-1">
                                                 @csrf
                                                 <input name="reason" maxlength="500" required placeholder="Alasan cetak ulang" aria-label="Alasan cetak ulang {{ $documentLabel }}" class="rounded border px-2 py-1 text-xs dark:bg-zinc-900" />
@@ -162,6 +169,16 @@
                                         @endcan
                                     @endif
                                 @endforeach
+                                @if ($loan->documents->where('status', 'superseded')->isNotEmpty())
+                                    <details class="mt-2 text-xs">
+                                        <summary class="cursor-pointer">Riwayat versi BA ({{ $loan->documents->where('status', 'superseded')->count() }} arsip)</summary>
+                                        @foreach ($loan->documents->where('status', 'superseded')->sortByDesc('version') as $oldDocument)
+                                            <div class="mt-1">
+                                                <a class="underline" target="_blank" rel="noopener" href="{{ route('inventory.loans.documents.show', ['document' => $oldDocument->id]) }}">{{ $oldDocument->document_number }} (versi {{ $oldDocument->version }})</a>
+                                            </div>
+                                        @endforeach
+                                    </details>
+                                @endif
                                 @if ($loan->events->contains('event_type', 'handover'))
                                     <a class="inline-block rounded border px-2 py-1 text-xs underline" href="{{ route('inventory.loans.documents.preview', ['loan' => $loan->id, 'type' => 'handover']) }}" target="_blank" rel="noopener">Draft BA Serah-terima</a>
                                 @endif
