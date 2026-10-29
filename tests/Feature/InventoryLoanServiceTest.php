@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\InventoryAsset;
 use App\Models\InventoryCategory;
 use App\Models\InventoryItem;
 use App\Models\InventoryLocation;
@@ -130,6 +131,73 @@ class InventoryLoanServiceTest extends TestCase
 
         $this->assertSame('approved', $first->fresh()->status);
         $this->assertSame('requested', $second->fresh()->status);
+    }
+
+    public function test_approval_rejects_individual_asset_that_became_damaged(): void
+    {
+        [$item, $owner, $location, $asset] = $this->makeIndividualAsset();
+        $service = app(InventoryLoanService::class);
+        $loan = $service->requestLoan(
+            ['type' => 'manual_external', 'name' => 'Peminjam'],
+            [[
+                'item_id' => $item->id, 'owner_id' => $owner->id,
+                'location_id' => $location->id, 'asset_id' => $asset->id, 'quantity' => 1,
+            ]],
+        );
+        $asset->forceFill(['condition' => 'damaged'])->save();
+
+        try {
+            $service->approve($loan->id);
+            $this->fail('Aset rusak tidak boleh disetujui.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('items', $exception->errors());
+        }
+
+        $this->assertSame('requested', $loan->fresh()->status);
+    }
+
+    public function test_handover_rejects_individual_asset_that_changed_location(): void
+    {
+        [$item, $owner, $location, $asset] = $this->makeIndividualAsset();
+        $service = app(InventoryLoanService::class);
+        $loan = $service->requestLoan(
+            ['type' => 'manual_external', 'name' => 'Peminjam'],
+            [[
+                'item_id' => $item->id, 'owner_id' => $owner->id,
+                'location_id' => $location->id, 'asset_id' => $asset->id, 'quantity' => 1,
+            ]],
+        );
+        $service->approve($loan->id);
+        $otherLocation = InventoryLocation::query()->create([
+            'name' => 'Ruang penyimpanan kedua', 'location_type' => 'room', 'is_active' => true,
+        ]);
+        $asset->forceFill(['location_id' => $otherLocation->id])->save();
+
+        try {
+            $service->recordHandover($loan->id, [
+                ['loan_item_id' => $loan->items->first()->id, 'quantity' => 1],
+            ], now());
+            $this->fail('Aset yang berpindah lokasi tidak boleh diserahterimakan.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('lines.0.asset_id', $exception->errors());
+        }
+
+        $this->assertSame('available', $asset->fresh()->status);
+        $this->assertSame('approved', $loan->fresh()->status);
+        $this->assertDatabaseCount('inventory_loan_events', 0);
+    }
+
+    private function makeIndividualAsset(): array
+    {
+        [$item, $owner, $location] = $this->makeStock();
+        $item->forceFill(['tracking_type' => 'individual'])->save();
+        $asset = InventoryAsset::query()->create([
+            'item_id' => $item->id, 'owner_id' => $owner->id,
+            'location_id' => $location->id, 'asset_code' => 'ASSET-'.fake()->unique()->numerify('#####'),
+            'condition' => 'good', 'status' => 'available',
+        ]);
+
+        return [$item, $owner, $location, $asset];
     }
 
     private function makeStock(): array
