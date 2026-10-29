@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\InventoryItem;
 use App\Support\SchoolContext;
+use Endroid\QrCode\QrCode;
+use Endroid\QrCode\Writer\PngWriter;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -23,10 +25,14 @@ class InventoryItemLabelController extends Controller
         $record = InventoryItem::query()->where('school_id', $schoolId)
             ->with('category')->findOrFail($item);
 
+        $qrPayload = sprintf('SIMPRAM:INVENTORY:ITEM:%d:%d', $schoolId, $record->id);
+        $qr = (new PngWriter)->write(new QrCode(data: $qrPayload, size: 160, margin: 5));
+
         return view('inventory.labels.item', [
             'item' => $record,
             'format' => $data['format'] ?? 'a4',
             'copies' => (int) ($data['copies'] ?? 1),
+            'qrDataUri' => $qr->getDataUri(),
         ]);
     }
 }
