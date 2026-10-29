@@ -134,6 +134,7 @@
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div><flux:heading size="lg">Daftar Barang</flux:heading><flux:text size="sm" class="text-zinc-500">Saldo kuantitas dan jumlah aset individual ditampilkan terpisah.</flux:text></div>
             <div class="flex gap-2">
+                <a href="{{ route('inventory.items.scan') }}" class="rounded border px-3 py-2 text-sm">Pindai QR</a>
                 @can('inventory.stock.manage')<flux:button icon="arrows-right-left" variant="outline" wire:click="$set('showMovementForm', true)">Pergerakan Stok</flux:button>@endcan
                 <div class="w-full sm:w-72"><flux:input icon="magnifying-glass" placeholder="Cari nama atau kode barang..." wire:model.live.debounce.300ms="search" /></div>
             </div>
