@@ -301,6 +301,25 @@ class InventoryLoanDocumentServiceTest extends TestCase
         $this->assertDatabaseCount('inventory_loan_documents', 1);
     }
 
+    public function test_second_correction_has_stable_revision_number_and_full_history(): void
+    {
+        $loan = $this->makeLoan(true);
+        $service = app(InventoryLoanDocumentService::class);
+        $first = $service->issue($loan->id, 'handover');
+        $second = $service->correct($first->id, 'Koreksi administratif pertama pada berita acara.');
+        $third = $service->correct($second->id, 'Koreksi administratif kedua pada berita acara.');
+
+        $this->assertSame(3, $third->version);
+        $this->assertSame($first->document_number.'-REV3', $third->document_number);
+        $this->assertSame('superseded', $first->fresh()->status);
+        $this->assertSame('superseded', $second->fresh()->status);
+        $this->assertSame('issued', $third->fresh()->status);
+        $this->assertDatabaseCount('inventory_loan_documents', 3);
+        Storage::disk('local')->assertExists($first->storage_path);
+        Storage::disk('local')->assertExists($second->storage_path);
+        Storage::disk('local')->assertExists($third->storage_path);
+    }
+
     private function makeLoan(bool $handover): InventoryLoan
     {
         $category = InventoryCategory::query()->create(['name' => 'Peralatan', 'is_active' => true]);
