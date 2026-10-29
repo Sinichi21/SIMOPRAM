@@ -7,6 +7,7 @@ use App\Models\InventoryCategory;
 use App\Models\InventoryItem;
 use App\Models\InventoryLocation;
 use App\Models\InventoryOwner;
+use App\Models\School;
 use App\Models\InventoryStockMovement;
 use App\Models\ScoutGroup;
 use App\Services\Inventory\InventoryAssetService;
@@ -16,6 +17,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -191,14 +193,14 @@ class Index extends Component
         $lastNumber = (int) $validated['assetLastNumber'];
         $prefix = $validated['assetCode'];
         if ($lastNumber + $quantity > 999999999) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
+            throw ValidationException::withMessages([
                 'assetQuantity' => 'Nomor urut melebihi batas yang diperbolehkan.',
             ]);
         }
 
         DB::transaction(function () use ($schoolId, $validated, $prefix, $quantity, $lastNumber): void {
             // Lock the school row so concurrent batch registrations cannot generate overlapping codes.
-            \App\Models\School::query()->whereKey($schoolId)->lockForUpdate()->firstOrFail();
+            School::query()->whereKey($schoolId)->lockForUpdate()->firstOrFail();
 
             $existingCodes = InventoryAsset::withTrashed()->where('school_id', $schoolId)
                 ->where('asset_code', 'like', $prefix.'-%')
@@ -211,7 +213,7 @@ class Index extends Component
             $startNumber = max($highest, $lastNumber) + 1;
 
             if ($startNumber + $quantity - 1 > 999999999) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     'assetQuantity' => 'Rentang nomor urut telah mencapai batas.',
                 ]);
             }
