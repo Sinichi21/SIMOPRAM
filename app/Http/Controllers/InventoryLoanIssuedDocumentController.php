@@ -25,7 +25,7 @@ class InventoryLoanIssuedDocumentController extends Controller
 
     public function correct(Request $request, int $document, InventoryLoanDocumentService $service): RedirectResponse
     {
-        abort_unless($request->user()?->can('inventory.documents.reprint'), 403);
+        abort_unless($request->user()?->can('inventory.documents.correct'), 403);
         $data = $request->validate(['reason' => ['required', 'string', 'min:10', 'max:2000']]);
         $updated = $service->correct($document, $data['reason']);
 
