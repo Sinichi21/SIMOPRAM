@@ -23,6 +23,15 @@ class InventoryLoanIssuedDocumentController extends Controller
         return redirect()->route('inventory.loans.documents.show', ['document' => $document->id]);
     }
 
+    public function correct(Request $request, int $document, InventoryLoanDocumentService $service): RedirectResponse
+    {
+        abort_unless($request->user()?->can('inventory.documents.reprint'), 403);
+        $data = $request->validate(['reason' => ['required', 'string', 'min:10', 'max:2000']]);
+        $updated = $service->correct($document, $data['reason']);
+
+        return redirect()->route('inventory.loans.documents.show', ['document' => $updated->id]);
+    }
+
     public function logReprint(Request $request, int $document): RedirectResponse
     {
         abort_unless($request->user()?->can('inventory.documents.reprint'), 403);
@@ -54,7 +63,7 @@ class InventoryLoanIssuedDocumentController extends Controller
         abort_unless($schoolId, 409);
 
         $record = InventoryLoanDocument::query()->where('school_id', $schoolId)
-            ->where('status', 'issued')->findOrFail($document);
+            ->whereIn('status', ['issued', 'superseded'])->findOrFail($document);
         $bytes = $this->verifiedPdf($record);
 
         return response($bytes, 200, [
