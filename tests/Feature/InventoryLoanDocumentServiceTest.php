@@ -201,6 +201,35 @@ class InventoryLoanDocumentServiceTest extends TestCase
         $this->assertDatabaseCount('inventory_loan_document_prints', 0);
     }
 
+    public function test_ba_correction_keeps_previous_pdf_and_issues_new_version(): void
+    {
+        $loan = $this->makeLoan(true);
+        $service = app(InventoryLoanDocumentService::class);
+        $first = $service->issue($loan->id, 'handover');
+        $originalBytes = Storage::disk('local')->get($first->storage_path);
+
+        $second = $service->correct($first->id, 'Koreksi administrasi rincian dokumen.');
+
+        $this->assertSame(2, $second->version);
+        $this->assertSame('issued', $second->status);
+        $this->assertSame('superseded', $first->fresh()->status);
+        $this->assertSame($originalBytes, Storage::disk('local')->get($first->storage_path));
+        Storage::disk('local')->assertExists($second->storage_path);
+        $this->assertSame(hash('sha256', Storage::disk('local')->get($second->storage_path)), $second->sha256);
+        $this->assertDatabaseCount('inventory_loan_documents', 2);
+    }
+
+    public function test_superseded_ba_cannot_be_corrected_again(): void
+    {
+        $loan = $this->makeLoan(true);
+        $service = app(InventoryLoanDocumentService::class);
+        $first = $service->issue($loan->id, 'handover');
+        $service->correct($first->id, 'Koreksi administrasi rincian dokumen.');
+
+        $this->expectException(ValidationException::class);
+        $service->correct($first->id, 'Koreksi ulang terhadap dokumen lama.');
+    }
+
     private function makeLoan(bool $handover): InventoryLoan
     {
         $category = InventoryCategory::query()->create(['name' => 'Peralatan', 'is_active' => true]);
