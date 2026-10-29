@@ -146,7 +146,7 @@
                                     @php($issuedDocument = $loan->documents->first(fn ($document) => $document->document_type === $documentType && $document->status === 'issued'))
                                     @if ($issuedDocument)
                                         <a class="inline-block rounded border px-2 py-1 text-xs underline" href="{{ route('inventory.loans.documents.show', ['document' => $issuedDocument->id]) }}" target="_blank" rel="noopener">BA Terbit: {{ $documentLabel }}</a>
-                                        @can('inventory.documents.reprint')
+                                        @can('inventory.documents.correct')
                                             <form method="POST" action="{{ route('inventory.loans.documents.correct', ['document' => $issuedDocument->id]) }}" class="mt-1 flex flex-wrap items-center gap-1">
                                                 @csrf
                                                 <input name="reason" minlength="10" maxlength="2000" required placeholder="Alasan koreksi (min. 10 karakter)" aria-label="Alasan koreksi {{ $documentLabel }}" class="rounded border px-2 py-1 text-xs dark:bg-zinc-900" />
