@@ -9,6 +9,7 @@ use App\Http\Controllers\ActivityRegistrationController;
 use App\Http\Controllers\ComplaintController;
 use App\Http\Controllers\InventoryItemLabelController;
 use App\Http\Controllers\InventoryItemVerificationController;
+use App\Http\Controllers\InventoryQrScannerController;
 use App\Http\Controllers\InventoryLoanDocumentPreviewController;
 use App\Http\Controllers\InventoryLoanIssuedDocumentController;
 use App\Http\Controllers\LandingPageController;
@@ -232,6 +233,10 @@ Route::middleware([
         Route::get('/inventaris/verifikasi/{school}/{item}', InventoryItemVerificationController::class)
             ->whereNumber(['school', 'item'])->middleware(['can:inventory.view', 'throttle:60,1'])
             ->name('inventory.items.verify');
+
+        Route::get('/inventaris/pindai', InventoryQrScannerController::class)
+            ->middleware(['can:inventory.view', 'throttle:60,1'])
+            ->name('inventory.items.scan');
 
         Route::get('/inventaris/peminjaman', Loans::class)
             ->middleware('can:inventory.view')
