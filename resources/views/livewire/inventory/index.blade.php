@@ -140,7 +140,7 @@
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
-                <thead><tr class="border-b text-left"><th class="px-3 py-3 font-medium">Kode</th><th class="px-3 py-3 font-medium">Nama Barang</th><th class="px-3 py-3 font-medium">Kategori</th><th class="px-3 py-3 font-medium">Pelacakan</th><th class="px-3 py-3 font-medium text-right">Saldo / Aset</th><th class="px-3 py-3 font-medium">Status</th></tr></thead>
+                <thead><tr class="border-b text-left"><th class="px-3 py-3 font-medium">Kode</th><th class="px-3 py-3 font-medium">Nama Barang</th><th class="px-3 py-3 font-medium">Kategori</th><th class="px-3 py-3 font-medium">Pelacakan</th><th class="px-3 py-3 font-medium text-right">Saldo / Aset</th><th class="px-3 py-3 font-medium">Status</th><th class="px-3 py-3 font-medium">Label</th></tr></thead>
                 <tbody>
                     @forelse ($items as $item)
                         <tr wire:key="inventory-item-{{ $item->id }}" class="border-b last:border-0">
@@ -150,9 +150,10 @@
                             <td class="px-3 py-3">{{ $item->tracking_type === 'individual' ? 'Per unit' : 'Kuantitas' }}</td>
                             <td class="px-3 py-3 text-right tabular-nums">{{ $item->tracking_type === 'individual' ? number_format($item->assets_count).' aset' : number_format((float) ($item->total_quantity ?? 0), 3).' '.$item->unit }}</td>
                             <td class="px-3 py-3">@if ($item->is_active)<flux:badge color="green">Aktif</flux:badge>@else<flux:badge color="zinc">Nonaktif</flux:badge>@endif</td>
+                            <td class="px-3 py-3">@can('inventory.labels.print')<a href="{{ route('inventory.items.labels', ['item' => $item->id, 'format' => 'a4']) }}" target="_blank" rel="noopener" class="text-xs underline">Cetak A4</a> <a href="{{ route('inventory.items.labels', ['item' => $item->id, 'format' => 'thermal58']) }}" target="_blank" rel="noopener" class="text-xs underline">58 mm</a> <a href="{{ route('inventory.items.labels', ['item' => $item->id, 'format' => 'thermal80']) }}" target="_blank" rel="noopener" class="text-xs underline">80 mm</a>@endcan</td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="px-3 py-10 text-center text-zinc-500">Belum ada barang inventaris. Tambahkan kategori lalu daftarkan barang pertama.</td></tr>
+                        <tr><td colspan="7" class="px-3 py-10 text-center text-zinc-500">Belum ada barang inventaris. Tambahkan kategori lalu daftarkan barang pertama.</td></tr>
                     @endforelse
                 </tbody>
             </table>
