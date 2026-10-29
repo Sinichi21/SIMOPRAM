@@ -34,7 +34,8 @@ class InventoryItemLabelTest extends TestCase
                 ->assertOk()
                 ->assertSee('Tali Pramuka')
                 ->assertSee('LABEL-001')
-                ->assertSee('Cetak label');
+                ->assertSee('Cetak label')
+                ->assertSee('data:image/png;base64,', false);
         }
     }
 
