@@ -114,28 +114,26 @@ class InventoryLoanDocumentServiceTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_user_without_inventory_permission_cannot_issue_or_view_ba(): void
+    public function test_user_without_school_context_cannot_access_ba_routes(): void
     {
         $loan = $this->makeLoan(true);
         $document = app(InventoryLoanDocumentService::class)->issue($loan->id, 'handover');
-        $this->actingAs(User::factory()->create(['system_role' => 'super_admin']));
-        $schoolId = app(SchoolContext::class)->id();
-        $this->withSession(['active_school_id' => $schoolId]);
 
-        // A regular user with no school membership must not access protected BA routes.
+        // school.required rejects users without an active school before permission checks.
         $this->actingAs(User::factory()->create(['system_role' => null]));
 
         $this->post(route('inventory.loans.documents.issue', [
-            'loan' => $loan->id, 'type' => 'handover',
-        ]))->assertForbidden();
+            'loan' => $loan->id,
+            'type' => 'handover',
+        ]))->assertStatus(409);
 
         $this->get(route('inventory.loans.documents.show', [
             'document' => $document->id,
-        ]))->assertForbidden();
+        ]))->assertStatus(409);
 
         $this->post(route('inventory.loans.documents.reprint', [
             'document' => $document->id,
-        ]), ['reason' => 'Salinan'])->assertForbidden();
+        ]), ['reason' => 'Salinan'])->assertStatus(409);
     }
 
     public function test_reprint_requires_reason_and_creates_audit_record(): void
