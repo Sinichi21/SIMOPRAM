@@ -114,6 +114,28 @@ class InventoryItemLabelTest extends TestCase
         ]))->assertForbidden();
     }
 
+    public function test_authorized_user_can_open_qr_scanner(): void
+    {
+        $this->get(route('inventory.items.scan'))
+            ->assertOk()
+            ->assertSee('Pindai QR Inventaris')
+            ->assertSee('Mulai kamera');
+    }
+
+    public function test_member_without_inventory_view_cannot_open_qr_scanner(): void
+    {
+        $schoolId = app(SchoolContext::class)->id();
+        $member = User::factory()->create(['system_role' => null]);
+        SchoolUserMembership::query()->create([
+            'school_id' => $schoolId,
+            'user_id' => $member->id,
+            'is_active' => true,
+        ]);
+        $this->actingAs($member)->withSession(['active_school_id' => $schoolId]);
+
+        $this->get(route('inventory.items.scan'))->assertForbidden();
+    }
+
     private function makeItem(): InventoryItem
     {
         $category = InventoryCategory::query()->create([
