@@ -9,7 +9,8 @@
         .sheet { display: flex; flex-wrap: wrap; gap: 3mm; }
         .label { box-sizing: border-box; border: 1px solid #555; padding: 2mm; width: {{ $format === 'a4' ? '60mm' : '100%' }}; min-height: {{ $format === 'thermal58' ? '30mm' : '35mm' }}; overflow-wrap: anywhere; break-inside: avoid; }
         .name { font-size: 11px; font-weight: bold; }
-        .code { font-size: 10px; font-family: monospace; margin-top: 3mm; }
+        .code { font-size: 10px; font-family: monospace; margin-top: 1mm; }
+        .qr { float: right; width: 18mm; height: 18mm; margin-left: 2mm; }
         .category { font-size: 9px; margin-top: 2mm; }
         @media print { .toolbar { display: none; } .label { border-color: #111; } }
         @media screen { .toolbar { padding: 12px; } }
@@ -20,6 +21,7 @@
     <div class="sheet">
         @for ($i = 0; $i < $copies; $i++)
             <div class="label">
+                <img class="qr" src="{{ $qrDataUri }}" alt="QR identitas barang {{ $item->item_code }}">
                 <div class="name">{{ $item->name }}</div>
                 <div class="code">{{ $item->item_code }}</div>
                 <div class="category">{{ $item->category?->name ?? 'Inventaris' }}</div>
