@@ -246,6 +246,10 @@ Route::middleware([
             ->whereNumber('document')->middleware(['can:inventory.documents.reprint', 'throttle:10,1'])
             ->name('inventory.loans.documents.reprint');
 
+        Route::post('/inventaris/dokumen/{document}/koreksi', [InventoryLoanIssuedDocumentController::class, 'correct'])
+            ->whereNumber('document')->middleware(['can:inventory.documents.reprint', 'throttle:5,1'])
+            ->name('inventory.loans.documents.correct');
+
         Route::view(
             '/master/tahun-ajaran',
             'master.academic-years'
