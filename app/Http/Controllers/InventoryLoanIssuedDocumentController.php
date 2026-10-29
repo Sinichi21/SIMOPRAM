@@ -64,6 +64,7 @@ class InventoryLoanIssuedDocumentController extends Controller
             'X-Content-Type-Options' => 'nosniff',
         ]);
     }
+
     private function verifiedPdf(InventoryLoanDocument $record): string
     {
         $disk = Storage::disk('local');
@@ -78,5 +79,4 @@ class InventoryLoanIssuedDocumentController extends Controller
 
         return $bytes;
     }
-
 }
