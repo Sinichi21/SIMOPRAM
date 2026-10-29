@@ -230,6 +230,36 @@ class InventoryLoanDocumentServiceTest extends TestCase
         $service->correct($first->id, 'Koreksi ulang terhadap dokumen lama.');
     }
 
+    public function test_http_correction_creates_version_two_and_keeps_old_pdf_accessible(): void
+    {
+        $loan = $this->makeLoan(true);
+        $first = app(InventoryLoanDocumentService::class)->issue($loan->id, 'handover');
+        $bytes = Storage::disk('local')->get($first->storage_path);
+
+        $response = $this->post(route('inventory.loans.documents.correct', [
+            'document' => $first->id,
+        ]), ['reason' => 'Perbaikan data administratif berita acara.']);
+
+        $second = $loan->documents()->where('version', 2)->firstOrFail();
+        $response->assertRedirect(route('inventory.loans.documents.show', ['document' => $second->id]));
+        $this->assertSame('superseded', $first->fresh()->status);
+        $this->get(route('inventory.loans.documents.show', ['document' => $first->id]))
+            ->assertOk();
+        $this->assertSame($bytes, Storage::disk('local')->get($first->storage_path));
+    }
+
+    public function test_http_correction_rejects_short_reason(): void
+    {
+        $loan = $this->makeLoan(true);
+        $first = app(InventoryLoanDocumentService::class)->issue($loan->id, 'handover');
+
+        $this->post(route('inventory.loans.documents.correct', [
+            'document' => $first->id,
+        ]), ['reason' => 'singkat'])->assertSessionHasErrors('reason');
+
+        $this->assertDatabaseCount('inventory_loan_documents', 1);
+    }
+
     private function makeLoan(bool $handover): InventoryLoan
     {
         $category = InventoryCategory::query()->create(['name' => 'Peralatan', 'is_active' => true]);
