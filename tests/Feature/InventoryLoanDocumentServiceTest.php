@@ -114,6 +114,64 @@ class InventoryLoanDocumentServiceTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_user_without_inventory_permission_cannot_issue_or_view_ba(): void
+    {
+        $loan = $this->makeLoan(true);
+        $document = app(InventoryLoanDocumentService::class)->issue($loan->id, 'handover');
+        $this->actingAs(User::factory()->create(['system_role' => 'super_admin']));
+        $schoolId = app(SchoolContext::class)->id();
+        $this->withSession(['active_school_id' => $schoolId]);
+
+        // A regular user with no school membership must not access protected BA routes.
+        $this->actingAs(User::factory()->create(['system_role' => null]));
+
+        $this->post(route('inventory.loans.documents.issue', [
+            'loan' => $loan->id, 'type' => 'handover',
+        ]))->assertForbidden();
+
+        $this->get(route('inventory.loans.documents.show', [
+            'document' => $document->id,
+        ]))->assertForbidden();
+
+        $this->post(route('inventory.loans.documents.reprint', [
+            'document' => $document->id,
+        ]), ['reason' => 'Salinan'])->assertForbidden();
+    }
+
+    public function test_reprint_requires_reason_and_creates_audit_record(): void
+    {
+        $loan = $this->makeLoan(true);
+        $document = app(InventoryLoanDocumentService::class)->issue($loan->id, 'handover');
+        $url = route('inventory.loans.documents.reprint', ['document' => $document->id]);
+
+        $this->from(route('inventory.loans.index'))
+            ->post($url, ['reason' => ''])
+            ->assertSessionHasErrors('reason');
+        $this->assertDatabaseCount('inventory_loan_document_prints', 0);
+
+        $this->post($url, ['reason' => 'Arsip pengganti untuk sekolah'])
+            ->assertRedirect(route('inventory.loans.documents.show', ['document' => $document->id]));
+
+        $this->assertDatabaseHas('inventory_loan_document_prints', [
+            'document_id' => $document->id,
+            'purpose' => 'reprint',
+            'reason' => 'Arsip pengganti untuk sekolah',
+        ]);
+    }
+
+    public function test_tampered_document_cannot_be_logged_as_reprinted(): void
+    {
+        $loan = $this->makeLoan(true);
+        $document = app(InventoryLoanDocumentService::class)->issue($loan->id, 'handover');
+        Storage::disk('local')->put($document->storage_path, 'tampered');
+
+        $this->post(route('inventory.loans.documents.reprint', [
+            'document' => $document->id,
+        ]), ['reason' => 'Salinan'])->assertStatus(409);
+
+        $this->assertDatabaseCount('inventory_loan_document_prints', 0);
+    }
+
     private function makeLoan(bool $handover): InventoryLoan
     {
         $category = InventoryCategory::query()->create(['name' => 'Peralatan', 'is_active' => true]);
