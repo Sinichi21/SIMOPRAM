@@ -153,7 +153,7 @@ class Index extends Component
         }
 
         $this->showPreview = true;
-        $this->useCustomBody = false;
+        $this->useRenderedTemplate($renderer);
     }
 
     public function useRenderedTemplate(LetterTemplateRenderer $renderer): void
@@ -163,6 +163,15 @@ class Index extends Component
         $template = LetterTemplate::query()->findOrFail($this->template_id);
         $this->body = $renderer->render($template, array_merge($this->templateContext(), $this->templateData), false);
         $this->useCustomBody = true;
+        $this->dispatch('letter-editor-content', html: $this->body);
+    }
+
+    public function updatedTemplateData(LetterTemplateRenderer $renderer): void
+    {
+        if ($this->direction !== 'outgoing' || ! $this->template_id || ! $this->useCustomBody) {
+            return;
+        }
+        // Once the user customizes the document, template inputs must not silently overwrite edits.
     }
 
     public function togglePreview(): void
