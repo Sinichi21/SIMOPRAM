@@ -61,6 +61,8 @@ class Index extends Component
 
     public string $body = '';
 
+    public bool $useCustomBody = false;
+
     public string $signatory_source = 'master';
 
     public ?int $signatory_user_id = null;
@@ -151,6 +153,16 @@ class Index extends Component
         }
 
         $this->showPreview = true;
+        $this->useCustomBody = false;
+    }
+
+    public function useRenderedTemplate(LetterTemplateRenderer $renderer): void
+    {
+        abort_unless(auth()->user()?->can($this->editingId ? 'letters.update' : 'letters.create'), 403);
+        abort_unless($this->direction === 'outgoing' && $this->template_id, 422);
+        $template = LetterTemplate::query()->findOrFail($this->template_id);
+        $this->body = $renderer->render($template, array_merge($this->templateContext(), $this->templateData), false);
+        $this->useCustomBody = true;
     }
 
     public function togglePreview(): void
@@ -288,7 +300,7 @@ class Index extends Component
             $this->letter_number = $validated['letter_number'];
         }
 
-        if ($template) {
+        if ($template && ! $this->useCustomBody) {
             $context = array_merge($this->templateContext(), $templateData, [
                 'letter_number' => (string) ($validated['letter_number'] ?? $this->letter_number),
             ]);
@@ -299,6 +311,18 @@ class Index extends Component
                 'template_slug' => $template->slug,
                 'template_name' => $template->name,
                 'requires_recipient' => (bool) $template->requires_recipient,
+                'signatory_source' => $signatorySource,
+                'signatory_user_id' => $signatoryUserId,
+            ];
+        }
+
+        if ($this->direction === 'outgoing' && $template && $this->useCustomBody) {
+            $validated['metadata'] = [
+                'template_data' => $templateData,
+                'template_slug' => $template->slug,
+                'template_name' => $template->name,
+                'requires_recipient' => (bool) $template->requires_recipient,
+                'custom_body' => true,
                 'signatory_source' => $signatorySource,
                 'signatory_user_id' => $signatoryUserId,
             ];
@@ -390,6 +414,7 @@ class Index extends Component
         $this->letter_type_id = $letter->letter_type_id;
         $this->letter_field_id = $letter->letter_field_id;
         $this->template_id = $letter->template_id;
+        $this->useCustomBody = (bool) data_get($letter->metadata, 'custom_body', false);
         $this->attachments = [];
         $this->signatory_user_id = data_get($letter->metadata, 'signatory_user_id')
             ? (int) data_get($letter->metadata, 'signatory_user_id')
@@ -615,6 +640,7 @@ class Index extends Component
         $this->archive_category = '';
         $this->retention_years = null;
         $this->body = '';
+        $this->useCustomBody = false;
         $this->signatory_source = 'master';
         $this->signatory_user_id = null;
         $this->signatory_name = '';
