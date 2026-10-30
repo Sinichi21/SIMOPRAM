@@ -25,37 +25,65 @@
 
     @if ($showRequestForm)
         <flux:card class="space-y-4">
-            <flux:heading size="lg">Permohonan Baru — Peminjam Eksternal</flux:heading>
-            <flux:text size="sm">Tahap awal mendukung satu jenis barang stok kuantitas per permohonan. Barang belum dikeluarkan sampai serah-terima fisik.</flux:text>
-            <form wire:submit="requestLoan" class="grid gap-4 md:grid-cols-2">
+            <flux:heading size="lg">Permohonan Baru — Keranjang Peminjaman</flux:heading>
+            <flux:text size="sm">Tambahkan beberapa barang atau unit aset ke keranjang. Stok baru dikeluarkan saat serah-terima fisik.</flux:text>
+            <div class="grid gap-3 md:grid-cols-2">
                 <flux:input label="Nama peminjam" wire:model="borrowerName" required />
                 <flux:input label="Organisasi (opsional)" wire:model="borrowerOrganization" />
-                <flux:input label="Kontak (opsional)" wire:model="borrowerContact" />
-                <flux:textarea label="Keperluan (opsional)" wire:model="purpose" />
-                <flux:select label="Barang" wire:model="itemId" required>
-                    <flux:select.option value="">Pilih barang</flux:select.option>
-                    @foreach ($items as $item)
-                        <flux:select.option value="{{ $item->id }}">{{ $item->item_code }} — {{ $item->name }}</flux:select.option>
-                    @endforeach
-                </flux:select>
-                <flux:select label="Pemilik" wire:model="ownerId" required>
-                    <flux:select.option value="">Pilih pemilik</flux:select.option>
-                    @foreach ($owners as $owner)
-                        <flux:select.option value="{{ $owner->id }}">{{ $owner->display_name }}</flux:select.option>
-                    @endforeach
-                </flux:select>
-                <flux:select label="Lokasi" wire:model="locationId" required>
-                    <flux:select.option value="">Pilih lokasi</flux:select.option>
-                    @foreach ($locations as $location)
-                        <flux:select.option value="{{ $location->id }}">{{ $location->name }}</flux:select.option>
-                    @endforeach
-                </flux:select>
-                <flux:input label="Jumlah" type="number" step="0.001" min="0.001" wire:model="quantity" required />
-                <div class="flex gap-2 md:col-span-2">
-                    <flux:button type="submit" variant="primary">Simpan Permohonan</flux:button>
-                    <flux:button type="button" variant="ghost" wire:click="$set('showRequestForm', false)">Batal</flux:button>
+                <flux:input label="Kontak peminjam" wire:model="borrowerContact" required />
+                <flux:textarea label="Keperluan peminjaman" wire:model="purpose" required />
+            </div>
+            <div class="rounded-lg border p-4 space-y-3">
+                <flux:heading size="md">Tambah barang ke keranjang</flux:heading>
+                <div class="grid gap-3 md:grid-cols-2">
+                    <flux:select label="Jenis barang" wire:model.live="itemId">
+                        <flux:select.option value="">Pilih barang</flux:select.option>
+                        @foreach ($items as $item)
+                            <flux:select.option value="{{ $item->id }}">{{ $item->item_code }} — {{ $item->name }} ({{ $item->tracking_type === 'individual' ? 'per unit' : 'stok' }})</flux:select.option>
+                        @endforeach
+                    </flux:select>
+                    <flux:select label="Pemilik" wire:model="ownerId">
+                        <flux:select.option value="">Pilih pemilik</flux:select.option>
+                        @foreach ($owners as $owner)
+                            <flux:select.option value="{{ $owner->id }}">{{ $owner->display_name }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
+                    <flux:select label="Lokasi" wire:model="locationId">
+                        <flux:select.option value="">Pilih lokasi</flux:select.option>
+                        @foreach ($locations as $location)
+                            <flux:select.option value="{{ $location->id }}">{{ $location->name }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
+                    <flux:input label="Jumlah (1 untuk unit individual)" type="number" min="0.001" step="0.001" wire:model="quantity" />
+                    @if ($items->firstWhere('id', (int) $itemId)?->tracking_type === 'individual')
+                        <flux:select label="Kode unit aset" wire:model="assetId">
+                            <flux:select.option value="">Pilih unit tersedia</flux:select.option>
+                            @foreach ($availableAssets as $asset)
+                                <flux:select.option value="{{ $asset->id }}">{{ $asset->asset_code }} — pemilik #{{ $asset->owner_id }}, lokasi #{{ $asset->location_id }}</flux:select.option>
+                            @endforeach
+                        </flux:select>
+                    @endif
                 </div>
-            </form>
+                <flux:button type="button" variant="outline" icon="plus" wire:click="addToCart">Tambahkan ke Keranjang</flux:button>
+            </div>
+            <div class="space-y-2">
+                <flux:heading size="md">Keranjang ({{ count($cart) }} baris)</flux:heading>
+                @forelse ($cart as $index => $line)
+                    <div wire:key="loan-cart-{{ $line['key'] }}" class="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
+                        <div>
+                            <div class="font-medium">{{ $line['name'] }}</div>
+                            <div class="text-xs text-zinc-500">{{ $line['asset_code'] ?: 'Stok kuantitas' }} · {{ number_format((float) $line['quantity'], 3) }} unit · pemilik #{{ $line['owner_id'] }} · lokasi #{{ $line['location_id'] }}</div>
+                        </div>
+                        <flux:button size="sm" variant="ghost" type="button" wire:click="removeFromCart({{ $index }})">Hapus</flux:button>
+                    </div>
+                @empty
+                    <flux:text size="sm">Keranjang masih kosong.</flux:text>
+                @endforelse
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <flux:button variant="primary" type="button" wire:click="requestLoan" :disabled="count($cart) === 0">Simpan Permohonan</flux:button>
+                <flux:button type="button" variant="ghost" wire:click="$set('showRequestForm', false)">Batal</flux:button>
+            </div>
         </flux:card>
     @endif
 
