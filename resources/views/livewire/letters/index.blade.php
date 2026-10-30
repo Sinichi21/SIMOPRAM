@@ -90,10 +90,19 @@
                 <div><label class="mb-1 block text-sm font-medium">Retensi Arsip</label><select wire:model="retention_years" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"><option value="">Belum ditentukan</option><option value="2">2 tahun</option><option value="5">5 tahun</option><option value="10">10 tahun</option><option value="20">Lebih dari 10 tahun / statis</option></select></div>
                 <div><label class="mb-1 block text-sm font-medium">Klasifikasi / Jenis bebas</label><input wire:model="classification" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"></div>
 
-                @if ($incoming || ! $selectedTemplate)
+                @if ($incoming)
                     <div class="md:col-span-2"><label class="mb-1 block text-sm font-medium">Isi / Catatan</label><textarea wire:model="body" rows="8" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"></textarea></div>
                 @else
-                    <div class="md:col-span-2 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950/40 dark:text-zinc-400">Isi surat dihasilkan dari Template + Data Template. Hasil render disimpan sebagai snapshot pada field <code>body</code> ketika surat disimpan.</div>
+                    <div class="md:col-span-2 space-y-3 rounded-xl border p-4">
+                        <label class="block text-sm font-semibold">Isi Surat Individual</label>
+                        @if ($selectedTemplate)
+                            <p class="text-xs text-zinc-500">Template master tidak berubah. Gunakan tombol berikut untuk menyalin hasil template ke isi surat ini, lalu edit sesuai kebutuhan. Perubahan hanya berlaku untuk surat ini.</p>
+                            <button type="button" wire:click="useRenderedTemplate" wire:confirm="Ganti isi surat saat ini dengan hasil template? Perubahan isi surat yang belum disimpan akan tertimpa." class="rounded border px-3 py-2 text-sm">Salin Template ke Isi Surat</button>
+                            <label class="flex items-center gap-2 text-sm"><input type="checkbox" wire:model.live="useCustomBody"> Gunakan isi surat individual (jangan render ulang template saat simpan)</label>
+                        @endif
+                        <textarea wire:model="body" rows="15" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 font-serif text-sm dark:border-zinc-700 dark:bg-zinc-900" placeholder="Isi surat khusus ini..."></textarea>
+                        @error('body')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
+                    </div>
                 @endif
 
                 @unless ($incoming)
