@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Inventory;
 
+use App\Models\InventoryAsset;
 use App\Models\InventoryItem;
 use App\Models\InventoryLoan;
 use App\Models\InventoryLocation;
@@ -36,6 +37,10 @@ class Loans extends Component
 
     public string $quantity = '1';
 
+    public ?int $assetId = null;
+
+    public array $cart = [];
+
     public string $statusFilter = '';
 
     public ?int $activeLoanId = null;
@@ -64,37 +69,99 @@ class Loans extends Component
         $this->schoolId();
     }
 
-    public function requestLoan(InventoryLoanService $service): void
+    public function addToCart(): void
     {
         abort_unless(auth()->user()?->can('inventory.loans.request'), 403);
         $schoolId = $this->schoolId();
-
         $data = $this->validate([
-            'borrowerName' => ['required', 'string', 'max:180'],
-            'borrowerOrganization' => ['nullable', 'string', 'max:180'],
-            'borrowerContact' => ['nullable', 'string', 'max:100'],
-            'purpose' => ['nullable', 'string', 'max:2000'],
-            'itemId' => ['required', 'integer', Rule::exists('inventory_items', 'id')->where('school_id', $schoolId)->where('tracking_type', 'quantity')->where('is_active', true)],
+            'itemId' => ['required', 'integer', Rule::exists('inventory_items', 'id')->where('school_id', $schoolId)->where('is_active', true)],
             'ownerId' => ['required', 'integer', Rule::exists('inventory_owners', 'id')->where('school_id', $schoolId)->where('is_active', true)],
             'locationId' => ['required', 'integer', Rule::exists('inventory_locations', 'id')->where('school_id', $schoolId)->where('is_active', true)],
             'quantity' => ['required', 'numeric', 'min:0.001', 'max:99999999999', 'decimal:0,3'],
         ]);
+        $item = InventoryItem::query()->where('school_id', $schoolId)->findOrFail($data['itemId']);
+        $asset = null;
+        if ($item->tracking_type === 'individual') {
+            $this->validate(['assetId' => ['required', 'integer']]);
+            $asset = InventoryAsset::query()->where('school_id', $schoolId)
+                ->where('item_id', $item->id)->where('owner_id', $data['ownerId'])
+                ->where('location_id', $data['locationId'])->where('status', 'available')
+                ->where('condition', 'good')->findOrFail($this->assetId);
+            if ((float) $data['quantity'] !== 1.0) {
+                $this->addError('quantity', 'Aset individual hanya boleh satu unit per baris.');
+                return;
+            }
+        } elseif ($this->assetId !== null) {
+            $this->addError('assetId', 'Barang kuantitas tidak menggunakan kode unit.');
+            return;
+        }
+
+        $key = implode(':', [$item->id, $data['ownerId'], $data['locationId'], $asset?->id ?? 'stock']);
+        foreach ($this->cart as $index => $line) {
+            if ($line['key'] !== $key) {
+                continue;
+            }
+            if ($asset) {
+                $this->addError('assetId', 'Unit ini sudah ada di keranjang.');
+                return;
+            }
+            $sum = round((float) $line['quantity'] + (float) $data['quantity'], 3);
+            if ($sum > 99999999999) {
+                $this->addError('quantity', 'Jumlah melampaui batas.');
+                return;
+            }
+            $this->cart[$index]['quantity'] = $sum;
+            return;
+        }
+
+        $this->cart[] = [
+            'key' => $key, 'item_id' => $item->id, 'owner_id' => (int) $data['ownerId'],
+            'location_id' => (int) $data['locationId'], 'asset_id' => $asset?->id,
+            'quantity' => (float) $data['quantity'], 'name' => $item->name,
+            'asset_code' => $asset?->asset_code,
+        ];
+        $this->reset('itemId', 'ownerId', 'locationId', 'assetId');
+        $this->quantity = '1';
+    }
+
+    public function removeFromCart(int $index): void
+    {
+        abort_unless(auth()->user()?->can('inventory.loans.request'), 403);
+        if (array_key_exists($index, $this->cart)) {
+            array_splice($this->cart, $index, 1);
+        }
+    }
+
+    public function requestLoan(InventoryLoanService $service): void
+    {
+        abort_unless(auth()->user()?->can('inventory.loans.request'), 403);
+        $data = $this->validate([
+            'borrowerName' => ['required', 'string', 'max:180'],
+            'borrowerOrganization' => ['nullable', 'string', 'max:180'],
+            'borrowerContact' => ['required', 'string', 'max:100'],
+            'purpose' => ['required', 'string', 'max:2000'],
+            'cart' => ['required', 'array', 'min:1', 'max:500'],
+            'cart.*.item_id' => ['required', 'integer'],
+            'cart.*.owner_id' => ['required', 'integer'],
+            'cart.*.location_id' => ['required', 'integer'],
+            'cart.*.asset_id' => ['nullable', 'integer'],
+            'cart.*.quantity' => ['required', 'numeric', 'min:0.001', 'max:99999999999', 'decimal:0,3'],
+        ]);
+        $lines = array_map(static fn (array $line): array => [
+            'item_id' => $line['item_id'], 'owner_id' => $line['owner_id'],
+            'location_id' => $line['location_id'], 'asset_id' => $line['asset_id'],
+            'quantity' => $line['quantity'],
+        ], $data['cart']);
 
         $service->requestLoan([
-            'type' => 'manual_external',
-            'name' => trim($data['borrowerName']),
+            'type' => 'manual_external', 'name' => trim($data['borrowerName']),
             'organization' => trim($data['borrowerOrganization'] ?? ''),
-            'contact' => trim($data['borrowerContact'] ?? ''),
-        ], [[
-            'item_id' => $data['itemId'],
-            'owner_id' => $data['ownerId'],
-            'location_id' => $data['locationId'],
-            'quantity' => $data['quantity'],
-        ]], $data['purpose'] ?: null);
+            'contact' => trim($data['borrowerContact']),
+        ], $lines, trim($data['purpose']));
 
-        $this->reset('borrowerName', 'borrowerOrganization', 'borrowerContact', 'purpose', 'itemId', 'ownerId', 'locationId', 'quantity', 'showRequestForm');
+        $this->reset('borrowerName', 'borrowerOrganization', 'borrowerContact', 'purpose', 'itemId', 'ownerId', 'locationId', 'assetId', 'cart', 'showRequestForm');
         $this->quantity = '1';
-        session()->flash('status', 'Permohonan peminjaman berhasil dibuat.');
+        session()->flash('status', 'Permohonan peminjaman multi-barang berhasil dibuat.');
     }
 
     public function approveLoan(int $loanId, InventoryLoanService $service): void
@@ -188,14 +255,19 @@ class Loans extends Component
             ->latest('requested_at')
             ->paginate(15);
 
-        $items = InventoryItem::query()->where('school_id', $schoolId)->where('tracking_type', 'quantity')->where('is_active', true)->orderBy('name')->get();
+        $items = InventoryItem::query()->where('school_id', $schoolId)->where('is_active', true)->orderBy('name')->get();
         $owners = InventoryOwner::query()->where('school_id', $schoolId)->where('is_active', true)->orderBy('display_name')->get();
         $activeLoan = $this->activeLoanId
             ? InventoryLoan::query()->where('school_id', $schoolId)->with(['items.item'])->find($this->activeLoanId)
             : null;
         $locations = InventoryLocation::query()->where('school_id', $schoolId)->where('is_active', true)->orderBy('name')->get();
 
-        return view('livewire.inventory.loans', compact('loans', 'items', 'owners', 'locations', 'activeLoan'));
+        $availableAssets = $this->showRequestForm && $this->itemId
+            ? InventoryAsset::query()->where('school_id', $schoolId)->where('item_id', $this->itemId)
+                ->where('status', 'available')->where('condition', 'good')->orderBy('asset_code')->limit(500)->get()
+            : collect();
+
+        return view('livewire.inventory.loans', compact('loans', 'items', 'owners', 'locations', 'activeLoan', 'availableAssets'));
     }
 
     private function schoolId(): int
