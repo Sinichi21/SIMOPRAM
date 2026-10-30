@@ -276,7 +276,7 @@ class Index extends Component
 
         // Validasi variabel template dilakukan sebelum nomor resmi diambil agar
         // kegagalan form tidak menghabiskan nomor urut surat.
-        if ($template && $this->status === 'published') {
+        if ($template && ! $this->useCustomBody && $this->status === 'published') {
             $preflightContext = array_merge($this->templateContext(), $templateData);
             $missing = $renderer->missingPlaceholders($template, $preflightContext);
             if ($missing !== []) {
