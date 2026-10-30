@@ -100,7 +100,10 @@
                             <button type="button" wire:click="useRenderedTemplate" wire:confirm="Ganti isi surat saat ini dengan hasil template? Perubahan isi surat yang belum disimpan akan tertimpa." class="rounded border px-3 py-2 text-sm">Salin Template ke Isi Surat</button>
                             <label class="flex items-center gap-2 text-sm"><input type="checkbox" wire:model.live="useCustomBody"> Gunakan isi surat individual (jangan render ulang template saat simpan)</label>
                         @endif
-                        <textarea wire:model="body" rows="15" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 font-serif text-sm dark:border-zinc-700 dark:bg-zinc-900" placeholder="Isi surat khusus ini..."></textarea>
+                        <div wire:ignore wire:key="outgoing-letter-editor-{{ $editingId ?: 'new' }}-{{ $template_id ?: 'free' }}" x-data="outgoingLetterEditor(@js($body))" class="letter-ckeditor">
+                            <div x-ref="editor"></div>
+                            <textarea x-ref="fallback" hidden wire:model="body" rows="15" class="w-full rounded border p-3"></textarea>
+                        </div>
                         @error('body')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
                     </div>
                 @endif
