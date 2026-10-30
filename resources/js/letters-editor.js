@@ -42,6 +42,11 @@ document.addEventListener('alpine:init', () => {
                     },
                     initialData: initialBody || '',
                 });
+                this._onServerContent = (event) => {
+                    if (!this.editor || typeof event.detail?.html !== 'string') return;
+                    if (this.editor.getData() !== event.detail.html) this.editor.setData(event.detail.html);
+                };
+                window.addEventListener('letter-editor-content', this._onServerContent);
                 this.editor.model.document.on('change:data', () => {
                     this.$wire.set('body', this.editor.getData(), false);
                 });
@@ -52,6 +57,7 @@ document.addEventListener('alpine:init', () => {
             }
         },
         destroy() {
+            if (this._onServerContent) window.removeEventListener('letter-editor-content', this._onServerContent);
             if (this.editor) this.editor.destroy();
         },
     }));
