@@ -231,11 +231,9 @@
                             </td>
                             <td class="px-3 py-3">{{ ['requested' => 'Menunggu', 'cancelled' => 'Dibatalkan', 'approved' => 'Disetujui', 'partially_handed_over' => 'Diserahkan sebagian', 'handed_over' => 'Diserahkan', 'partially_returned' => 'Kembali sebagian', 'returned' => 'Selesai', 'discrepancy' => 'Selisih / rusak'][$loan->status] ?? $loan->status }}</td>
                             <td class="px-3 py-3">
-                                @can('inventory.loans.request')
-                                    @if ($loan->status === 'requested')
-                                        <flux:button size="sm" variant="ghost" wire:click="openCancellation({{ $loan->id }})">Batalkan</flux:button>
-                                    @endif
-                                @endcan
+                                @if ($loan->status === 'requested' && (auth()->user()?->can('inventory.loans.approve') || (auth()->user()?->can('inventory.loans.request') && $loan->requested_by !== null && (int) $loan->requested_by === (int) auth()->id())))
+                                    <flux:button size="sm" variant="ghost" wire:click="openCancellation({{ $loan->id }})">Batalkan</flux:button>
+                                @endif
                                 @can('inventory.loans.approve')
                                     @if ($loan->status === 'requested')
                                         <flux:button size="sm" variant="outline" wire:click="approveLoan({{ $loan->id }})" wire:confirm="Setujui permohonan ini?">Setujui</flux:button>
