@@ -139,6 +139,66 @@
         </flux:card>
     @endif
 
+    @if ($selectedLoan)
+        <flux:card class="space-y-4" wire:key="loan-detail-{{ $selectedLoan->id }}">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                    <flux:heading size="lg">Detail Peminjaman — {{ $selectedLoan->loan_number }}</flux:heading>
+                    <flux:subheading>{{ $selectedLoan->borrower_name }} · {{ $selectedLoan->status }}</flux:subheading>
+                </div>
+                <flux:button type="button" variant="ghost" wire:click="closeLoanDetails">Tutup Detail</flux:button>
+            </div>
+            <div class="grid gap-3 text-sm md:grid-cols-2">
+                <div><strong>Organisasi:</strong> {{ $selectedLoan->borrower_organization ?: '-' }}</div>
+                <div><strong>Kontak:</strong> {{ $selectedLoan->borrower_contact ?: '-' }}</div>
+                <div><strong>Keperluan:</strong> {{ $selectedLoan->purpose ?: '-' }}</div>
+                <div><strong>Diajukan:</strong> {{ $selectedLoan->requested_at?->format('d/m/Y H:i') }}</div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead><tr class="border-b text-left"><th class="p-2">Barang / Unit</th><th class="p-2">Pemilik / Lokasi</th><th class="p-2">Diminta</th><th class="p-2">Diserahkan</th><th class="p-2">Kembali</th><th class="p-2">Hilang</th></tr></thead>
+                    <tbody>
+                        @foreach ($selectedLoan->items as $line)
+                            <tr class="border-b" wire:key="detail-item-{{ $line->id }}">
+                                <td class="p-2">{{ $line->item?->name ?? '-' }} <span class="text-xs">{{ $line->asset?->asset_code ?? '' }}</span></td>
+                                <td class="p-2">{{ $line->owner?->display_name ?? '-' }} / {{ $line->location?->name ?? '-' }}</td>
+                                <td class="p-2">{{ $line->quantity_requested }}</td>
+                                <td class="p-2">{{ $line->quantity_handed_over }}</td>
+                                <td class="p-2">{{ $line->quantity_returned }}</td>
+                                <td class="p-2">{{ $line->quantity_missing }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <flux:heading size="md">Riwayat Aktivitas</flux:heading>
+            <ol class="space-y-3 border-l pl-4 text-sm">
+                <li><strong>Permohonan dibuat</strong> — {{ $selectedLoan->requested_at?->format('d/m/Y H:i') }}</li>
+                @if ($selectedLoan->approved_at)
+                    <li><strong>Disetujui</strong> — {{ $selectedLoan->approved_at->format('d/m/Y H:i') }}</li>
+                @endif
+                @forelse ($selectedLoan->events->sortBy([['occurred_at', 'asc'], ['id', 'asc']]) as $event)
+                    <li wire:key="detail-event-{{ $event->id }}">
+                        <strong>{{ ['handover' => 'Serah-terima', 'return' => 'Pengembalian', 'cancellation' => 'Pembatalan', 'loss' => 'Kehilangan', 'damage' => 'Kerusakan', 'offline_entry' => 'Pencatatan offline'][$event->event_type] ?? $event->event_type }}</strong>
+                        — {{ $event->occurred_at?->format('d/m/Y H:i') }}
+                        <div class="text-xs text-zinc-500">{{ $event->loanItem?->item?->name ?? 'Seluruh permohonan' }} · {{ $event->recorder?->name ?? 'Akun tidak tersedia' }} · {{ $event->recording_method }}</div>
+                        @if ($event->notes)<p class="mt-1">{{ $event->notes }}</p>@endif
+                    </li>
+                @empty
+                    <li>Belum ada transaksi fisik.</li>
+                @endforelse
+            </ol>
+            @if ($selectedLoan->documents->isNotEmpty())
+                <flux:heading size="md">Berita Acara</flux:heading>
+                <div class="flex flex-wrap gap-2">
+                    @foreach ($selectedLoan->documents->sortByDesc('id') as $document)
+                        <a class="underline text-sm" target="_blank" rel="noopener" href="{{ route('inventory.loans.documents.show', ['document' => $document->id]) }}">{{ $document->document_number }} (v{{ $document->version }})</a>
+                    @endforeach
+                </div>
+            @endif
+        </flux:card>
+    @endif
+
     <flux:card class="space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <flux:heading size="lg">Daftar Permohonan</flux:heading>
@@ -162,7 +222,7 @@
                 <tbody>
                     @forelse ($loans as $loan)
                         <tr wire:key="loan-{{ $loan->id }}" class="border-b last:border-0">
-                            <td class="px-3 py-3"><span class="font-mono">{{ $loan->loan_number }}</span><div class="text-xs text-zinc-500">{{ $loan->requested_at?->format('d/m/Y H:i') }}</div></td>
+                            <td class="px-3 py-3"><button type="button" class="font-mono underline" wire:click="showLoanDetails({{ $loan->id }})">{{ $loan->loan_number }}</button><div class="text-xs text-zinc-500">{{ $loan->requested_at?->format('d/m/Y H:i') }}</div></td>
                             <td class="px-3 py-3">{{ $loan->borrower_name }}<div class="text-xs text-zinc-500">{{ $loan->borrower_organization }}</div></td>
                             <td class="px-3 py-3">
                                 @foreach ($loan->items as $line)
