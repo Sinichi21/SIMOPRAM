@@ -163,6 +163,37 @@ class InventoryLoanService
         }, 3);
     }
 
+    /** Cancel a pending request without deleting its audit trail or touching stock. */
+    public function cancelPending(int $loanId, string $reason): InventoryLoan
+    {
+        $schoolId = $this->schoolId();
+        $reason = trim($reason);
+        if (mb_strlen($reason) < 10 || mb_strlen($reason) > 2000) {
+            throw ValidationException::withMessages(['cancellationReason' => 'Alasan pembatalan harus 10 sampai 2000 karakter.']);
+        }
+
+        return DB::transaction(function () use ($schoolId, $loanId, $reason): InventoryLoan {
+            $loan = InventoryLoan::query()->where('school_id', $schoolId)->lockForUpdate()->findOrFail($loanId);
+            if ($loan->status !== 'requested') {
+                throw ValidationException::withMessages(['status' => 'Hanya permohonan yang belum disetujui dapat dibatalkan.']);
+            }
+
+            $loan->forceFill(['status' => 'cancelled'])->save();
+            InventoryLoanEvent::query()->create([
+                'school_id' => $schoolId,
+                'loan_id' => $loan->id,
+                'event_type' => 'cancellation',
+                'notes' => $reason,
+                'occurred_at' => now(),
+                'recorded_at' => now(),
+                'recorded_by' => auth()->id(),
+                'recording_method' => 'online',
+            ]);
+
+            return $loan->refresh();
+        }, 3);
+    }
+
     public function approve(int $loanId): InventoryLoan
     {
         $schoolId = $this->schoolId();
