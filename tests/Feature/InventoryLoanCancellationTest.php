@@ -68,3 +68,37 @@ it('requires a meaningful cancellation reason', function () {
 
     expect($loan->fresh()->status)->toBe('requested');
 });
+
+it('denies cancellation by a different requester even within the same school', function () {
+    $loan = pendingLoanForCancellation();
+    $schoolId = $loan->school_id;
+    $owner = User::factory()->create(['system_role' => null]);
+    $other = User::factory()->create(['system_role' => null]);
+
+    \App\Models\SchoolUserMembership::query()->create([
+        'school_id' => $schoolId, 'user_id' => $owner->id, 'is_active' => true,
+    ]);
+    \App\Models\SchoolUserMembership::query()->create([
+        'school_id' => $schoolId, 'user_id' => $other->id, 'is_active' => true,
+    ]);
+    setPermissionsTeamId($schoolId);
+    \Spatie\Permission\Models\Permission::findOrCreate('inventory.loans.request', 'web');
+    \Spatie\Permission\Models\Permission::findOrCreate('inventory.view', 'web');
+    $owner->givePermissionTo('inventory.loans.request');
+    $other->givePermissionTo('inventory.loans.request');
+    $other->givePermissionTo('inventory.view');
+    $loan->forceFill(['requested_by' => $owner->id])->save();
+
+    $this->actingAs($other);
+    Livewire::test(Loans::class)->call('openCancellation', $loan->id)->assertForbidden();
+
+    try {
+        app(InventoryLoanService::class)->cancelPending($loan->id, 'Permohonan ini bukan milik saya');
+        test()->fail('Another requester must not cancel this loan');
+    } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
+        expect($exception->getStatusCode())->toBe(403);
+    }
+
+    expect($loan->fresh()->status)->toBe('requested');
+    expect($loan->events()->count())->toBe(0);
+});
