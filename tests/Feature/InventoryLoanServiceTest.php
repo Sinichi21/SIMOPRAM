@@ -117,6 +117,51 @@ class InventoryLoanServiceTest extends TestCase
         $this->assertEquals(0, $loan->items()->firstOrFail()->quantity_returned);
     }
 
+    public function test_multi_item_return_rolls_back_all_stock_and_events_when_later_line_is_invalid(): void
+    {
+        [$firstItem, $firstOwner, $firstLocation] = $this->makeStock();
+        [$secondItem, $secondOwner, $secondLocation] = $this->makeStock();
+        $stock = app(InventoryStockService::class);
+        $stock->recordMovement($firstItem->id, $firstOwner->id, $firstLocation->id, 'receipt', 5);
+        $stock->recordMovement($secondItem->id, $secondOwner->id, $secondLocation->id, 'receipt', 8);
+
+        $service = app(InventoryLoanService::class);
+        $loan = $service->requestLoan(
+            ['type' => 'manual_external', 'name' => 'Peminjam Dua Barang'],
+            [
+                ['item_id' => $firstItem->id, 'owner_id' => $firstOwner->id, 'location_id' => $firstLocation->id, 'quantity' => 3],
+                ['item_id' => $secondItem->id, 'owner_id' => $secondOwner->id, 'location_id' => $secondLocation->id, 'quantity' => 4],
+            ],
+        );
+        $service->approve($loan->id);
+        $lineIds = $loan->items()->orderBy('id')->pluck('id')->all();
+        $service->recordHandover($loan->id, [
+            ['loan_item_id' => $lineIds[0], 'quantity' => 3],
+            ['loan_item_id' => $lineIds[1], 'quantity' => 4],
+        ], now());
+
+        $this->assertEquals(2, $firstItem->stockBalances()->first()->quantity_on_hand);
+        $this->assertEquals(4, $secondItem->stockBalances()->first()->quantity_on_hand);
+        $this->assertDatabaseCount('inventory_loan_events', 2);
+
+        try {
+            $service->recordReturn($loan->id, [
+                ['loan_item_id' => $lineIds[0], 'quantity_returned' => 2],
+                ['loan_item_id' => $lineIds[1], 'quantity_returned' => 5],
+            ], now());
+            $this->fail('Baris kedua yang melebihi outstanding harus membatalkan seluruh transaksi.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('lines.1', $exception->errors());
+        }
+
+        $this->assertSame('handed_over', $loan->fresh()->status);
+        $this->assertEquals(2, $firstItem->stockBalances()->first()->quantity_on_hand);
+        $this->assertEquals(4, $secondItem->stockBalances()->first()->quantity_on_hand);
+        $this->assertDatabaseCount('inventory_loan_events', 2);
+        $this->assertEquals(0, $loan->items()->whereKey($lineIds[0])->firstOrFail()->quantity_returned);
+        $this->assertEquals(0, $loan->items()->whereKey($lineIds[1])->firstOrFail()->quantity_returned);
+    }
+
     public function test_duplicate_stock_lines_cannot_exceed_available_balance(): void
     {
         [$item, $owner, $location] = $this->makeStock();
