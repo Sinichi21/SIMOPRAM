@@ -99,6 +99,59 @@ class InventoryLoanDocumentServiceTest extends TestCase
         $this->assertSame(hash('sha256', $pdf), $document->sha256);
     }
 
+    public function test_five_evidence_photos_keep_pdf_bounded_and_previous_version_immutable(): void
+    {
+        if (! extension_loaded('gd')) {
+            $this->markTestSkipped('PHP GD required for evidence PDF test.');
+        }
+
+        $loan = $this->makeLoan(true);
+        $event = $loan->events()->where('event_type', 'handover')->firstOrFail();
+
+        for ($index = 1; $index <= 5; $index++) {
+            $image = imagecreatetruecolor(900, 600);
+            try {
+                imagefill($image, 0, 0, imagecolorallocate($image, $index * 30, 80, 145));
+                ob_start();
+                imagejpeg($image, null, 85);
+                $bytes = ob_get_clean();
+            } finally {
+                imagedestroy($image);
+            }
+
+            $this->assertIsString($bytes);
+            $path = 'inventory/loan-evidence/multi-'.$index.'.jpg';
+            Storage::disk('local')->put($path, $bytes);
+            InventoryLoanEvidence::query()->create([
+                'loan_id' => $loan->id,
+                'loan_event_id' => $event->id,
+                'disk' => 'local',
+                'path' => $path,
+                'mime_type' => 'image/jpeg',
+                'size_bytes' => strlen($bytes),
+                'sha256' => hash('sha256', $bytes),
+                'uploaded_by' => auth()->id(),
+            ]);
+        }
+
+        $service = app(InventoryLoanDocumentService::class);
+        $first = $service->issue($loan->id, 'handover');
+        $original = Storage::disk('local')->get($first->storage_path);
+
+        $this->assertStringStartsWith('%PDF', $original);
+        $this->assertLessThan(2 * 1024 * 1024, strlen($original));
+        $this->assertSame(hash('sha256', $original), $first->sha256);
+
+        $second = $service->correct($first->id, 'Perbaikan administrasi lampiran bukti foto.');
+        $revised = Storage::disk('local')->get($second->storage_path);
+
+        $this->assertSame(2, $second->version);
+        $this->assertSame('superseded', $first->fresh()->status);
+        $this->assertSame($original, Storage::disk('local')->get($first->storage_path));
+        $this->assertSame(hash('sha256', $revised), $second->sha256);
+        $this->assertLessThan(2 * 1024 * 1024, strlen($revised));
+    }
+
     public function test_cannot_issue_ba_without_a_physical_event(): void
     {
         $loan = $this->makeLoan(false);
