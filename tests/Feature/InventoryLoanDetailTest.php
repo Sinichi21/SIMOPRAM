@@ -6,6 +6,7 @@ use App\Models\School;
 use App\Models\User;
 use App\Support\SchoolContext;
 use Livewire\Livewire;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 it('shows a loan detail only within the active school', function () {
     $school = School::factory()->create();
@@ -41,5 +42,6 @@ it('shows a loan detail only within the active school', function () {
     expect($foreign->school_id)->toBe($foreignSchool->id);
     expect($foreign->school_id)->not->toBe($school->id);
 
-    $component->call('showLoanDetails', $foreign->id)->assertNotFound();
+    expect(fn () => $component->call('showLoanDetails', $foreign->id))
+        ->toThrow(ModelNotFoundException::class);
 });
