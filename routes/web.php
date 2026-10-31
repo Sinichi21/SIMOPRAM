@@ -13,6 +13,7 @@ use App\Http\Controllers\InventoryAssetVerificationController;
 use App\Http\Controllers\InventoryItemLabelController;
 use App\Http\Controllers\InventoryItemVerificationController;
 use App\Http\Controllers\InventoryLoanDocumentPreviewController;
+use App\Http\Controllers\InventoryLoanEvidenceController;
 use App\Http\Controllers\InventoryLoanIssuedDocumentController;
 use App\Http\Controllers\InventoryQrScannerController;
 use App\Http\Controllers\LandingPageController;
@@ -254,6 +255,13 @@ Route::middleware([
         Route::get('/inventaris/peminjaman', Loans::class)
             ->middleware('can:inventory.view')
             ->name('inventory.loans.index');
+
+        Route::post('/inventaris/peminjaman/bukti/{event}', [InventoryLoanEvidenceController::class, 'store'])
+            ->whereNumber('event')->middleware('throttle:20,1')
+            ->name('inventory.loans.evidence.store');
+        Route::get('/inventaris/peminjaman/foto/{evidence}', [InventoryLoanEvidenceController::class, 'show'])
+            ->whereNumber('evidence')->middleware(['can:inventory.view', 'throttle:60,1'])
+            ->name('inventory.loans.evidence.show');
 
         Route::get('/inventaris/peminjaman/{loan}/dokumen/{type}/pratinjau', InventoryLoanDocumentPreviewController::class)
             ->whereNumber('loan')
