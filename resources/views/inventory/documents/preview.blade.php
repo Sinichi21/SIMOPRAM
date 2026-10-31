@@ -58,6 +58,25 @@
         </tbody>
     </table>
     <p class="small">Jumlah dan kondisi mengikuti event yang dicatat, bukan total permohonan. Transaksi dapat terjadi bertahap; setiap baris menunjukkan satu event. Untuk pengembalian, nilai jumlah mengikuti catatan event sistem.</p>
+    @if ($events->contains(fn ($event) => $event->evidence->isNotEmpty()))
+        <h2>Lampiran bukti foto kondisi barang</h2>
+        <p class="small">Referensi foto tersimpan secara privat dalam SIMPRAM. Kode SHA-256 mengikat berkas foto yang dicatat pada saat dokumen ini diterbitkan; foto asli dapat diperiksa melalui rincian transaksi dengan izin yang sesuai.</p>
+        <table>
+            <thead><tr><th>Event</th><th>Waktu kejadian</th><th>ID bukti</th><th>SHA-256 foto</th></tr></thead>
+            <tbody>
+                @foreach ($events as $event)
+                    @foreach ($event->evidence as $photo)
+                        <tr>
+                            <td>#{{ $event->id }} — {{ $event->event_type }}</td>
+                            <td>{{ $event->occurred_at?->format('d/m/Y H:i') ?? '-' }}</td>
+                            <td>#{{ $photo->id }}</td>
+                            <td style="font-size: 7px; word-break: break-all;">{{ $photo->sha256 }}</td>
+                        </tr>
+                    @endforeach
+                @endforeach
+            </tbody>
+        </table>
+    @endif
     @if (empty($issued))
         <p class="small">Dokumen ini merupakan pratinjau dari catatan transaksi SIMPRAM, bukan berita acara resmi. Untuk transaksi pengembalian dengan selisih/hilang, periksa rincian pada sistem sebelum menerbitkan berita acara final.</p>
     @else
