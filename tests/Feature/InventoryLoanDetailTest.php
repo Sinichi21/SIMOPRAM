@@ -45,3 +45,44 @@ it('shows a loan detail only within the active school', function () {
     expect(fn () => $component->call('showLoanDetails', $foreign->id))
         ->toThrow(ModelNotFoundException::class);
 });
+
+it('filters loans by number and borrower without exposing another school', function () {
+    $school = School::factory()->create();
+    app(SchoolContext::class)->set($school);
+    $this->actingAs(User::factory()->create(['system_role' => 'super_admin']))
+        ->withSession(['active_school_id' => $school->id]);
+
+    InventoryLoan::query()->create([
+        'loan_number' => 'SEARCH-ALPHA-001',
+        'borrower_type' => 'manual_external',
+        'borrower_name' => 'Peminjam Alpha',
+        'requested_at' => now(),
+        'status' => 'requested',
+    ]);
+    InventoryLoan::query()->create([
+        'loan_number' => 'SEARCH-BETA-002',
+        'borrower_type' => 'manual_external',
+        'borrower_name' => 'Peminjam Beta',
+        'requested_at' => now(),
+        'status' => 'requested',
+    ]);
+
+    $foreign = School::factory()->create();
+    InventoryLoan::query()->forceCreate([
+        'school_id' => $foreign->id,
+        'loan_number' => 'SEARCH-ALPHA-FOREIGN',
+        'borrower_type' => 'manual_external',
+        'borrower_name' => 'Peminjam Alpha Asing',
+        'requested_at' => now(),
+        'status' => 'requested',
+    ]);
+
+    Livewire::test(Loans::class)
+        ->set('loanSearch', 'SEARCH-ALPHA')
+        ->assertSee('SEARCH-ALPHA-001')
+        ->assertDontSee('SEARCH-BETA-002')
+        ->assertDontSee('SEARCH-ALPHA-FOREIGN')
+        ->set('loanSearch', 'Peminjam Beta')
+        ->assertSee('SEARCH-BETA-002')
+        ->assertDontSee('SEARCH-ALPHA-001');
+});
