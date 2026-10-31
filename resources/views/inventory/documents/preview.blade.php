@@ -69,7 +69,11 @@
                         <tr>
                             <td>#{{ $event->id }} — {{ $event->event_type }}</td>
                             <td>{{ $event->occurred_at?->format('d/m/Y H:i') ?? '-' }}</td>
-                            <td>#{{ $photo->id }}</td>
+                            <td>#{{ $photo->id }}
+                                @if (! empty($evidenceThumbnails[$photo->id]))
+                                    <div style="margin-top: 5px;"><img src="{{ $evidenceThumbnails[$photo->id] }}" alt="Foto kondisi barang" style="max-width: 160px; max-height: 110px;" /></div>
+                                @endif
+                            </td>
                             <td style="font-size: 7px; word-break: break-all;">{{ $photo->sha256 }}</td>
                         </tr>
                     @endforeach
