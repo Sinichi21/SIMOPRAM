@@ -11,6 +11,7 @@ use App\Support\SchoolContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -38,24 +39,36 @@ class InventoryLoanEvidenceController extends Controller
         $mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($bytes);
         abort_unless(in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true), 422);
         $extension = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'][$mime];
-        $path = 'inventory/loan-evidence/'.$schoolId.'/'.$record->loan_id.'/'.Str::uuid().'.'.$extension;
-        $disk = Storage::disk('local');
-        abort_unless($disk->put($path, $bytes), 500, 'Gagal menyimpan bukti.');
-        try {
-            InventoryLoanEvidence::query()->create([
-                'loan_id' => $record->loan_id,
-                'loan_event_id' => $record->id,
-                'disk' => 'local',
-                'path' => $path,
-                'mime_type' => $mime,
-                'size_bytes' => strlen($bytes),
-                'sha256' => hash('sha256', $bytes),
-                'uploaded_by' => $request->user()->id,
-            ]);
-        } catch (\Throwable $exception) {
-            $disk->delete($path);
-            throw $exception;
-        }
+        DB::transaction(function () use ($record, $schoolId, $request, $bytes, $mime, $extension): void {
+            // Lock the parent event to serialize uploads competing for the same quota.
+            InventoryLoanEvent::query()->where('school_id', $schoolId)
+                ->lockForUpdate()->findOrFail($record->id);
+            if (InventoryLoanEvidence::query()->where('school_id', $schoolId)
+                ->where('loan_event_id', $record->id)->count() >= 5) {
+                throw ValidationException::withMessages([
+                    'photo' => 'Maksimal 5 foto bukti untuk setiap kejadian transaksi.',
+                ]);
+            }
+
+            $path = 'inventory/loan-evidence/'.$schoolId.'/'.$record->loan_id.'/'.Str::uuid().'.'.$extension;
+            $disk = Storage::disk('local');
+            abort_unless($disk->put($path, $bytes), 500, 'Gagal menyimpan bukti.');
+            try {
+                InventoryLoanEvidence::query()->create([
+                    'loan_id' => $record->loan_id,
+                    'loan_event_id' => $record->id,
+                    'disk' => 'local',
+                    'path' => $path,
+                    'mime_type' => $mime,
+                    'size_bytes' => strlen($bytes),
+                    'sha256' => hash('sha256', $bytes),
+                    'uploaded_by' => $request->user()->id,
+                ]);
+            } catch (\\Throwable $exception) {
+                $disk->delete($path);
+                throw $exception;
+            }
+        });
 
         return back()->with('status', 'Foto bukti transaksi berhasil disimpan.');
     }
