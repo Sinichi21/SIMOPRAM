@@ -152,6 +152,39 @@ class InventoryLoanDocumentServiceTest extends TestCase
         $this->assertLessThan(2 * 1024 * 1024, strlen($revised));
     }
 
+    public function test_tampered_evidence_blocks_ba_issuance_without_creating_document(): void
+    {
+        $loan = $this->makeLoan(true);
+        $event = $loan->events()->where('event_type', 'handover')->firstOrFail();
+        $path = 'inventory/loan-evidence/tampered-before-issue.jpg';
+
+        Storage::disk('local')->put($path, 'modified content');
+        InventoryLoanEvidence::query()->create([
+            'loan_id' => $loan->id,
+            'loan_event_id' => $event->id,
+            'disk' => 'local',
+            'path' => $path,
+            'mime_type' => 'image/jpeg',
+            'size_bytes' => strlen('original content'),
+            'sha256' => hash('sha256', 'original content'),
+            'uploaded_by' => auth()->id(),
+        ]);
+
+        try {
+            app(InventoryLoanDocumentService::class)->issue($loan->id, 'handover');
+            $this->fail('Tampered evidence should block issuance.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('document', $exception->errors());
+        }
+
+        $this->assertDatabaseCount('inventory_loan_documents', 0);
+        Storage::disk('local')->assertMissing(sprintf(
+            'inventory/%d/loan-documents/%d-handover-v1.pdf',
+            app(SchoolContext::class)->id(),
+            $loan->id,
+        ));
+    }
+
     public function test_cannot_issue_ba_without_a_physical_event(): void
     {
         $loan = $this->makeLoan(false);
