@@ -125,10 +125,12 @@ class InventoryLoanDocumentService
             }
 
             $documentNumber = sprintf('BA-INV-%d-%s-%06d', $schoolId, strtoupper($type === 'handover' ? 'ST' : 'KB'), $loanId);
+            $thumbnails = app(InventoryLoanEvidenceThumbnailService::class)->forEvents($events);
             $pdf = Pdf::loadView('inventory.documents.preview', [
                 'loan' => $loan,
                 'type' => $type,
                 'events' => $events,
+                'evidenceThumbnails' => $thumbnails,
                 'issued' => true,
                 'documentNumber' => $documentNumber,
             ])->setPaper('a4')->output();
