@@ -183,6 +183,16 @@
                         — {{ $event->occurred_at?->format('d/m/Y H:i') }}
                         <div class="text-xs text-zinc-500">{{ $event->loanItem?->item?->name ?? 'Seluruh permohonan' }} · {{ $event->recorder?->name ?? 'Akun tidak tersedia' }} · {{ $event->recording_method }}</div>
                         @if ($event->notes)<p class="mt-1">{{ $event->notes }}</p>@endif
+                        @foreach ($event->evidence as $photo)
+                            <a class="mr-2 text-xs underline" target="_blank" rel="noopener" href="{{ route('inventory.loans.evidence.show', ['evidence' => $photo->id]) }}">Lihat foto bukti #{{ $photo->id }}</a>
+                        @endforeach
+                        @if (in_array($event->event_type, ['handover', 'return', 'damage', 'loss'], true) && (auth()->user()?->can($event->event_type === 'handover' ? 'inventory.handover.process' : 'inventory.returns.process')))
+                            <form method="POST" enctype="multipart/form-data" action="{{ route('inventory.loans.evidence.store', ['event' => $event->id]) }}" class="mt-2 flex flex-wrap items-center gap-2">
+                                @csrf
+                                <label class="text-xs">Foto kondisi barang <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" required class="text-xs" /></label>
+                                <button type="submit" class="rounded border px-2 py-1 text-xs">Unggah Bukti</button>
+                            </form>
+                        @endif
                     </li>
                 @empty
                     <li>Belum ada transaksi fisik.</li>
