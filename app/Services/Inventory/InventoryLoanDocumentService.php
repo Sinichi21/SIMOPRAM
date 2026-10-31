@@ -51,10 +51,12 @@ class InventoryLoanDocumentService
             $version = $current->version + 1;
             $baseNumber = preg_replace('/-REV\\d+$/', '', $current->document_number);
             $documentNumber = $baseNumber.'-REV'.$version;
+            $thumbnails = app(InventoryLoanEvidenceThumbnailService::class)->forEvents($events);
             $pdf = Pdf::loadView('inventory.documents.preview', [
                 'loan' => $loan,
                 'type' => $current->document_type,
                 'events' => $events,
+                'evidenceThumbnails' => $thumbnails,
                 'issued' => true,
                 'documentNumber' => $documentNumber,
                 'correctionReason' => $reason,
@@ -106,7 +108,7 @@ class InventoryLoanDocumentService
 
         return DB::transaction(function () use ($loanId, $type, $schoolId): InventoryLoanDocument {
             $loan = InventoryLoan::query()->where('school_id', $schoolId)
-                ->lockForUpdate()->with(['items.item', 'items.owner', 'items.location', 'events'])
+                ->lockForUpdate()->with(['items.item', 'items.owner', 'items.location', 'events.evidence'])
                 ->findOrFail($loanId);
 
             $events = $loan->events->where('event_type', $type)->sortBy('occurred_at');
