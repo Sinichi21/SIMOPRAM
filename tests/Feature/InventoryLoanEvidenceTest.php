@@ -38,6 +38,17 @@ it('stores a private transaction photo and serves it only within its school', fu
         'photo' => UploadedFile::fake()->image('kondisi.jpg'),
     ])->assertRedirect();
 
+    // Five photos are allowed for one event; the sixth must be rejected.
+    for ($index = 2; $index <= 5; $index++) {
+        $this->post(route('inventory.loans.evidence.store', $event->id), [
+            'photo' => UploadedFile::fake()->image('kondisi-'.$index.'.jpg'),
+        ])->assertRedirect();
+    }
+    $this->post(route('inventory.loans.evidence.store', $event->id), [
+        'photo' => UploadedFile::fake()->image('kondisi-keenam.jpg'),
+    ])->assertSessionHasErrors('photo');
+    expect(InventoryLoanEvidence::query()->where('loan_event_id', $event->id)->count())->toBe(5);
+
     $record = InventoryLoanEvidence::query()->firstOrFail();
     expect($record->school_id)->toBe($school->id);
     Storage::disk('local')->assertExists($record->path);
