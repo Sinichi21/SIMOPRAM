@@ -202,8 +202,9 @@
     <flux:card class="space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <flux:heading size="lg">Daftar Permohonan</flux:heading>
-            <div class="w-full sm:w-64">
-                <flux:select wire:model.live="statusFilter" aria-label="Filter status">
+            <div class="flex w-full flex-wrap gap-2 sm:w-auto">
+                <div class="w-full sm:w-72"><flux:input wire:model.live.debounce.350ms="loanSearch" placeholder="Cari nomor, peminjam, organisasi" aria-label="Cari peminjaman" /></div>
+                <div class="w-full sm:w-64"><flux:select wire:model.live="statusFilter" aria-label="Filter status">
                     <flux:select.option value="">Semua status</flux:select.option>
                     <flux:select.option value="requested">Menunggu persetujuan</flux:select.option>
                     <flux:select.option value="cancelled">Dibatalkan</flux:select.option>
@@ -213,7 +214,7 @@
                     <flux:select.option value="partially_returned">Dikembalikan sebagian</flux:select.option>
                     <flux:select.option value="returned">Selesai</flux:select.option>
                     <flux:select.option value="discrepancy">Selisih / kerusakan</flux:select.option>
-                </flux:select>
+                </flux:select></div>
             </div>
         </div>
         <div class="overflow-x-auto">
