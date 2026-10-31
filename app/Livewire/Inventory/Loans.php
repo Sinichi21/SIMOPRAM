@@ -40,6 +40,10 @@ class Loans extends Component
 
     public string $statusFilter = '';
 
+    public string $cancellationReason = '';
+
+    public ?int $cancellingLoanId = null;
+
     public ?int $activeLoanId = null;
 
     public ?int $activeLoanItemId = null;
@@ -234,6 +238,28 @@ class Loans extends Component
         $this->reset('borrowerName', 'borrowerOrganization', 'borrowerContact', 'purpose', 'itemId', 'itemCode', 'assetId', 'cart', 'showRequestForm');
         $this->quantity = '1';
         session()->flash('status', 'Permohonan peminjaman multi-barang berhasil dibuat.');
+    }
+
+    public function openCancellation(int $loanId): void
+    {
+        abort_unless(auth()->user()?->can('inventory.loans.request'), 403);
+        InventoryLoan::query()->where('school_id', $this->schoolId())
+            ->where('status', 'requested')->findOrFail($loanId);
+        $this->cancellingLoanId = $loanId;
+        $this->cancellationReason = '';
+        $this->resetValidation();
+    }
+
+    public function cancelLoan(InventoryLoanService $service): void
+    {
+        abort_unless(auth()->user()?->can('inventory.loans.request'), 403);
+        $this->validate([
+            'cancellingLoanId' => ['required', 'integer'],
+            'cancellationReason' => ['required', 'string', 'min:10', 'max:2000'],
+        ]);
+        $service->cancelPending($this->cancellingLoanId, $this->cancellationReason);
+        $this->reset('cancellingLoanId', 'cancellationReason');
+        session()->flash('status', 'Permohonan dibatalkan dan alasannya tersimpan dalam riwayat.');
     }
 
     public function approveLoan(int $loanId, InventoryLoanService $service): void
