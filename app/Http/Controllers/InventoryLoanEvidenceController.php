@@ -64,7 +64,7 @@ class InventoryLoanEvidenceController extends Controller
                     'sha256' => hash('sha256', $bytes),
                     'uploaded_by' => $request->user()->id,
                 ]);
-            } catch (\\Throwable $exception) {
+            } catch (\Throwable $exception) {
                 $disk->delete($path);
                 throw $exception;
             }
