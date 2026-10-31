@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToSchool;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class InventoryLoanEvent extends Model
 {
@@ -32,6 +33,11 @@ class InventoryLoanEvent extends Model
     public function loanItem(): BelongsTo
     {
         return $this->belongsTo(InventoryLoanItem::class, 'loan_item_id');
+    }
+
+    public function evidence(): HasMany
+    {
+        return $this->hasMany(InventoryLoanEvidence::class, 'loan_event_id');
     }
 
     public function recorder(): BelongsTo
