@@ -435,7 +435,7 @@ class InventoryLoanServiceTest extends TestCase
 
     private function makeStock(): array
     {
-        $category = InventoryCategory::query()->create(['name' => 'Peralatan', 'is_active' => true]);
+        $category = InventoryCategory::query()->firstOrCreate(['name' => 'Peralatan'], ['is_active' => true]);
         $item = InventoryItem::query()->create([
             'category_id' => $category->id,
             'item_code' => 'LOAN-'.fake()->unique()->numerify('#####'),
