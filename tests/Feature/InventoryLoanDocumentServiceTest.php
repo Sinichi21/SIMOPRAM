@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\InventoryCategory;
 use App\Models\InventoryItem;
 use App\Models\InventoryLoan;
+use App\Models\InventoryLoanEvidence;
 use App\Models\InventoryLocation;
 use App\Models\InventoryOwner;
 use App\Models\School;
@@ -55,6 +56,47 @@ class InventoryLoanDocumentServiceTest extends TestCase
 
         $this->assertSame($first->id, $second->id);
         $this->assertDatabaseCount('inventory_loan_documents', 1);
+    }
+
+    public function test_issued_ba_embeds_verified_evidence_photo(): void
+    {
+        if (! extension_loaded('gd')) {
+            $this->markTestSkipped('PHP GD required for PDF evidence test.');
+        }
+
+        $loan = $this->makeLoan(true);
+        $event = $loan->events()->where('event_type', 'handover')->firstOrFail();
+
+        $image = imagecreatetruecolor(320, 180);
+        try {
+            imagefill($image, 0, 0, imagecolorallocate($image, 25, 90, 145));
+            ob_start();
+            imagejpeg($image, null, 75);
+            $bytes = ob_get_clean();
+        } finally {
+            imagedestroy($image);
+        }
+
+        $this->assertIsString($bytes);
+        $path = 'inventory/loan-evidence/pdf-test.jpg';
+        Storage::disk('local')->put($path, $bytes);
+        InventoryLoanEvidence::query()->create([
+            'loan_id' => $loan->id,
+            'loan_event_id' => $event->id,
+            'disk' => 'local',
+            'path' => $path,
+            'mime_type' => 'image/jpeg',
+            'size_bytes' => strlen($bytes),
+            'sha256' => hash('sha256', $bytes),
+            'uploaded_by' => auth()->id(),
+        ]);
+
+        $document = app(InventoryLoanDocumentService::class)->issue($loan->id, 'handover');
+        $pdf = Storage::disk('local')->get($document->storage_path);
+
+        $this->assertStringStartsWith('%PDF', $pdf);
+        $this->assertMatchesRegularExpression('/\\/Subtype\\s*\\/Image\\b/', $pdf);
+        $this->assertSame(hash('sha256', $pdf), $document->sha256);
     }
 
     public function test_cannot_issue_ba_without_a_physical_event(): void
