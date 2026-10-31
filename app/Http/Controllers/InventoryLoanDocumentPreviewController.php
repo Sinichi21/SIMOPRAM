@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\InventoryLoan;
+use App\Services\Inventory\InventoryLoanEvidenceThumbnailService;
 use App\Support\SchoolContext;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -32,6 +33,7 @@ class InventoryLoanDocumentPreviewController extends Controller
             'loan' => $record,
             'type' => $type,
             'events' => $events,
+            'evidenceThumbnails' => app(InventoryLoanEvidenceThumbnailService::class)->forEvents($events),
         ])->setPaper('a4');
 
         return $pdf->stream('DRAFT-BA-'.$type.'-'.$record->loan_number.'.pdf');
