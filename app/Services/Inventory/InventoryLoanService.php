@@ -178,6 +178,18 @@ class InventoryLoanService
                 throw ValidationException::withMessages(['status' => 'Hanya permohonan yang belum disetujui dapat dibatalkan.']);
             }
 
+            $actor = auth()->user();
+            abort_unless(
+                $actor && (
+                    $actor->can('inventory.loans.approve')
+                    || ($loan->requested_by !== null
+                        && (int) $loan->requested_by === (int) $actor->id
+                        && $actor->can('inventory.loans.request'))
+                ),
+                403,
+                'Hanya pengaju atau petugas persetujuan yang dapat membatalkan permohonan.'
+            );
+
             $loan->forceFill(['status' => 'cancelled'])->save();
             InventoryLoanEvent::query()->create([
                 'school_id' => $schoolId,
