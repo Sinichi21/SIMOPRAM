@@ -1,13 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Livewire\Inventory\Loans;
 use App\Models\InventoryLoan;
 use App\Models\School;
+use App\Models\SchoolUserMembership;
 use App\Models\User;
 use App\Services\Inventory\InventoryLoanService;
 use App\Support\SchoolContext;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Permission;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 function pendingLoanForCancellation(): InventoryLoan
 {
@@ -75,32 +80,29 @@ it('denies cancellation by a different requester even within the same school', f
     $owner = User::factory()->create(['system_role' => null]);
     $other = User::factory()->create(['system_role' => null]);
 
-    \App\Models\SchoolUserMembership::query()->create([
+    SchoolUserMembership::query()->create([
         'school_id' => $schoolId, 'user_id' => $owner->id, 'is_active' => true,
     ]);
-    \App\Models\SchoolUserMembership::query()->create([
+    SchoolUserMembership::query()->create([
         'school_id' => $schoolId, 'user_id' => $other->id, 'is_active' => true,
     ]);
     setPermissionsTeamId($schoolId);
-    \Spatie\Permission\Models\Permission::findOrCreate('inventory.loans.request', 'web');
-    \Spatie\Permission\Models\Permission::findOrCreate('inventory.view', 'web');
+    Permission::findOrCreate('inventory.loans.request', 'web');
+    Permission::findOrCreate('inventory.view', 'web');
     $owner->givePermissionTo('inventory.loans.request');
     $other->givePermissionTo('inventory.loans.request');
     $other->givePermissionTo('inventory.view');
     $loan->forceFill(['requested_by' => $owner->id])->save();
 
     $this->actingAs($other);
-    try {
-        Livewire::test(Loans::class)->call('openCancellation', $loan->id);
-        test()->fail('Opening another requester loan cancellation must be denied');
-    } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
-        expect($exception->getStatusCode())->toBe(403);
-    }
+    Livewire::test(Loans::class)
+        ->call('openCancellation', $loan->id)
+        ->assertForbidden();
 
     try {
         app(InventoryLoanService::class)->cancelPending($loan->id, 'Permohonan ini bukan milik saya');
         test()->fail('Another requester must not cancel this loan');
-    } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
+    } catch (HttpException $exception) {
         expect($exception->getStatusCode())->toBe(403);
     }
 
