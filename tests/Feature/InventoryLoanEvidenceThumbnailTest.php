@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Models\InventoryLoanEvidence;
 use App\Models\InventoryLoanEvent;
+use App\Models\InventoryLoanEvidence;
 use App\Models\School;
 use App\Services\Inventory\InventoryLoanEvidenceThumbnailService;
 use App\Support\SchoolContext;
@@ -15,9 +15,9 @@ it('rejects modified evidence before embedding it into a document', function () 
     $school = School::factory()->create();
     app(SchoolContext::class)->set($school);
 
-    $event = new InventoryLoanEvent();
+    $event = new InventoryLoanEvent;
     $event->id = 10;
-    $photo = new InventoryLoanEvidence();
+    $photo = new InventoryLoanEvidence;
     $photo->id = 20;
     $photo->disk = 'local';
     $photo->path = 'inventory/loan-evidence/test.jpg';
