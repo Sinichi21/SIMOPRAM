@@ -59,6 +59,64 @@ class InventoryLoanServiceTest extends TestCase
         $this->assertEquals(10, $item->stockBalances()->first()->quantity_on_hand);
     }
 
+    public function test_repeated_return_after_completion_does_not_restore_stock_twice(): void
+    {
+        [$item, $owner, $location] = $this->makeStock();
+        app(InventoryStockService::class)->recordMovement($item->id, $owner->id, $location->id, 'receipt', 5);
+
+        $service = app(InventoryLoanService::class);
+        $loan = $service->requestLoan(
+            ['type' => 'manual_external', 'name' => 'Peminjam'],
+            [['item_id' => $item->id, 'owner_id' => $owner->id, 'location_id' => $location->id, 'quantity' => 3]],
+        );
+        $service->approve($loan->id);
+        $lineId = $loan->items->first()->id;
+        $service->recordHandover($loan->id, [['loan_item_id' => $lineId, 'quantity' => 3]], now());
+        $service->recordReturn($loan->id, [['loan_item_id' => $lineId, 'quantity_returned' => 3]], now());
+
+        $this->assertSame('returned', $loan->fresh()->status);
+        $this->assertEquals(5, $item->stockBalances()->first()->quantity_on_hand);
+        $this->assertDatabaseCount('inventory_loan_events', 2);
+
+        try {
+            $service->recordReturn($loan->id, [['loan_item_id' => $lineId, 'quantity_returned' => 3]], now());
+            $this->fail('Pengembalian berulang setelah selesai harus ditolak.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('status', $exception->errors());
+        }
+
+        $this->assertEquals(5, $item->stockBalances()->first()->quantity_on_hand);
+        $this->assertDatabaseCount('inventory_loan_events', 2);
+        $this->assertEquals(3, $loan->items()->firstOrFail()->quantity_returned);
+    }
+
+    public function test_overreturn_is_rejected_without_partial_stock_or_audit_changes(): void
+    {
+        [$item, $owner, $location] = $this->makeStock();
+        app(InventoryStockService::class)->recordMovement($item->id, $owner->id, $location->id, 'receipt', 5);
+
+        $service = app(InventoryLoanService::class);
+        $loan = $service->requestLoan(
+            ['type' => 'manual_external', 'name' => 'Peminjam'],
+            [['item_id' => $item->id, 'owner_id' => $owner->id, 'location_id' => $location->id, 'quantity' => 3]],
+        );
+        $service->approve($loan->id);
+        $lineId = $loan->items->first()->id;
+        $service->recordHandover($loan->id, [['loan_item_id' => $lineId, 'quantity' => 3]], now());
+
+        try {
+            $service->recordReturn($loan->id, [['loan_item_id' => $lineId, 'quantity_returned' => 4]], now());
+            $this->fail('Jumlah kembali melebihi barang dipinjam harus ditolak.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('lines.0', $exception->errors());
+        }
+
+        $this->assertSame('handed_over', $loan->fresh()->status);
+        $this->assertEquals(2, $item->stockBalances()->first()->quantity_on_hand);
+        $this->assertDatabaseCount('inventory_loan_events', 1);
+        $this->assertEquals(0, $loan->items()->firstOrFail()->quantity_returned);
+    }
+
     public function test_duplicate_stock_lines_cannot_exceed_available_balance(): void
     {
         [$item, $owner, $location] = $this->makeStock();
