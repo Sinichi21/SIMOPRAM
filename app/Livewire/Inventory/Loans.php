@@ -46,6 +46,8 @@ class Loans extends Component
 
     public ?int $activeLoanId = null;
 
+    public ?int $selectedLoanId = null;
+
     public ?int $activeLoanItemId = null;
 
     public string $handoverQuantity = '1';
@@ -269,6 +271,18 @@ class Loans extends Component
         session()->flash('status', 'Peminjaman berhasil disetujui.');
     }
 
+    public function showLoanDetails(int $loanId): void
+    {
+        abort_unless(auth()->user()?->can('inventory.view'), 403);
+        InventoryLoan::query()->where('school_id', $this->schoolId())->findOrFail($loanId);
+        $this->selectedLoanId = $loanId;
+    }
+
+    public function closeLoanDetails(): void
+    {
+        $this->selectedLoanId = null;
+    }
+
     public function openTransaction(int $loanId, string $mode): void
     {
         $permission = $mode === 'handover' ? 'inventory.handover.process' : 'inventory.returns.process';
@@ -358,12 +372,18 @@ class Loans extends Component
             ? InventoryLoan::query()->where('school_id', $schoolId)->with(['items.item'])->find($this->activeLoanId)
             : null;
 
+        $selectedLoan = $this->selectedLoanId
+            ? InventoryLoan::query()->where('school_id', $schoolId)
+                ->with(['items.item', 'items.asset', 'items.owner', 'items.location', 'events.loanItem.item', 'events.recorder', 'documents.issuer'])
+                ->find($this->selectedLoanId)
+            : null;
+
         $availableAssets = $this->showRequestForm && $this->itemId
             ? InventoryAsset::query()->where('school_id', $schoolId)->where('item_id', $this->itemId)
                 ->with(['owner', 'location'])->where('status', 'available')->where('condition', 'good')->orderBy('asset_code')->limit(500)->get()
             : collect();
 
-        return view('livewire.inventory.loans', compact('loans', 'items', 'activeLoan', 'availableAssets'));
+        return view('livewire.inventory.loans', compact('loans', 'items', 'activeLoan', 'availableAssets', 'selectedLoan'));
     }
 
     private function schoolId(): int
