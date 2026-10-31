@@ -40,6 +40,8 @@ class Loans extends Component
 
     public string $statusFilter = '';
 
+    public string $loanSearch = '';
+
     public string $cancellationReason = '';
 
     public ?int $cancellingLoanId = null;
@@ -352,6 +354,11 @@ class Loans extends Component
         session()->flash('status', 'Transaksi inventaris berhasil dicatat.');
     }
 
+    public function updatedLoanSearch(): void
+    {
+        $this->resetPage();
+    }
+
     public function updatedStatusFilter(): void
     {
         $this->resetPage();
@@ -365,6 +372,14 @@ class Loans extends Component
         $loans = InventoryLoan::query()
             ->where('school_id', $schoolId)
             ->with(['items.item', 'events', 'documents.issuer', 'documents.prints.printer'])
+            ->when(trim($this->loanSearch) !== '', function ($query): void {
+                $term = '%'.addcslashes(trim($this->loanSearch), '%_\\\\').'%';
+                $query->where(function ($query) use ($term): void {
+                    $query->where('loan_number', 'like', $term)
+                        ->orWhere('borrower_name', 'like', $term)
+                        ->orWhere('borrower_organization', 'like', $term);
+                });
+            })
             ->when($this->statusFilter !== '', fn ($query) => $query->where('status', $this->statusFilter))
             ->latest('requested_at')
             ->paginate(15);
