@@ -245,8 +245,10 @@ class Loans extends Component
     public function openCancellation(int $loanId): void
     {
         abort_unless(auth()->user()?->can('inventory.loans.request'), 403);
-        InventoryLoan::query()->where('school_id', $this->schoolId())
+        $loan = InventoryLoan::query()->where('school_id', $this->schoolId())
             ->where('status', 'requested')->findOrFail($loanId);
+        abort_unless(auth()->user()?->can('inventory.loans.approve')
+            || ($loan->requested_by !== null && (int) $loan->requested_by === (int) auth()->id()), 403);
         $this->cancellingLoanId = $loanId;
         $this->cancellationReason = '';
         $this->resetValidation();
