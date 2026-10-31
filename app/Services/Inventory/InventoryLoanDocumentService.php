@@ -25,7 +25,7 @@ class InventoryLoanDocumentService
         return DB::transaction(function () use ($documentId, $reason, $schoolId): InventoryLoanDocument {
             $original = InventoryLoanDocument::query()->where('school_id', $schoolId)->findOrFail($documentId);
             $loan = InventoryLoan::query()->where('school_id', $schoolId)
-                ->lockForUpdate()->with(['items.item', 'items.owner', 'items.location', 'events'])
+                ->lockForUpdate()->with(['items.item', 'items.owner', 'items.location', 'events.evidence'])
                 ->findOrFail($original->loan_id);
 
             $current = InventoryLoanDocument::query()
