@@ -5,8 +5,8 @@ use App\Models\InventoryLoan;
 use App\Models\School;
 use App\Models\User;
 use App\Support\SchoolContext;
-use Livewire\Livewire;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Livewire\Livewire;
 
 it('shows a loan detail only within the active school', function () {
     $school = School::factory()->create();
