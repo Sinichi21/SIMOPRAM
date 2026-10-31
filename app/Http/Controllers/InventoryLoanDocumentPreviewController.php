@@ -20,7 +20,7 @@ class InventoryLoanDocumentPreviewController extends Controller
 
         $record = InventoryLoan::query()
             ->where('school_id', $schoolId)
-            ->with(['items.item', 'items.owner', 'items.location', 'events'])
+            ->with(['items.item', 'items.owner', 'items.location', 'events.evidence'])
             ->findOrFail($loan);
 
         abort_unless($type === 'handover'
