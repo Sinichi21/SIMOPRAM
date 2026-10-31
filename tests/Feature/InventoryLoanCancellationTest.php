@@ -90,7 +90,12 @@ it('denies cancellation by a different requester even within the same school', f
     $loan->forceFill(['requested_by' => $owner->id])->save();
 
     $this->actingAs($other);
-    Livewire::test(Loans::class)->call('openCancellation', $loan->id)->assertForbidden();
+    try {
+        Livewire::test(Loans::class)->call('openCancellation', $loan->id);
+        test()->fail('Opening another requester loan cancellation must be denied');
+    } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
+        expect($exception->getStatusCode())->toBe(403);
+    }
 
     try {
         app(InventoryLoanService::class)->cancelPending($loan->id, 'Permohonan ini bukan milik saya');
