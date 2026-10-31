@@ -29,7 +29,7 @@ it('shows a loan detail only within the active school', function () {
         ->assertSet('selectedLoanId', null);
 
     $foreignSchool = School::factory()->create();
-    $foreign = InventoryLoan::query()->create([
+    $foreign = InventoryLoan::query()->forceCreate([
         'school_id' => $foreignSchool->id,
         'loan_number' => 'INV-DETAIL-FOREIGN',
         'borrower_type' => 'manual_external',
@@ -37,6 +37,9 @@ it('shows a loan detail only within the active school', function () {
         'requested_at' => now(),
         'status' => 'requested',
     ]);
+
+    expect($foreign->school_id)->toBe($foreignSchool->id);
+    expect($foreign->school_id)->not->toBe($school->id);
 
     $component->call('showLoanDetails', $foreign->id)->assertNotFound();
 });
