@@ -88,6 +88,20 @@
         </flux:card>
     @endif
 
+    @if ($cancellingLoanId)
+        <flux:card class="space-y-3">
+            <flux:heading size="lg">Batalkan Permohonan #{{ $cancellingLoanId }}</flux:heading>
+            <flux:text size="sm">Pembatalan hanya berlaku untuk permohonan yang belum disetujui. Riwayat tetap disimpan.</flux:text>
+            <form wire:submit="cancelLoan" class="space-y-3">
+                <flux:textarea label="Alasan pembatalan (minimal 10 karakter)" wire:model="cancellationReason" required />
+                <div class="flex gap-2">
+                    <flux:button type="submit" variant="danger" wire:confirm="Batalkan permohonan ini? Riwayat pembatalan akan tersimpan.">Konfirmasi Pembatalan</flux:button>
+                    <flux:button type="button" variant="ghost" wire:click="$set('cancellingLoanId', null)">Kembali</flux:button>
+                </div>
+            </form>
+        </flux:card>
+    @endif
+
     @if ($activeLoan && $transactionMode !== '')
         <flux:card class="space-y-4">
             <flux:heading size="lg">{{ $transactionMode === 'handover' ? 'Catat Serah-Terima' : 'Catat Pengembalian' }} — {{ $activeLoan->loan_number }}</flux:heading>
@@ -132,6 +146,7 @@
                 <flux:select wire:model.live="statusFilter" aria-label="Filter status">
                     <flux:select.option value="">Semua status</flux:select.option>
                     <flux:select.option value="requested">Menunggu persetujuan</flux:select.option>
+                    <flux:select.option value="cancelled">Dibatalkan</flux:select.option>
                     <flux:select.option value="approved">Disetujui</flux:select.option>
                     <flux:select.option value="partially_handed_over">Serah-terima sebagian</flux:select.option>
                     <flux:select.option value="handed_over">Diserahkan</flux:select.option>
@@ -154,8 +169,13 @@
                                     <div>{{ $line->item?->name ?? 'Barang tidak tersedia' }} — {{ number_format((float) $line->quantity_requested, 3) }}</div>
                                 @endforeach
                             </td>
-                            <td class="px-3 py-3">{{ ['requested' => 'Menunggu', 'approved' => 'Disetujui', 'partially_handed_over' => 'Diserahkan sebagian', 'handed_over' => 'Diserahkan', 'partially_returned' => 'Kembali sebagian', 'returned' => 'Selesai', 'discrepancy' => 'Selisih / rusak'][$loan->status] ?? $loan->status }}</td>
+                            <td class="px-3 py-3">{{ ['requested' => 'Menunggu', 'cancelled' => 'Dibatalkan', 'approved' => 'Disetujui', 'partially_handed_over' => 'Diserahkan sebagian', 'handed_over' => 'Diserahkan', 'partially_returned' => 'Kembali sebagian', 'returned' => 'Selesai', 'discrepancy' => 'Selisih / rusak'][$loan->status] ?? $loan->status }}</td>
                             <td class="px-3 py-3">
+                                @can('inventory.loans.request')
+                                    @if ($loan->status === 'requested')
+                                        <flux:button size="sm" variant="ghost" wire:click="openCancellation({{ $loan->id }})">Batalkan</flux:button>
+                                    @endif
+                                @endcan
                                 @can('inventory.loans.approve')
                                     @if ($loan->status === 'requested')
                                         <flux:button size="sm" variant="outline" wire:click="approveLoan({{ $loan->id }})" wire:confirm="Setujui permohonan ini?">Setujui</flux:button>
