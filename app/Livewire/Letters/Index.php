@@ -17,6 +17,7 @@ use App\Services\DocumentSignatoryService;
 use App\Services\LetterAdministrationBootstrapService;
 use App\Services\LetterNumberService;
 use App\Services\LetterPublicationService;
+use App\Services\LetterTemplateHtmlSanitizer;
 use App\Services\LetterTemplateRenderer;
 use App\Support\SchoolContext;
 use Carbon\Carbon;
@@ -152,7 +153,7 @@ class Index extends Component
             $this->templateData[$placeholder] = (string) ($current[$placeholder] ?? $defaults[$placeholder] ?? '');
         }
 
-        $this->showPreview = true;
+        $this->showPreview = false;
         $this->useRenderedTemplate($renderer);
     }
 
@@ -162,16 +163,29 @@ class Index extends Component
         abort_unless($this->direction === 'outgoing' && $this->template_id, 422);
         $template = LetterTemplate::query()->findOrFail($this->template_id);
         $this->body = $renderer->render($template, array_merge($this->templateContext(), $this->templateData), false);
-        $this->useCustomBody = true;
+        $this->useCustomBody = false;
         $this->dispatch('letter-editor-content', html: $this->body);
     }
 
-    public function updatedTemplateData(LetterTemplateRenderer $renderer): void
+    public function updated(string $property): void
     {
-        if ($this->direction !== 'outgoing' || ! $this->template_id || ! $this->useCustomBody) {
+        if ($property === 'body') {
+            $this->useCustomBody = true;
+
             return;
         }
-        // Once the user customizes the document, template inputs must not silently overwrite edits.
+
+        if ($this->direction !== 'outgoing' || ! $this->template_id || $this->useCustomBody) {
+            return;
+        }
+
+        if (str_starts_with($property, 'templateData.') || in_array($property, [
+            'subject', 'recipient', 'letter_date', 'letter_number', 'administration_type',
+            'signatory_source', 'signatory_user_id', 'signatory_name', 'signatory_position',
+            'signatory_identity', 'attachments',
+        ], true)) {
+            $this->useRenderedTemplate(app(LetterTemplateRenderer::class));
+        }
     }
 
     public function togglePreview(): void
@@ -447,7 +461,7 @@ class Index extends Component
                 foreach ($this->templatePlaceholders as $placeholder) {
                     $this->templateData[$placeholder] = (string) ($this->templateData[$placeholder] ?? $defaults[$placeholder] ?? '');
                 }
-                $this->showPreview = true;
+                $this->showPreview = false;
             }
         }
     }
@@ -664,6 +678,7 @@ class Index extends Component
         $this->status = $this->direction === 'incoming' ? 'recorded' : 'draft';
         $this->attachments = [];
         $this->applyLetterSettingDefaults();
+        $this->dispatch('letter-editor-content', html: $this->body);
         $this->resetValidation();
     }
 
@@ -704,11 +719,7 @@ class Index extends Component
                 ?? LetterTemplate::query()->find($this->template_id);
 
             if ($selectedTemplate) {
-                $previewBody = $renderer->render(
-                    $selectedTemplate,
-                    array_merge($this->templateContext(), $this->templateData),
-                    true
-                );
+                $previewBody = app(LetterTemplateHtmlSanitizer::class)->sanitize($this->body);
 
                 $previewFlexibleLayout = $renderer->containsAny(
                     (string) $selectedTemplate->body_template,

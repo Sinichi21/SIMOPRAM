@@ -5,8 +5,7 @@ namespace App\Livewire\Inventory;
 use App\Models\InventoryAsset;
 use App\Models\InventoryItem;
 use App\Models\InventoryLoan;
-use App\Models\InventoryLocation;
-use App\Models\InventoryOwner;
+use App\Models\InventoryStockBalance;
 use App\Services\Inventory\InventoryLoanService;
 use App\Support\SchoolContext;
 use Illuminate\Contracts\View\View;
@@ -31,9 +30,7 @@ class Loans extends Component
 
     public ?int $itemId = null;
 
-    public ?int $ownerId = null;
-
-    public ?int $locationId = null;
+    public string $itemCode = '';
 
     public string $quantity = '1';
 
@@ -69,59 +66,134 @@ class Loans extends Component
         $this->schoolId();
     }
 
+    public function findByCode(): void
+    {
+        abort_unless(auth()->user()?->can('inventory.loans.request'), 403);
+        $this->reset('itemId', 'assetId');
+        $this->resetValidation();
+        $this->validate(['itemCode' => ['required', 'string', 'max:2048']]);
+        $code = trim($this->itemCode);
+        $schoolId = $this->schoolId();
+        $asset = null;
+        $item = null;
+
+        if (filter_var($code, FILTER_VALIDATE_URL)) {
+            $path = parse_url($code, PHP_URL_PATH);
+            if (parse_url($code, PHP_URL_HOST) === parse_url(url('/'), PHP_URL_HOST)
+                && preg_match('~^/inventaris/(verifikasi|verifikasi-aset)/(\d+)/(\d+)$~', $path ?? '', $matches)
+                && (int) $matches[2] === $schoolId) {
+                if ($matches[1] === 'verifikasi-aset') {
+                    $asset = InventoryAsset::query()->where('school_id', $schoolId)->find($matches[3]);
+                } else {
+                    $item = InventoryItem::query()->where('school_id', $schoolId)->where('is_active', true)->find($matches[3]);
+                }
+            }
+        } else {
+            $asset = InventoryAsset::query()->where('school_id', $schoolId)->where('asset_code', $code)->first();
+            if (! $asset) {
+                $item = InventoryItem::query()->where('school_id', $schoolId)->where('is_active', true)->where('item_code', $code)->first();
+            }
+        }
+
+        if ($asset) {
+            $item = InventoryItem::query()->where('school_id', $schoolId)->where('is_active', true)->find($asset->item_id);
+            if ($asset->status !== 'available' || $asset->condition !== 'good') {
+                $this->addError('itemCode', 'Unit aset tidak tersedia atau kondisinya tidak baik.');
+
+                return;
+            }
+        }
+        if (! $item) {
+            $this->addError('itemCode', 'Kode barang / QR tidak ditemukan di sekolah aktif.');
+
+            return;
+        }
+        $this->itemId = $item->id;
+        $this->assetId = $asset?->id;
+        if ($asset) {
+            $this->quantity = '1';
+        }
+    }
+
+    public function updatedItemId(): void
+    {
+        $this->reset('assetId', 'itemCode');
+        $this->resetValidation();
+    }
+
     public function addToCart(): void
     {
         abort_unless(auth()->user()?->can('inventory.loans.request'), 403);
         $schoolId = $this->schoolId();
         $data = $this->validate([
-            'itemId' => ['required', 'integer', Rule::exists('inventory_items', 'id')->where('school_id', $schoolId)->where('is_active', true)],
-            'ownerId' => ['required', 'integer', Rule::exists('inventory_owners', 'id')->where('school_id', $schoolId)->where('is_active', true)],
-            'locationId' => ['required', 'integer', Rule::exists('inventory_locations', 'id')->where('school_id', $schoolId)->where('is_active', true)],
+            'itemId' => ['required', 'integer', Rule::exists('inventory_items', 'id')->where('school_id', $schoolId)->where('is_active', true)->whereNull('deleted_at')],
             'quantity' => ['required', 'numeric', 'min:0.001', 'max:99999999999', 'decimal:0,3'],
         ]);
         $item = InventoryItem::query()->where('school_id', $schoolId)->findOrFail($data['itemId']);
-        $asset = null;
+        $remaining = (int) round((float) $data['quantity'] * 1000);
+        $pending = [];
         if ($item->tracking_type === 'individual') {
-            $this->validate(['assetId' => ['required', 'integer']]);
-            $asset = InventoryAsset::query()->where('school_id', $schoolId)
-                ->where('item_id', $item->id)->where('owner_id', $data['ownerId'])
-                ->where('location_id', $data['locationId'])->where('status', 'available')
-                ->where('condition', 'good')->findOrFail($this->assetId);
-            if ((float) $data['quantity'] !== 1.0) {
-                $this->addError('quantity', 'Aset individual hanya boleh satu unit per baris.');
+            if ($remaining % 1000 !== 0 || ($this->assetId && $remaining !== 1000)) {
+                $this->addError('quantity', 'Jumlah unit harus bulat; satu untuk kode unit tertentu.');
+
                 return;
             }
-        } elseif ($this->assetId !== null) {
-            $this->addError('assetId', 'Barang kuantitas tidak menggunakan kode unit.');
-            return;
+            $sources = InventoryAsset::query()->where('school_id', $schoolId)->where('item_id', $item->id)
+                ->where('status', 'available')->where('condition', 'good')
+                ->when($this->assetId, fn ($query) => $query->whereKey($this->assetId))
+                ->whereNotIn('id', array_filter(array_column($this->cart, 'asset_id')))
+                ->orderBy('id')->limit(500)->get();
+        } else {
+            $sources = InventoryStockBalance::query()->where('school_id', $schoolId)->where('item_id', $item->id)
+                ->whereColumn('quantity_on_hand', '>', 'quantity_reserved')->orderBy('id')->get();
         }
-
-        $key = implode(':', [$item->id, $data['ownerId'], $data['locationId'], $asset?->id ?? 'stock']);
-        foreach ($this->cart as $index => $line) {
-            if ($line['key'] !== $key) {
+        $sources->load(['owner', 'location']);
+        foreach ($sources as $source) {
+            if (! $source->owner?->is_active || ! $source->location?->is_active
+                || $source->owner->school_id !== $schoolId || $source->location->school_id !== $schoolId) {
                 continue;
             }
-            if ($asset) {
-                $this->addError('assetId', 'Unit ini sudah ada di keranjang.');
-                return;
+            $asset = $source instanceof InventoryAsset ? $source : null;
+            $key = implode(':', [$item->id, $source->owner_id, $source->location_id, $asset?->id ?? 'stock']);
+            $existing = collect($this->cart)->firstWhere('key', $key);
+            $available = $asset ? 1000 : (int) round(((float) $source->quantity_on_hand - (float) $source->quantity_reserved - (float) ($existing['quantity'] ?? 0)) * 1000);
+            $allocated = min($remaining, max(0, $available));
+            if ($allocated === 0) {
+                continue;
             }
-            $sum = round((float) $line['quantity'] + (float) $data['quantity'], 3);
-            if ($sum > 99999999999) {
-                $this->addError('quantity', 'Jumlah melampaui batas.');
-                return;
+            $pending[] = [
+                'key' => $key, 'item_id' => $item->id, 'owner_id' => $source->owner_id,
+                'location_id' => $source->location_id, 'asset_id' => $asset?->id,
+                'quantity' => $allocated / 1000, 'name' => $item->name,
+                'asset_code' => $asset?->asset_code,
+                'owner_name' => $source->owner->display_name, 'location_name' => $source->location->name,
+            ];
+            $remaining -= $allocated;
+            if ($remaining === 0) {
+                break;
             }
-            $this->cart[$index]['quantity'] = $sum;
+        }
+        if ($remaining > 0) {
+            $this->addError('quantity', 'Stok / unit tersedia tidak mencukupi (termasuk barang di keranjang).');
+
             return;
         }
+        if (count($this->cart) + count($pending) > 500) {
+            $this->addError('cart', 'Keranjang maksimal 500 baris.');
 
-        $this->cart[] = [
-            'key' => $key, 'item_id' => $item->id, 'owner_id' => (int) $data['ownerId'],
-            'location_id' => (int) $data['locationId'], 'asset_id' => $asset?->id,
-            'quantity' => (float) $data['quantity'], 'name' => $item->name,
-            'asset_code' => $asset?->asset_code,
-        ];
-        $this->reset('itemId', 'ownerId', 'locationId', 'assetId');
+            return;
+        }
+        foreach ($pending as $line) {
+            $index = array_search($line['key'], array_column($this->cart, 'key'), true);
+            if ($index === false) {
+                $this->cart[] = $line;
+            } else {
+                $this->cart[$index]['quantity'] = round($this->cart[$index]['quantity'] + $line['quantity'], 3);
+            }
+        }
+        $this->reset('itemId', 'assetId', 'itemCode');
         $this->quantity = '1';
+        $this->resetValidation();
     }
 
     public function removeFromCart(int $index): void
@@ -159,7 +231,7 @@ class Loans extends Component
             'contact' => trim($data['borrowerContact']),
         ], $lines, trim($data['purpose']));
 
-        $this->reset('borrowerName', 'borrowerOrganization', 'borrowerContact', 'purpose', 'itemId', 'ownerId', 'locationId', 'assetId', 'cart', 'showRequestForm');
+        $this->reset('borrowerName', 'borrowerOrganization', 'borrowerContact', 'purpose', 'itemId', 'itemCode', 'assetId', 'cart', 'showRequestForm');
         $this->quantity = '1';
         session()->flash('status', 'Permohonan peminjaman multi-barang berhasil dibuat.');
     }
@@ -256,18 +328,16 @@ class Loans extends Component
             ->paginate(15);
 
         $items = InventoryItem::query()->where('school_id', $schoolId)->where('is_active', true)->orderBy('name')->get();
-        $owners = InventoryOwner::query()->where('school_id', $schoolId)->where('is_active', true)->orderBy('display_name')->get();
         $activeLoan = $this->activeLoanId
             ? InventoryLoan::query()->where('school_id', $schoolId)->with(['items.item'])->find($this->activeLoanId)
             : null;
-        $locations = InventoryLocation::query()->where('school_id', $schoolId)->where('is_active', true)->orderBy('name')->get();
 
         $availableAssets = $this->showRequestForm && $this->itemId
             ? InventoryAsset::query()->where('school_id', $schoolId)->where('item_id', $this->itemId)
-                ->where('status', 'available')->where('condition', 'good')->orderBy('asset_code')->limit(500)->get()
+                ->with(['owner', 'location'])->where('status', 'available')->where('condition', 'good')->orderBy('asset_code')->limit(500)->get()
             : collect();
 
-        return view('livewire.inventory.loans', compact('loans', 'items', 'owners', 'locations', 'activeLoan', 'availableAssets'));
+        return view('livewire.inventory.loans', compact('loans', 'items', 'activeLoan', 'availableAssets'));
     }
 
     private function schoolId(): int

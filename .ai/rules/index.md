@@ -4,6 +4,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 
 | Applies to | Rule file |
 | --- | --- |
+| app/Livewire/Inventory/** | .ai/rules/inventory.md |
 | {lang,app/Services}/** | .ai/rules/langapp-services.md |
 | app/{Models,Livewire}/** | .ai/rules/models-livewire.md |
 | app/{Models,Services,Livewire,Providers,Http}/** | .ai/rules/models-services-livewire-providers-http.md |

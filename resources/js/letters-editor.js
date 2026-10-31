@@ -14,41 +14,56 @@ const plugins = [
 ];
 
 document.addEventListener('alpine:init', () => {
-    Alpine.data('outgoingLetterEditor', (initialBody) => ({
-        editor: null,
-        async init() {
-            await this.$nextTick();
-            const element = this.$refs.editor;
-            if (!element) return;
-            try {
-                this.editor = await ClassicEditor.create(element, {
-                    licenseKey: 'GPL',
-                    plugins,
-                    toolbar: {
-                        items: ['undo', 'redo', '|', 'heading', '|', 'bold', 'italic', 'underline',
-                            'strikethrough', 'removeFormat', '|', 'alignment', '|',
-                            'bulletedList', 'numberedList', 'outdent', 'indent', '|',
-                            'link', 'insertTable', 'blockQuote', 'horizontalLine', '|',
-                            'findAndReplace', 'sourceEditing'],
-                        shouldNotGroupWhenFull: true,
-                    },
-                    table: {
-                        contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells',
-                            'tableProperties', 'tableCellProperties'],
-                    },
-                    htmlSupport: {
-                        allow: [{ name: /^(table|thead|tbody|tfoot|tr|td|th|p|div|span)$/,
-                            styles: true, attributes: ['class', 'colspan', 'rowspan'] }],
-                    },
-                    initialData: initialBody || '',
-                });
-                this._onServerContent = (event) => {
-                    if (!this.editor || typeof event.detail?.html !== 'string') return;
-                    if (this.editor.getData() !== event.detail.html) this.editor.setData(event.detail.html);
+    Alpine.data('outgoingLetterEditor', (initialBody, property = 'body') => {
+        let editor = null;
+        let applyingContent = false;
+        let disposed = false;
+        return {
+            async init() {
+                await this.$nextTick();
+                const element = this.$refs.editor;
+                if (!element) return;
+                try {
+                    editor = await ClassicEditor.create(element, {
+                        licenseKey: 'GPL',
+                        plugins,
+                        toolbar: {
+                            items: ['undo', 'redo', '|', 'heading', '|', 'bold', 'italic', 'underline',
+                                'strikethrough', 'removeFormat', '|', 'alignment', '|',
+                                'bulletedList', 'numberedList', 'outdent', 'indent', '|',
+                                'link', 'insertTable', 'blockQuote', 'horizontalLine', '|',
+                                'findAndReplace', 'sourceEditing'],
+                            shouldNotGroupWhenFull: true,
+                        },
+                        table: {
+                            contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells',
+                                'tableProperties', 'tableCellProperties'],
+                        },
+                        htmlSupport: {
+                            allow: [{ name: /^(table|thead|tbody|tfoot|tr|td|th|p|div|span)$/,
+                                styles: true, attributes: ['class', 'colspan', 'rowspan'] }],
+                        },
+                        initialData: initialBody || '',
+                    });
+                    if (disposed) {
+                        await editor.destroy();
+                        editor = null;
+                        return;
+                    }
+                    this._onServerContent = (event) => {
+                        if ((event.detail?.property || 'body') !== property) return;
+                        if (!editor || typeof event.detail?.html !== 'string') return;
+                        if (editor.getData() !== event.detail.html) {
+                            applyingContent = true;
+                            editor.setData(event.detail.html);
+                            applyingContent = false;
+                        }
                 };
                 window.addEventListener('letter-editor-content', this._onServerContent);
-                this.editor.model.document.on('change:data', () => {
-                    this.$wire.set('body', this.editor.getData(), false);
+                editor.model.document.on('change:data', () => {
+                    if (applyingContent) return;
+                    this.$wire.$set(property, editor.getData(), false);
+                    if (property === 'body') this.$wire.$set('useCustomBody', true, false);
                 });
             } catch (error) {
                 console.error('CKEditor 5 failed to initialize', error);
@@ -56,9 +71,18 @@ document.addEventListener('alpine:init', () => {
                 this.$refs.fallback.hidden = false;
             }
         },
-        destroy() {
-            if (this._onServerContent) window.removeEventListener('letter-editor-content', this._onServerContent);
-            if (this.editor) this.editor.destroy();
+        insertPlaceholder(key) {
+            if (!editor) return;
+            editor.editing.view.focus();
+            editor.model.change((writer) => {
+                editor.model.insertContent(writer.createText('{{ ' + key + ' }}'));
+            });
         },
-    }));
+        destroy() {
+            disposed = true;
+            if (this._onServerContent) window.removeEventListener('letter-editor-content', this._onServerContent);
+            if (editor) editor.destroy();
+        },
+        };
+    });
 });

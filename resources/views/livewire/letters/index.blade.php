@@ -59,7 +59,6 @@
                         <div class="md:col-span-2 rounded-xl border border-blue-200 bg-blue-50/60 p-4 dark:border-blue-900/50 dark:bg-blue-950/20">
                             <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
                                 <div><h3 class="font-semibold">Isi Data Template</h3><p class="text-xs text-zinc-500">Lengkapi variabel yang digunakan oleh <strong>{{ $selectedTemplate->name }}</strong>.</p></div>
-                                <button type="button" wire:click="togglePreview" class="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-medium dark:border-zinc-700 dark:bg-zinc-900">{{ $showPreview ? 'Sembunyikan Preview' : 'Tampilkan Preview' }}</button>
                             </div>
                             <div class="grid gap-4 md:grid-cols-2">
                                 @foreach ($templatePlaceholders as $placeholder)
@@ -78,9 +77,6 @@
                         </div>
                     @endif
 
-                    @if ($selectedTemplate && $showPreview)
-                        @include('livewire.letters.partials.a4-preview')
-                    @endif
                 @endunless
 
                 <div><label class="mb-1 block text-sm font-medium">Klasifikasi Keamanan</label><select wire:model="security_classification" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"><option>Biasa</option><option>Terbatas</option><option>Rahasia</option></select></div>
@@ -94,11 +90,17 @@
                     <div class="md:col-span-2"><label class="mb-1 block text-sm font-medium">Isi / Catatan</label><textarea wire:model="body" rows="8" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"></textarea></div>
                 @else
                     <div class="md:col-span-2 space-y-3 rounded-xl border p-4">
-                        <label class="block text-sm font-semibold">Isi Surat Individual</label>
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <label class="block text-sm font-semibold">Editor Surat</label>
+                            @if ($selectedTemplate)
+                                <button type="button" wire:click="togglePreview" class="rounded-lg border px-3 py-2 text-xs">{{ $showPreview ? 'Tutup Pratinjau A4' : 'Pratinjau A4' }}</button>
+                            @endif
+                        </div>
                         @if ($selectedTemplate)
-                            <p class="text-xs text-zinc-500">Template master tidak berubah. Gunakan tombol berikut untuk menyalin hasil template ke isi surat ini, lalu edit sesuai kebutuhan. Perubahan hanya berlaku untuk surat ini.</p>
-                            <button type="button" wire:click="useRenderedTemplate" wire:confirm="Ganti isi surat saat ini dengan hasil template? Perubahan isi surat yang belum disimpan akan tertimpa." class="rounded border px-3 py-2 text-sm">Salin Template ke Isi Surat</button>
-                            <label class="flex items-center gap-2 text-sm"><input type="checkbox" wire:model.live="useCustomBody"> Gunakan isi surat individual (jangan render ulang template saat simpan)</label>
+                            <p class="text-xs text-zinc-500">{{ $useCustomBody ? 'Isi surat telah diedit manual. Perubahan data template tidak menimpa suntingan Anda.' : 'Isi surat mengikuti data template secara otomatis. Anda dapat mengedit langsung di bawah ini.' }} Template master tetap tersimpan terpisah.</p>
+                            @if ($useCustomBody)
+                                <button type="button" wire:click="useRenderedTemplate" wire:confirm="Ganti suntingan manual dengan data template terbaru?" class="rounded-lg border px-3 py-2 text-sm">Kembalikan ke Template</button>
+                            @endif
                         @endif
                         <div wire:ignore wire:key="outgoing-letter-editor-{{ $editingId ?: 'new' }}-{{ $template_id ?: 'free' }}" x-data="outgoingLetterEditor(@js($body))" class="letter-ckeditor">
                             <div x-ref="editor"></div>
@@ -106,6 +108,9 @@
                         </div>
                         @error('body')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
                     </div>
+                    @if ($selectedTemplate && $showPreview)
+                        @include('livewire.letters.partials.a4-preview')
+                    @endif
                 @endif
 
                 @unless ($incoming)

@@ -33,7 +33,20 @@
                 <flux:input label="Kontak peminjam" wire:model="borrowerContact" required />
                 <flux:textarea label="Keperluan peminjaman" wire:model="purpose" required />
             </div>
-            <div class="rounded-lg border p-4 space-y-3">
+            <div class="rounded-lg border p-4 space-y-3" x-data="inventoryLoanScanner($wire)">
+                <form wire:submit="findByCode" class="space-y-3">
+                    <flux:input label="Kode barang / kode unit / QR" wire:model="itemCode" autocomplete="off" placeholder="Ketik kode atau pindai dengan scanner, lalu Enter" />
+                    <div class="flex flex-wrap gap-2">
+                        <flux:button type="submit" wire:loading.attr="disabled">Cari Kode</flux:button>
+                        <flux:button type="button" x-on:click="start()" x-bind:disabled="starting || scanning">Scan Kamera</flux:button>
+                        <flux:button type="button" x-show="scanning" x-cloak x-on:click="stop()">Hentikan Kamera</flux:button>
+                    </div>
+                </form>
+                <div wire:ignore x-show="scanning" x-cloak>
+                    <video x-ref="video" autoplay muted playsinline class="w-full max-w-md rounded-lg" aria-label="Pratinjau scan QR"></video>
+                </div>
+                <p x-text="message" role="status" class="text-sm"></p>
+                <flux:text size="sm">Scanner eksternal: fokuskan kolom kode, pindai, lalu Enter. Pemilik dan lokasi mengikuti stok barang secara otomatis.</flux:text>
                 <flux:heading size="md">Tambah barang ke keranjang</flux:heading>
                 <div class="grid gap-3 md:grid-cols-2">
                     <flux:select label="Jenis barang" wire:model.live="itemId">
@@ -42,24 +55,12 @@
                             <flux:select.option value="{{ $item->id }}">{{ $item->item_code }} — {{ $item->name }} ({{ $item->tracking_type === 'individual' ? 'per unit' : 'stok' }})</flux:select.option>
                         @endforeach
                     </flux:select>
-                    <flux:select label="Pemilik" wire:model="ownerId">
-                        <flux:select.option value="">Pilih pemilik</flux:select.option>
-                        @foreach ($owners as $owner)
-                            <flux:select.option value="{{ $owner->id }}">{{ $owner->display_name }}</flux:select.option>
-                        @endforeach
-                    </flux:select>
-                    <flux:select label="Lokasi" wire:model="locationId">
-                        <flux:select.option value="">Pilih lokasi</flux:select.option>
-                        @foreach ($locations as $location)
-                            <flux:select.option value="{{ $location->id }}">{{ $location->name }}</flux:select.option>
-                        @endforeach
-                    </flux:select>
-                    <flux:input label="Jumlah (1 untuk unit individual)" type="number" min="0.001" step="0.001" wire:model="quantity" />
+                    <flux:input label="Jumlah" type="number" min="0.001" step="0.001" wire:model="quantity" />
                     @if ($items->firstWhere('id', (int) $itemId)?->tracking_type === 'individual')
-                        <flux:select label="Kode unit aset" wire:model="assetId">
-                            <flux:select.option value="">Pilih unit tersedia</flux:select.option>
+                        <flux:select label="Kode unit aset" wire:model.live="assetId">
+                            <flux:select.option value="">Otomatis pilih unit tersedia</flux:select.option>
                             @foreach ($availableAssets as $asset)
-                                <flux:select.option value="{{ $asset->id }}">{{ $asset->asset_code }} — pemilik #{{ $asset->owner_id }}, lokasi #{{ $asset->location_id }}</flux:select.option>
+                                <flux:select.option value="{{ $asset->id }}">{{ $asset->asset_code }} — {{ $asset->owner?->display_name }} / {{ $asset->location?->name }}</flux:select.option>
                             @endforeach
                         </flux:select>
                     @endif
@@ -72,7 +73,7 @@
                     <div wire:key="loan-cart-{{ $line['key'] }}" class="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
                         <div>
                             <div class="font-medium">{{ $line['name'] }}</div>
-                            <div class="text-xs text-zinc-500">{{ $line['asset_code'] ?: 'Stok kuantitas' }} · {{ number_format((float) $line['quantity'], 3) }} unit · pemilik #{{ $line['owner_id'] }} · lokasi #{{ $line['location_id'] }}</div>
+                            <div class="text-xs text-zinc-500">{{ $line['asset_code'] ?: 'Stok kuantitas' }} · {{ number_format((float) $line['quantity'], 3) }} unit · {{ $line['owner_name'] ?? $line['owner_id'] }} · {{ $line['location_name'] ?? $line['location_id'] }}</div>
                         </div>
                         <flux:button size="sm" variant="ghost" type="button" wire:click="removeFromCart({{ $index }})">Hapus</flux:button>
                     </div>
