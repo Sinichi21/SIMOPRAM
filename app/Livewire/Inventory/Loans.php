@@ -391,7 +391,7 @@ class Loans extends Component
 
         $selectedLoan = $this->selectedLoanId
             ? InventoryLoan::query()->where('school_id', $schoolId)
-                ->with(['items.item', 'items.asset', 'items.owner', 'items.location', 'events.loanItem.item', 'events.recorder', 'documents.issuer'])
+                ->with(['items.item', 'items.asset', 'items.owner', 'items.location', 'events.loanItem.item', 'events.recorder', 'events.evidence', 'documents.issuer'])
                 ->find($this->selectedLoanId)
             : null;
 
