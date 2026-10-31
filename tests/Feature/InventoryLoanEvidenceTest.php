@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\InventoryLoan;
 use App\Models\InventoryLoanEvent;
+use App\Models\InventoryLoanEvidence;
 use App\Models\School;
 use App\Models\User;
 use App\Support\SchoolContext;
@@ -37,11 +38,12 @@ it('stores a private transaction photo and serves it only within its school', fu
         'photo' => UploadedFile::fake()->image('kondisi.jpg'),
     ])->assertRedirect();
 
-    $record = \App\Models\InventoryLoanEvidence::query()->firstOrFail();
+    $record = InventoryLoanEvidence::query()->firstOrFail();
     expect($record->school_id)->toBe($school->id);
     Storage::disk('local')->assertExists($record->path);
-    $this->get(route('inventory.loans.evidence.show', $record->id))->assertOk()
-        ->assertHeader('Cache-Control', 'private, no-store');
+    $response = $this->get(route('inventory.loans.evidence.show', $record->id))->assertOk();
+    $cacheDirectives = array_map('trim', explode(',', $response->headers->get('Cache-Control', '')));
+    expect($cacheDirectives)->toContain('private', 'no-store');
 
     Storage::disk('local')->put($record->path, 'tampered');
     $this->get(route('inventory.loans.evidence.show', $record->id))->assertStatus(409);
