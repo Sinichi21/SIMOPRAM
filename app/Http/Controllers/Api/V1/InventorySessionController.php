@@ -12,14 +12,6 @@ use Illuminate\Support\Facades\Route;
 
 class InventorySessionController extends Controller
 {
-    public function bootstrap(Request $request): JsonResponse
-    {
-        return response()->json([
-            'csrf_token' => csrf_token(), 'authenticated' => $request->user() !== null,
-            'authentication' => ['type' => 'session_cookie', 'login' => url('/login'), 'two_factor_challenge' => url('/two-factor-challenge'), 'logout' => url('/logout'), 'csrf_header' => 'X-CSRF-TOKEN'],
-        ])->header('Cache-Control', 'private, no-store');
-    }
-
     public function schools(Request $request): JsonResponse
     {
         $query = School::query()->where('is_active', true);
@@ -28,22 +20,6 @@ class InventorySessionController extends Controller
         }
 
         return response()->json(['data' => $query->orderBy('name')->get(['id', 'name'])]);
-    }
-
-    public function selectSchool(Request $request): JsonResponse
-    {
-        $data = $request->validate(['school_id' => ['required', 'integer', 'min:1']]);
-        $query = School::query()->where('is_active', true);
-        if (! $request->user()->isSystemAdmin()) {
-            $query->whereIn('id', $request->user()->schoolMemberships()->where('is_active', true)->whereNull('left_at')->select('school_id'));
-        }
-        $school = $query->whereKey($data['school_id'])->firstOrFail();
-        $request->session()->put('active_school_id', $school->id);
-        app(SchoolContext::class)->set($school);
-        setPermissionsTeamId($school->id);
-        $request->user()->unsetRelation('roles')->unsetRelation('permissions');
-
-        return response()->json(['data' => $school->only(['id', 'name'])]);
     }
 
     public function context(Request $request): JsonResponse
@@ -59,7 +35,7 @@ class InventorySessionController extends Controller
             'school_id' => app(SchoolContext::class)->id(), 'timezone' => config('app.timezone'),
             'officer' => app(DocumentSignatoryService::class)->identityFor($request->user(), app(SchoolContext::class)->id()),
             'permissions' => collect($permissions)->mapWithKeys(fn ($permission) => [$permission => $request->user()->can($permission)]),
-            'authentication' => 'session_cookie_with_csrf', 'max_per_page' => 100,
+            'authentication' => 'sanctum_bearer', 'school_header' => 'X-School-Id', 'max_per_page' => 100,
             'quantity_format' => 'JSON number without locale separators; fractional quantities retain source precision',
             'master_deactivation' => 'PATCH is_active=false; stock, transaction and issued-document history is never deleted',
             'catalogs' => ['categories', 'owners', 'locations', 'items'],

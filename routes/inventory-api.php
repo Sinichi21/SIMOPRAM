@@ -11,16 +11,16 @@ use App\Http\Controllers\InventoryItemLabelController;
 use App\Http\Controllers\InventoryLoanDocumentPreviewController;
 use App\Http\Controllers\InventoryLoanEvidenceController;
 use App\Http\Controllers\InventoryLoanIssuedDocumentController;
+use App\Http\Middleware\EnsureApiAccountActive;
+use App\Http\Middleware\ResolveApiSchool;
 use Illuminate\Support\Facades\Route;
 
-// Loaded from web.php: native clients retain the session cookie and send X-CSRF-TOKEN.
-Route::prefix('api/v1')->name('api.v1.')->group(function (): void {
-    Route::get('session', [InventorySessionController::class, 'bootstrap'])->middleware('throttle:60,1,inventory-session')->name('session');
-    Route::middleware(['auth', 'school'])->group(function (): void {
+// Shared mobile API: Bearer authentication and request-scoped X-School-Id.
+Route::prefix('v1')->name('api.v1.')->group(function (): void {
+    Route::middleware(['auth:sanctum', EnsureApiAccountActive::class])->group(function (): void {
         Route::get('schools', [InventorySessionController::class, 'schools'])->name('schools');
-        Route::post('schools/select', [InventorySessionController::class, 'selectSchool'])->name('schools.select');
     });
-    Route::prefix('inventory')->name('inventory.')->middleware(['auth', 'school', 'school.required', 'can:inventory.view', 'throttle:120,1,inventory-api'])->group(function (): void {
+    Route::prefix('inventory')->name('inventory.')->middleware(['auth:sanctum', EnsureApiAccountActive::class, ResolveApiSchool::class, 'can:inventory.view', 'throttle:120,1,inventory-api'])->group(function (): void {
         Route::get('context', [InventorySessionController::class, 'context'])->name('context');
         Route::get('resolve', [InventoryLoanController::class, 'resolve'])->name('resolve');
         Route::get('stock-balances', [InventoryStockController::class, 'balances'])->name('balances');
