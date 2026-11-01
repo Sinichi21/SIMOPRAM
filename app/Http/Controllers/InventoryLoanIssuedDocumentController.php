@@ -41,6 +41,8 @@ class InventoryLoanIssuedDocumentController extends Controller
         $record = InventoryLoanDocument::query()->where('school_id', $schoolId)
             ->where('status', 'issued')->findOrFail($document);
 
+        abort_if($record->verification?->isRevoked(), 409, 'Dokumen telah dicabut dan tidak dapat dicetak ulang.');
+
         // Audit the reprint only if the immutable PDF still exists and passes integrity verification.
         $this->verifiedPdf($record);
 

@@ -11,6 +11,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | resources/** | .ai/rules/resources.md |
 | app/Livewire/SchoolRegistrations/** | .ai/rules/school-registrations.md |
 | app/{Services,Http,Livewire}/** | .ai/rules/services-http-livewire.md |
+| app/Services/Inventory/** | .ai/rules/services-inventory.md |
 | app/{Services,Jobs,Livewire,Models,Http}/** | .ai/rules/services-jobs-livewire-models-http.md |
 | app/{Services,Jobs,Livewire,Models}/** | .ai/rules/services-jobs-livewire-models.md |
 | app/{Services,Livewire,Models}/** | .ai/rules/services-livewire-models.md |

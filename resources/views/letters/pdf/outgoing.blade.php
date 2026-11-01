@@ -36,14 +36,14 @@
         .letterhead-logo-right { right: 1mm; }
         .letterhead-title {
             font-family: "Times New Roman", Times, serif;
-            font-size: 14pt !important;
+            font-size: 13pt !important;
             font-weight: bold;
             line-height: 1.05;
             margin: 0 23mm;
         }
         .letterhead-address {
             font-family: "Times New Roman", Times, serif;
-            font-size: 10pt !important;
+            font-size: 9pt !important;
             line-height: 1.1;
             margin: .8mm 23mm 0;
         }

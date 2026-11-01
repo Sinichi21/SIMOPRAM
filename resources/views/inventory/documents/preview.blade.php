@@ -2,9 +2,21 @@
 <html lang="id">
 <head>
     <meta charset="utf-8">
-    <title>Draft Berita Acara Inventaris</title>
+    <title>{{ empty($issued) ? 'Draft' : $documentNumber }} Berita Acara Inventaris</title>
     <style>
-        body { font-family: DejaVu Sans, sans-serif; font-size: 10px; color: #222; }
+        @page { size: A4 portrait; margin: 12mm 16mm 27mm; }
+        body { margin: 0; font-family: "Times New Roman", Times, serif; font-size: 10pt; color: #222; }
+        .letterhead { border-bottom: 1.6px solid #000; margin-bottom: 4mm; min-height: 22mm; padding: 0 2mm 2.5mm; position: relative; text-align: center; }
+        .letterhead-logo-left, .letterhead-logo-right { height: 21mm; max-width: 23mm; position: absolute; top: 0; }
+        .letterhead-logo-left { left: 1mm; }
+        .letterhead-logo-right { right: 1mm; }
+        .letterhead-title { font-size: 13pt; font-weight: bold; line-height: 1.05; margin: 0 23mm; }
+        .letterhead-address { font-size: 9pt; line-height: 1.1; margin: .8mm 23mm 0; }
+        .identity { width: 178mm; margin: 0; }
+        .identity td { border: none; padding: 2px 0; overflow-wrap: break-word; }
+        .identity .label { width: 39mm; font-weight: bold; }
+        .identity .colon { width: 4mm; text-align: center; }
+        .transactions { font-size: 8pt; }
         h1 { font-size: 15px; text-align: center; margin-bottom: 3px; }
         h2 { font-size: 11px; margin-top: 22px; }
         .subtitle { text-align: center; margin-bottom: 20px; }
@@ -19,25 +31,30 @@
     </style>
 </head>
 <body>
+    @include('reports.pdf.lpj.partials.letterhead')
+    @include('reports.pdf.partials.verification-footer')
     @if (empty($issued))
         <div class="draft">DRAFT — BELUM DITERBITKAN / BELUM DITANDATANGANI</div>
-    @else
-        <div class="subtitle"><strong>Nomor: {{ $documentNumber }}</strong> — Dokumen diterbitkan dari catatan SIMPRAM; tanda tangan basah belum diverifikasi</div>
     @endif
     <h1>BERITA ACARA {{ $type === 'handover' ? 'SERAH-TERIMA' : 'PENGEMBALIAN' }} INVENTARIS</h1>
+    @if (! empty($issued))
+        <div style="text-align: center; margin: 3px 0 6px;"><strong>Nomor: {{ $documentNumber }}</strong></div>
+    @endif
     <div class="subtitle">Referensi peminjaman: {{ $loan->loan_number }}</div>
     @if (! empty($correctionReason))
         <p><strong>Koreksi dari BA:</strong> {{ $previousDocumentNumber ?? '-' }}</p>
         <p><strong>Alasan koreksi:</strong> {{ $correctionReason }}</p>
         <p><strong>Diterbitkan oleh:</strong> {{ $correctionIssuedBy ?? '-' }} | <strong>Waktu penerbitan:</strong> {{ $correctionIssuedAt ?? '-' }}</p>
     @endif
-    <p><strong>Nama peminjam:</strong> {{ $loan->borrower_name }}</p>
-    <p><strong>Instansi/organisasi:</strong> {{ $loan->borrower_organization ?: '-' }}</p>
-    <p><strong>Kontak:</strong> {{ $loan->borrower_contact ?: '-' }}</p>
-    <p><strong>Tujuan:</strong> {{ $loan->purpose ?: '-' }}</p>
-    <p><strong>Waktu kejadian:</strong> {{ $events->first()?->occurred_at?->format('d-m-Y H:i') ?: '-' }} (zona waktu aplikasi)</p>
+    <table class="identity">
+        <tr><td class="label" style="width: 39mm;">Nama peminjam</td><td class="colon" style="width: 4mm;">:</td><td style="width: 135mm;">{{ $loan->borrower_name }}</td></tr>
+        <tr><td class="label" style="width: 39mm;">Instansi/organisasi</td><td class="colon" style="width: 4mm;">:</td><td style="width: 135mm;">{{ $loan->borrower_organization ?: '-' }}</td></tr>
+        <tr><td class="label" style="width: 39mm;">Kontak</td><td class="colon" style="width: 4mm;">:</td><td style="width: 135mm;">{{ $loan->borrower_contact ?: '-' }}</td></tr>
+        <tr><td class="label" style="width: 39mm;">Tujuan</td><td class="colon" style="width: 4mm;">:</td><td style="width: 135mm;">{{ $loan->purpose ?: '-' }}</td></tr>
+        <tr><td class="label" style="width: 39mm;">Waktu kejadian</td><td class="colon" style="width: 4mm;">:</td><td style="width: 135mm;">{{ $events->first()?->occurred_at?->timezone(config('app.timezone'))->format('d-m-Y H:i') ?: '-' }} ({{ config('app.timezone') }})</td></tr>
+    </table>
     <h2>Rincian transaksi</h2>
-    <table>
+    <table class="transactions">
         <thead>
             <tr><th>No.</th><th>Barang</th><th>Pemilik</th><th>Lokasi asal</th><th>Waktu</th><th>Jumlah</th><th>Kondisi</th><th>Catatan</th></tr>
         </thead>
@@ -49,8 +66,8 @@
                     <td>{{ $line?->item?->name ?? '-' }}</td>
                     <td>{{ $line?->owner?->display_name ?? '-' }}</td>
                     <td>{{ $line?->location?->name ?? '-' }}</td>
-                    <td>{{ $event->occurred_at?->format('d/m/Y H:i') ?? '-' }}</td>
-                    <td>{{ $event->quantity ?? '-' }}</td>
+                    <td>{{ $event->occurred_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? '-' }}</td>
+                    <td>{{ $event->quantity === null ? '-' : number_format((float) $event->quantity, 0, '', '') }}</td>
                     <td>{{ $event->condition ?? '-' }}</td>
                     <td>{{ $event->notes ?? '-' }}</td>
                 </tr>
@@ -68,7 +85,7 @@
                     @foreach ($event->evidence as $photo)
                         <tr>
                             <td>#{{ $event->id }} — {{ $event->event_type }}</td>
-                            <td>{{ $event->occurred_at?->format('d/m/Y H:i') ?? '-' }}</td>
+                            <td>{{ $event->occurred_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? '-' }}</td>
                             <td>#{{ $photo->id }}
                                 @if (! empty($evidenceThumbnails[$photo->id]))
                                     <div style="margin-top: 5px;"><img src="{{ $evidenceThumbnails[$photo->id] }}" alt="Foto kondisi barang" style="max-width: 160px; max-height: 110px;" /></div>
@@ -84,7 +101,7 @@
     @if (empty($issued))
         <p class="small">Dokumen ini merupakan pratinjau dari catatan transaksi SIMPRAM, bukan berita acara resmi. Untuk transaksi pengembalian dengan selisih/hilang, periksa rincian pada sistem sebelum menerbitkan berita acara final.</p>
     @else
-        <p class="small">Dokumen diterbitkan oleh SIMPRAM sebagai salinan tetap dari transaksi yang tercatat. Kolom tanda tangan harus ditandatangani oleh pihak terkait sebelum menjadi bukti serah-terima yang lengkap.</p>
+        <p class="small">Dokumen diterbitkan oleh SIMPRAM sebagai salinan tetap dari transaksi yang tercatat. QR memvalidasi penerbitan dokumen, bukan tanda tangan basah. Kolom tanda tangan harus ditandatangani oleh pihak terkait sebelum menjadi bukti serah-terima yang lengkap.</p>
     @endif
     <table class="signatures">
         <tr>

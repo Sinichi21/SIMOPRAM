@@ -73,7 +73,7 @@
                     <div wire:key="loan-cart-{{ $line['key'] }}" class="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
                         <div>
                             <div class="font-medium">{{ $line['name'] }}</div>
-                            <div class="text-xs text-zinc-500">{{ $line['asset_code'] ?: 'Stok kuantitas' }} · {{ number_format((float) $line['quantity'], 3) }} unit · {{ $line['owner_name'] ?? $line['owner_id'] }} · {{ $line['location_name'] ?? $line['location_id'] }}</div>
+                            <div class="text-xs text-zinc-500">{{ $line['asset_code'] ?: 'Stok kuantitas' }} · {{ number_format((float) $line['quantity'], 0, '', '') }} unit · {{ $line['owner_name'] ?? $line['owner_id'] }} · {{ $line['location_name'] ?? $line['location_id'] }}</div>
                         </div>
                         <flux:button size="sm" variant="ghost" type="button" wire:click="removeFromCart({{ $index }})">Hapus</flux:button>
                     </div>
@@ -109,7 +109,7 @@
                 <flux:select label="Barang" wire:model="activeLoanItemId" required>
                     <flux:select.option value="">Pilih barang dalam peminjaman</flux:select.option>
                     @foreach ($activeLoan->items as $line)
-                        <flux:select.option value="{{ $line->id }}">{{ $line->item?->name }} — diminta {{ $line->quantity_requested }}, diserahkan {{ $line->quantity_handed_over }}, kembali {{ $line->quantity_returned }}</flux:select.option>
+                        <flux:select.option value="{{ $line->id }}">{{ $line->item?->name }} — diminta {{ number_format((float) $line->quantity_requested, 0, '', '') }}, diserahkan {{ number_format((float) $line->quantity_handed_over, 0, '', '') }}, kembali {{ number_format((float) $line->quantity_returned, 0, '', '') }}</flux:select.option>
                     @endforeach
                 </flux:select>
                 <flux:select label="Metode pencatatan" wire:model.live="recordingMethod">
@@ -162,10 +162,10 @@
                             <tr class="border-b" wire:key="detail-item-{{ $line->id }}">
                                 <td class="p-2">{{ $line->item?->name ?? '-' }} <span class="text-xs">{{ $line->asset?->asset_code ?? '' }}</span></td>
                                 <td class="p-2">{{ $line->owner?->display_name ?? '-' }} / {{ $line->location?->name ?? '-' }}</td>
-                                <td class="p-2">{{ $line->quantity_requested }}</td>
-                                <td class="p-2">{{ $line->quantity_handed_over }}</td>
-                                <td class="p-2">{{ $line->quantity_returned }}</td>
-                                <td class="p-2">{{ $line->quantity_missing }}</td>
+                                <td class="p-2">{{ number_format((float) $line->quantity_requested, 0, '', '') }}</td>
+                                <td class="p-2">{{ number_format((float) $line->quantity_handed_over, 0, '', '') }}</td>
+                                <td class="p-2">{{ number_format((float) $line->quantity_returned, 0, '', '') }}</td>
+                                <td class="p-2">{{ number_format((float) $line->quantity_missing, 0, '', '') }}</td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -237,7 +237,7 @@
                             <td class="px-3 py-3">{{ $loan->borrower_name }}<div class="text-xs text-zinc-500">{{ $loan->borrower_organization }}</div></td>
                             <td class="px-3 py-3">
                                 @foreach ($loan->items as $line)
-                                    <div>{{ $line->item?->name ?? 'Barang tidak tersedia' }} — {{ number_format((float) $line->quantity_requested, 3) }}</div>
+                                    <div>{{ $line->item?->name ?? 'Barang tidak tersedia' }} — {{ number_format((float) $line->quantity_requested, 0, '', '') }}</div>
                                 @endforeach
                             </td>
                             <td class="px-3 py-3">{{ ['requested' => 'Menunggu', 'cancelled' => 'Dibatalkan', 'approved' => 'Disetujui', 'partially_handed_over' => 'Diserahkan sebagian', 'handed_over' => 'Diserahkan', 'partially_returned' => 'Kembali sebagian', 'returned' => 'Selesai', 'discrepancy' => 'Selisih / rusak'][$loan->status] ?? $loan->status }}</td>
@@ -336,7 +336,7 @@
                                                             <td class="p-2">{{ $event->occurred_at?->format('d/m/Y H:i') }}</td>
                                                             <td class="p-2">{{ $event->recorded_at?->format('d/m/Y H:i') }}</td>
                                                             <td class="p-2">{{ ['handover' => 'Serah-terima', 'return' => 'Pengembalian', 'loss' => 'Hilang', 'damage' => 'Rusak', 'offline_entry' => 'Entri offline'][$event->event_type] ?? $event->event_type }}</td>
-                                                            <td class="p-2">{{ $event->quantity ?? '-' }}</td>
+                                                            <td class="p-2">{{ $event->quantity === null ? '-' : number_format((float) $event->quantity, 0, '', '') }}</td>
                                                             <td class="p-2">{{ $event->condition ?? '-' }}</td>
                                                             <td class="p-2">{{ $event->recording_method }}</td>
                                                             <td class="p-2">{{ $event->notes ?? '-' }}</td>

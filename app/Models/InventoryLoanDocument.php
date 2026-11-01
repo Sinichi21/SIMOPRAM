@@ -6,6 +6,7 @@ use App\Models\Concerns\BelongsToSchool;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class InventoryLoanDocument extends Model
 {
@@ -22,6 +23,11 @@ class InventoryLoanDocument extends Model
             'version' => 'integer',
             'issued_at' => 'datetime',
         ];
+    }
+
+    public function verification(): MorphOne
+    {
+        return $this->morphOne(ReportVerification::class, 'source');
     }
 
     public function loan(): BelongsTo

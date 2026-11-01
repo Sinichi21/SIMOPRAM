@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\InventoryLoan;
-use App\Services\Inventory\InventoryLoanEvidenceThumbnailService;
+use App\Services\Inventory\InventoryLoanDocumentService;
 use App\Support\SchoolContext;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -28,13 +28,7 @@ class InventoryLoanDocumentPreviewController extends Controller
             ? $record->events->contains('event_type', 'handover')
             : $record->events->contains('event_type', 'return'), 404);
 
-        $events = $record->events->where('event_type', $type)->sortBy('occurred_at');
-        $pdf = Pdf::loadView('inventory.documents.preview', [
-            'loan' => $record,
-            'type' => $type,
-            'events' => $events,
-            'evidenceThumbnails' => app(InventoryLoanEvidenceThumbnailService::class)->forEvents($events),
-        ])->setPaper('a4');
+        $pdf = Pdf::loadView('inventory.documents.preview', app(InventoryLoanDocumentService::class)->previewData($record, $type))->setPaper('a4');
 
         return $pdf->stream('DRAFT-BA-'.$type.'-'.$record->loan_number.'.pdf');
     }

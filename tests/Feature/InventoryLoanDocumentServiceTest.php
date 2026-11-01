@@ -438,7 +438,8 @@ class InventoryLoanDocumentServiceTest extends TestCase
         $third = $service->correct($second->id, 'Koreksi administratif kedua pada berita acara.');
 
         $this->assertSame(3, $third->version);
-        $this->assertSame($first->document_number.'-REV3', $third->document_number);
+        $this->assertNotSame($first->document_number, $third->document_number);
+        $this->assertMatchesRegularExpression('~^3/02/[IVX]+\\.\\d{2}/.*-C$~', $third->document_number);
         $this->assertSame('superseded', $first->fresh()->status);
         $this->assertSame('superseded', $second->fresh()->status);
         $this->assertSame('issued', $third->fresh()->status);

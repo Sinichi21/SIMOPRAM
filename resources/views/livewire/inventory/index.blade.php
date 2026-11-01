@@ -239,7 +239,7 @@
                             <td class="px-3 py-3"><div class="font-medium">@if ($item->tracking_type === 'individual')<button type="button" class="text-left underline" wire:click="toggleItemUnits({{ $item->id }})">{{ $expandedItemId === $item->id ? '▾' : '▸' }} {{ $item->name }}</button>@else{{ $item->name }}@endif</div>@if ($item->description)<div class="mt-1 max-w-md text-xs text-zinc-500">{{ $item->description }}</div>@endif</td>
                             <td class="px-3 py-3">{{ $item->category?->name ?? '—' }}</td>
                             <td class="px-3 py-3">{{ $item->tracking_type === 'individual' ? 'Per unit' : 'Kuantitas' }}</td>
-                            <td class="px-3 py-3 text-right tabular-nums">{{ $item->tracking_type === 'individual' ? number_format($item->assets_count).' aset' : number_format((float) ($item->total_quantity ?? 0), 3).' '.$item->unit }}</td>
+                            <td class="px-3 py-3 text-right tabular-nums">{{ $item->tracking_type === 'individual' ? number_format($item->assets_count, 0, '', '').' aset' : number_format((float) ($item->total_quantity ?? 0), 0, '', '').' '.$item->unit }}</td>
                             <td class="px-3 py-3">@if ($item->is_active)<flux:badge color="green">Aktif</flux:badge>@else<flux:badge color="zinc">Nonaktif</flux:badge>@endif</td>
                             <td class="px-3 py-3">@can('inventory.labels.print')@if ($item->tracking_type === 'individual')<a href="{{ route('inventory.assets.batch-labels', ['scope' => 'item', 'item_id' => $item->id, 'format' => 'a4']) }}" target="_blank" rel="noopener" class="text-xs underline">Cetak semua unit grup</a> @else<a href="{{ route('inventory.items.labels', ['item' => $item->id, 'format' => 'a4']) }}" target="_blank" rel="noopener" class="text-xs underline">Cetak A4</a> <a href="{{ route('inventory.items.labels', ['item' => $item->id, 'format' => 'thermal58']) }}" target="_blank" rel="noopener" class="text-xs underline">58 mm</a> <a href="{{ route('inventory.items.labels', ['item' => $item->id, 'format' => 'thermal80']) }}" target="_blank" rel="noopener" class="text-xs underline">80 mm</a>@endif @endcan</td>
                         </tr>
@@ -359,8 +359,8 @@
                             <td class="px-3 py-3">{{ $movement->item?->name ?? 'Barang dihapus' }}<div class="text-xs text-zinc-500">{{ $movement->item?->item_code }}</div></td>
                             <td class="px-3 py-3">{{ $movement->owner?->display_name ?? '—' }}<div class="text-xs text-zinc-500">{{ $movement->location?->name }}</div></td>
                             <td class="px-3 py-3">{{ ['receipt' => 'Masuk', 'issue' => 'Keluar', 'adjustment' => 'Penyesuaian'][$movement->movement_type] ?? $movement->movement_type }}</td>
-                            <td class="px-3 py-3 text-right tabular-nums">{{ number_format((float) $movement->quantity, 3) }}</td>
-                            <td class="px-3 py-3 text-right tabular-nums">{{ number_format((float) $movement->balance_after, 3) }}</td>
+                            <td class="px-3 py-3 text-right tabular-nums">{{ number_format((float) $movement->quantity, 0, '', '') }}</td>
+                            <td class="px-3 py-3 text-right tabular-nums">{{ number_format((float) $movement->balance_after, 0, '', '') }}</td>
                         </tr>
                     @empty
                         <tr><td colspan="6" class="px-3 py-8 text-center text-zinc-500">Belum ada transaksi stok.</td></tr>

@@ -450,7 +450,7 @@ class InventoryLoanServiceTest extends TestCase
             'is_active' => true,
         ]);
         $location = InventoryLocation::query()->create([
-            'name' => 'Gudang',
+            'name' => 'Gudang '.fake()->unique()->numerify('#####'),
             'location_type' => 'storage',
             'is_active' => true,
         ]);
