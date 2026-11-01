@@ -13,6 +13,7 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Fortify\Features;
+use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
 function inventoryApiFixture(): array
@@ -20,7 +21,8 @@ function inventoryApiFixture(): array
     $school = School::factory()->create();
     app(SchoolContext::class)->set($school);
     $user = User::factory()->create(['system_role' => 'super_admin']);
-    test()->actingAs($user)->withSession(['active_school_id' => $school->id]);
+    Sanctum::actingAs($user);
+    test()->withHeader('X-School-Id', (string) $school->id);
     $category = InventoryCategory::query()->create(['name' => 'Peralatan', 'is_active' => true]);
     $item = InventoryItem::query()->create([
         'category_id' => $category->id, 'item_code' => 'TALI-API', 'name' => 'Tali',
@@ -39,9 +41,8 @@ function inventoryApiLoanPayload(int $itemId, int $quantity = 3): array
         'purpose' => 'Latihan', 'items' => [['item_id' => $itemId, 'quantity' => $quantity]]];
 }
 
-it('bootstraps a CSRF session and rejects inventory access by guests', function () {
-    test()->getJson('/api/v1/session')->assertOk()->assertJsonStructure(['csrf_token', 'authenticated', 'authentication'])
-        ->assertJsonPath('authenticated', false);
+it('rejects unauthenticated inventory and auth context requests', function () {
+    test()->getJson('/api/v1/auth/me')->assertUnauthorized();
     test()->getJson('/api/v1/inventory/items')->assertUnauthorized();
 });
 
@@ -49,26 +50,29 @@ it('returns JSON for inactive accounts and refuses inventory users without permi
     $data = inventoryApiFixture();
     $member = User::factory()->create(['system_role' => null]);
     SchoolUserMembership::query()->create(['user_id' => $member->id, 'school_id' => $data['school']->id, 'is_active' => true]);
-    test()->actingAs($member)->getJson('/api/v1/inventory/items')->assertForbidden();
+    Sanctum::actingAs($member);
+    test()->getJson('/api/v1/inventory/items')->assertForbidden();
     $member->update(['is_active' => false]);
-    test()->getJson('/api/v1/inventory/items')->assertUnauthorized()->assertJsonStructure(['message']);
+    test()->getJson('/api/v1/inventory/items')->assertForbidden()->assertJsonStructure(['message']);
 });
 
-it('lists permitted schools and requires an active school for inventory', function () {
+it('lists permitted schools and requires the school header for inventory', function () {
     $school = School::factory()->create();
-    test()->actingAs(User::factory()->create(['system_role' => 'super_admin']));
-    test()->getJson('/api/v1/inventory/context')->assertStatus(409);
+    Sanctum::actingAs(User::factory()->create(['system_role' => 'super_admin']));
+    test()->getJson('/api/v1/inventory/context')->assertUnprocessable();
     test()->getJson('/api/v1/schools')->assertJsonFragment(['id' => $school->id, 'name' => $school->name]);
-    test()->postJson('/api/v1/schools/select', ['school_id' => $school->id])->assertOk()->assertSessionHas('active_school_id', $school->id);
-    test()->getJson('/api/v1/inventory/context')->assertJsonPath('data.school_id', $school->id)->assertJsonPath('data.authentication', 'session_cookie_with_csrf');
+    test()->withHeader('X-School-Id', (string) $school->id)->getJson('/api/v1/inventory/context')
+        ->assertJsonPath('data.school_id', $school->id)->assertJsonPath('data.authentication', 'sanctum_bearer');
+    expect(app(SchoolContext::class)->id())->toBeNull();
 });
 
-it('does not let a school member select a foreign school', function () {
+it('does not let a school member request a foreign school', function () {
     $data = inventoryApiFixture();
     $other = School::factory()->create();
     $member = User::factory()->create(['system_role' => null]);
     SchoolUserMembership::query()->create(['user_id' => $member->id, 'school_id' => $data['school']->id, 'is_active' => true]);
-    test()->actingAs($member)->postJson('/api/v1/schools/select', ['school_id' => $other->id])->assertNotFound();
+    Sanctum::actingAs($member);
+    test()->withHeader('X-School-Id', (string) $other->id)->getJson('/api/v1/inventory/context')->assertForbidden();
     test()->getJson('/api/v1/schools')->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $data['school']->id);
 });
 
@@ -202,28 +206,39 @@ it('does not grant a view-only inventory member mutation permissions', function 
     setPermissionsTeamId($data['school']->id);
     Permission::findOrCreate('inventory.view', 'web');
     $member->givePermissionTo('inventory.view');
-    test()->actingAs($member)->json($method, '/api/v1/inventory/'.$path)->assertForbidden();
+    Sanctum::actingAs($member);
+    test()->json($method, '/api/v1/inventory/'.$path)->assertForbidden();
 })->with([['POST', 'categories'], ['POST', 'assets'], ['POST', 'stock-movements'], ['POST', 'loans'], ['POST', 'loans/1/approve'], ['POST', 'loans/1/handover'], ['POST', 'loans/1/return'], ['GET', 'stock-movements']]);
 
-it('authenticates mobile session clients through the existing Fortify JSON login', function () {
-    $user = User::factory()->create(['system_role' => 'super_admin']);
-    test()->getJson('/api/v1/session')->assertOk();
-
-    test()->postJson('/login', ['email' => $user->email, 'password' => 'password'])->assertSuccessful();
-    test()->getJson('/api/v1/session')->assertJsonPath('authenticated', true);
-    test()->postJson('/logout')->assertSuccessful();
+it('uses the same real Bearer token for mobile activities and inventory without a session', function () {
+    $data = inventoryApiFixture();
+    auth()->forgetGuards();
+    $response = test()->postJson('/api/v1/auth/login', [
+        'email' => $data['user']->email, 'password' => 'password', 'device_name' => 'Android Retrofit',
+    ])->assertOk()->assertJsonPath('data.token_type', 'Bearer');
+    $token = $response->json('data.token');
+    auth()->forgetGuards();
+    test()->withToken($token)->getJson('/api/v1/activities')->assertOk();
+    auth()->forgetGuards();
+    test()->getJson('/api/v1/inventory/items')->assertOk()->assertJsonPath('data.0.id', $data['item']->id);
+    auth()->forgetGuards();
+    test()->postJson('/api/v1/inventory/loans', inventoryApiLoanPayload($data['item']->id))->assertCreated()->assertJsonPath('data.requested_by', $data['user']->id);
+    auth()->forgetGuards();
+    test()->postJson('/api/v1/auth/logout')->assertOk();
+    auth()->forgetGuards();
     test()->getJson('/api/v1/inventory/items')->assertUnauthorized();
 });
 
-it('requires the existing two factor challenge before authenticating a mobile session', function () {
+it('keeps mobile login blocked for accounts with two factor authentication', function () {
     test()->skipUnlessFortifyHas(Features::twoFactorAuthentication());
     $user = User::factory()->withTwoFactor()->create();
 
-    test()->postJson('/login', ['email' => $user->email, 'password' => 'password'])->assertJsonPath('two_factor', true);
+    test()->postJson('/api/v1/auth/login', ['email' => $user->email, 'password' => 'password', 'device_name' => 'Android'])
+        ->assertForbidden();
     test()->getJson('/api/v1/inventory/items')->assertUnauthorized();
 });
 
-it('rejects mobile mutations without CSRF and accepts the token issued by the bootstrap endpoint', function () {
+it('allows Bearer inventory writes without CSRF while preserving web CSRF protection', function () {
     inventoryApiFixture();
     app()->bind(PreventRequestForgery::class, fn ($app) => new class($app, $app['encrypter']) extends PreventRequestForgery
     {
@@ -232,10 +247,42 @@ it('rejects mobile mutations without CSRF and accepts the token issued by the bo
             return false;
         }
     });
-    $token = test()->getJson('/api/v1/session')->json('csrf_token');
 
-    test()->postJson('/api/v1/inventory/categories', ['name' => 'No Token'])->assertStatus(419);
-    test()->postJson('/api/v1/inventory/categories', ['name' => 'CSRF Valid'], ['X-CSRF-TOKEN' => $token])->assertCreated();
+    test()->postJson('/api/v1/inventory/categories', ['name' => 'Bearer Valid'])->assertCreated();
+    test()->postJson('/login', ['email' => 'any@example.test', 'password' => 'password'])->assertStatus(419);
+});
 
-    test()->assertDatabaseMissing('inventory_categories', ['name' => 'No Token']);
+it('rejects expired Bearer tokens and inactive school memberships', function () {
+    $data = inventoryApiFixture();
+    $expired = $data['user']->createToken('expired', ['*'], now()->subMinute())->plainTextToken;
+    auth()->forgetGuards();
+    test()->withToken($expired)->getJson('/api/v1/inventory/items')->assertUnauthorized();
+    $member = User::factory()->create(['system_role' => null]);
+    SchoolUserMembership::query()->create(['school_id' => $data['school']->id, 'user_id' => $member->id, 'is_active' => false]);
+    $token = $member->createToken('Android')->plainTextToken;
+    auth()->forgetGuards();
+    test()->withToken($token)->getJson('/api/v1/inventory/items')->assertForbidden();
+});
+
+it('clears school and permission context even when the next school header is rejected', function () {
+    $data = inventoryApiFixture();
+    test()->getJson('/api/v1/inventory/context')->assertOk();
+    app(SchoolContext::class)->set($data['school']);
+    setPermissionsTeamId($data['school']->id);
+
+    test()->withHeader('X-School-Id', '99999999')->getJson('/api/v1/inventory/context')->assertNotFound();
+
+    expect(app(SchoolContext::class)->id())->toBeNull();
+    expect(getPermissionsTeamId())->toBeNull();
+});
+
+it('revokes a disabled users real mobile token before inventory access', function () {
+    $data = inventoryApiFixture();
+    $token = $data['user']->createToken('disabled Android')->plainTextToken;
+    $data['user']->update(['is_active' => false]);
+    auth()->forgetGuards();
+
+    test()->withToken($token)->withHeader('X-School-Id', '')->getJson('/api/v1/inventory/items')->assertForbidden();
+
+    expect($data['user']->tokens()->count())->toBe(0);
 });

@@ -59,6 +59,7 @@ class Student extends Model
         );
     }
 
+    /** @return HasMany<StudentEnrollment, $this> */
     public function enrollments(): HasMany
     {
         return $this->hasMany(
@@ -66,6 +67,7 @@ class Student extends Model
         );
     }
 
+    /** @return HasMany<StudentScoutLevel, $this> */
     public function scoutLevelHistories(): HasMany
     {
         return $this->hasMany(
