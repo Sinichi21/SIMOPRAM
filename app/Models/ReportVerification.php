@@ -121,6 +121,8 @@ class ReportVerification extends Model
             'attendance' => 'Rekap Absensi',
             'lpj' => 'LPJ Kegiatan',
             'letter' => 'Surat Keluar',
+            'inventory_handover' => 'BA Serah Terima Inventaris',
+            'inventory_return' => 'BA Pengembalian Inventaris',
             default => str($this->document_type)->replace('_', ' ')->title()->toString(),
         };
     }

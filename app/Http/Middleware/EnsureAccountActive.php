@@ -20,6 +20,10 @@ class EnsureAccountActive
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json(['message' => 'Akun dinonaktifkan. Hubungi admin untuk mengaktifkan kembali.'], 401);
+            }
+
             return redirect()->route('login')->withErrors(['email' => 'Akun dinonaktifkan. Hubungi admin untuk mengaktifkan kembali.']);
         }
 

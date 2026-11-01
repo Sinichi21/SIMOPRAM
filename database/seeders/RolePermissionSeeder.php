@@ -159,6 +159,19 @@ class RolePermissionSeeder extends Seeder
 
             'semester_closures.view',
             'semester_closures.manage',
+
+            'inventory.view',
+            'inventory.manage',
+            'inventory.stock.manage',
+            'inventory.loans.request',
+            'inventory.loans.approve',
+            'inventory.loans.record_manual',
+            'inventory.handover.process',
+            'inventory.returns.process',
+            'inventory.labels.print',
+            'inventory.documents.reprint',
+            'inventory.documents.correct',
+            'inventory.audit.view',
         ];
 
         foreach ($permissions as $permission) {
@@ -301,6 +314,10 @@ class RolePermissionSeeder extends Seeder
                 'report_verifications.view',
             ]);
         }
+
+        // Existing built-in roles may have been customized by a system administrator.
+        // Inventory permissions are included in the initial Permission::all() grant
+        // when administrator roles are first created; never re-grant them on reseed.
 
         if ($student->wasRecentlyCreated) {
             $student->syncPermissions([

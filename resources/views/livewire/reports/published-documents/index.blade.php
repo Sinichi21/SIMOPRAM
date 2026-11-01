@@ -32,7 +32,7 @@
             <select wire:model.live="documentType" class="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950">
                 <option value="">Semua jenis</option>
                 @foreach ($documentTypes as $type)
-                    <option value="{{ $type }}">{{ match ($type) { 'letter' => 'Surat Keluar', 'grades' => 'Rekap Nilai', 'attendance' => 'Rekap Absensi', 'lpj' => 'LPJ Kegiatan', default => str($type)->replace('_', ' ')->title() } }}</option>
+                    <option value="{{ $type }}">{{ match ($type) { 'letter' => 'Surat Keluar', 'inventory_handover' => 'BA Serah Terima Inventaris', 'inventory_return' => 'BA Pengembalian Inventaris', 'grades' => 'Rekap Nilai', 'attendance' => 'Rekap Absensi', 'lpj' => 'LPJ Kegiatan', default => str($type)->replace('_', ' ')->title() } }}</option>
                 @endforeach
             </select>
             <select wire:model.live="status" class="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950">

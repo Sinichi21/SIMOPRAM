@@ -19,7 +19,8 @@ class LetterNumberService
         CarbonInterface $date,
         LetterType $type,
         LetterField $field,
-        string|ScoutAdministrationType $administrationType = ScoutAdministrationType::Mabigus
+        string|ScoutAdministrationType $administrationType = ScoutAdministrationType::Mabigus,
+        ?string $numberFormat = null
     ): string {
         $administrationType = $this->normalizeType($administrationType);
         $legacy = SchoolLetterSetting::withoutGlobalScope('school')->where('school_id', $schoolId)->firstOrFail();
@@ -28,7 +29,7 @@ class LetterNumberService
 
         $gudep = $this->gudepTokens($schoolId, (string) $legacy->gudep_code, $administrationType);
 
-        return $this->render($profile?->number_format ?: $legacy->number_format, [
+        return $this->render($numberFormat ?? ($profile?->number_format ?: $legacy->number_format), [
             'sequence' => (string) $number,
             'sequence_padded' => str_pad((string) $number, 3, '0', STR_PAD_LEFT),
             'type' => $type->code,

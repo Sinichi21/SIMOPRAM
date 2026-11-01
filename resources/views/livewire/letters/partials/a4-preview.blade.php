@@ -26,7 +26,7 @@
                         <div
                             class="md:col-span-2 rounded-xl border border-zinc-300 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-950"
                             x-data="{
-                                previewMode: 'edit',
+                                previewMode: 'real',
                                 overflow: false,
                                 checkOverflow() {
                                     this.$nextTick(() => {
@@ -95,35 +95,6 @@
                                     </div>
                                 </div>
 
-                                <div class="inline-flex rounded-lg border border-zinc-300 p-1 dark:border-zinc-700">
-                                    <button
-                                        type="button"
-                                        x-on:click="previewMode = 'edit'; overflow = false"
-                                        x-bind:class="previewMode === 'edit' ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-600 dark:text-zinc-300'"
-                                        class="rounded-md px-3 py-1.5 text-xs font-medium"
-                                    >
-                                        Edit Mode
-                                    </button>
-                                    <button
-                                        type="button"
-                                        x-on:click="previewMode = 'real'; checkOverflow()"
-                                        x-bind:class="previewMode === 'real' ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-600 dark:text-zinc-300'"
-                                        class="rounded-md px-3 py-1.5 text-xs font-medium"
-                                    >
-                                        Real A4
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div x-show="previewMode === 'edit'">
-                                <div
-                                    class="letter-preview text-zinc-800 dark:text-zinc-200"
-                                    style="font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.35;"
-                                >{!! $previewBody !!}</div>
-
-                                <p class="mt-4 border-t border-zinc-200 pt-3 text-xs text-zinc-500 dark:border-zinc-800">
-                                    Edit Mode memperbesar isi agar mudah dibaca. Gunakan Real A4 untuk mengecek posisi kop, isi, ruang tanda tangan, dan footer verifikasi.
-                                </p>
                             </div>
 
                             <div x-show="previewMode === 'real'" x-on:resize.window="checkOverflow()" class="overflow-x-auto pb-3">

@@ -7,6 +7,15 @@ use App\Http\Controllers\ActivityLogExportController;
 use App\Http\Controllers\ActivityParticipantPortalController;
 use App\Http\Controllers\ActivityRegistrationController;
 use App\Http\Controllers\ComplaintController;
+use App\Http\Controllers\InventoryAssetBatchLabelController;
+use App\Http\Controllers\InventoryAssetLabelController;
+use App\Http\Controllers\InventoryAssetVerificationController;
+use App\Http\Controllers\InventoryItemLabelController;
+use App\Http\Controllers\InventoryItemVerificationController;
+use App\Http\Controllers\InventoryLoanDocumentPreviewController;
+use App\Http\Controllers\InventoryLoanEvidenceController;
+use App\Http\Controllers\InventoryLoanIssuedDocumentController;
+use App\Http\Controllers\InventoryQrScannerController;
 use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\LpjReportController;
 use App\Http\Controllers\PublicContentMediaController;
@@ -18,6 +27,8 @@ use App\Http\Controllers\SchoolSwitchController;
 use App\Http\Controllers\StudentDocumentController;
 use App\Http\Middleware\SetGlobalContentContext;
 use App\Livewire\Auth\Register;
+use App\Livewire\Inventory\Index;
+use App\Livewire\Inventory\Loans;
 use App\Livewire\PeopleMerge\Index as PeopleMergeIndex;
 use App\Livewire\RoleManagement\Index as RoleManagementIndex;
 use App\Livewire\Settings\LandingContent;
@@ -214,6 +225,66 @@ Route::middleware([
         Route::get('/pengaturan/role-management', RoleManagementIndex::class)
             ->middleware('can:roles.manage')
             ->name('roles.index');
+
+        Route::get('/inventaris', Index::class)
+            ->middleware('can:inventory.view')
+            ->name('inventory.index');
+
+        Route::get('/inventaris/barang/{item}/label', InventoryItemLabelController::class)
+            ->whereNumber('item')->middleware(['can:inventory.labels.print', 'throttle:30,1'])
+            ->name('inventory.items.labels');
+
+        Route::get('/inventaris/verifikasi/{school}/{item}', InventoryItemVerificationController::class)
+            ->whereNumber(['school', 'item'])->middleware(['can:inventory.view', 'throttle:60,1'])
+            ->name('inventory.items.verify');
+
+        Route::get('/inventaris/aset/label-massal', InventoryAssetBatchLabelController::class)
+            ->name('inventory.assets.batch-labels');
+        Route::get('/inventaris/aset/{asset}/label', InventoryAssetLabelController::class)
+            ->whereNumber('asset')->middleware(['can:inventory.labels.print', 'throttle:30,1'])
+            ->name('inventory.assets.labels');
+
+        Route::get('/inventaris/verifikasi-aset/{school}/{asset}', InventoryAssetVerificationController::class)
+            ->whereNumber(['school', 'asset'])->middleware(['can:inventory.view', 'throttle:60,1'])
+            ->name('inventory.assets.verify');
+
+        Route::get('/inventaris/pindai', InventoryQrScannerController::class)
+            ->middleware(['can:inventory.view', 'throttle:60,1'])
+            ->name('inventory.items.scan');
+
+        Route::get('/inventaris/peminjaman', Loans::class)
+            ->middleware('can:inventory.view')
+            ->name('inventory.loans.index');
+
+        Route::post('/inventaris/peminjaman/bukti/{event}', [InventoryLoanEvidenceController::class, 'store'])
+            ->whereNumber('event')->middleware('throttle:20,1')
+            ->name('inventory.loans.evidence.store');
+        Route::get('/inventaris/peminjaman/foto/{evidence}', [InventoryLoanEvidenceController::class, 'show'])
+            ->whereNumber('evidence')->middleware(['can:inventory.view', 'throttle:60,1'])
+            ->name('inventory.loans.evidence.show');
+
+        Route::get('/inventaris/peminjaman/{loan}/dokumen/{type}/pratinjau', InventoryLoanDocumentPreviewController::class)
+            ->whereNumber('loan')
+            ->whereIn('type', ['handover', 'return'])
+            ->middleware(['can:inventory.view', 'throttle:20,1'])
+            ->name('inventory.loans.documents.preview');
+
+        Route::post('/inventaris/peminjaman/{loan}/dokumen/{type}/terbitkan', [InventoryLoanIssuedDocumentController::class, 'issue'])
+            ->whereNumber('loan')->whereIn('type', ['handover', 'return'])
+            ->middleware(['can:inventory.documents.reprint', 'throttle:10,1'])
+            ->name('inventory.loans.documents.issue');
+
+        Route::get('/inventaris/dokumen/{document}', [InventoryLoanIssuedDocumentController::class, 'show'])
+            ->whereNumber('document')->middleware('can:inventory.view')
+            ->name('inventory.loans.documents.show');
+
+        Route::post('/inventaris/dokumen/{document}/cetak-ulang', [InventoryLoanIssuedDocumentController::class, 'logReprint'])
+            ->whereNumber('document')->middleware(['can:inventory.documents.reprint', 'throttle:10,1'])
+            ->name('inventory.loans.documents.reprint');
+
+        Route::post('/inventaris/dokumen/{document}/koreksi', [InventoryLoanIssuedDocumentController::class, 'correct'])
+            ->whereNumber('document')->middleware(['can:inventory.documents.correct', 'throttle:5,1'])
+            ->name('inventory.loans.documents.correct');
 
         Route::view(
             '/master/tahun-ajaran',

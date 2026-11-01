@@ -1,0 +1,458 @@
+<?php
+
+namespace App\Livewire\Inventory;
+
+use App\Models\InventoryAsset;
+use App\Models\InventoryCategory;
+use App\Models\InventoryItem;
+use App\Models\InventoryLocation;
+use App\Models\InventoryOwner;
+use App\Models\InventoryStockMovement;
+use App\Models\ScoutGroup;
+use App\Services\Inventory\InventoryAssetRegistrationService;
+use App\Services\Inventory\InventoryAssetService;
+use App\Services\Inventory\InventoryStockService;
+use App\Support\SchoolContext;
+use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Livewire\Component;
+use Livewire\WithPagination;
+
+class Index extends Component
+{
+    use WithPagination;
+
+    public string $search = '';
+
+    public bool $showCategoryForm = false;
+
+    public bool $showAssetForm = false;
+
+    public ?int $editingAssetId = null;
+
+    public ?int $editingAssetLocationId = null;
+
+    public string $editingAssetCondition = 'good';
+
+    public string $editingAssetReason = '';
+
+    public ?int $assetItemId = null;
+
+    public ?int $assetOwnerId = null;
+
+    public ?int $assetLocationId = null;
+
+    public string $assetCode = '';
+
+    public string $assetQuantity = '1';
+
+    public string $assetLastNumber = '0';
+
+    public string $assetSerialNumber = '';
+
+    public string $assetNotes = '';
+
+    public array $lastCreatedAssetIds = [];
+
+    public ?int $expandedItemId = null;
+
+    public bool $printAfterSave = false;
+
+    public string $labelPrintFormat = 'a4';
+
+    public bool $showItemForm = false;
+
+    public bool $showOwnerForm = false;
+
+    public bool $showLocationForm = false;
+
+    public bool $showMovementForm = false;
+
+    public string $categoryName = '';
+
+    public string $categoryDescription = '';
+
+    public string $itemCode = '';
+
+    public string $itemName = '';
+
+    public string $itemDescription = '';
+
+    public string $trackingType = 'quantity';
+
+    public string $unit = 'unit';
+
+    public string $minimumStock = '0';
+
+    public ?int $categoryId = null;
+
+    public string $ownerType = 'school';
+
+    public ?int $ownerScoutGroupId = null;
+
+    public string $ownerDisplayName = '';
+
+    public string $locationName = '';
+
+    public string $locationType = 'storage';
+
+    public ?int $locationScoutGroupId = null;
+
+    public string $locationDescription = '';
+
+    public ?int $movementItemId = null;
+
+    public ?int $movementOwnerId = null;
+
+    public ?int $movementLocationId = null;
+
+    public string $movementType = 'receipt';
+
+    public string $movementQuantity = '1';
+
+    public string $movementReference = '';
+
+    public string $movementNotes = '';
+
+    public function mount(): void
+    {
+        $this->authorizeAccess();
+    }
+
+    public function createCategory(): void
+    {
+        $this->authorizeManage();
+        $schoolId = $this->schoolId();
+        $this->categoryName = trim($this->categoryName);
+        $validated = $this->validate([
+            'categoryName' => ['required', 'string', 'max:100', Rule::unique('inventory_categories', 'name')->where('school_id', $schoolId)],
+            'categoryDescription' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        DB::transaction(fn () => InventoryCategory::query()->create([
+            'school_id' => $schoolId,
+            'name' => trim($validated['categoryName']),
+            'description' => $validated['categoryDescription'] ?: null,
+            'is_active' => true,
+        ]));
+
+        $this->reset('categoryName', 'categoryDescription', 'showCategoryForm');
+        session()->flash('status', 'Kategori inventaris berhasil ditambahkan.');
+    }
+
+    public function createItem(): void
+    {
+        $this->authorizeManage();
+        $schoolId = $this->schoolId();
+        $this->itemCode = strtoupper(trim($this->itemCode));
+        $this->itemName = trim($this->itemName);
+        $this->unit = trim($this->unit);
+        $validated = $this->validate([
+            'categoryId' => ['required', 'integer', Rule::exists('inventory_categories', 'id')->where('school_id', $schoolId)->whereNull('deleted_at')],
+            'itemCode' => ['required', 'string', 'max:60', Rule::unique('inventory_items', 'item_code')->where('school_id', $schoolId)->whereNull('deleted_at')],
+            'itemName' => ['required', 'string', 'max:180'],
+            'itemDescription' => ['nullable', 'string', 'max:4000'],
+            'trackingType' => ['required', Rule::in(['quantity', 'individual'])],
+            'unit' => ['required', 'string', 'max:30'],
+            'minimumStock' => ['required', 'numeric', 'min:0', 'max:99999999999'],
+        ]);
+
+        DB::transaction(fn () => InventoryItem::query()->create([
+            'school_id' => $schoolId,
+            'category_id' => $validated['categoryId'],
+            'item_code' => strtoupper(trim($validated['itemCode'])),
+            'name' => trim($validated['itemName']),
+            'description' => $validated['itemDescription'] ?: null,
+            'tracking_type' => $validated['trackingType'],
+            'unit' => trim($validated['unit']),
+            'minimum_stock' => $validated['minimumStock'],
+            'is_active' => true,
+        ]));
+
+        $this->reset('categoryId', 'itemCode', 'itemName', 'itemDescription', 'trackingType', 'unit', 'minimumStock', 'showItemForm');
+        $this->trackingType = 'quantity';
+        $this->unit = 'unit';
+        $this->minimumStock = '0';
+        session()->flash('status', 'Barang inventaris berhasil ditambahkan.');
+    }
+
+    public function createAssetAndPrint(): void
+    {
+        $this->printAfterSave = true;
+        $this->createAsset();
+    }
+
+    public function createAsset(): void
+    {
+        $this->authorizeManage();
+        $schoolId = $this->schoolId();
+        $this->assetCode = strtoupper(trim($this->assetCode));
+        $this->assetSerialNumber = trim($this->assetSerialNumber);
+
+        $validated = $this->validate([
+            'assetItemId' => ['required', 'integer', Rule::exists('inventory_items', 'id')->where('school_id', $schoolId)->where('tracking_type', 'individual')->whereNull('deleted_at')],
+            'assetOwnerId' => ['required', 'integer', Rule::exists('inventory_owners', 'id')->where('school_id', $schoolId)->where('is_active', true)->whereNull('deleted_at')],
+            'assetLocationId' => ['required', 'integer', Rule::exists('inventory_locations', 'id')->where('school_id', $schoolId)->where('is_active', true)->whereNull('deleted_at')],
+            'assetCode' => ['required', 'string', 'max:65', 'regex:/^[A-Z0-9]+(?:-[A-Z0-9]+)*$/'],
+            'assetQuantity' => ['required', 'integer', 'min:1', 'max:500'],
+            'assetLastNumber' => ['required', 'integer', 'min:0', 'max:999999999'],
+            'assetSerialNumber' => ['nullable', 'string', 'max:120'],
+            'assetNotes' => ['nullable', 'string', 'max:2000'],
+            'labelPrintFormat' => ['required', Rule::in(['a4', 'thermal58', 'thermal80'])],
+        ]);
+
+        $quantity = (int) $validated['assetQuantity'];
+        $createdIds = app(InventoryAssetRegistrationService::class)->register($validated);
+        $this->lastCreatedAssetIds = $createdIds;
+        $printAfterSave = $this->printAfterSave;
+        $printFormat = $validated['labelPrintFormat'];
+
+        $this->reset('assetItemId', 'assetOwnerId', 'assetLocationId', 'assetCode', 'assetQuantity', 'assetLastNumber', 'assetSerialNumber', 'assetNotes', 'showAssetForm');
+        $this->assetQuantity = '1';
+        $this->assetLastNumber = '0';
+        $this->printAfterSave = false;
+        session()->flash('status', $quantity.' unit aset berhasil didaftarkan dengan kode otomatis.');
+
+        if ($printAfterSave && auth()->user()?->can('inventory.labels.print')) {
+            $this->redirectRoute('inventory.assets.batch-labels', [
+                'format' => $printFormat,
+                'ids' => implode(',', $createdIds),
+            ], navigate: false);
+        }
+    }
+
+    public function toggleItemUnits(int $itemId): void
+    {
+        $this->authorizeAccess();
+        InventoryItem::query()->where('school_id', $this->schoolId())
+            ->where('tracking_type', 'individual')->findOrFail($itemId);
+        $this->expandedItemId = $this->expandedItemId === $itemId ? null : $itemId;
+    }
+
+    public function addUnitsToItem(int $itemId): void
+    {
+        $this->authorizeManage();
+        $item = InventoryItem::query()->where('school_id', $this->schoolId())
+            ->where('tracking_type', 'individual')->where('is_active', true)->findOrFail($itemId);
+        $this->assetItemId = $item->id;
+        $this->assetCode = strtoupper(preg_replace('/[^A-Za-z0-9-]/', '', $item->item_code));
+        $this->assetLastNumber = '0';
+        $this->assetQuantity = '1';
+        $this->showAssetForm = true;
+    }
+
+    public function getAssetCodePreviewProperty(): array
+    {
+        $prefix = strtoupper(trim($this->assetCode));
+        if (! preg_match('/^[A-Z0-9]+(?:-[A-Z0-9]+)*$/', $prefix)) {
+            return [];
+        }
+
+        $quantity = filter_var($this->assetQuantity, FILTER_VALIDATE_INT);
+        $last = filter_var($this->assetLastNumber, FILTER_VALIDATE_INT);
+        if ($quantity === false || $quantity < 1 || $quantity > 500 || $last === false || $last < 0) {
+            return [];
+        }
+
+        $existing = InventoryAsset::withTrashed()->where('school_id', $this->schoolId())
+            ->where('asset_code', 'like', $prefix.'-%')->pluck('asset_code');
+        $highest = $existing->reduce(function (int $max, string $code) use ($prefix): int {
+            $suffix = substr($code, strlen($prefix) + 1);
+
+            return ctype_digit($suffix) ? max($max, (int) $suffix) : $max;
+        }, 0);
+        $start = max($highest, $last) + 1;
+        if ($start + $quantity - 1 > 999999999) {
+            return [];
+        }
+
+        return [
+            'first' => $prefix.'-'.str_pad((string) $start, 4, '0', STR_PAD_LEFT),
+            'last' => $prefix.'-'.str_pad((string) ($start + $quantity - 1), 4, '0', STR_PAD_LEFT),
+            'count' => $quantity,
+        ];
+    }
+
+    public function editAsset(int $assetId): void
+    {
+        $this->authorizeManage();
+        $asset = InventoryAsset::query()->where('school_id', $this->schoolId())->findOrFail($assetId);
+        $this->editingAssetId = $asset->id;
+        $this->editingAssetLocationId = $asset->location_id;
+        $this->editingAssetCondition = $asset->condition;
+        $this->editingAssetReason = '';
+    }
+
+    public function saveAssetChange(InventoryAssetService $service): void
+    {
+        $this->authorizeManage();
+        $schoolId = $this->schoolId();
+        $validated = $this->validate([
+            'editingAssetId' => ['required', 'integer', Rule::exists('inventory_assets', 'id')->where('school_id', $schoolId)->whereNull('deleted_at')],
+            'editingAssetLocationId' => ['required', 'integer', Rule::exists('inventory_locations', 'id')->where('school_id', $schoolId)->where('is_active', true)->whereNull('deleted_at')],
+            'editingAssetCondition' => ['required', Rule::in(['good', 'damaged', 'lost'])],
+            'editingAssetReason' => ['required', 'string', 'min:10', 'max:2000'],
+        ]);
+
+        $service->updateLocationAndCondition(
+            (int) $validated['editingAssetId'],
+            (int) $validated['editingAssetLocationId'],
+            $validated['editingAssetCondition'],
+            $validated['editingAssetReason'],
+        );
+
+        $this->reset('editingAssetId', 'editingAssetLocationId', 'editingAssetCondition', 'editingAssetReason');
+        session()->flash('status', 'Perubahan aset berhasil dicatat dalam riwayat audit.');
+    }
+
+    public function createOwner(): void
+    {
+        $this->authorizeManage();
+        $schoolId = $this->schoolId();
+        $this->ownerDisplayName = trim($this->ownerDisplayName);
+        $validated = $this->validate([
+            'ownerType' => ['required', Rule::in(['school', 'gudep'])],
+            'ownerScoutGroupId' => [
+                Rule::requiredIf($this->ownerType === 'gudep'),
+                'nullable', 'integer',
+                Rule::exists('scout_groups', 'id')->where('school_id', $schoolId),
+            ],
+            'ownerDisplayName' => ['required', 'string', 'max:150'],
+        ]);
+
+        InventoryOwner::query()->create([
+            'school_id' => $schoolId,
+            'owner_type' => $validated['ownerType'],
+            'scout_group_id' => $validated['ownerType'] === 'gudep' ? $validated['ownerScoutGroupId'] : null,
+            'display_name' => trim($validated['ownerDisplayName']),
+            'is_active' => true,
+        ]);
+
+        $this->reset('ownerType', 'ownerScoutGroupId', 'ownerDisplayName', 'showOwnerForm');
+        $this->ownerType = 'school';
+        session()->flash('status', 'Pemilik inventaris berhasil ditambahkan.');
+    }
+
+    public function createLocation(): void
+    {
+        $this->authorizeManage();
+        $schoolId = $this->schoolId();
+        $this->locationName = trim($this->locationName);
+        $validated = $this->validate([
+            'locationName' => ['required', 'string', 'max:120', Rule::unique('inventory_locations', 'name')->where('school_id', $schoolId)->whereNull('deleted_at')],
+            'locationType' => ['required', Rule::in(['storage', 'room', 'vehicle', 'other'])],
+            'locationScoutGroupId' => ['nullable', 'integer', Rule::exists('scout_groups', 'id')->where('school_id', $schoolId)->whereNull('deleted_at')],
+            'locationDescription' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        InventoryLocation::query()->create([
+            'school_id' => $schoolId,
+            'scout_group_id' => $validated['locationScoutGroupId'] ?: null,
+            'name' => trim($validated['locationName']),
+            'location_type' => $validated['locationType'],
+            'description' => $validated['locationDescription'] ?: null,
+            'is_active' => true,
+        ]);
+
+        $this->reset('locationName', 'locationType', 'locationScoutGroupId', 'locationDescription', 'showLocationForm');
+        $this->locationType = 'storage';
+        session()->flash('status', 'Lokasi inventaris berhasil ditambahkan.');
+    }
+
+    public function recordMovement(InventoryStockService $service): void
+    {
+        abort_unless(auth()->user()?->can('inventory.stock.manage'), 403);
+        $this->schoolId();
+        $validated = $this->validate([
+            'movementItemId' => ['required', 'integer'],
+            'movementOwnerId' => ['required', 'integer'],
+            'movementLocationId' => ['required', 'integer'],
+            'movementType' => ['required', Rule::in(['receipt', 'issue', 'adjustment'])],
+            'movementQuantity' => ['required', 'numeric', 'min:0.001', 'max:99999999999'],
+            'movementReference' => ['nullable', 'string', 'max:100'],
+            'movementNotes' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $service->recordMovement(
+            (int) $validated['movementItemId'],
+            (int) $validated['movementOwnerId'],
+            (int) $validated['movementLocationId'],
+            $validated['movementType'],
+            $validated['movementQuantity'],
+            $validated['movementReference'] ?: null,
+            $validated['movementNotes'] ?: null,
+        );
+
+        $this->reset('movementItemId', 'movementOwnerId', 'movementLocationId', 'movementQuantity', 'movementReference', 'movementNotes', 'showMovementForm');
+        $this->movementType = 'receipt';
+        $this->movementQuantity = '1';
+        session()->flash('status', 'Pergerakan stok berhasil dicatat.');
+    }
+
+    public function updatedSearch(): void
+    {
+        $this->search = trim($this->search);
+        $this->resetPage();
+    }
+
+    public function render(): View
+    {
+        $this->authorizeAccess();
+        $schoolId = $this->schoolId();
+
+        $categories = InventoryCategory::query()->where('school_id', $schoolId)->where('is_active', true)->orderBy('name')->get();
+        $groups = ScoutGroup::query()->where('school_id', $schoolId)->orderBy('name')->get();
+        $owners = InventoryOwner::query()->where('school_id', $schoolId)->where('is_active', true)->with('scoutGroup')->orderBy('display_name')->get();
+        $locations = InventoryLocation::query()->where('school_id', $schoolId)->where('is_active', true)->with('scoutGroup')->orderBy('name')->get();
+        $individualItems = InventoryItem::query()->where('school_id', $schoolId)->where('is_active', true)->where('tracking_type', 'individual')->orderBy('name')->get();
+        $assets = $this->expandedItemId
+            ? InventoryAsset::query()->where('school_id', $schoolId)->where('item_id', $this->expandedItemId)
+                ->with(['owner:id,display_name', 'location:id,name', 'events.actor:id,name', 'events.fromLocation:id,name', 'events.toLocation:id,name'])
+                ->orderBy('asset_code')->limit(500)->get()
+            : collect();
+        $quantityItems = InventoryItem::query()->where('school_id', $schoolId)->where('is_active', true)->where('tracking_type', 'quantity')->orderBy('name')->get();
+
+        $items = InventoryItem::query()
+            ->where('school_id', $schoolId)
+            ->with('category:id,name')
+            ->withCount('assets')
+            ->withSum('stockBalances as total_quantity', 'quantity_on_hand')
+            ->when($this->search !== '', fn (Builder $query): Builder => $query->where(function (Builder $query): void {
+                $term = '%'.trim($this->search).'%';
+                $query->where('name', 'like', $term)->orWhere('item_code', 'like', $term);
+            }))
+            ->orderBy('name')
+            ->paginate(15);
+
+        $movements = InventoryStockMovement::query()
+            ->where('school_id', $schoolId)
+            ->with(['item:id,name,item_code', 'owner:id,display_name', 'location:id,name'])
+            ->latest('occurred_at')
+            ->limit(10)
+            ->get();
+
+        return view('livewire.inventory.index', compact('categories', 'groups', 'owners', 'locations', 'quantityItems', 'individualItems', 'assets', 'items', 'movements'));
+    }
+
+    private function authorizeAccess(): void
+    {
+        abort_unless(auth()->user()?->can('inventory.view'), 403);
+        $this->schoolId();
+    }
+
+    private function authorizeManage(): void
+    {
+        abort_unless(auth()->user()?->can('inventory.manage'), 403);
+        $this->schoolId();
+    }
+
+    private function schoolId(): int
+    {
+        $schoolId = app(SchoolContext::class)->id();
+        abort_unless($schoolId, 409, 'Pilih sekolah aktif terlebih dahulu.');
+
+        return (int) $schoolId;
+    }
+}

@@ -443,6 +443,7 @@ MENU MASTER DATA
     </a>
 
 @endcan
+
 </div>
 
 <flux:sidebar.nav>

@@ -331,3 +331,25 @@ select:focus[data-flux-control] {
     --action-text: var(--color-teal-200);
     --action-hover: var(--color-teal-900);
 }
+
+/* Keep document typography independent of the application controls. */
+.letter-ckeditor {
+    min-width: 0;
+    --ck-color-base-background: #fff;
+    --ck-color-text: #18181b;
+}
+
+.letter-ckeditor .ck-editor__editable_inline {
+    min-height: 420px;
+    max-height: 800px;
+    padding: 24px 32px;
+    color: #000;
+    background: #fff;
+    font-family: "Times New Roman", Times, serif;
+    font-size: 12pt;
+    line-height: 1.35;
+}
+
+.letter-ckeditor .ck-content p { margin: 0 0 2.6mm; }
+.letter-ckeditor .ck-content .table { margin: 1.5mm 0 3mm; }
+.letter-ckeditor .ck-content .table table { width: 100%; border-collapse: collapse; }

@@ -54,6 +54,7 @@ class Templates extends Component
         abort_unless(in_array($starter, ['general', 'decision', 'assignment', 'blank'], true), 422);
         $this->body_template = $this->starterHtml($starter);
         $this->requires_recipient = $starter === 'general';
+        $this->dispatch('letter-editor-content', html: $this->body_template, property: 'body_template');
     }
 
     public function edit(int $id, LetterTemplateHtmlSanitizer $sanitizer): void
@@ -68,6 +69,7 @@ class Templates extends Component
         $this->default_field_code = (string) $template->default_field_code;
         $this->requires_recipient = (bool) $template->requires_recipient;
         $this->is_active = (bool) $template->is_active;
+        $this->dispatch('letter-editor-content', html: $this->body_template, property: 'body_template');
     }
 
     public function duplicate(int $id, LetterTemplateHtmlSanitizer $sanitizer): void
@@ -82,6 +84,7 @@ class Templates extends Component
         $this->default_field_code = (string) $template->default_field_code;
         $this->requires_recipient = (bool) $template->requires_recipient;
         $this->is_active = true;
+        $this->dispatch('letter-editor-content', html: $this->body_template, property: 'body_template');
     }
 
     public function insertPlaceholder(string $placeholder, LetterTemplateRenderer $renderer): void
