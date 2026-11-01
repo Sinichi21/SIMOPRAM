@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\InventoryDocumentResource;
 use App\Models\InventoryLoanDocument;
 use App\Models\InventoryLoanDocumentPrint;
 use App\Services\Inventory\InventoryLoanDocumentService;
 use App\Support\SchoolContext;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -13,26 +15,34 @@ use Illuminate\Support\Facades\Storage;
 
 class InventoryLoanIssuedDocumentController extends Controller
 {
-    public function issue(Request $request, int $loan, string $type, InventoryLoanDocumentService $service): RedirectResponse
+    public function issue(Request $request, int $loan, string $type, InventoryLoanDocumentService $service): RedirectResponse|JsonResponse
     {
         abort_unless($request->user()?->can('inventory.documents.reprint'), 403);
         abort_unless(in_array($type, ['handover', 'return'], true), 404);
 
         $document = $service->issue($loan, $type);
 
+        if ($request->is('api/*')) {
+            return (new InventoryDocumentResource($document->load('verification')))->response()->setStatusCode(201);
+        }
+
         return redirect()->route('inventory.loans.documents.show', ['document' => $document->id]);
     }
 
-    public function correct(Request $request, int $document, InventoryLoanDocumentService $service): RedirectResponse
+    public function correct(Request $request, int $document, InventoryLoanDocumentService $service): RedirectResponse|JsonResponse
     {
         abort_unless($request->user()?->can('inventory.documents.correct'), 403);
         $data = $request->validate(['reason' => ['required', 'string', 'min:10', 'max:2000']]);
         $updated = $service->correct($document, $data['reason']);
 
+        if ($request->is('api/*')) {
+            return (new InventoryDocumentResource($updated->load('verification')))->response()->setStatusCode(201);
+        }
+
         return redirect()->route('inventory.loans.documents.show', ['document' => $updated->id]);
     }
 
-    public function logReprint(Request $request, int $document): RedirectResponse
+    public function logReprint(Request $request, int $document): RedirectResponse|JsonResponse
     {
         abort_unless($request->user()?->can('inventory.documents.reprint'), 403);
         $schoolId = app(SchoolContext::class)->id();
@@ -54,6 +64,10 @@ class InventoryLoanIssuedDocumentController extends Controller
             'purpose' => 'reprint',
             'reason' => trim($data['reason']),
         ]);
+
+        if ($request->is('api/*')) {
+            return (new InventoryDocumentResource($record->load('verification')))->response();
+        }
 
         return redirect()->route('inventory.loans.documents.show', ['document' => $record->id]);
     }

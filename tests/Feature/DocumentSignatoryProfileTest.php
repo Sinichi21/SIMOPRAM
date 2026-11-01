@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Coach;
 use App\Models\DocumentSignatoryProfile;
 use App\Models\School;
 use App\Models\SchoolUserMembership;
@@ -82,3 +83,34 @@ test('document signatory profile is school specific', function (): void {
         ->and($b['position'])->toBe('Koordinator')
         ->and($b['identity'])->toBe('NIP. B-002');
 });
+
+test('user identity prefers NTA then NIP and leaves missing identifiers blank', function (?string $coachNta, ?string $profileType, ?string $profileNumber, string $expectedType, string $expectedNumber, string $expectedIdentity): void {
+    $school = School::factory()->create();
+    app(SchoolContext::class)->set($school);
+    $user = User::factory()->create();
+    SchoolUserMembership::query()->create(['school_id' => $school->id, 'user_id' => $user->id, 'is_active' => true]);
+    if ($coachNta !== null) {
+        Coach::query()->create(['user_id' => $user->id, 'name' => $user->name, 'nip' => $coachNta, 'is_active' => true]);
+    }
+    if ($profileType !== null) {
+        DocumentSignatoryProfile::query()->create([
+            'user_id' => $user->id, 'identifier_type' => $profileType,
+            'identifier_number' => $profileNumber, 'is_active' => true,
+        ]);
+    }
+
+    $resolved = app(DocumentSignatoryService::class)->resolve($user->id, $school->id);
+
+    expect($resolved['identifier_type'])->toBe($expectedType);
+    expect($resolved['identifier_number'])->toBe($expectedNumber);
+    expect($resolved['identity'])->toBe($expectedIdentity);
+})->with([
+    'coach NTA before profile NIP' => ['00123', 'NIP', '00999', 'NTA', '00123', 'NTA. 00123'],
+    'profile NTA' => [null, 'NTA', '00456', 'NTA', '00456', 'NTA. 00456'],
+    'explicit NTA before legacy NTA' => ['00123', 'NTA', '00456', 'NTA', '00456', 'NTA. 00456'],
+    'coach NTA only' => ['00123', null, null, 'NTA', '00123', 'NTA. 00123'],
+    'NIP when coach NTA blank' => ['   ', 'NIP', '00999', 'NIP', '00999', 'NIP. 00999'],
+    'NIP without coach' => [null, 'NIP', '00999', 'NIP', '00999', 'NIP. 00999'],
+    'no identifiers' => [null, null, null, '', '', ''],
+    'empty NTA and NIP' => ['   ', 'NIP', '   ', '', '', ''],
+]);

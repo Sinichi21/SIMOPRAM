@@ -8,8 +8,8 @@ use App\Models\InventoryItem;
 use App\Models\InventoryLocation;
 use App\Models\InventoryOwner;
 use App\Models\InventoryStockMovement;
-use App\Models\School;
 use App\Models\ScoutGroup;
+use App\Services\Inventory\InventoryAssetRegistrationService;
 use App\Services\Inventory\InventoryAssetService;
 use App\Services\Inventory\InventoryStockService;
 use App\Support\SchoolContext;
@@ -17,7 +17,6 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -205,53 +204,7 @@ class Index extends Component
         ]);
 
         $quantity = (int) $validated['assetQuantity'];
-        $lastNumber = (int) $validated['assetLastNumber'];
-        $prefix = $validated['assetCode'];
-        if ($lastNumber + $quantity > 999999999) {
-            throw ValidationException::withMessages([
-                'assetQuantity' => 'Nomor urut melebihi batas yang diperbolehkan.',
-            ]);
-        }
-
-        $createdIds = DB::transaction(function () use ($schoolId, $validated, $prefix, $quantity, $lastNumber): array {
-            // Lock the school row so concurrent batch registrations cannot generate overlapping codes.
-            School::query()->whereKey($schoolId)->lockForUpdate()->firstOrFail();
-
-            $existingCodes = InventoryAsset::withTrashed()->where('school_id', $schoolId)
-                ->where('asset_code', 'like', $prefix.'-%')
-                ->pluck('asset_code');
-            $highest = $existingCodes->reduce(function (int $max, string $code) use ($prefix): int {
-                $suffix = substr($code, strlen($prefix) + 1);
-
-                return ctype_digit($suffix) ? max($max, (int) $suffix) : $max;
-            }, 0);
-            $startNumber = max($highest, $lastNumber) + 1;
-
-            if ($startNumber + $quantity - 1 > 999999999) {
-                throw ValidationException::withMessages([
-                    'assetQuantity' => 'Rentang nomor urut telah mencapai batas.',
-                ]);
-            }
-
-            $createdIds = [];
-            for ($index = 0; $index < $quantity; $index++) {
-                $number = $startNumber + $index;
-                $asset = InventoryAsset::query()->create([
-                    'school_id' => $schoolId,
-                    'item_id' => $validated['assetItemId'],
-                    'owner_id' => $validated['assetOwnerId'],
-                    'location_id' => $validated['assetLocationId'],
-                    'asset_code' => $prefix.'-'.str_pad((string) $number, 4, '0', STR_PAD_LEFT),
-                    'serial_number' => $quantity === 1 ? ($validated['assetSerialNumber'] ?: null) : null,
-                    'condition' => 'good',
-                    'status' => 'available',
-                    'notes' => $validated['assetNotes'] ?: null,
-                ]);
-                $createdIds[] = $asset->id;
-            }
-
-            return $createdIds;
-        }, 3);
+        $createdIds = app(InventoryAssetRegistrationService::class)->register($validated);
         $this->lastCreatedAssetIds = $createdIds;
         $printAfterSave = $this->printAfterSave;
         $printFormat = $validated['labelPrintFormat'];

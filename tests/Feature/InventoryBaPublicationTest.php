@@ -1,6 +1,9 @@
 <?php
 
+use App\Livewire\Inventory\Loans;
 use App\Livewire\Reports\PublishedDocuments\Index as PublishedDocuments;
+use App\Models\Coach;
+use App\Models\DocumentSignatoryProfile;
 use App\Models\InventoryCategory;
 use App\Models\InventoryItem;
 use App\Models\InventoryLoan;
@@ -182,4 +185,61 @@ it('blocks inventory reprinting after revocation in published documents', functi
         ->assertStatus(409);
 
     test()->assertDatabaseCount('inventory_loan_document_prints', 0);
+});
+
+it('uses the logged in transaction officer identity in the form and BA instead of the later publisher', function (string $identifierType) {
+    $loan = baPublicationLoan();
+    $officer = auth()->user();
+    $officer->update(['name' => 'Petugas Transaksi']);
+    DocumentSignatoryProfile::query()->create([
+        'user_id' => $officer->id, 'identifier_type' => $identifierType,
+        'identifier_number' => '00123456789', 'is_active' => true,
+    ]);
+    Livewire::test(Loans::class)->call('openTransaction', $loan->id, 'return')
+        ->assertSee('Petugas Transaksi')->assertSee($identifierType.'. 00123456789');
+    $publisher = User::factory()->create(['name' => 'Penerbit Lain', 'system_role' => 'super_admin']);
+    test()->actingAs($publisher);
+
+    $service = app(InventoryLoanDocumentService::class);
+    $data = $service->previewData($loan, 'handover');
+    $html = view('inventory.documents.preview', $data)->render();
+    $document = $service->issue($loan->id, 'handover');
+
+    expect($data['officers'][0]['user_id'])->toBe($officer->id);
+    expect($data['officers'][0]['identity'])->toBe($identifierType.'. 00123456789');
+    expect($html)->toContain('Petugas Transaksi', $identifierType.'. 00123456789')->not->toContain('Penerbit Lain');
+    expect($document->issued_by)->toBe($publisher->id);
+})->with(['NIP', 'NTA']);
+
+it('uses the coach NTA when a transaction officer has no signatory profile', function () {
+    $loan = baPublicationLoan();
+    Coach::query()->create([
+        'user_id' => auth()->id(), 'name' => auth()->user()->name, 'nip' => 'NTA-999', 'is_active' => true,
+    ]);
+
+    $data = app(InventoryLoanDocumentService::class)->previewData($loan, 'handover');
+
+    expect($data['officers'][0]['identity'])->toBe('NTA. NTA-999');
+});
+
+it('does not substitute the current user when the historical transaction recorder is missing', function () {
+    $loan = baPublicationLoan();
+    $loan->events()->update(['recorded_by' => null]);
+
+    $data = app(InventoryLoanDocumentService::class)->previewData($loan, 'handover');
+    $html = view('inventory.documents.preview', $data)->render();
+
+    expect($data['officers'][0]['user_id'])->toBeNull();
+    expect($html)->toContain('Akun petugas tidak tersedia')->not->toContain('NIP/NTA belum diisi', 'NIP. ', 'NTA. ');
+});
+
+it('requires approval when the recorded officer printed on the BA is a principal account', function () {
+    $loan = baPublicationLoan();
+    $principal = User::factory()->create(['system_role' => 'principal']);
+    $loan->events()->update(['recorded_by' => $principal->id]);
+
+    $document = app(InventoryLoanDocumentService::class)->issue($loan->id, 'handover');
+
+    expect($document->verification->publicStatus())->toBe('pending');
+    expect($document->verification->required_signatory_ids)->toBe([$principal->id]);
 });

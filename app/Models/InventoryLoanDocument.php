@@ -25,6 +25,7 @@ class InventoryLoanDocument extends Model
         ];
     }
 
+    /** @return MorphOne<ReportVerification, $this> */
     public function verification(): MorphOne
     {
         return $this->morphOne(ReportVerification::class, 'source');

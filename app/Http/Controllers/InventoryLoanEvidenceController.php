@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\InventoryRecordResource;
 use App\Models\InventoryLoan;
 use App\Models\InventoryLoanEvent;
 use App\Models\InventoryLoanEvidence;
 use App\Support\SchoolContext;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -18,7 +20,7 @@ use Illuminate\Validation\ValidationException;
 
 class InventoryLoanEvidenceController extends Controller
 {
-    public function store(Request $request, int $event): RedirectResponse
+    public function store(Request $request, int $event): RedirectResponse|JsonResponse
     {
         abort_unless($request->user()?->can('inventory.handover.process')
             || $request->user()?->can('inventory.returns.process'), 403);
@@ -39,7 +41,7 @@ class InventoryLoanEvidenceController extends Controller
         $mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($bytes);
         abort_unless(in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true), 422);
         $extension = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'][$mime];
-        DB::transaction(function () use ($record, $schoolId, $request, $bytes, $mime, $extension): void {
+        $evidence = DB::transaction(function () use ($record, $schoolId, $request, $bytes, $mime, $extension): InventoryLoanEvidence {
             // Lock the parent event to serialize uploads competing for the same quota.
             InventoryLoanEvent::query()->where('school_id', $schoolId)
                 ->lockForUpdate()->findOrFail($record->id);
@@ -54,7 +56,7 @@ class InventoryLoanEvidenceController extends Controller
             $disk = Storage::disk('local');
             abort_unless($disk->put($path, $bytes), 500, 'Gagal menyimpan bukti.');
             try {
-                InventoryLoanEvidence::query()->create([
+                return InventoryLoanEvidence::query()->create([
                     'loan_id' => $record->loan_id,
                     'loan_event_id' => $record->id,
                     'disk' => 'local',
@@ -69,6 +71,10 @@ class InventoryLoanEvidenceController extends Controller
                 throw $exception;
             }
         });
+
+        if ($request->is('api/*')) {
+            return (new InventoryRecordResource($evidence))->response()->setStatusCode(201);
+        }
 
         return back()->with('status', 'Foto bukti transaksi berhasil disimpan.');
     }

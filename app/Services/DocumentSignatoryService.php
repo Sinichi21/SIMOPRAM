@@ -91,25 +91,30 @@ class DocumentSignatoryService
             ]);
         }
 
+        return $this->identityFor($user, $schoolId);
+    }
+
+    /** @return array{user_id:int,name:string,position:string,identifier_type:string,identifier_number:string,identity:string} */
+    public function identityFor(User $user, int $schoolId): array
+    {
+        $coach = Coach::query()->withTrashed()->where('school_id', $schoolId)->where('user_id', $user->id)->first();
         $profile = DocumentSignatoryProfile::query()
             ->where('school_id', $schoolId)
             ->where('user_id', $user->id)
             ->where('is_active', true)
             ->first();
 
-        $position = trim((string) ($profile?->position ?: $user->coach?->position));
-        $identifierType = strtoupper(trim((string) ($profile?->identifier_type ?? '')));
-        $identifierNumber = trim((string) ($profile?->identifier_number ?? ''));
-
-        // Compatibility: pada data lama Coach.nip dipakai sebagai NTA.
-        if ($identifierNumber === '' && filled($user->coach?->nip)) {
-            $identifierType = 'NTA';
-            $identifierNumber = trim((string) $user->coach->nip);
+        $position = trim((string) ($profile?->position ?: $coach?->position));
+        $profileType = strtoupper(trim((string) ($profile?->identifier_type ?? '')));
+        $profileNumber = trim((string) ($profile?->identifier_number ?? ''));
+        $nta = $profileType === 'NTA' ? $profileNumber : '';
+        if ($nta === '') {
+            $nta = trim((string) $coach?->nip);
         }
-
-        $identity = $identifierNumber === ''
-            ? ''
-            : (($identifierType !== '' ? $identifierType.'. ' : '').$identifierNumber);
+        $nip = $profileType === 'NIP' ? $profileNumber : '';
+        $identifierType = $nta !== '' ? 'NTA' : ($nip !== '' ? 'NIP' : '');
+        $identifierNumber = $nta !== '' ? $nta : $nip;
+        $identity = $identifierNumber !== '' ? $identifierType.'. '.$identifierNumber : '';
 
         return [
             'user_id' => (int) $user->id,

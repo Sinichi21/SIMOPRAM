@@ -16,3 +16,6 @@ Resolve returning students through the connected student_id/target_student_id li
 
 ## Same-year return enrollment exception
 For a returning student proven by accepted transfer links, reuse an existing destination enrollment in the same year only if inactive or transferred. Before updating placement, snapshot its ID, school, year, class, status and dates in UserTransfer.previous_target_enrollment. Active/graduated enrollments remain protected. This supersedes the blanket existing-year rejection in the returning-students rule.
+
+## Prefer NTA over NIP in resolved user identities
+DocumentSignatoryService resolves user identities in this order: nonblank active-school profile NTA, nonblank active-school Coach.nip (legacy NTA), then profile NIP. Return empty identifier_type, identifier_number and identity when neither exists. Prefix only the selected value with NTA. or NIP.; BA must omit the identity line entirely when empty. This supersedes treating coach NTA only as fallback after a profile NIP.

@@ -902,3 +902,5 @@ Route::view('/kegiatan/{activityId}/keaktifan', 'assessments.activity-participat
     ->name('activity-participation.show');
 
 require __DIR__.'/settings.php';
+
+require __DIR__.'/inventory-api.php';

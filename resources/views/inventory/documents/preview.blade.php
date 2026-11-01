@@ -105,8 +105,17 @@
     @endif
     <table class="signatures">
         <tr>
-            <td>Petugas / Pihak yang menyerahkan<br><div class="space"></div>(........................................)</td>
-            <td>Peminjam / Pihak yang menerima<br><div class="space"></div>({{ $loan->borrower_name }})</td>
+            <td>
+                {{ $type === 'handover' ? 'Petugas / Pihak yang menyerahkan' : 'Petugas / Pihak yang menerima' }}
+                @foreach ($officers as $officer)
+                    <div class="space"></div>
+                    <strong>{{ $officer['name'] }}</strong>
+                    @if ($officer['identity'] !== '')
+                        <br>{{ $officer['identity'] }}
+                    @endif
+                @endforeach
+            </td>
+            <td>{{ $type === 'handover' ? 'Peminjam / Pihak yang menerima' : 'Peminjam / Pihak yang menyerahkan' }}<br><div class="space"></div>({{ $loan->borrower_name }})</td>
         </tr>
     </table>
 </body>

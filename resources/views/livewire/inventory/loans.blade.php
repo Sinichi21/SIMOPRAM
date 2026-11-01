@@ -26,6 +26,7 @@
     @if ($showRequestForm)
         <flux:card class="space-y-4">
             <flux:heading size="lg">Permohonan Baru — Keranjang Peminjaman</flux:heading>
+            <flux:text>Petugas: {{ $transactionOfficer['name'] }} @if ($transactionOfficer['identity'] !== '') ({{ $transactionOfficer['identity'] }}) @endif</flux:text>
             <flux:text size="sm">Tambahkan beberapa barang atau unit aset ke keranjang. Stok baru dikeluarkan saat serah-terima fisik.</flux:text>
             <div class="grid gap-3 md:grid-cols-2">
                 <flux:input label="Nama peminjam" wire:model="borrowerName" required />
@@ -105,6 +106,7 @@
     @if ($activeLoan && $transactionMode !== '')
         <flux:card class="space-y-4">
             <flux:heading size="lg">{{ $transactionMode === 'handover' ? 'Catat Serah-Terima' : 'Catat Pengembalian' }} — {{ $activeLoan->loan_number }}</flux:heading>
+            <flux:text>Petugas: {{ $transactionOfficer['name'] }} @if ($transactionOfficer['identity'] !== '') ({{ $transactionOfficer['identity'] }}) @endif</flux:text>
             <form wire:submit="saveTransaction" class="grid gap-4 md:grid-cols-2">
                 <flux:select label="Barang" wire:model="activeLoanItemId" required>
                     <flux:select.option value="">Pilih barang dalam peminjaman</flux:select.option>

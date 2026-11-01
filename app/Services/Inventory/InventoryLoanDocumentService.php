@@ -11,6 +11,7 @@ use App\Models\School;
 use App\Models\SchoolDocumentSetting;
 use App\Models\ScoutAdministrationProfile;
 use App\Models\ScoutGroup;
+use App\Services\DocumentSignatoryService;
 use App\Services\LetterAdministrationBootstrapService;
 use App\Services\LetterNumberService;
 use App\Services\ReportVerificationService;
@@ -93,7 +94,7 @@ class InventoryLoanDocumentService
         $schoolId = $this->schoolId();
         abort_unless((int) $loan->school_id === $schoolId, 404);
         abort_unless(in_array($type, ['handover', 'return'], true), 422);
-        $loan->loadMissing(['items.item', 'items.owner', 'items.location', 'events.evidence']);
+        $loan->loadMissing(['items.item', 'items.owner', 'items.location', 'events.evidence', 'events.recorder']);
         $events = $loan->events->where('event_type', $type)->sortBy('occurred_at');
         if ($events->isEmpty()) {
             throw ValidationException::withMessages(['document' => 'Belum ada transaksi fisik untuk jenis berita acara ini.']);
@@ -101,6 +102,11 @@ class InventoryLoanDocumentService
 
         return [
             'loan' => $loan,
+            'officers' => $events->unique('recorded_by')->map(function ($event) use ($schoolId): array {
+                return $event->recorder
+                    ? app(DocumentSignatoryService::class)->identityFor($event->recorder, $schoolId)
+                    : ['user_id' => null, 'name' => 'Akun petugas tidak tersedia', 'identity' => ''];
+            })->values()->all(),
             'type' => $type,
             'events' => $events,
             'evidenceThumbnails' => app(InventoryLoanEvidenceThumbnailService::class)->forEvents($events),
@@ -144,7 +150,7 @@ class InventoryLoanDocumentService
             sourceId: $document->id,
             snapshotChecksum: $service->contentChecksum([
                 'document' => $document->toArray(), 'loan' => $loan->toArray(),
-                'events' => $data['events']->toArray(),
+                'events' => $data['events']->toArray(), 'officers' => $data['officers'],
                 'administration_profile' => $data['administrationProfile']?->toArray(),
                 'document_setting' => $data['documentSetting']?->toArray(),
             ]),
@@ -168,7 +174,7 @@ class InventoryLoanDocumentService
             'verificationUrl' => $service->publicUrl($verification),
             'verificationQrDataUri' => $service->qrDataUri($verification),
         ]))->setPaper('a4')->output();
-        $verification = $service->archivePdf($verification, $pdf, 'BA-'.Str::slug($number).'.pdf', []);
+        $verification = $service->archivePdf($verification, $pdf, 'BA-'.Str::slug($number).'.pdf', array_column($data['officers'], 'user_id'));
         $document->update(['storage_path' => $verification->file_path, 'sha256' => $verification->file_sha256]);
 
         return $document;
