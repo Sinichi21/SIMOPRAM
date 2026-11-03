@@ -58,6 +58,16 @@
             <flux:sidebar.collapse class="lg:hidden" />
         </flux:sidebar.header>
 
+        @if (! $isStudent && ! $moduleWorkspaceActive)
+            <flux:sidebar.nav>
+                <flux:sidebar.group heading="Ruang kerja" class="grid">
+                    <flux:sidebar.item icon="squares-2x2" :href="route('modules.portal')" :current="request()->routeIs('modules.portal')" wire:navigate>
+                        Portal Modul
+                    </flux:sidebar.item>
+                </flux:sidebar.group>
+            </flux:sidebar.nav>
+        @endif
+
         @if ($moduleWorkspaceActive)
             @include('modules.sidebar', ['workspace' => $moduleWorkspace])
         @elseif ($isStudent)
