@@ -9,9 +9,7 @@
     </flux:sidebar.group>
 </flux:sidebar.nav>
 
-@if (request()->routeIs('modules.show'))
-    @php($workspace = \App\Support\ModuleWorkspace::find((string) request()->route('module')))
-    @if ($workspace && \App\Support\ModuleWorkspace::permitted(auth()->user(), $workspace))
+@if ($workspace && \App\Support\ModuleWorkspace::permitted(auth()->user(), $workspace))
         <flux:sidebar.nav>
             <flux:sidebar.group :heading="$workspace['title']" class="grid">
                 <flux:sidebar.item icon="squares-2x2" :href="route('modules.show', $workspace['slug'])" :current="request()->routeIs('modules.show')" wire:navigate>
