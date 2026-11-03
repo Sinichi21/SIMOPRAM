@@ -48,6 +48,7 @@ final class OfficialDocumentPublisher
         array $metadata = [],
         ?int $issuedBy = null,
         ?array $signatoryUserIds = null,
+        string $seriesKey = 'general',
     ): ReportVerification {
         if (! preg_match('/^reports\\.pdf\\.administration\\.[a-z][a-z0-9_-]*$/', $contentView)) {
             throw ValidationException::withMessages([
@@ -76,6 +77,7 @@ final class OfficialDocumentPublisher
             metadata: $metadata,
             issuedBy: $issuedBy,
             signatoryUserIds: $signatoryUserIds,
+            seriesKey: $seriesKey,
         );
     }
 
@@ -97,11 +99,13 @@ final class OfficialDocumentPublisher
         array $metadata = [],
         ?int $issuedBy = null,
         ?array $signatoryUserIds = null,
+        string $seriesKey = 'general',
     ): ReportVerification {
         abort_unless(app(SchoolContext::class)->id() === $schoolId, 404);
         abort_unless(auth()->user()?->can('reports.export'), 403);
 
-        if ($sourceType === '' || $sourceId < 1 || ! preg_match('/^[a-z][a-z0-9_]{1,49}$/', $documentType)
+        if (! preg_match('/^[a-z0-9][a-z0-9_-]{0,99}$/', $seriesKey)
+            || $sourceType === '' || $sourceId < 1 || ! preg_match('/^[a-z][a-z0-9_]{1,49}$/', $documentType)
             || ! preg_match('/^[a-f0-9]{64}$/', $snapshotChecksum)
             || ! str_ends_with(strtolower($filename), '.pdf')) {
             throw ValidationException::withMessages(['document' => 'Identitas penerbitan tidak valid.']);
@@ -113,7 +117,7 @@ final class OfficialDocumentPublisher
             return DB::transaction(function () use (
                 $schoolId, $sourceType, $sourceId, $documentType,
                 $snapshotChecksum, $filename, $renderPdf, $title,
-                $documentNumber, $metadata, $issuedBy, $signatoryUserIds, &$created
+                $documentNumber, $metadata, $issuedBy, $signatoryUserIds, $seriesKey, &$created
             ): ReportVerification {
                 // Serialize issuance per school on MySQL and avoid concurrent revision numbers.
                 School::query()->whereKey($schoolId)->lockForUpdate()->firstOrFail();
@@ -123,6 +127,7 @@ final class OfficialDocumentPublisher
                     ->where('source_type', $sourceType)
                     ->where('source_id', $sourceId)
                     ->where('document_type', $documentType)
+                    ->where('series_key', $seriesKey)
                     ->orderByDesc('revision')
                     ->orderByDesc('id')
                     ->first();
@@ -152,6 +157,7 @@ final class OfficialDocumentPublisher
                     sourceId: $sourceId,
                     snapshotChecksum: $snapshotChecksum,
                     revision: $latest ? (int) $latest->revision + 1 : 1,
+                    seriesKey: $seriesKey,
                     replacesId: $latest?->id,
                     documentNumber: $documentNumber,
                     title: $title,
