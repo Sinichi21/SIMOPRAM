@@ -99,6 +99,16 @@
                         @error('personName') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
                     <div>
+                        <label class="mb-1 block text-sm" for="officer-formation">Satuan golongan (opsional, untuk pengurus satuan)</label>
+                        <select id="officer-formation" wire:model="officerFormationId" class="w-full rounded-lg border border-zinc-300 p-2.5 dark:border-zinc-700 dark:bg-zinc-800">
+                            <option value="">Umum / Tidak terkait satuan</option>
+                            @foreach ($formations as $formation)
+                                <option value="{{ $formation->id }}">{{ $formation->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('officerFormationId') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
                         <label class="mb-1 block text-sm" for="officer-coach">Tautkan data pembina (opsional)</label>
                         <select id="officer-coach" wire:model="coachId" class="w-full rounded-lg border border-zinc-300 p-2.5 dark:border-zinc-700 dark:bg-zinc-800">
                             <option value="">Tidak ditautkan</option>
@@ -149,7 +159,7 @@
                         @forelse ($officers as $officer)
                             <tr wire:key="officer-{{ $officer->id }}">
                                 <td class="px-3 py-2">{{ strtoupper($officer->scope) }}</td>
-                                <td class="px-3 py-2">{{ $officer->person_name }}<div class="text-xs text-zinc-500">{{ $officer->position }}</div></td>
+                                <td class="px-3 py-2">{{ $officer->person_name }}<div class="text-xs text-zinc-500">{{ $officer->position }} @if ($officer->formation) · {{ $officer->formation->name }} @endif</div></td>
                                 <td class="px-3 py-2">{{ $officer->started_at?->format('d/m/Y') }} — {{ $officer->ended_at?->format('d/m/Y') ?? 'Sekarang' }}</td>
                                 <td class="px-3 py-2">{{ $officer->decree_number ?: '-' }}<div class="text-xs text-zinc-500">{{ $officer->decree_date?->format('d/m/Y') }}</div></td>
                                 <td class="px-3 py-2">@can('gudep.manage')<button type="button" wire:click="editOfficer({{ $officer->id }})" class="font-medium text-emerald-700 hover:underline">Edit</button>@endcan</td>
