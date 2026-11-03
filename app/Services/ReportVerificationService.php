@@ -146,7 +146,7 @@ class ReportVerificationService
      * Allocate a distinct version for the official document publisher.
      * issueDocument() is intentionally left idempotent for legacy callers.
      *
-     * @param array<string, mixed> $metadata
+     * @param  array<string, mixed>  $metadata
      */
     public function issueDocumentVersion(
         int $schoolId,
@@ -778,7 +778,7 @@ class ReportVerificationService
             );
 
         if (
-            ! hash_equals(
+            hash_equals(
                 (string) $verification
                     ->file_sha256,
                 $actualHash
