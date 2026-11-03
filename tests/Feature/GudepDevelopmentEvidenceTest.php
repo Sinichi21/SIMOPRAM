@@ -136,6 +136,7 @@ class GudepDevelopmentEvidenceTest extends TestCase
         $this->get(route('administration.development.evidence.download', $evidence->id))
             ->assertNotFound();
     }
+
     public function test_adding_supporting_evidence_creates_a_new_official_portfolio_revision(): void
     {
         Storage::fake('local');
@@ -165,5 +166,4 @@ class GudepDevelopmentEvidenceTest extends TestCase
         $this->assertSame('superseded', $first->fresh()->publicStatus());
         $this->assertSame($firstBytes, Storage::disk('local')->get($first->file_path));
     }
-
 }
