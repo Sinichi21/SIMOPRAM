@@ -183,10 +183,18 @@ class GudepOrganization extends Component
 
         $file = $this->skAttachment;
         $temporaryPath = $file->getRealPath();
-        abort_unless(is_string($temporaryPath) && is_file($temporaryPath), 422);
+        if (is_string($temporaryPath) === false || is_file($temporaryPath) === false) {
+            throw ValidationException::withMessages([
+                'skAttachment' => 'Berkas unggahan sementara tidak ditemukan.',
+            ]);
+        }
 
         $hash = hash_file('sha256', $temporaryPath);
-        abort_unless(is_string($hash), 422);
+        if (is_string($hash) === false) {
+            throw ValidationException::withMessages([
+                'skAttachment' => 'Tidak dapat memverifikasi berkas SK.',
+            ]);
+        }
 
         $extension = strtolower((string) $file->extension());
         $directory = 'gudep-officer-sk/'.$this->schoolId().'/'.$gudep->id.'/'.$officer->id;
