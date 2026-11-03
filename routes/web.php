@@ -26,6 +26,7 @@ use App\Http\Controllers\SchoolRegistrationController;
 use App\Http\Controllers\SchoolSwitchController;
 use App\Http\Controllers\StudentDocumentController;
 use App\Http\Middleware\SetGlobalContentContext;
+use App\Livewire\Administration\GudepOrganization;
 use App\Livewire\Auth\Register;
 use App\Livewire\Inventory\Index;
 use App\Livewire\Inventory\Loans;
@@ -33,6 +34,7 @@ use App\Livewire\PeopleMerge\Index as PeopleMergeIndex;
 use App\Livewire\RoleManagement\Index as RoleManagementIndex;
 use App\Livewire\Settings\LandingContent;
 use App\Livewire\SystemRoleManagement\Index as SystemRoleManagementIndex;
+use App\Support\ModuleWorkspace;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -172,9 +174,9 @@ Route::middleware([
     Route::view('/modul', 'modules.portal')->name('modules.portal');
 
     Route::get('/modul/{module}', function (string $module) {
-        $workspace = \App\Support\ModuleWorkspace::find($module);
+        $workspace = ModuleWorkspace::find($module);
         abort_unless($workspace, 404);
-        abort_unless(\App\Support\ModuleWorkspace::permitted(auth()->user(), $workspace), 403);
+        abort_unless(ModuleWorkspace::permitted(auth()->user(), $workspace), 403);
 
         return view('modules.workspace', compact('workspace'));
     })->middleware('school.required')->name('modules.show');
@@ -237,7 +239,7 @@ Route::middleware([
             ->middleware('can:roles.manage')
             ->name('roles.index');
 
-        Route::get('/administrasi/organisasi', \App\Livewire\Administration\GudepOrganization::class)
+        Route::get('/administrasi/organisasi', GudepOrganization::class)
             ->middleware('can:gudep.view')
             ->name('administration.organization');
 
