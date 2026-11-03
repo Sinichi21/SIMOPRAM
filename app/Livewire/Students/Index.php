@@ -188,7 +188,6 @@ class Index extends Component
                 'nta',
                 'nis',
                 'nisn',
-                'nta',
                 'nama',
                 'jenis_kelamin',
                 'tempat_lahir',
@@ -203,9 +202,9 @@ class Index extends Component
                 'golongan',
             ]);
             fputcsv($output, [
+                'NTA-CONTOH-001',
                 '2026001',
                 '0012345678',
-                'NTA-CONTOH-001',
                 'Budi Santoso',
                 'L',
                 'Makassar',
@@ -963,6 +962,7 @@ class Index extends Component
 
         $this->reset([
             'editingId',
+            'nta',
             'nis',
             'nisn',
             'name',
@@ -1097,6 +1097,11 @@ class Index extends Component
                                 $query
                                     ->where(
                                         'name',
+                                        'like',
+                                        $search
+                                    )
+                                    ->orWhere(
+                                        'nta',
                                         'like',
                                         $search
                                     )
