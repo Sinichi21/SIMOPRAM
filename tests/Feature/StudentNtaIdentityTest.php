@@ -120,6 +120,7 @@ class StudentNtaIdentityTest extends TestCase
             ->call('findStudent')
             ->assertSet('matched_student_id', null);
     }
+
     public function test_gudep_member_book_prints_nta_before_nis_without_substitution(): void
     {
         $school = $this->school();
@@ -161,5 +162,4 @@ class StudentNtaIdentityTest extends TestCase
         $this->assertStringContainsString('NIS-789', $html);
         $this->assertStringContainsString('Anggota Tanpa NTA', $html);
     }
-
 }
