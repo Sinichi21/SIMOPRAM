@@ -60,10 +60,26 @@ return new class extends Migration
             $table->timestamps();
             $table->index(['school_id', 'scout_group_id', 'academic_year_id', 'awarded_at'], 'gudep_achievements_scope_idx');
         });
+        Schema::create('gudep_achievement_evidences', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignId('school_id')->constrained()->restrictOnDelete();
+            $table->foreignId('scout_group_id')->constrained('scout_groups')->restrictOnDelete();
+            $table->foreignId('gudep_achievement_id')->constrained('gudep_achievements')->restrictOnDelete();
+            $table->foreignId('uploaded_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->string('original_filename', 255);
+            $table->string('disk', 30)->default('local');
+            $table->string('path', 500)->unique();
+            $table->string('mime_type', 100);
+            $table->unsignedBigInteger('size_bytes');
+            $table->char('sha256', 64);
+            $table->timestamps();
+            $table->index(['school_id', 'scout_group_id', 'gudep_achievement_id'], 'gudep_achievement_evidence_scope_idx');
+        });
     }
 
     public function down(): void
     {
+        Schema::dropIfExists('gudep_achievement_evidences');
         Schema::dropIfExists('gudep_achievements');
         Schema::dropIfExists('gudep_competency_records');
         Schema::dropIfExists('gudep_work_programs');
