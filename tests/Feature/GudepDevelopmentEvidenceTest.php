@@ -6,6 +6,7 @@ use App\Livewire\Administration\GudepDevelopment;
 use App\Models\AcademicYear;
 use App\Models\GudepAchievement;
 use App\Models\GudepAchievementEvidence;
+use App\Models\ReportVerification;
 use App\Models\School;
 use App\Models\ScoutGroup;
 use App\Models\User;
@@ -135,4 +136,34 @@ class GudepDevelopmentEvidenceTest extends TestCase
         $this->get(route('administration.development.evidence.download', $evidence->id))
             ->assertNotFound();
     }
+    public function test_adding_supporting_evidence_creates_a_new_official_portfolio_revision(): void
+    {
+        Storage::fake('local');
+        [$school, $gudep, $year, $achievement] = $this->context();
+
+        $publish = fn () => Livewire::test(GudepDevelopment::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->call('publishPortfolio')
+            ->assertHasNoErrors();
+
+        $publish();
+        $first = ReportVerification::query()
+            ->where('document_type', 'gudep_development')->firstOrFail();
+        $firstBytes = Storage::disk('local')->get($first->file_path);
+
+        Livewire::test(GudepDevelopment::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->set('evidenceAchievementId', $achievement->id)
+            ->set('evidenceAttachment', UploadedFile::fake()->create('sertifikat.pdf', 32, 'application/pdf'))
+            ->call('uploadEvidence')
+            ->assertHasNoErrors();
+
+        $publish();
+        $this->assertDatabaseCount('report_verifications', 2);
+        $this->assertSame('superseded', $first->fresh()->publicStatus());
+        $this->assertSame($firstBytes, Storage::disk('local')->get($first->file_path));
+    }
+
 }
