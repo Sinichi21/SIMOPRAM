@@ -28,6 +28,7 @@ final class OfficialDocumentPublisher
     /**
      * @param Closure(ReportVerification):string $renderPdf
      * @param array<string, mixed> $metadata
+     * @param array<int, int|null>|null $signatoryUserIds
      */
     public function publish(
         int $schoolId,
@@ -41,6 +42,7 @@ final class OfficialDocumentPublisher
         ?string $documentNumber = null,
         array $metadata = [],
         ?int $issuedBy = null,
+        ?array $signatoryUserIds = null,
     ): ReportVerification {
         abort_unless(app(SchoolContext::class)->id() === $schoolId, 404);
         abort_unless(auth()->user()?->can('reports.export'), 403);
@@ -57,7 +59,7 @@ final class OfficialDocumentPublisher
             return DB::transaction(function () use (
                 $schoolId, $sourceType, $sourceId, $documentType,
                 $snapshotChecksum, $filename, $renderPdf, $title,
-                $documentNumber, $metadata, $issuedBy, &$created
+                $documentNumber, $metadata, $issuedBy, $signatoryUserIds, &$created
             ): ReportVerification {
                 // Serialize issuance per school on MySQL and avoid concurrent revision numbers.
                 School::query()->whereKey($schoolId)->lockForUpdate()->firstOrFail();
@@ -110,7 +112,7 @@ final class OfficialDocumentPublisher
                     ]);
                 }
 
-                $archived = $this->verification->archivePdf($created, $binary, $filename);
+                $archived = $this->verification->archivePdf($created, $binary, $filename, $signatoryUserIds);
 
                 // Old document stays valid until its successor is fully approved.
                 if ($latest && $archived->publicStatus() === 'valid') {
