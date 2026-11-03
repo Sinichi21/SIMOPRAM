@@ -54,6 +54,8 @@ class OfficialDocumentPublisherTest extends TestCase
         $this->assertSame(48, strlen($issued->code));
         $this->assertSame(hash('sha256', '%PDF-1.4 test '.$issued->code), $issued->file_sha256);
         Storage::disk('local')->assertExists($issued->file_path);
+        $this->assertStringContainsString($issued->code, app(\App\Services\ReportVerificationService::class)->publicUrl($issued));
+        $this->assertStringStartsWith('data:image/', app(\App\Services\ReportVerificationService::class)->qrDataUri($issued));
     }
 
     public function test_same_snapshot_reuses_document_and_changed_snapshot_creates_revision(): void
