@@ -30,6 +30,7 @@ return new class extends Migration
             $table->foreignId('school_id')->constrained()->restrictOnDelete();
             $table->foreignId('scout_group_id')->constrained('scout_groups')->restrictOnDelete();
             $table->foreignId('student_id')->constrained('students')->restrictOnDelete();
+            $table->foreignId('academic_year_id')->constrained('academic_years')->restrictOnDelete();
             $table->foreignId('scout_level_id')->constrained('scout_levels')->restrictOnDelete();
             $table->foreignId('coach_id')->nullable()->constrained('coaches')->nullOnDelete();
             $table->string('category', 3); // SKU or SKK; TKK is an award, not a separate exam
@@ -39,7 +40,7 @@ return new class extends Migration
             $table->date('assessed_at')->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();
-            $table->unique(['school_id', 'scout_group_id', 'student_id', 'category', 'requirement_code'], 'gudep_competency_unique');
+            $table->unique(['school_id', 'scout_group_id', 'academic_year_id', 'student_id', 'category', 'requirement_code'], 'gudep_competency_unique');
         });
 
         Schema::create('gudep_achievements', function (Blueprint $table): void {
@@ -47,6 +48,7 @@ return new class extends Migration
             $table->foreignId('school_id')->constrained()->restrictOnDelete();
             $table->foreignId('scout_group_id')->constrained('scout_groups')->restrictOnDelete();
             $table->foreignId('student_id')->nullable()->constrained('students')->nullOnDelete();
+            $table->foreignId('academic_year_id')->constrained('academic_years')->restrictOnDelete();
             $table->foreignId('activity_id')->nullable()->constrained('activities')->nullOnDelete();
             $table->string('kind', 30); // achievement, tkk_award, or development
             $table->string('title', 200);
@@ -55,7 +57,7 @@ return new class extends Migration
             $table->string('reference_number', 100)->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();
-            $table->index(['school_id', 'scout_group_id', 'awarded_at'], 'gudep_achievements_scope_idx');
+            $table->index(['school_id', 'scout_group_id', 'academic_year_id', 'awarded_at'], 'gudep_achievements_scope_idx');
         });
     }
 
