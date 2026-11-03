@@ -66,7 +66,7 @@
                         @endphp
                         <tr>
                             <td class="px-4 py-4 align-top">
-                                <div class="font-medium">{{ $document->documentTypeLabel() }}</div>
+                                <div class="font-medium">{{ $document->documentTypeLabel() }} <span class="text-xs text-zinc-500">· Rev. {{ $document->revision ?? 1 }}</span></div>
                                 <div class="mt-1 max-w-sm text-xs text-zinc-500">{{ $document->publicTitle() }}</div>
                             </td>
                             <td class="px-4 py-4 align-top">
