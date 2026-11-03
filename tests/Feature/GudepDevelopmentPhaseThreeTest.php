@@ -270,4 +270,44 @@ class GudepDevelopmentPhaseThreeTest extends TestCase
         $this->assertSame([1, 1], $docs->pluck('revision')->all());
         $this->assertSame(['valid', 'valid'], $docs->map->publicStatus()->all());
     }
+    public function test_member_from_previous_year_is_not_eligible_for_new_year_competency(): void
+    {
+        [$school, $gudep, $currentYear] = $this->context();
+        $old = AcademicYear::query()->create([
+            'school_id' => $school->id,
+            'name' => '2025/2026',
+            'start_date' => '2025-07-01',
+            'end_date' => '2026-06-30',
+            'is_active' => false,
+        ]);
+        [$student] = $this->member($school, $gudep, $old);
+
+        Livewire::test(GudepDevelopment::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $currentYear->id)
+            ->set('studentId', $student->id)
+            ->set('requirementCode', 'SKU-01')
+            ->set('requirementName', 'Syarat Kecakapan Umum')
+            ->call('saveCompetency')
+            ->assertHasErrors(['studentId']);
+
+        $this->assertDatabaseCount('gudep_competency_records', 0);
+    }
+
+    public function test_tkk_cannot_be_recorded_without_an_eligible_member(): void
+    {
+        [, $gudep, $year] = $this->context();
+
+        Livewire::test(GudepDevelopment::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->set('achievementKind', 'tkk_award')
+            ->set('achievementTitle', 'TKK Pertolongan Pertama')
+            ->set('awardedAt', '2026-10-01')
+            ->call('saveAchievement')
+            ->assertHasErrors(['achievementStudentId']);
+
+        $this->assertDatabaseCount('gudep_achievements', 0);
+    }
+
 }
