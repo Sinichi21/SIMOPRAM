@@ -89,9 +89,19 @@ class GudepOrganizationPhaseTwoTest extends TestCase
         [$school, $gudep] = $this->schoolAndGroup();
         $otherSchool = School::factory()->create();
         app(SchoolContext::class)->set($otherSchool);
-        $year = AcademicYear::factory()->create();
+        $year = AcademicYear::query()->create([
+            'name' => '2026/2027',
+            'start_date' => '2026-07-01',
+            'end_date' => '2027-06-30',
+            'is_active' => true,
+        ]);
+        $level = \App\Models\ScoutLevel::query()->create([
+            'name' => 'Penggalang',
+            'code' => 'PENGGALANG',
+            'sort_order' => 2,
+        ]);
         $unit = ScoutUnit::query()->create([
-            'scout_level_id' => \App\Models\ScoutLevel::query()->firstOrFail()->id,
+            'scout_level_id' => $level->id,
             'academic_year_id' => $year->id,
             'name' => 'Regu Luar',
             'unit_type' => 'regu',
