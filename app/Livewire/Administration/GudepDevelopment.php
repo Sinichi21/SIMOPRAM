@@ -17,6 +17,7 @@ use App\Services\Documents\OfficialDocumentPublisher;
 use App\Services\ReportVerificationService;
 use App\Support\SchoolContext;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
@@ -354,21 +355,24 @@ class GudepDevelopment extends Component
             ->orderByDesc('id')->first();
     }
 
-    private function programQuery()
+    /** @return Builder<GudepWorkProgram> */
+    private function programQuery(): Builder
     {
         return GudepWorkProgram::query()->where('school_id', $this->schoolId())
             ->where('scout_group_id', $this->selectedGudep()->id)
             ->where('academic_year_id', $this->selectedYear()->id);
     }
 
-    private function competencyQuery()
+    /** @return Builder<GudepCompetencyRecord> */
+    private function competencyQuery(): Builder
     {
         return GudepCompetencyRecord::query()->where('school_id', $this->schoolId())
             ->where('scout_group_id', $this->selectedGudep()->id)
             ->where('academic_year_id', $this->selectedYear()->id);
     }
 
-    private function achievementQuery()
+    /** @return Builder<GudepAchievement> */
+    private function achievementQuery(): Builder
     {
         return GudepAchievement::query()->where('school_id', $this->schoolId())
             ->where('scout_group_id', $this->selectedGudep()->id)
