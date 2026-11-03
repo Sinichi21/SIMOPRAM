@@ -306,5 +306,4 @@ class GudepOrganizationPhaseTwoTest extends TestCase
 
         $this->assertNull($unit->fresh()->scout_group_id);
     }
-
 }
