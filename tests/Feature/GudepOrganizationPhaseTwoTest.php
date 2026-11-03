@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\Administration\GudepOrganization;
 use App\Models\AcademicYear;
 use App\Models\Coach;
+use App\Models\GudepFormation;
 use App\Models\GudepOfficer;
 use App\Models\ReportVerification;
 use App\Models\School;
@@ -254,7 +255,7 @@ class GudepOrganizationPhaseTwoTest extends TestCase
             ->call('saveFormation')
             ->assertHasNoErrors();
 
-        $formation = \App\Models\GudepFormation::query()->firstOrFail();
+        $formation = GudepFormation::query()->firstOrFail();
         $this->assertSame('ambalan', $formation->formation_type);
 
         Livewire::test(GudepOrganization::class)
@@ -280,7 +281,7 @@ class GudepOrganizationPhaseTwoTest extends TestCase
         $siaga = ScoutLevel::query()->create(['name' => 'Siaga', 'code' => 'SIAGA']);
         $penggalang = ScoutLevel::query()->create(['name' => 'Penggalang', 'code' => 'PENGGALANG']);
 
-        $formation = \App\Models\GudepFormation::query()->create([
+        $formation = GudepFormation::query()->create([
             'school_id' => $school->id,
             'scout_group_id' => $gudep->id,
             'scout_level_id' => $siaga->id,
