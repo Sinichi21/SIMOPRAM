@@ -6,6 +6,7 @@ use App\Models\AcademicYear;
 use App\Models\Activity;
 use App\Models\Coach;
 use App\Models\GudepAchievement;
+use App\Models\GudepAchievementEvidence;
 use App\Models\GudepCompetencyRecord;
 use App\Models\GudepFormation;
 use App\Models\GudepWorkProgram;
@@ -18,12 +19,22 @@ use App\Services\ReportVerificationService;
 use App\Support\SchoolContext;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
+use Livewire\WithFileUploads;
+use Throwable;
 
 class GudepDevelopment extends Component
 {
+    use WithFileUploads;
+
+    public ?int $evidenceAchievementId = null;
+
+    public $evidenceAttachment = null;
+
     public ?int $scoutGroupId = null;
 
     public ?int $academicYearId = null;
@@ -90,7 +101,8 @@ class GudepDevelopment extends Component
     public function updatedScoutGroupId(): void
     {
         $this->reset(['programFormationId', 'programActivityId', 'studentId',
-            'competencyCoachId', 'achievementStudentId', 'achievementActivityId']);
+            'competencyCoachId', 'achievementStudentId', 'achievementActivityId',
+            'evidenceAchievementId', 'evidenceAttachment']);
     }
 
     public function saveProgram(): void
@@ -278,6 +290,75 @@ class GudepDevelopment extends Component
         session()->flash('status', 'Prestasi atau pengembangan pembina tersimpan.');
     }
 
+    public function uploadEvidence(): void
+    {
+        $this->authorizeManage();
+        $gudep = $this->selectedGudep();
+        $year = $this->selectedYear();
+
+        $data = $this->validate([
+            'evidenceAchievementId' => ['required', 'integer',
+                Rule::exists('gudep_achievements', 'id')
+                    ->where('school_id', $this->schoolId())
+                    ->where('scout_group_id', $gudep->id)
+                    ->where('academic_year_id', $year->id)],
+            'evidenceAttachment' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:8192'],
+        ]);
+
+        $achievement = GudepAchievement::query()
+            ->where('school_id', $this->schoolId())
+            ->where('scout_group_id', $gudep->id)
+            ->where('academic_year_id', $year->id)
+            ->findOrFail((int) $data['evidenceAchievementId']);
+
+        $file = $this->evidenceAttachment;
+        $temporaryPath = $file->getRealPath();
+        if (! is_string($temporaryPath) || ! is_file($temporaryPath)) {
+            throw ValidationException::withMessages([
+                'evidenceAttachment' => 'File sementara tidak ditemukan.',
+            ]);
+        }
+
+        $hash = hash_file('sha256', $temporaryPath);
+        if (! is_string($hash)) {
+            throw ValidationException::withMessages([
+                'evidenceAttachment' => 'File bukti tidak dapat diverifikasi.',
+            ]);
+        }
+
+        $dir = 'gudep-achievement-evidences/'.$this->schoolId().'/'.$gudep->id.'/'.$achievement->id;
+        $filename = (string) Str::uuid().'.'.strtolower((string) $file->extension());
+        $storedPath = $file->storeAs($dir, $filename, 'local');
+
+        if (! is_string($storedPath)) {
+            throw ValidationException::withMessages([
+                'evidenceAttachment' => 'File bukti gagal disimpan.',
+            ]);
+        }
+
+        try {
+            GudepAchievementEvidence::query()->create([
+                'school_id' => $this->schoolId(),
+                'scout_group_id' => $gudep->id,
+                'gudep_achievement_id' => $achievement->id,
+                'uploaded_by' => auth()->id(),
+                'original_filename' => $file->getClientOriginalName(),
+                'disk' => 'local',
+                'path' => $storedPath,
+                'mime_type' => $file->getMimeType() ?: 'application/octet-stream',
+                'size_bytes' => (int) $file->getSize(),
+                'sha256' => $hash,
+            ]);
+        } catch (Throwable $exception) {
+            Storage::disk('local')->delete($storedPath);
+
+            throw $exception;
+        }
+
+        $this->reset(['evidenceAchievementId', 'evidenceAttachment']);
+        session()->flash('status', 'Lampiran bukti pembinaan tersimpan pada arsip privat.');
+    }
+
     public function publishPortfolio(OfficialDocumentPublisher $publisher, ReportVerificationService $verifier): void
     {
         $this->authorizeView();
@@ -288,7 +369,7 @@ class GudepDevelopment extends Component
         $programs = $this->programQuery()->with(['activity', 'formation'])->orderBy('id')->get();
         $competencies = $this->competencyQuery()->with(['student', 'scoutLevel'])
             ->orderBy('id')->get();
-        $achievements = $this->achievementQuery()->with(['student', 'activity', 'coach'])
+        $achievements = $this->achievementQuery()->with(['student', 'activity', 'coach', 'evidences'])
             ->orderBy('id')->get();
 
         // The logbook remains a link to the existing journal source, not copied data.
@@ -313,7 +394,11 @@ class GudepDevelopment extends Component
             'achievements' => $achievements->map(fn ($row) => $row->only([
                 'id', 'student_id', 'activity_id', 'coach_id', 'kind', 'title', 'awarded_at',
                 'issuer', 'reference_number', 'notes',
-            ]) + ['student_name' => $row->student?->name, 'coach_name' => $row->coach?->name])->all(),
+            ]) + ['student_name' => $row->student?->name, 'coach_name' => $row->coach?->name,
+                'evidences' => $row->evidences->map(fn ($evidence) => [
+                    'id' => $evidence->id, 'name' => $evidence->original_filename,
+                    'sha256' => $evidence->sha256,
+                ])->all()])->all(),
             'journals' => $journals->map(fn ($row) => $row->only([
                 'id', 'activity_id', 'status', 'objective', 'material',
                 'activity_description', 'result', 'evaluation', 'follow_up', 'notes',
@@ -448,7 +533,7 @@ class GudepDevelopment extends Component
                 ->orderBy('planned_for')->get() : collect(),
             'competencies' => $gudep && $year ? $this->competencyQuery()->with(['student', 'scoutLevel'])
                 ->orderByDesc('id')->limit(100)->get() : collect(),
-            'achievements' => $gudep && $year ? $this->achievementQuery()->with(['student', 'coach'])
+            'achievements' => $gudep && $year ? $this->achievementQuery()->with(['student', 'coach', 'evidences'])
                 ->orderByDesc('awarded_at')->limit(100)->get() : collect(),
         ]);
     }
