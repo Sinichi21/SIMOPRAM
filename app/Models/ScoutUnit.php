@@ -14,6 +14,7 @@ class ScoutUnit extends Model
     use SoftDeletes;
 
     protected $fillable = [
+        'scout_group_id',
         'scout_level_id',
         'academic_year_id',
         'name',
@@ -35,6 +36,11 @@ class ScoutUnit extends Model
         return $this->belongsTo(
             School::class
         );
+    }
+
+    public function scoutGroup(): BelongsTo
+    {
+        return $this->belongsTo(ScoutGroup::class);
     }
 
     public function scoutLevel(): BelongsTo
