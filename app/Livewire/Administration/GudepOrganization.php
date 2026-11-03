@@ -242,6 +242,7 @@ class GudepOrganization extends Component
                 ? 'reports.pdf.administration.gudep-members'
                 : 'reports.pdf.administration.gudep-profile',
             contentData: $content,
+            seriesKey: $year ? 'year-'.$year->id : 'all-years',
             title: $documentType === 'gudep_members'
                 ? 'Buku Induk Anggota Gudep '.$gudep->name
                 : 'Profil dan Organisasi Gudep '.$gudep->name,
