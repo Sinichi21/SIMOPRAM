@@ -163,6 +163,76 @@
         </section>
 
         <section class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
+            <h2 class="text-lg font-semibold">Satuan Golongan</h2>
+            <p class="mt-1 text-sm text-zinc-500">Perindukan Siaga, Pasukan Penggalang, Ambalan Penegak, dan Racana Pandega. Berbeda dari kelompok kecil yang sebelumnya tercatat pada Master Satuan.</p>
+            @can('gudep.manage')
+                <form wire:submit="saveFormation" class="mt-4 grid gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-700 md:grid-cols-3">
+                    <div>
+                        <label class="mb-1 block text-sm" for="formation-level">Golongan</label>
+                        <select id="formation-level" wire:model="formationScoutLevelId" class="w-full rounded-lg border border-zinc-300 p-2.5 dark:border-zinc-700 dark:bg-zinc-800">
+                            <option value="">Pilih golongan</option>
+                            @foreach ($scoutLevels as $level)
+                                @if (in_array(strtoupper($level->code), ['SIAGA', 'PENGGALANG', 'PENEGAK', 'PANDEGA']))
+                                    <option value="{{ $level->id }}">{{ $level->name }}</option>
+                                @endif
+                            @endforeach
+                        </select>
+                        @error('formationScoutLevelId') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm" for="formation-name">Nama Satuan Golongan</label>
+                        <input id="formation-name" wire:model="formationName" placeholder="Contoh: Pasukan Garuda" class="w-full rounded-lg border border-zinc-300 p-2.5 dark:border-zinc-700 dark:bg-zinc-800">
+                        @error('formationName') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm" for="formation-year">Tahun Ajaran</label>
+                        <select id="formation-year" wire:model="formationYearId" class="w-full rounded-lg border border-zinc-300 p-2.5 dark:border-zinc-700 dark:bg-zinc-800">
+                            <option value="">Pilih tahun ajaran</option>
+                            @foreach ($years as $year)
+                                <option value="{{ $year->id }}">{{ $year->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('formationYearId') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm" for="formation-gender">Keanggotaan</label>
+                        <select id="formation-gender" wire:model="formationGender" class="w-full rounded-lg border border-zinc-300 p-2.5 dark:border-zinc-700 dark:bg-zinc-800">
+                            <option value="putra">Putra</option>
+                            <option value="putri">Putri</option>
+                            <option value="campuran">Campuran</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="mb-1 block text-sm" for="formation-notes">Catatan</label>
+                        <input id="formation-notes" wire:model="formationNotes" class="w-full rounded-lg border border-zinc-300 p-2.5 dark:border-zinc-700 dark:bg-zinc-800">
+                    </div>
+                    <div class="md:col-span-3">
+                        <button type="submit" class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white">Tambah Satuan Golongan</button>
+                    </div>
+                </form>
+            @endcan
+            <div class="mt-4 overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-zinc-50 text-left dark:bg-zinc-800">
+                        <tr><th class="px-3 py-2">Satuan</th><th class="px-3 py-2">Golongan</th><th class="px-3 py-2">Tahun</th><th class="px-3 py-2">Kategori</th></tr>
+                    </thead>
+                    <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                        @forelse ($formations as $formation)
+                            <tr>
+                                <td class="px-3 py-2 font-medium">{{ $formation->name }}</td>
+                                <td class="px-3 py-2">{{ ucfirst($formation->formation_type) }}</td>
+                                <td class="px-3 py-2">{{ $formation->academicYear?->name ?? '-' }}</td>
+                                <td class="px-3 py-2">{{ ucfirst($formation->gender) }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="4" class="px-3 py-4 text-center text-zinc-500">Belum ada satuan golongan.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
             <h2 class="text-lg font-semibold">Satuan dalam Gugusdepan</h2>
             <p class="mt-1 text-sm text-zinc-500">Satuan lama yang belum memiliki relasi Gudep tidak diubah otomatis.</p>
             @can('gudep.manage')
@@ -173,15 +243,29 @@
                             <option value="{{ $unassigned->id }}">{{ $unassigned->name }}</option>
                         @endforeach
                     </select>
-                    <button type="submit" class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white">Tautkan Satuan</button>
+                    <select wire:model="unitFormationId" aria-label="Satuan golongan tujuan" class="min-w-64 flex-1 rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
+                        <option value="">Tanpa satuan golongan dulu</option>
+                        @foreach ($formations as $formation)
+                            <option value="{{ $formation->id }}">{{ $formation->name }} · {{ $formation->academicYear?->name ?? '-' }}</option>
+                        @endforeach
+                    </select>
+                    <button type="submit" class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white">Tautkan Kelompok</button>
                 </form>
                 @error('unitId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                @error('unitFormationId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
             @endcan
             <ul class="mt-4 divide-y divide-zinc-100 text-sm dark:divide-zinc-800">
                 @forelse ($units as $unit)
                     <li class="flex items-center justify-between gap-3 py-3">
-                        <span>{{ $unit->name }} <span class="text-zinc-500">({{ $unit->scoutLevel?->name ?? '-' }})</span></span>
-                        <span class="text-xs text-zinc-500">{{ $unit->academicYear?->name ?? '-' }}</span>
+                        <span>{{ $unit->name }} <span class="text-zinc-500">({{ $unit->scoutLevel?->name ?? '-' }})</span>
+                            <span class="block text-xs text-zinc-500">Satuan golongan: {{ $unit->gudepFormation?->name ?? 'Belum ditetapkan' }}</span>
+                        </span>
+                        <span class="flex flex-wrap items-center gap-2">
+                            <span class="text-xs text-zinc-500">{{ $unit->academicYear?->name ?? '-' }}</span>
+                            @can('gudep.manage')
+                                <button type="button" wire:click="detachUnit({{ $unit->id }})" wire:confirm="Lepaskan kelompok ini dari Gudep? Data anggota tidak akan dihapus." class="text-xs text-red-600 hover:underline">Lepas</button>
+                            @endcan
+                        </span>
                     </li>
                 @empty
                     <li class="py-4 text-zinc-500">Belum ada satuan yang ditautkan.</li>
