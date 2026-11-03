@@ -22,6 +22,8 @@ class GudepAchievementEvidence extends Model
 {
     use BelongsToSchool;
 
+    protected $table = 'gudep_achievement_evidences';
+
     protected $fillable = [
         'school_id', 'scout_group_id', 'gudep_achievement_id',
         'uploaded_by', 'original_filename', 'disk', 'path',
