@@ -33,7 +33,7 @@ class ModuleWorkspacePhaseZeroTest extends TestCase
     public function test_user_without_module_permission_cannot_open_module(): void
     {
         $school = School::factory()->create();
-        $user = User::factory()->create(['system_role' => 'user']);
+        $user = User::factory()->create();
         SchoolUserMembership::query()->create([
             'school_id' => $school->id,
             'user_id' => $user->id,
