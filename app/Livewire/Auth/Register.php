@@ -186,7 +186,7 @@ class Register extends Component
             $rules['student_identifier'] = [
                 'required',
                 'string',
-                'max:30',
+                'max:100',
             ];
 
             $rules['matched_student_id'] = [
