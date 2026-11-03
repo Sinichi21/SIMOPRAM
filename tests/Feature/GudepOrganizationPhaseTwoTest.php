@@ -223,4 +223,87 @@ class GudepOrganizationPhaseTwoTest extends TestCase
         $this->assertSame('Dokumen berklasifikasi Terbatas', $document->publicTitle());
     }
 
+    public function test_four_golongan_formation_creates_ambalan_and_links_matching_unit(): void
+    {
+        [$school, $gudep] = $this->schoolAndGroup();
+        $year = AcademicYear::query()->create([
+            'name' => '2026/2027',
+            'start_date' => '2026-07-01',
+            'end_date' => '2027-06-30',
+            'is_active' => true,
+        ]);
+        $level = ScoutLevel::query()->create([
+            'name' => 'Penegak',
+            'code' => 'PENEGAK',
+            'sort_order' => 3,
+        ]);
+        $unit = ScoutUnit::query()->create([
+            'school_id' => $school->id,
+            'scout_level_id' => $level->id,
+            'academic_year_id' => $year->id,
+            'name' => 'Sangga Elang',
+            'unit_type' => 'sangga',
+        ]);
+
+        Livewire::test(GudepOrganization::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('formationScoutLevelId', $level->id)
+            ->set('formationYearId', $year->id)
+            ->set('formationName', 'Ambalan Diponegoro')
+            ->set('formationGender', 'putra')
+            ->call('saveFormation')
+            ->assertHasNoErrors();
+
+        $formation = \App\Models\GudepFormation::query()->firstOrFail();
+        $this->assertSame('ambalan', $formation->formation_type);
+
+        Livewire::test(GudepOrganization::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('unitId', $unit->id)
+            ->set('unitFormationId', $formation->id)
+            ->call('assignUnit')
+            ->assertHasNoErrors();
+
+        $this->assertSame($formation->id, $unit->fresh()->gudep_formation_id);
+        $this->assertSame($gudep->id, $unit->fresh()->scout_group_id);
+    }
+
+    public function test_unit_cannot_be_linked_to_formation_in_another_golongan(): void
+    {
+        [$school, $gudep] = $this->schoolAndGroup();
+        $year = AcademicYear::query()->create([
+            'name' => '2026/2027',
+            'start_date' => '2026-07-01',
+            'end_date' => '2027-06-30',
+            'is_active' => true,
+        ]);
+        $siaga = ScoutLevel::query()->create(['name' => 'Siaga', 'code' => 'SIAGA']);
+        $penggalang = ScoutLevel::query()->create(['name' => 'Penggalang', 'code' => 'PENGGALANG']);
+
+        $formation = \App\Models\GudepFormation::query()->create([
+            'school_id' => $school->id,
+            'scout_group_id' => $gudep->id,
+            'scout_level_id' => $siaga->id,
+            'academic_year_id' => $year->id,
+            'name' => 'Perindukan Satu',
+            'formation_type' => 'perindukan',
+        ]);
+        $unit = ScoutUnit::query()->create([
+            'school_id' => $school->id,
+            'scout_level_id' => $penggalang->id,
+            'academic_year_id' => $year->id,
+            'name' => 'Regu Cendrawasih',
+            'unit_type' => 'regu',
+        ]);
+
+        Livewire::test(GudepOrganization::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('unitId', $unit->id)
+            ->set('unitFormationId', $formation->id)
+            ->call('assignUnit')
+            ->assertHasErrors(['unitFormationId']);
+
+        $this->assertNull($unit->fresh()->scout_group_id);
+    }
+
 }
