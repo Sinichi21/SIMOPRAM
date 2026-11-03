@@ -9,6 +9,7 @@ use App\Models\GudepOfficer;
 use App\Models\ReportVerification;
 use App\Models\School;
 use App\Models\ScoutGroup;
+use App\Models\ScoutLevel;
 use App\Models\ScoutUnit;
 use App\Models\User;
 use App\Support\SchoolContext;
@@ -95,7 +96,7 @@ class GudepOrganizationPhaseTwoTest extends TestCase
             'end_date' => '2027-06-30',
             'is_active' => true,
         ]);
-        $level = \App\Models\ScoutLevel::query()->create([
+        $level = ScoutLevel::query()->create([
             'name' => 'Penggalang',
             'code' => 'PENGGALANG',
             'sort_order' => 2,
