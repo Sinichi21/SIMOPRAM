@@ -303,8 +303,8 @@ class GudepOrganization extends Component
                 if ($student !== null && (int) $student->school_id === $this->schoolId()) {
                     $memberRows[] = [
                         'unit' => $unit->name,
-                        'formation' => $unit->gudepFormation?->name ?? '-',
-                        'level' => $unit->scoutLevel?->name ?? '-',
+                        'formation' => data_get($unit, 'gudepFormation.name', '-'),
+                        'level' => data_get($unit, 'scoutLevel.name', '-'),
                         'name' => $student->name,
                         'member_number' => $student->nis ?? '-',
                         'position' => $membership->position,
