@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Livewire\Administration\GudepOrganization;
 use App\Models\AcademicYear;
-use App\Models\Coach;
 use App\Models\GudepFormation;
 use App\Models\GudepOfficer;
 use App\Models\ReportVerification;
