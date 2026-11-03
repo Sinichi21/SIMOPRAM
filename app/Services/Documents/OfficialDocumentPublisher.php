@@ -49,7 +49,7 @@ final class OfficialDocumentPublisher
         ?int $issuedBy = null,
         ?array $signatoryUserIds = null,
     ): ReportVerification {
-        if (! str_starts_with($contentView, 'reports.pdf.administration.')) {
+        if (! preg_match('/^reports\\.pdf\\.administration\\.[a-z][a-z0-9_-]*$/', $contentView)) {
             throw ValidationException::withMessages([
                 'document' => 'Template administrasi tidak dikenal.',
             ]);
