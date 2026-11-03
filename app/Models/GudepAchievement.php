@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToSchool;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
@@ -27,6 +28,12 @@ class GudepAchievement extends Model
     protected function casts(): array
     {
         return ['awarded_at' => 'date'];
+    }
+
+    /** @return HasMany<GudepAchievementEvidence, $this> */
+    public function evidences(): HasMany
+    {
+        return $this->hasMany(GudepAchievementEvidence::class, 'gudep_achievement_id');
     }
 
     /** @return BelongsTo<Student, $this> */
