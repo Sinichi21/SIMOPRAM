@@ -6,6 +6,21 @@ use App\Models\Concerns\BelongsToSchool;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $school_id
+ * @property int $scout_group_id
+ * @property int|null $coach_id
+ * @property int|null $gudep_formation_id
+ * @property string $scope
+ * @property string $position
+ * @property string $person_name
+ * @property \Illuminate\Support\Carbon $started_at
+ * @property \Illuminate\Support\Carbon|null $ended_at
+ * @property string|null $decree_number
+ * @property \Illuminate\Support\Carbon|null $decree_date
+ * @property string|null $notes
+ */
 class GudepOfficer extends Model
 {
     use BelongsToSchool;
@@ -25,16 +40,19 @@ class GudepOfficer extends Model
         ];
     }
 
+    /** @return BelongsTo<ScoutGroup, $this> */
     public function scoutGroup(): BelongsTo
     {
         return $this->belongsTo(ScoutGroup::class);
     }
 
+    /** @return BelongsTo<GudepFormation, $this> */
     public function formation(): BelongsTo
     {
         return $this->belongsTo(GudepFormation::class, 'gudep_formation_id');
     }
 
+    /** @return BelongsTo<Coach, $this> */
     public function coach(): BelongsTo
     {
         return $this->belongsTo(Coach::class);
