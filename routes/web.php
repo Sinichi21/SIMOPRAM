@@ -7,6 +7,7 @@ use App\Http\Controllers\ActivityLogExportController;
 use App\Http\Controllers\ActivityParticipantPortalController;
 use App\Http\Controllers\ActivityRegistrationController;
 use App\Http\Controllers\ComplaintController;
+use App\Http\Controllers\GudepAchievementEvidenceController;
 use App\Http\Controllers\GudepOfficerDocumentController;
 use App\Http\Controllers\InventoryAssetBatchLabelController;
 use App\Http\Controllers\InventoryAssetLabelController;
@@ -240,6 +241,11 @@ Route::middleware([
         Route::get('/pengaturan/role-management', RoleManagementIndex::class)
             ->middleware('can:roles.manage')
             ->name('roles.index');
+
+        Route::get('/administrasi/pembinaan/bukti/{evidence}', [GudepAchievementEvidenceController::class, 'download'])
+            ->whereNumber('evidence')
+            ->middleware(['can:gudep.view', 'throttle:30,1'])
+            ->name('administration.development.evidence.download');
 
         Route::get('/administrasi/pembinaan', GudepDevelopment::class)
             ->middleware('can:gudep.view')
