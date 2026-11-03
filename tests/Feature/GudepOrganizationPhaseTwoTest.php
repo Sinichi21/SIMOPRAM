@@ -138,4 +138,88 @@ class GudepOrganizationPhaseTwoTest extends TestCase
         $this->assertStringStartsWith('%PDF', Storage::disk('local')->get($verification->file_path));
         $this->assertSame(hash('sha256', Storage::disk('local')->get($verification->file_path)), $verification->file_sha256);
     }
+    public function test_a_different_academic_year_has_its_own_document_series(): void
+    {
+        Storage::fake('local');
+        [$school, $gudep] = $this->schoolAndGroup();
+
+        $firstYear = AcademicYear::query()->create([
+            'name' => '2025/2026', 'start_date' => '2025-07-01',
+            'end_date' => '2026-06-30', 'is_active' => false,
+        ]);
+        $secondYear = AcademicYear::query()->create([
+            'name' => '2026/2027', 'start_date' => '2026-07-01',
+            'end_date' => '2027-06-30', 'is_active' => true,
+        ]);
+
+        Livewire::test(GudepOrganization::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $firstYear->id)
+            ->call('publishMembers')
+            ->assertHasNoErrors();
+
+        Livewire::test(GudepOrganization::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $secondYear->id)
+            ->call('publishMembers')
+            ->assertHasNoErrors();
+
+        $documents = ReportVerification::query()
+            ->where('school_id', $school->id)->where('document_type', 'gudep_members')
+            ->orderBy('id')->get();
+
+        $this->assertCount(2, $documents);
+        $this->assertSame(['year-'.$firstYear->id, 'year-'.$secondYear->id],
+            $documents->pluck('series_key')->all());
+        $this->assertSame([1, 1], $documents->pluck('revision')->all());
+        $this->assertSame(['valid', 'valid'], $documents->map->publicStatus()->all());
+    }
+
+    public function test_identical_publication_is_not_duplicated_and_revision_keeps_old_pdf(): void
+    {
+        Storage::fake('local');
+        [$school, $gudep] = $this->schoolAndGroup();
+
+        Livewire::test(GudepOrganization::class)->call('publishProfile')->assertHasNoErrors();
+        $first = ReportVerification::query()->where('document_type', 'gudep_profile')->firstOrFail();
+        $oldBinary = Storage::disk('local')->get($first->file_path);
+
+        Livewire::test(GudepOrganization::class)->call('publishProfile')->assertHasNoErrors();
+        $this->assertSame(1, ReportVerification::query()->where('document_type', 'gudep_profile')->count());
+
+        GudepOfficer::query()->create([
+            'school_id' => $school->id,
+            'scout_group_id' => $gudep->id,
+            'scope' => 'gudep',
+            'position' => 'Ketua',
+            'person_name' => 'Pengurus Tambahan',
+            'started_at' => '2026-07-01',
+        ]);
+
+        Livewire::test(GudepOrganization::class)->call('publishProfile')->assertHasNoErrors();
+        $documents = ReportVerification::query()->where('document_type', 'gudep_profile')
+            ->orderBy('revision')->get();
+
+        $this->assertCount(2, $documents);
+        $this->assertSame('superseded', $first->fresh()->publicStatus());
+        $this->assertSame('valid', $documents->last()->publicStatus());
+        $this->assertSame($oldBinary, Storage::disk('local')->get($first->file_path));
+    }
+
+    public function test_member_book_has_restricted_public_title(): void
+    {
+        Storage::fake('local');
+        [, $gudep] = $this->schoolAndGroup();
+
+        Livewire::test(GudepOrganization::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->call('publishMembers')->assertHasNoErrors();
+
+        $document = ReportVerification::query()
+            ->where('document_type', 'gudep_members')->firstOrFail();
+
+        $this->assertSame('Terbatas', data_get($document->metadata, 'security_classification'));
+        $this->assertSame('Dokumen berklasifikasi Terbatas', $document->publicTitle());
+    }
+
 }
