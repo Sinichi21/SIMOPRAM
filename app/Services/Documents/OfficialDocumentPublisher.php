@@ -24,8 +24,7 @@ final class OfficialDocumentPublisher
 {
     public function __construct(
         private readonly ReportVerificationService $verification,
-    ) {
-    }
+    ) {}
 
     /**
      * Preferred entrypoint for administrative forms: central QR/footer wrapper.
