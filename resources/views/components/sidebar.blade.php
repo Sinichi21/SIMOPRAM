@@ -14,11 +14,11 @@
         $hasActiveSchool = $currentSchoolId !== null;
         $isStudent = $currentUser ?->hasRole('student') ?? false;
         $isCoach = $currentUser ?->hasRole('coach') ?? false;
-        $moduleSlug = \\App\\Support\\ModuleWorkspace::activeSlug();
-        $moduleWorkspace = $moduleSlug ? \\App\\Support\\ModuleWorkspace::find($moduleSlug) : null;
+        $moduleSlug = \App\Support\\ModuleWorkspace::activeSlug();
+        $moduleWorkspace = $moduleSlug ? \App\Support\\ModuleWorkspace::find($moduleSlug) : null;
         $moduleWorkspaceActive = $moduleWorkspace
             && $hasActiveSchool
-            && \\App\\Support\\ModuleWorkspace::permitted($currentUser, $moduleWorkspace);
+            && \App\Support\\ModuleWorkspace::permitted($currentUser, $moduleWorkspace);
         $contentSchool = request()->route('school') instanceof \App\Models\School
             ? request()->route('school')
             : ($activeSchool ?? $schools->firstWhere('id', session('active_school_id')));
