@@ -15,6 +15,7 @@ class ScoutUnit extends Model
 
     protected $fillable = [
         'scout_group_id',
+        'gudep_formation_id',
         'scout_level_id',
         'academic_year_id',
         'name',
@@ -36,6 +37,11 @@ class ScoutUnit extends Model
         return $this->belongsTo(
             School::class
         );
+    }
+
+    public function gudepFormation(): BelongsTo
+    {
+        return $this->belongsTo(GudepFormation::class);
     }
 
     public function scoutGroup(): BelongsTo
