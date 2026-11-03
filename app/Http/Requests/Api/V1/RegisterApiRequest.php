@@ -31,7 +31,7 @@ class RegisterApiRequest extends FormRequest
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
             'phone' => ['nullable', 'string', 'max:30'],
             'password' => ['required', 'string', 'confirmed', Password::defaults()],
-            'student_identifier' => ['required_if:role,student', 'nullable', 'string', 'max:30'],
+            'student_identifier' => ['required_if:role,student', 'nullable', 'string', 'max:100'],
             'nta' => ['nullable', 'string', 'max:100'],
             'coach_position' => ['required_if:role,coach', 'nullable', 'string', 'max:100'],
             'admin_position' => ['required_if:role,school_admin', 'nullable', 'string', 'max:100'],
