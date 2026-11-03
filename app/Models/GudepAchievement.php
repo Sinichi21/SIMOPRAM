@@ -20,7 +20,7 @@ class GudepAchievement extends Model
     use BelongsToSchool;
 
     protected $fillable = [
-        'school_id', 'scout_group_id', 'academic_year_id', 'student_id', 'activity_id',
+        'school_id', 'scout_group_id', 'academic_year_id', 'student_id', 'activity_id', 'coach_id',
         'kind', 'title', 'awarded_at', 'issuer', 'reference_number', 'notes',
     ];
 
@@ -36,6 +36,12 @@ class GudepAchievement extends Model
     }
 
     /** @return BelongsTo<Activity, $this> */
+    /** @return BelongsTo<Coach, $this> */
+    public function coach(): BelongsTo
+    {
+        return $this->belongsTo(Coach::class);
+    }
+
     public function activity(): BelongsTo
     {
         return $this->belongsTo(Activity::class);
