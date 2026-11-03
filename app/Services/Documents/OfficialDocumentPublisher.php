@@ -7,6 +7,7 @@ use App\Models\School;
 use App\Services\ReportVerificationService;
 use App\Support\SchoolContext;
 use Closure;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -24,6 +25,59 @@ final class OfficialDocumentPublisher
     public function __construct(
         private readonly ReportVerificationService $verification,
     ) {}
+
+    /**
+     * Preferred entrypoint for administrative forms: central QR/footer wrapper.
+     * Content view must be a trusted application Blade partial, not user input.
+     *
+     * @param array<string, mixed> $contentData
+     * @param array<string, mixed> $metadata
+     * @param array<int, int|null>|null $signatoryUserIds
+     */
+    public function publishBlade(
+        int $schoolId,
+        string $sourceType,
+        int $sourceId,
+        string $documentType,
+        string $snapshotChecksum,
+        string $filename,
+        string $contentView,
+        array $contentData = [],
+        ?string $title = null,
+        ?string $documentNumber = null,
+        array $metadata = [],
+        ?int $issuedBy = null,
+        ?array $signatoryUserIds = null,
+    ): ReportVerification {
+        if (! str_starts_with($contentView, 'reports.pdf.administration.')) {
+            throw ValidationException::withMessages([
+                'document' => 'Template administrasi tidak dikenal.',
+            ]);
+        }
+
+        return $this->publish(
+            schoolId: $schoolId,
+            sourceType: $sourceType,
+            sourceId: $sourceId,
+            documentType: $documentType,
+            snapshotChecksum: $snapshotChecksum,
+            filename: $filename,
+            renderPdf: fn (ReportVerification $verification): string => Pdf::loadView(
+                'reports.pdf.administration-official',
+                [
+                    'verification' => $verification,
+                    'verificationQrDataUri' => $this->verification->qrDataUri($verification),
+                    'contentView' => $contentView,
+                    'contentData' => $contentData,
+                ]
+            )->setPaper('a4', 'portrait')->output(),
+            title: $title,
+            documentNumber: $documentNumber,
+            metadata: $metadata,
+            issuedBy: $issuedBy,
+            signatoryUserIds: $signatoryUserIds,
+        );
+    }
 
     /**
      * @param Closure(ReportVerification):string $renderPdf
