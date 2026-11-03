@@ -416,8 +416,9 @@ class GudepDevelopment extends Component
         $this->authorizeView();
         $schoolId = $this->schoolId();
         $gudep = $this->scoutGroupId !== null ? $this->selectedGudep() : null;
+        $year = $this->academicYearId !== null ? $this->selectedYear() : null;
 
-        $members = $gudep
+        $members = $gudep && $year
             ? Student::query()->where('school_id', $schoolId)
                 ->whereHas('scoutUnitMembers', function ($q) use ($gudep): void {
                     $q->whereNull('left_at')->whereHas('scoutUnit',
@@ -425,8 +426,6 @@ class GudepDevelopment extends Component
                             ->where('academic_year_id', $this->selectedYear()->id));
                 })->orderBy('name')->get()
             : collect();
-
-        $year = $this->academicYearId !== null ? $this->selectedYear() : null;
 
         return view('livewire.administration.gudep-development', [
             'gudep' => $gudep,
