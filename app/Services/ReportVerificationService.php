@@ -782,7 +782,7 @@ class ReportVerificationService
                 (string) $verification
                     ->file_sha256,
                 $actualHash
-            )
+            ) === false
         ) {
             throw ValidationException::withMessages([
                 'document' => 'Integritas arsip PDF tidak valid. '
