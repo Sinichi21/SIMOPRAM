@@ -39,7 +39,7 @@
         <section class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
             <h2 class="text-lg font-semibold">1. Program Kerja Pembinaan</h2>
             <p class="text-sm text-zinc-500">Tautkan program ke agenda yang sudah dibuat jika tersedia. Perubahan status tidak mengubah data kegiatan aslinya.</p>
-            @can('gudep.manage')
+            @if (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.development.manage'))
                 <form wire:submit="saveProgram" class="mt-4 grid gap-3 md:grid-cols-3">
                     <label class="text-sm">Nama Program<input wire:model="programTitle" maxlength="200" class="mt-1 w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800" required>@error('programTitle')<span class="text-red-600">{{ $message }}</span>@enderror</label>
                     <label class="text-sm">Tanggal rencana<input type="date" wire:model="programDate" class="mt-1 w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800"></label>
@@ -66,7 +66,7 @@
                         <button class="rounded-lg bg-emerald-700 px-4 py-2 text-sm text-white">Simpan Program Kerja</button>
                     </div>
                 </form>
-            @endcan
+            @endif
             <div class="mt-4 overflow-x-auto"><table class="min-w-full text-left text-sm">
                 <thead><tr class="border-b"><th class="p-2">Program</th><th class="p-2">Rencana</th><th class="p-2">Agenda terkait</th><th class="p-2">Status</th></tr></thead>
                 <tbody>
@@ -76,7 +76,7 @@
                         <td class="p-2">{{ $program->planned_for?->format('d/m/Y') ?? '-' }}</td>
                         <td class="p-2">{{ $program->activity?->title ?? '-' }}</td>
                         <td class="p-2">
-                            @can('gudep.manage')
+                            @if (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.development.manage'))
                                 <select aria-label="Status program" wire:change="setProgramStatus({{ $program->id }}, $event.target.value)" class="rounded-lg border border-zinc-300 p-1.5 text-sm dark:bg-zinc-800">
                                     @foreach (['planned' => 'Direncanakan', 'ongoing' => 'Berjalan', 'completed' => 'Selesai', 'cancelled' => 'Dibatalkan'] as $value => $label)
                                         <option value="{{ $value }}" @selected($program->status === $value)>{{ $label }}</option>
@@ -84,7 +84,7 @@
                                 </select>
                             @else
                                 {{ $program->status }}
-                            @endcan
+                            @endif
                         </td>
                     </tr>
                 @empty
@@ -97,7 +97,7 @@
         <section class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
             <h2 class="text-lg font-semibold">2. Progres SKU dan SKK</h2>
             <p class="text-sm text-zinc-500">Masukkan butir berdasarkan buku SKU/SKK resmi yang berlaku. Sistem tidak membuat daftar persyaratan secara otomatis. TKK dicatat sebagai penganugerahan pada bagian Prestasi.</p>
-            @can('gudep.manage')
+            @if (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.development.manage'))
                 <form wire:submit="saveCompetency" class="mt-4 grid gap-3 md:grid-cols-3">
                     <label class="text-sm">Anggota
                         <select wire:model="studentId" class="mt-1 w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800"><option value="">Pilih anggota</option>
@@ -123,7 +123,7 @@
                     <label class="text-sm md:col-span-2">Catatan<input wire:model="competencyNotes" maxlength="4000" class="mt-1 w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800"></label>
                     <div class="md:col-span-3"><button class="rounded-lg bg-emerald-700 px-4 py-2 text-sm text-white">Simpan Progres</button></div>
                 </form>
-            @endcan
+            @endif
             <div class="mt-4 overflow-x-auto"><table class="min-w-full text-left text-sm">
                 <thead><tr class="border-b"><th class="p-2">Anggota</th><th class="p-2">Butir</th><th class="p-2">Golongan</th><th class="p-2">Status</th></tr></thead>
                 <tbody>
@@ -140,7 +140,7 @@
 
         <section class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
             <h2 class="text-lg font-semibold">3. Prestasi, Penganugerahan TKK & Pengembangan</h2>
-            @can('gudep.manage')
+            @if (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.development.manage'))
                 <form wire:submit="saveAchievement" class="mt-4 grid gap-3 md:grid-cols-3">
                     <label class="text-sm">Jenis
                         <select wire:model="achievementKind" class="mt-1 w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
@@ -169,7 +169,7 @@
                     <label class="text-sm md:col-span-2">Catatan<input wire:model="achievementNotes" maxlength="4000" class="mt-1 w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800"></label>
                     <div class="md:col-span-3"><button class="rounded-lg bg-emerald-700 px-4 py-2 text-sm text-white">Catat Prestasi / Pengembangan</button></div>
                 </form>
-            @endcan
+            @endif
             <div class="mt-4 overflow-x-auto"><table class="min-w-full text-left text-sm">
                 <thead><tr class="border-b"><th class="p-2">Tanggal</th><th class="p-2">Pencapaian</th><th class="p-2">Penerima</th><th class="p-2">Referensi</th></tr></thead><tbody>
                 @forelse ($achievements as $record)
