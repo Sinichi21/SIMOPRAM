@@ -27,6 +27,7 @@
         @endif
         <div class="grid">
             <div class="item"><div class="label">Sekolah</div><div class="value">{{ $school?->name ?? '-' }}</div></div>
+            <div class="item"><div class="label">Versi Penerbitan</div><div class="value">{{ $verification->revision ?? 1 }}</div></div>
             <div class="item"><div class="label">Jenis Dokumen</div><div class="value">{{ $verification->documentTypeLabel() }}</div></div>
             <div class="item"><div class="label">Judul</div><div class="value">{{ $verification->publicTitle() }}</div></div>
             <div class="item"><div class="label">Nomor Dokumen</div><div class="value">{{ $verification->document_number ?: '-' }}</div></div>
