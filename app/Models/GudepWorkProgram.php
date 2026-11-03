@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToSchool;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $activity_id
  * @property string $title
  * @property string $status
- * @property \Illuminate\Support\Carbon|null $planned_for
+ * @property Carbon|null $planned_for
  */
 class GudepWorkProgram extends Model
 {
