@@ -50,6 +50,7 @@ return new class extends Migration
             $table->foreignId('student_id')->nullable()->constrained('students')->nullOnDelete();
             $table->foreignId('academic_year_id')->constrained('academic_years')->restrictOnDelete();
             $table->foreignId('activity_id')->nullable()->constrained('activities')->nullOnDelete();
+            $table->foreignId('coach_id')->nullable()->constrained('coaches')->nullOnDelete();
             $table->string('kind', 30); // achievement, tkk_award, or development
             $table->string('title', 200);
             $table->date('awarded_at');
