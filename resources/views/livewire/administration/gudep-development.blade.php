@@ -154,6 +154,11 @@
                             @foreach ($members as $member)<option value="{{ $member->id }}">{{ $member->name }} · NTA {{ $member->nta ?: '-' }}</option>@endforeach
                         </select>@error('achievementStudentId')<span class="text-red-600">{{ $message }}</span>@enderror
                     </label>
+                    <label class="text-sm">Pembina (wajib untuk pengembangan)
+                        <select wire:model="achievementCoachId" class="mt-1 w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800"><option value="">Pilih pembina</option>
+                            @foreach ($coaches as $coach)<option value="{{ $coach->id }}">{{ $coach->name }}</option>@endforeach
+                        </select>@error('achievementCoachId')<span class="text-red-600">{{ $message }}</span>@enderror
+                    </label>
                     <label class="text-sm">Agenda terkait (opsional)
                         <select wire:model="achievementActivityId" class="mt-1 w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800"><option value="">Tidak ditautkan</option>
                             @foreach ($activities as $activity)<option value="{{ $activity->id }}">{{ $activity->title }}</option>@endforeach
@@ -171,7 +176,7 @@
                     <tr class="border-b border-zinc-100 dark:border-zinc-800">
                         <td class="p-2">{{ $record->awarded_at?->format('d/m/Y') }}</td>
                         <td class="p-2">{{ $record->title }}<div class="text-xs text-zinc-500">{{ $record->kind }}</div></td>
-                        <td class="p-2">{{ $record->student?->name ?? 'Gudep / Pembina' }}</td>
+                        <td class="p-2">{{ $record->student?->name ?? $record->coach?->name ?? 'Gudep' }}</td>
                         <td class="p-2">{{ $record->reference_number ?: '-' }}</td>
                     </tr>
                 @empty
