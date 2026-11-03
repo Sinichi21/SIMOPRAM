@@ -21,7 +21,7 @@ class GudepCompetencyRecord extends Model
     use BelongsToSchool;
 
     protected $fillable = [
-        'school_id', 'scout_group_id', 'student_id', 'scout_level_id',
+        'school_id', 'scout_group_id', 'academic_year_id', 'student_id', 'scout_level_id',
         'coach_id', 'category', 'requirement_code', 'requirement_name',
         'status', 'assessed_at', 'notes',
     ];
