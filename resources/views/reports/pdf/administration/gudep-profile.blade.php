@@ -28,14 +28,31 @@
         @endforelse
     </tbody>
 </table>
+<h2 style="margin-top:20px;font-size:12pt;">Satuan Golongan</h2>
+<table style="width:100%;border-collapse:collapse;font-size:8pt;" border="1" cellpadding="5">
+    <thead><tr><th>Nama</th><th>Jenis</th><th>Golongan</th><th>Tahun Ajaran</th><th>Putra/Putri</th></tr></thead>
+    <tbody>
+        @forelse ($formations as $formation)
+            <tr>
+                <td>{{ $formation->name }}</td>
+                <td>{{ ucfirst($formation->formation_type) }}</td>
+                <td>{{ $formation->scoutLevel?->name ?? '-' }}</td>
+                <td>{{ $formation->academicYear?->name ?? '-' }}</td>
+                <td>{{ ucfirst($formation->gender) }}</td>
+            </tr>
+        @empty
+            <tr><td colspan="5">Belum ada satuan golongan.</td></tr>
+        @endforelse
+    </tbody>
+</table>
 <h2 style="margin-top:20px;font-size:12pt;">Satuan Tertaut</h2>
 <table style="width:100%;border-collapse:collapse;font-size:8pt;" border="1" cellpadding="5">
-    <thead><tr><th>Nama satuan</th><th>Golongan</th><th>Tahun ajaran</th></tr></thead>
+    <thead><tr><th>Nama kelompok</th><th>Golongan</th><th>Satuan Golongan</th><th>Tahun ajaran</th></tr></thead>
     <tbody>
         @forelse ($units as $unit)
-            <tr><td>{{ $unit->name }}</td><td>{{ $unit->scoutLevel?->name ?? '-' }}</td><td>{{ $unit->academicYear?->name ?? '-' }}</td></tr>
+            <tr><td>{{ $unit->name }}</td><td>{{ $unit->scoutLevel?->name ?? '-' }}</td><td>{{ $unit->gudepFormation?->name ?? '-' }}</td><td>{{ $unit->academicYear?->name ?? '-' }}</td></tr>
         @empty
-            <tr><td colspan="3">Belum ada satuan tertaut.</td></tr>
+            <tr><td colspan="4">Belum ada kelompok tertaut.</td></tr>
         @endforelse
     </tbody>
 </table>
