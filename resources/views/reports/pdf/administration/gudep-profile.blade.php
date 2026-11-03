@@ -13,13 +13,13 @@
 </table>
 <h2 style="margin-top:20px;font-size:12pt;">Susunan Kepengurusan dan Majelis Pembimbing</h2>
 <table style="width:100%;border-collapse:collapse;font-size:8pt;" border="1" cellpadding="5">
-    <thead><tr><th>Kelompok</th><th>Nama</th><th>Jabatan</th><th>Masa tugas</th><th>Nomor SK</th></tr></thead>
+    <thead><tr><th>Kelompok</th><th>Nama</th><th>Jabatan / Satuan</th><th>Masa tugas</th><th>Nomor SK</th></tr></thead>
     <tbody>
         @forelse ($officers as $officer)
             <tr>
                 <td>{{ ucfirst($officer->scope) }}</td>
                 <td>{{ $officer->person_name }}</td>
-                <td>{{ $officer->position }}</td>
+                <td>{{ $officer->position }} @if ($officer->formation) — {{ $officer->formation->name }} @endif</td>
                 <td>{{ $officer->started_at?->format('d/m/Y') }} — {{ $officer->ended_at?->format('d/m/Y') ?? 'aktif' }}</td>
                 <td>{{ $officer->decree_number ?: '-' }}</td>
             </tr>
