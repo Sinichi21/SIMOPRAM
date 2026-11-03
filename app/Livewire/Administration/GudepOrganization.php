@@ -182,7 +182,12 @@ class GudepOrganization extends Component
             ->findOrFail((int) $validated['skOfficerId']);
 
         $file = $this->skAttachment;
-        $hash = hash_file('sha256', $file->getRealPath());
+        $temporaryPath = $file->getRealPath();
+        abort_unless(is_string($temporaryPath) && is_file($temporaryPath), 422);
+
+        $hash = hash_file('sha256', $temporaryPath);
+        abort_unless(is_string($hash), 422);
+
         $extension = strtolower((string) $file->extension());
         $directory = 'gudep-officer-sk/'.$this->schoolId().'/'.$gudep->id.'/'.$officer->id;
         $fileName = (string) Str::uuid().'.'.$extension;
@@ -203,7 +208,7 @@ class GudepOrganization extends Component
                 'disk' => 'local',
                 'path' => $storedPath,
                 'mime_type' => $file->getMimeType() ?: 'application/octet-stream',
-                'size_bytes' => $file->getSize(),
+                'size_bytes' => (int) $file->getSize(),
                 'sha256' => $hash,
                 'uploaded_by' => auth()->id(),
             ]);
