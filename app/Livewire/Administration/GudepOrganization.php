@@ -27,6 +27,8 @@ class GudepOrganization extends Component
 
     public ?int $coachId = null;
 
+    public ?int $officerFormationId = null;
+
     public string $scope = 'gudep';
 
     public string $position = '';
@@ -89,6 +91,10 @@ class GudepOrganization extends Component
             'scope' => ['required', Rule::in(['gudep', 'mabi', 'satuan'])],
             'position' => ['required', 'string', 'max:150'],
             'personName' => ['required', 'string', 'max:150'],
+            'officerFormationId' => ['nullable', 'integer',
+                Rule::exists('gudep_formations', 'id')
+                    ->where('school_id', $this->schoolId())
+                    ->where('scout_group_id', $gudep->id)],
             'coachId' => ['nullable', 'integer', Rule::exists('coaches', 'id')
                 ->where('school_id', $this->schoolId())->whereNull('deleted_at')],
             'startedAt' => ['required', 'date'],
@@ -107,6 +113,9 @@ class GudepOrganization extends Component
             'school_id' => $this->schoolId(),
             'scout_group_id' => $gudep->id,
             'coach_id' => $validated['coachId'] ?: null,
+            'gudep_formation_id' => $validated['scope'] === 'satuan'
+                ? ($validated['officerFormationId'] ?: null)
+                : null,
             'scope' => $validated['scope'],
             'position' => trim($validated['position']),
             'person_name' => trim($validated['personName']),
@@ -129,6 +138,7 @@ class GudepOrganization extends Component
 
         $this->editingOfficerId = $officer->id;
         $this->coachId = $officer->coach_id;
+        $this->officerFormationId = $officer->gudep_formation_id;
         $this->scope = $officer->scope;
         $this->position = $officer->position;
         $this->personName = $officer->person_name;
@@ -142,7 +152,7 @@ class GudepOrganization extends Component
     public function resetOfficer(): void
     {
         $this->reset([
-            'editingOfficerId', 'coachId', 'scope', 'position', 'personName',
+            'editingOfficerId', 'coachId', 'officerFormationId', 'scope', 'position', 'personName',
             'startedAt', 'endedAt', 'decreeNumber', 'decreeDate', 'notes',
         ]);
         $this->scope = 'gudep';
@@ -282,7 +292,7 @@ class GudepOrganization extends Component
 
         $officers = GudepOfficer::query()->where('school_id', $this->schoolId())
             ->where('scout_group_id', $gudep->id)
-            ->orderBy('scope')->orderBy('position')->get();
+            ->with('formation')->orderBy('scope')->orderBy('position')->get();
 
         $memberRows = [];
         foreach ($units as $unit) {
@@ -330,7 +340,7 @@ class GudepOrganization extends Component
                 'formation_id' => $unit->gudep_formation_id,
             ])->all(),
             'officers' => $officers->map(fn ($officer) => $officer->only([
-                'id', 'scope', 'position', 'person_name', 'started_at',
+                'id', 'scope', 'gudep_formation_id', 'position', 'person_name', 'started_at',
                 'ended_at', 'decree_number', 'decree_date', 'notes',
             ]))->all(),
             'members' => $documentType === 'gudep_members' ? $memberRows : [],
@@ -421,7 +431,7 @@ class GudepOrganization extends Component
             'officers' => $gudep
                 ? GudepOfficer::query()->where('school_id', $schoolId)
                     ->where('scout_group_id', $gudep->id)
-                    ->orderByDesc('started_at')->get()
+                    ->with('formation')->orderByDesc('started_at')->get()
                 : collect(),
             'coaches' => Coach::query()->where('school_id', $schoolId)
                 ->where('is_active', true)->orderBy('name')->get(),
