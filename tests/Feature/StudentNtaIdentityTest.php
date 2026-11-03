@@ -6,8 +6,8 @@ use App\Livewire\Auth\Register;
 use App\Models\School;
 use App\Models\Student;
 use App\Support\SchoolContext;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Database\QueryException;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
 
