@@ -139,6 +139,7 @@ class GudepOrganizationPhaseTwoTest extends TestCase
         $this->assertStringStartsWith('%PDF', Storage::disk('local')->get($verification->file_path));
         $this->assertSame(hash('sha256', Storage::disk('local')->get($verification->file_path)), $verification->file_sha256);
     }
+
     public function test_a_different_academic_year_has_its_own_document_series(): void
     {
         Storage::fake('local');
