@@ -14,6 +14,11 @@
         $hasActiveSchool = $currentSchoolId !== null;
         $isStudent = $currentUser ?->hasRole('student') ?? false;
         $isCoach = $currentUser ?->hasRole('coach') ?? false;
+        $moduleSlug = \\App\\Support\\ModuleWorkspace::activeSlug();
+        $moduleWorkspace = $moduleSlug ? \\App\\Support\\ModuleWorkspace::find($moduleSlug) : null;
+        $moduleWorkspaceActive = $moduleWorkspace
+            && $hasActiveSchool
+            && \\App\\Support\\ModuleWorkspace::permitted($currentUser, $moduleWorkspace);
         $contentSchool = request()->route('school') instanceof \App\Models\School
             ? request()->route('school')
             : ($activeSchool ?? $schools->firstWhere('id', session('active_school_id')));
@@ -53,7 +58,9 @@
             <flux:sidebar.collapse class="lg:hidden" />
         </flux:sidebar.header>
 
-        @if ($isStudent)
+        @if ($moduleWorkspaceActive)
+            @include('modules.sidebar', ['workspace' => $moduleWorkspace])
+        @elseif ($isStudent)
 
             {{-- =================================================
             IDENTITAS SISWA
@@ -1757,6 +1764,7 @@
 
         @endif
         
+        @if (! $moduleWorkspaceActive)
         {{-- Inventaris: navigasi utama menggunakan komponen sidebar yang aktif. --}}
         @can('inventory.view')
             <flux:sidebar.nav data-school-menu
@@ -1781,6 +1789,8 @@
                 </flux:sidebar.group>
             </flux:sidebar.nav>
         @endcan
+
+        @endif
 
         <flux:spacer />
 
