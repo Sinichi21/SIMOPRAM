@@ -158,6 +158,7 @@ class GudepDevelopment extends Component
     {
         $this->authorizeManage();
         $gudep = $this->selectedGudep();
+        $year = $this->selectedYear();
         $data = $this->validate([
             'studentId' => ['required', 'integer', Rule::exists('students', 'id')
                 ->where('school_id', $this->schoolId())->whereNull('deleted_at')],
@@ -182,6 +183,7 @@ class GudepDevelopment extends Component
             [
                 'school_id' => $this->schoolId(),
                 'scout_group_id' => $gudep->id,
+                'academic_year_id' => $year->id,
                 'student_id' => $student->id,
                 'category' => $data['competencyCategory'],
                 'requirement_code' => trim($data['requirementCode']),
@@ -209,6 +211,7 @@ class GudepDevelopment extends Component
     {
         $this->authorizeManage();
         $gudep = $this->selectedGudep();
+        $year = $this->selectedYear();
         $data = $this->validate([
             'achievementStudentId' => ['nullable', 'integer', Rule::exists('students', 'id')
                 ->where('school_id', $this->schoolId())->whereNull('deleted_at')],
@@ -229,6 +232,7 @@ class GudepDevelopment extends Component
         GudepAchievement::query()->create([
             'school_id' => $this->schoolId(),
             'scout_group_id' => $gudep->id,
+            'academic_year_id' => $year->id,
             'student_id' => $data['achievementStudentId'] ?: null,
             'activity_id' => $data['achievementActivityId'] ?: null,
             'kind' => $data['achievementKind'],
@@ -329,13 +333,15 @@ class GudepDevelopment extends Component
     private function competencyQuery()
     {
         return GudepCompetencyRecord::query()->where('school_id', $this->schoolId())
-            ->where('scout_group_id', $this->selectedGudep()->id);
+            ->where('scout_group_id', $this->selectedGudep()->id)
+            ->where('academic_year_id', $this->selectedYear()->id);
     }
 
     private function achievementQuery()
     {
         return GudepAchievement::query()->where('school_id', $this->schoolId())
-            ->where('scout_group_id', $this->selectedGudep()->id);
+            ->where('scout_group_id', $this->selectedGudep()->id)
+            ->where('academic_year_id', $this->selectedYear()->id);
     }
 
     private function schoolId(): int
@@ -405,9 +411,9 @@ class GudepDevelopment extends Component
                 ->orderBy('name')->get(),
             'programs' => $gudep && $year ? $this->programQuery()->with('activity')
                 ->orderBy('planned_for')->get() : collect(),
-            'competencies' => $gudep ? $this->competencyQuery()->with(['student', 'scoutLevel'])
+            'competencies' => $gudep && $year ? $this->competencyQuery()->with(['student', 'scoutLevel'])
                 ->orderByDesc('id')->limit(100)->get() : collect(),
-            'achievements' => $gudep ? $this->achievementQuery()->with('student')
+            'achievements' => $gudep && $year ? $this->achievementQuery()->with('student')
                 ->orderByDesc('awarded_at')->limit(100)->get() : collect(),
         ]);
     }
