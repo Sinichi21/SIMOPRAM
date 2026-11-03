@@ -3,8 +3,8 @@
 namespace Tests\Feature;
 
 use App\Livewire\Administration\GudepDevelopment;
-use App\Models\Activity;
 use App\Models\AcademicYear;
+use App\Models\Activity;
 use App\Models\GudepAchievement;
 use App\Models\GudepCompetencyRecord;
 use App\Models\GudepWorkProgram;
@@ -271,6 +271,7 @@ class GudepDevelopmentPhaseThreeTest extends TestCase
         $this->assertSame([1, 1], $docs->pluck('revision')->all());
         $this->assertSame(['valid', 'valid'], $docs->map->publicStatus()->all());
     }
+
     public function test_member_from_previous_year_is_not_eligible_for_new_year_competency(): void
     {
         [$school, $gudep, $currentYear] = $this->context();
