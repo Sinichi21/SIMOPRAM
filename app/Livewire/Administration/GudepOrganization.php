@@ -133,7 +133,9 @@ class GudepOrganization extends Component
     {
         $this->authorizeManage();
         $officer = GudepOfficer::query()->where('school_id', $this->schoolId())
-            ->where('scout_group_id', $this->selectedGudep()->id)->findOrFail($id);
+            ->where('scout_group_id', $this->selectedGudep()->id)->find($id);
+
+        abort_unless($officer, 404);
 
         $this->editingOfficerId = $officer->id;
         $this->coachId = $officer->coach_id;
