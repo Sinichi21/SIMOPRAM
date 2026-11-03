@@ -163,7 +163,9 @@ class GudepDevelopment extends Component
             ->where('school_id', $this->schoolId())
             ->where('scout_group_id', $this->selectedGudep()->id)
             ->where('academic_year_id', $this->selectedYear()->id)
-            ->findOrFail($id);
+            ->find($id);
+
+        abort_unless($program !== null, 404);
 
         $program->update(['status' => $status]);
         session()->flash('status', 'Status program kerja diperbarui.');
