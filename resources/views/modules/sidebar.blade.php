@@ -14,17 +14,16 @@
     @if ($workspace && \App\Support\ModuleWorkspace::permitted(auth()->user(), $workspace))
         <flux:sidebar.nav>
             <flux:sidebar.group :heading="$workspace['title']" class="grid">
-                <flux:sidebar.item icon="squares-2x2" :href="route('modules.show', $workspace['slug'])" current wire:navigate>
+                <flux:sidebar.item icon="squares-2x2" :href="route('modules.show', $workspace['slug'])" :current="request()->routeIs('modules.show')" wire:navigate>
                     Dashboard modul
                 </flux:sidebar.item>
                 @foreach (\App\Support\ModuleWorkspace::accessibleLinks(auth()->user(), $workspace) as $link)
-                    <flux:sidebar.item :href="route($link['route'])" wire:navigate>
+                    <flux:sidebar.item :href="route($link['route'])" :current="request()->routeIs($link['route'])" wire:navigate>
                         {{ $link['label'] }}
                     </flux:sidebar.item>
                 @endforeach
             </flux:sidebar.group>
         </flux:sidebar.nav>
-    @endif
 @endif
 
 <flux:sidebar.nav>
