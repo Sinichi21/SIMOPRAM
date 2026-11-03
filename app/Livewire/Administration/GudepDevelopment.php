@@ -233,6 +233,12 @@ class GudepDevelopment extends Component
             $this->assertMember((int) $data['achievementStudentId'], $gudep->id);
         }
 
+        if ($data['achievementKind'] === 'tkk_award' && empty($data['achievementStudentId'])) {
+            throw ValidationException::withMessages([
+                'achievementStudentId' => 'Pilih anggota penerima tanda kecakapan khusus.',
+            ]);
+        }
+
         if ($data['achievementKind'] === 'development' && empty($data['achievementCoachId'])) {
             throw ValidationException::withMessages([
                 'achievementCoachId' => 'Pilih pembina untuk riwayat pengembangan pembina.',
@@ -253,7 +259,7 @@ class GudepDevelopment extends Component
             'school_id' => $this->schoolId(),
             'scout_group_id' => $gudep->id,
             'academic_year_id' => $year->id,
-            'student_id' => $data['achievementStudentId'] ?: null,
+            'student_id' => $data['achievementKind'] === 'development' ? null : ($data['achievementStudentId'] ?: null),
             'coach_id' => $data['achievementKind'] === 'development' ? $data['achievementCoachId'] : null,
             'activity_id' => $data['achievementActivityId'] ?: null,
             'kind' => $data['achievementKind'],
