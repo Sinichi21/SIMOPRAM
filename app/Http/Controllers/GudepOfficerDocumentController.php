@@ -6,7 +6,6 @@ use App\Models\GudepOfficerDocument;
 use App\Support\SchoolContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class GudepOfficerDocumentController extends Controller
@@ -31,8 +30,10 @@ class GudepOfficerDocumentController extends Controller
 
         $disk = Storage::disk('local');
         abort_unless($attachment->disk === 'local' && $disk->exists($attachment->path), 404);
+        $binary = $disk->get($attachment->path);
+        abort_unless(is_string($binary), 404);
         abort_unless(
-            hash_equals($attachment->sha256, hash('sha256', $disk->get($attachment->path))),
+            hash_equals($attachment->sha256, hash('sha256', $binary)),
             409,
             'Arsip SK tidak lolos pemeriksaan integritas.'
         );
