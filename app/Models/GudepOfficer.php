@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToSchool;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -15,10 +16,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $scope
  * @property string $position
  * @property string $person_name
- * @property \Illuminate\Support\Carbon $started_at
- * @property \Illuminate\Support\Carbon|null $ended_at
+ * @property Carbon $started_at
+ * @property Carbon|null $ended_at
  * @property string|null $decree_number
- * @property \Illuminate\Support\Carbon|null $decree_date
+ * @property Carbon|null $decree_date
  * @property string|null $notes
  */
 class GudepOfficer extends Model
