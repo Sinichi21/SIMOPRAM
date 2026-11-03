@@ -27,6 +27,7 @@ use App\Http\Controllers\SchoolRegistrationController;
 use App\Http\Controllers\SchoolSwitchController;
 use App\Http\Controllers\StudentDocumentController;
 use App\Http\Middleware\SetGlobalContentContext;
+use App\Livewire\Administration\GudepDevelopment;
 use App\Livewire\Administration\GudepOrganization;
 use App\Livewire\Auth\Register;
 use App\Livewire\Inventory\Index;
@@ -239,6 +240,10 @@ Route::middleware([
         Route::get('/pengaturan/role-management', RoleManagementIndex::class)
             ->middleware('can:roles.manage')
             ->name('roles.index');
+
+        Route::get('/administrasi/pembinaan', GudepDevelopment::class)
+            ->middleware('can:gudep.view')
+            ->name('administration.development');
 
         Route::get('/administrasi/organisasi', GudepOrganization::class)
             ->middleware('can:gudep.view')
