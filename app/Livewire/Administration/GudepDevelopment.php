@@ -239,6 +239,16 @@ class GudepDevelopment extends Component
             ]);
         }
 
+        if (! empty($data['achievementActivityId'])) {
+            $activity = Activity::query()->where('school_id', $this->schoolId())
+                ->findOrFail((int) $data['achievementActivityId']);
+            if ((int) $activity->academic_year_id !== (int) $year->id) {
+                throw ValidationException::withMessages([
+                    'achievementActivityId' => 'Agenda harus berasal dari tahun ajaran yang dipilih.',
+                ]);
+            }
+        }
+
         GudepAchievement::query()->create([
             'school_id' => $this->schoolId(),
             'scout_group_id' => $gudep->id,
@@ -282,22 +292,25 @@ class GudepDevelopment extends Component
 
         $snapshot = [
             'gudep_id' => $gudep->id,
+            'gudep_name' => $gudep->name,
             'year_id' => $year->id,
+            'year_name' => $year->name,
             'programs' => $programs->map(fn ($row) => $row->only([
                 'id', 'title', 'objective', 'planned_for', 'status', 'notes', 'activity_id', 'gudep_formation_id',
-            ]))->all(),
+            ]) + ['activity_title' => $row->activity?->title, 'formation_name' => $row->formation?->name])->all(),
             'competencies' => $competencies->map(fn ($row) => $row->only([
                 'id', 'student_id', 'scout_level_id', 'category', 'requirement_code',
                 'requirement_name', 'status', 'assessed_at', 'notes',
-            ]))->all(),
+            ]) + ['student_name' => $row->student?->name, 'student_nta' => $row->student?->nta,
+                'level_name' => $row->scoutLevel?->name])->all(),
             'achievements' => $achievements->map(fn ($row) => $row->only([
                 'id', 'student_id', 'activity_id', 'coach_id', 'kind', 'title', 'awarded_at',
                 'issuer', 'reference_number', 'notes',
-            ]))->all(),
+            ]) + ['student_name' => $row->student?->name, 'coach_name' => $row->coach?->name])->all(),
             'journals' => $journals->map(fn ($row) => $row->only([
                 'id', 'activity_id', 'status', 'objective', 'material',
                 'activity_description', 'result', 'evaluation', 'follow_up', 'notes',
-            ]))->all(),
+            ]) + ['activity_title' => $row->activity?->title])->all(),
         ];
 
         $document = $publisher->publishBlade(
@@ -330,8 +343,9 @@ class GudepDevelopment extends Component
     {
         return ScoutUnit::query()->where('school_id', $this->schoolId())
             ->where('scout_group_id', $gudepId)
+            ->where('academic_year_id', $this->selectedYear()->id)
             ->whereHas('memberships', fn ($q) => $q->where('student_id', $studentId)->whereNull('left_at'))
-            ->orderByDesc('academic_year_id')->first();
+            ->orderByDesc('id')->first();
     }
 
     private function programQuery()
@@ -401,7 +415,8 @@ class GudepDevelopment extends Component
             ? Student::query()->where('school_id', $schoolId)
                 ->whereHas('scoutUnitMembers', function ($q) use ($gudep): void {
                     $q->whereNull('left_at')->whereHas('scoutUnit',
-                        fn ($unit) => $unit->where('scout_group_id', $gudep->id));
+                        fn ($unit) => $unit->where('scout_group_id', $gudep->id)
+                            ->where('academic_year_id', $this->selectedYear()->id));
                 })->orderBy('name')->get()
             : collect();
 
