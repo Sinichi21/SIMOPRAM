@@ -170,12 +170,37 @@
                     <div class="md:col-span-3"><button class="rounded-lg bg-emerald-700 px-4 py-2 text-sm text-white">Catat Prestasi / Pengembangan</button></div>
                 </form>
             @endif
+            @if (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.development.manage'))
+                <form wire:submit="uploadEvidence" class="mt-4 grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800 md:grid-cols-3">
+                    <label class="text-sm">Prestasi atau pelatihan
+                        <select wire:model="evidenceAchievementId" class="mt-1 w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-900">
+                            <option value="">Pilih catatan</option>
+                            @foreach ($achievements as $record)
+                                <option value="{{ $record->id }}">{{ $record->title }} · {{ $record->awarded_at?->format('d/m/Y') }}</option>
+                            @endforeach
+                        </select>
+                        @error('evidenceAchievementId')<span class="text-red-600">{{ $message }}</span>@enderror
+                    </label>
+                    <label class="text-sm">Piagam/Sertifikat/Bukti (PDF/JPG/PNG, maks. 8 MB)
+                        <input type="file" wire:model="evidenceAttachment" accept=".pdf,.jpg,.jpeg,.png" class="mt-1 block w-full text-sm">
+                        @error('evidenceAttachment')<span class="text-red-600">{{ $message }}</span>@enderror
+                    </label>
+                    <div class="flex items-end">
+                        <button type="submit" wire:loading.attr="disabled" wire:target="evidenceAttachment,uploadEvidence" class="rounded-lg bg-emerald-700 px-4 py-2 text-sm text-white disabled:opacity-60">Arsipkan Bukti</button>
+                    </div>
+                    <p class="text-xs text-zinc-500 md:col-span-3">Bukti disimpan privat dengan checksum SHA-256. Nama bukti tercantum dalam portofolio resmi, tetapi file asli hanya dapat diunduh pengguna berizin.</p>
+                </form>
+            @endif
             <div class="mt-4 overflow-x-auto"><table class="min-w-full text-left text-sm">
                 <thead><tr class="border-b"><th class="p-2">Tanggal</th><th class="p-2">Pencapaian</th><th class="p-2">Penerima</th><th class="p-2">Referensi</th></tr></thead><tbody>
                 @forelse ($achievements as $record)
                     <tr class="border-b border-zinc-100 dark:border-zinc-800">
                         <td class="p-2">{{ $record->awarded_at?->format('d/m/Y') }}</td>
-                        <td class="p-2">{{ $record->title }}<div class="text-xs text-zinc-500">{{ $record->kind }}</div></td>
+                        <td class="p-2">{{ $record->title }}<div class="text-xs text-zinc-500">{{ $record->kind }}</div>
+                        @foreach ($record->evidences as $evidence)
+                            <a class="mt-1 block text-xs font-medium text-emerald-700 hover:underline" href="{{ route('administration.development.evidence.download', $evidence->id) }}">Unduh bukti: {{ $evidence->original_filename }}</a>
+                        @endforeach
+                        </td>
                         <td class="p-2">{{ $record->student?->name ?? $record->coach?->name ?? 'Gudep' }}</td>
                         <td class="p-2">{{ $record->reference_number ?: '-' }}</td>
                     </tr>
