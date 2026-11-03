@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Livewire\Auth\Register;
 use App\Models\School;
+use App\Models\ScoutGroup;
 use App\Models\Student;
 use App\Support\SchoolContext;
 use Illuminate\Database\QueryException;
@@ -119,4 +120,46 @@ class StudentNtaIdentityTest extends TestCase
             ->call('findStudent')
             ->assertSet('matched_student_id', null);
     }
+    public function test_gudep_member_book_prints_nta_before_nis_without_substitution(): void
+    {
+        $school = $this->school();
+        $gudep = ScoutGroup::query()->create([
+            'school_id' => $school->id,
+            'name' => 'Gudep Satu',
+        ]);
+
+        $html = view('reports.pdf.administration.gudep-members', [
+            'gudep' => $gudep,
+            'year' => null,
+            'memberRows' => [
+                [
+                    'name' => 'Anggota Ber-NTA',
+                    'nta' => 'NTA-123',
+                    'nis' => 'NIS-456',
+                    'level' => 'Penggalang',
+                    'formation' => 'Pasukan Satu',
+                    'unit' => 'Regu A',
+                    'position' => 'Anggota',
+                    'joined_at' => '2026-07-01',
+                ],
+                [
+                    'name' => 'Anggota Tanpa NTA',
+                    'nta' => '-',
+                    'nis' => 'NIS-789',
+                    'level' => 'Penggalang',
+                    'formation' => 'Pasukan Satu',
+                    'unit' => 'Regu B',
+                    'position' => 'Anggota',
+                    'joined_at' => '2026-07-01',
+                ],
+            ],
+        ])->render();
+
+        $this->assertLessThan(strpos($html, '<th>NIS</th>'), strpos($html, '<th>NTA</th>'));
+        $this->assertStringContainsString('NTA-123', $html);
+        $this->assertStringContainsString('NIS-456', $html);
+        $this->assertStringContainsString('NIS-789', $html);
+        $this->assertStringContainsString('Anggota Tanpa NTA', $html);
+    }
+
 }
