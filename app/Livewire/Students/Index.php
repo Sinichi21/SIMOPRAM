@@ -35,6 +35,8 @@ class Index extends Component
 
     public ?int $editingId = null;
 
+    public string $nta = '';
+
     public string $nis = '';
 
     public string $nisn = '';
@@ -183,8 +185,10 @@ class Index extends Component
 
             fwrite($output, "\xEF\xBB\xBF");
             fputcsv($output, [
+                'nta',
                 'nis',
                 'nisn',
+                'nta',
                 'nama',
                 'jenis_kelamin',
                 'tempat_lahir',
@@ -201,6 +205,7 @@ class Index extends Component
             fputcsv($output, [
                 '2026001',
                 '0012345678',
+                'NTA-CONTOH-001',
                 'Budi Santoso',
                 'L',
                 'Makassar',
@@ -247,6 +252,15 @@ class Index extends Component
         $schoolId = $this->schoolId();
 
         return [
+            'nta' => [
+                'nullable',
+                'string',
+                'max:100',
+                Rule::unique('students', 'nta')
+                    ->where('school_id', $schoolId)
+                    ->ignore($this->editingId),
+            ],
+
             'nis' => [
                 'required',
                 'string',
@@ -440,6 +454,8 @@ class Index extends Component
         */
 
         $studentData = [
+            'nta' => filled($validated['nta']) ? trim($validated['nta']) : null,
+
             'nis' => trim(
                 $validated['nis']
             ),
@@ -789,6 +805,8 @@ class Index extends Component
 
         $this->editingId =
             $student->id;
+
+        $this->nta = $student->nta ?? '';
 
         $this->nis =
             $student->nis ?? '';
