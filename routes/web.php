@@ -237,6 +237,10 @@ Route::middleware([
             ->middleware('can:roles.manage')
             ->name('roles.index');
 
+        Route::get('/administrasi/organisasi', \App\Livewire\Administration\GudepOrganization::class)
+            ->middleware('can:gudep.view')
+            ->name('administration.organization');
+
         Route::get('/inventaris', Index::class)
             ->middleware('can:inventory.view')
             ->name('inventory.index');
