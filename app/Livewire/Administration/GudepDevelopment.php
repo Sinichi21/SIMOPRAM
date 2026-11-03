@@ -59,6 +59,8 @@ class GudepDevelopment extends Component
 
     public ?int $achievementStudentId = null;
 
+    public ?int $achievementCoachId = null;
+
     public ?int $achievementActivityId = null;
 
     public string $achievementKind = 'achievement';
@@ -215,6 +217,8 @@ class GudepDevelopment extends Component
         $data = $this->validate([
             'achievementStudentId' => ['nullable', 'integer', Rule::exists('students', 'id')
                 ->where('school_id', $this->schoolId())->whereNull('deleted_at')],
+            'achievementCoachId' => ['nullable', 'integer', Rule::exists('coaches', 'id')
+                ->where('school_id', $this->schoolId())->whereNull('deleted_at')],
             'achievementActivityId' => ['nullable', 'integer', Rule::exists('activities', 'id')
                 ->where('school_id', $this->schoolId())->whereNull('deleted_at')],
             'achievementKind' => ['required', Rule::in(['achievement', 'tkk_award', 'development'])],
@@ -229,11 +233,18 @@ class GudepDevelopment extends Component
             $this->assertMember((int) $data['achievementStudentId'], $gudep->id);
         }
 
+        if ($data['achievementKind'] === 'development' && empty($data['achievementCoachId'])) {
+            throw ValidationException::withMessages([
+                'achievementCoachId' => 'Pilih pembina untuk riwayat pengembangan pembina.',
+            ]);
+        }
+
         GudepAchievement::query()->create([
             'school_id' => $this->schoolId(),
             'scout_group_id' => $gudep->id,
             'academic_year_id' => $year->id,
             'student_id' => $data['achievementStudentId'] ?: null,
+            'coach_id' => $data['achievementKind'] === 'development' ? $data['achievementCoachId'] : null,
             'activity_id' => $data['achievementActivityId'] ?: null,
             'kind' => $data['achievementKind'],
             'title' => trim($data['achievementTitle']),
@@ -243,7 +254,7 @@ class GudepDevelopment extends Component
             'notes' => $data['achievementNotes'] ?: null,
         ]);
 
-        $this->reset(['achievementStudentId', 'achievementActivityId', 'achievementTitle',
+        $this->reset(['achievementStudentId', 'achievementCoachId', 'achievementActivityId', 'achievementTitle',
             'issuer', 'referenceNumber', 'achievementNotes']);
         $this->achievementKind = 'achievement';
         $this->awardedAt = now()->toDateString();
@@ -260,7 +271,7 @@ class GudepDevelopment extends Component
         $programs = $this->programQuery()->with(['activity', 'formation'])->orderBy('id')->get();
         $competencies = $this->competencyQuery()->with(['student', 'scoutLevel'])
             ->orderBy('id')->get();
-        $achievements = $this->achievementQuery()->with(['student', 'activity'])
+        $achievements = $this->achievementQuery()->with(['student', 'activity', 'coach'])
             ->orderBy('id')->get();
 
         // The logbook remains a link to the existing journal source, not copied data.
@@ -280,7 +291,7 @@ class GudepDevelopment extends Component
                 'requirement_name', 'status', 'assessed_at', 'notes',
             ]))->all(),
             'achievements' => $achievements->map(fn ($row) => $row->only([
-                'id', 'student_id', 'activity_id', 'kind', 'title', 'awarded_at',
+                'id', 'student_id', 'activity_id', 'coach_id', 'kind', 'title', 'awarded_at',
                 'issuer', 'reference_number', 'notes',
             ]))->all(),
             'journals' => $journals->map(fn ($row) => $row->only([
@@ -413,7 +424,7 @@ class GudepDevelopment extends Component
                 ->orderBy('planned_for')->get() : collect(),
             'competencies' => $gudep && $year ? $this->competencyQuery()->with(['student', 'scoutLevel'])
                 ->orderByDesc('id')->limit(100)->get() : collect(),
-            'achievements' => $gudep && $year ? $this->achievementQuery()->with('student')
+            'achievements' => $gudep && $year ? $this->achievementQuery()->with(['student', 'coach'])
                 ->orderByDesc('awarded_at')->limit(100)->get() : collect(),
         ]);
     }
