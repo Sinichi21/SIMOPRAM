@@ -386,7 +386,8 @@ class GudepOrganization extends Component
                         'formation' => data_get($unit, 'gudepFormation.name', '-'),
                         'level' => data_get($unit, 'scoutLevel.name', '-'),
                         'name' => $student->name,
-                        'member_number' => $student->nis ?? '-',
+                        'nta' => $student->nta ?: '-',
+                        'nis' => $student->nis ?: '-',
                         'position' => $membership->position,
                         'joined_at' => $membership->joined_at?->toDateString(),
                     ];
