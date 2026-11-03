@@ -20,6 +20,7 @@ class Student extends Model
         'user_id',
         'nis',
         'nisn',
+        'nta',
         'name',
         'gender',
         'birth_place',
