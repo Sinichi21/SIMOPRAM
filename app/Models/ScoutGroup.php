@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToSchool;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ScoutGroup extends Model
 {
@@ -33,6 +34,16 @@ class ScoutGroup extends Model
             'inauguration_date' => 'date',
             'is_active' => 'boolean',
         ];
+    }
+
+    public function officers(): HasMany
+    {
+        return $this->hasMany(GudepOfficer::class);
+    }
+
+    public function units(): HasMany
+    {
+        return $this->hasMany(ScoutUnit::class);
     }
 
     public function school()
