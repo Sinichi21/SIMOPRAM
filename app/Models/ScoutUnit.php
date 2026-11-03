@@ -8,6 +8,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property int $id
+ * @property int $school_id
+ * @property int $scout_level_id
+ * @property int $academic_year_id
+ * @property int|null $scout_group_id
+ * @property int|null $gudep_formation_id
+ * @property string $name
+ */
 class ScoutUnit extends Model
 {
     use BelongsToSchool;
@@ -39,6 +48,7 @@ class ScoutUnit extends Model
         );
     }
 
+    /** @return BelongsTo<GudepFormation, $this> */
     public function gudepFormation(): BelongsTo
     {
         return $this->belongsTo(GudepFormation::class);
@@ -49,6 +59,7 @@ class ScoutUnit extends Model
         return $this->belongsTo(ScoutGroup::class);
     }
 
+    /** @return BelongsTo<ScoutLevel, $this> */
     public function scoutLevel(): BelongsTo
     {
         return $this->belongsTo(
@@ -56,6 +67,7 @@ class ScoutUnit extends Model
         );
     }
 
+    /** @return BelongsTo<AcademicYear, $this> */
     public function academicYear(): BelongsTo
     {
         return $this->belongsTo(
@@ -71,6 +83,7 @@ class ScoutUnit extends Model
         );
     }
 
+    /** @return HasMany<ScoutUnitMember, $this> */
     public function memberships(): HasMany
     {
         return $this->hasMany(
