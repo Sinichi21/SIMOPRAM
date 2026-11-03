@@ -6,6 +6,7 @@ use App\Models\AcademicYear;
 use App\Models\Coach;
 use App\Models\GudepFormation;
 use App\Models\GudepOfficer;
+use App\Models\GudepOfficerDocument;
 use App\Models\ScoutGroup;
 use App\Models\ScoutLevel;
 use App\Models\ScoutUnit;
@@ -14,12 +15,22 @@ use App\Services\Documents\OfficialDocumentPublisher;
 use App\Services\ReportVerificationService;
 use App\Support\SchoolContext;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
+use Livewire\WithFileUploads;
+use Throwable;
 
 class GudepOrganization extends Component
 {
+    use WithFileUploads;
+
+    public ?int $skOfficerId = null;
+
+    public $skAttachment = null;
+
     public ?int $scoutGroupId = null;
 
     public ?int $editingOfficerId = null;
@@ -79,6 +90,8 @@ class GudepOrganization extends Component
     {
         $this->editingOfficerId = null;
         $this->unitId = null;
+        $this->skOfficerId = null;
+        $this->skAttachment = null;
         $this->resetOfficer();
     }
 
@@ -148,6 +161,60 @@ class GudepOrganization extends Component
         $this->decreeNumber = $officer->decree_number ?? '';
         $this->decreeDate = $officer->decree_date?->toDateString() ?? '';
         $this->notes = $officer->notes ?? '';
+    }
+
+    public function uploadOfficerSk(): void
+    {
+        $this->authorizeManage();
+        $gudep = $this->selectedGudep();
+
+        $validated = $this->validate([
+            'skOfficerId' => ['required', 'integer',
+                Rule::exists('gudep_officers', 'id')
+                    ->where('school_id', $this->schoolId())
+                    ->where('scout_group_id', $gudep->id)],
+            'skAttachment' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:8192'],
+        ]);
+
+        $officer = GudepOfficer::query()
+            ->where('school_id', $this->schoolId())
+            ->where('scout_group_id', $gudep->id)
+            ->findOrFail((int) $validated['skOfficerId']);
+
+        $file = $this->skAttachment;
+        $hash = hash_file('sha256', $file->getRealPath());
+        $extension = strtolower((string) $file->extension());
+        $directory = 'gudep-officer-sk/'.$this->schoolId().'/'.$gudep->id.'/'.$officer->id;
+        $fileName = (string) Str::uuid().'.'.$extension;
+        $storedPath = $file->storeAs($directory, $fileName, 'local');
+
+        if (! is_string($storedPath)) {
+            throw ValidationException::withMessages([
+                'skAttachment' => 'Arsip SK gagal disimpan.',
+            ]);
+        }
+
+        try {
+            GudepOfficerDocument::query()->create([
+                'school_id' => $this->schoolId(),
+                'scout_group_id' => $gudep->id,
+                'gudep_officer_id' => $officer->id,
+                'original_filename' => $file->getClientOriginalName(),
+                'disk' => 'local',
+                'path' => $storedPath,
+                'mime_type' => $file->getMimeType() ?: 'application/octet-stream',
+                'size_bytes' => $file->getSize(),
+                'sha256' => $hash,
+                'uploaded_by' => auth()->id(),
+            ]);
+        } catch (Throwable $exception) {
+            Storage::disk('local')->delete($storedPath);
+
+            throw $exception;
+        }
+
+        $this->reset(['skOfficerId', 'skAttachment']);
+        session()->flash('status', 'Lampiran SK tersimpan di arsip privat Gudep.');
     }
 
     public function resetOfficer(): void
@@ -434,7 +501,7 @@ class GudepOrganization extends Component
             'officers' => $gudep
                 ? GudepOfficer::query()->where('school_id', $schoolId)
                     ->where('scout_group_id', $gudep->id)
-                    ->with('formation')->orderByDesc('started_at')->get()
+                    ->with(['formation', 'documents'])->orderByDesc('started_at')->get()
                 : collect(),
             'coaches' => Coach::query()->where('school_id', $schoolId)
                 ->where('is_active', true)->orderBy('name')->get(),
