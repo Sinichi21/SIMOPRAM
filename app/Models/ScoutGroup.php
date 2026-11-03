@@ -41,6 +41,11 @@ class ScoutGroup extends Model
         return $this->hasMany(GudepOfficer::class);
     }
 
+    public function formations(): HasMany
+    {
+        return $this->hasMany(GudepFormation::class);
+    }
+
     public function units(): HasMany
     {
         return $this->hasMany(ScoutUnit::class);
