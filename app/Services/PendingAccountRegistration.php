@@ -25,7 +25,7 @@ class PendingAccountRegistration
                 $identifier = trim($data['student_identifier']);
                 $student = Student::query()->where('school_id', $school->id)
                     ->where('status', 'active')->whereNull('user_id')
-                    ->where(fn ($query) => $query->where('nis', $identifier)->orWhere('nisn', $identifier))
+                    ->where(fn ($query) => $query->where('nta', $identifier)->orWhere('nis', $identifier)->orWhere('nisn', $identifier))
                     ->lockForUpdate()->first();
                 if (! $student) {
                     throw ValidationException::withMessages(['student_identifier' => 'Data siswa tidak tersedia atau sudah terhubung ke akun lain.']);
