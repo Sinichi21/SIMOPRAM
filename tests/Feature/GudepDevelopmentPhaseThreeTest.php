@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Administration\GudepDevelopment;
+use App\Models\Activity;
 use App\Models\AcademicYear;
 use App\Models\GudepAchievement;
 use App\Models\GudepCompetencyRecord;
@@ -308,6 +309,52 @@ class GudepDevelopmentPhaseThreeTest extends TestCase
             ->assertHasErrors(['achievementStudentId']);
 
         $this->assertDatabaseCount('gudep_achievements', 0);
+    }
+
+    public function test_coach_development_requires_an_existing_coach(): void
+    {
+        [, $gudep, $year] = $this->context();
+
+        Livewire::test(GudepDevelopment::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->set('achievementKind', 'development')
+            ->set('achievementTitle', 'Kursus Pembina')
+            ->set('awardedAt', '2026-10-01')
+            ->call('saveAchievement')
+            ->assertHasErrors(['achievementCoachId']);
+
+        $this->assertSame(0, GudepAchievement::query()->count());
+    }
+
+    public function test_program_cannot_link_an_activity_from_a_different_academic_year(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+        $otherYear = AcademicYear::query()->create([
+            'school_id' => $school->id,
+            'name' => '2025/2026',
+            'start_date' => '2025-07-01',
+            'end_date' => '2026-06-30',
+            'is_active' => false,
+        ]);
+        $activity = Activity::query()->create([
+            'school_id' => $school->id,
+            'academic_year_id' => $otherYear->id,
+            'title' => 'Latihan Tahun Lalu',
+            'start_at' => '2026-05-01 08:00:00',
+            'end_at' => '2026-05-01 09:00:00',
+            'status' => 'completed',
+        ]);
+
+        Livewire::test(GudepDevelopment::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->set('programTitle', 'Program Baru')
+            ->set('programActivityId', $activity->id)
+            ->call('saveProgram')
+            ->assertHasErrors(['programActivityId']);
+
+        $this->assertDatabaseCount('gudep_work_programs', 0);
     }
 
 }
