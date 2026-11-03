@@ -109,7 +109,8 @@ class Register extends Component
             ->where('status', 'active')
             ->whereNull('user_id')
             ->where(function ($query) use ($identifier): void {
-                $query->where('nis', $identifier)
+                $query->where('nta', $identifier)
+                    ->orWhere('nis', $identifier)
                     ->orWhere('nisn', $identifier);
             })
             ->first();
@@ -227,9 +228,9 @@ class Register extends Component
             'role.required' => 'Pilih jenis akun terlebih dahulu.',
             'role.in' => 'Jenis akun yang dipilih tidak diizinkan.',
             'school_id.required' => 'Pilih sekolah terlebih dahulu.',
-            'matched_student_id.required' => 'Data siswa tidak ditemukan. Pastikan sekolah dan NIS/NISN sudah benar.',
+            'matched_student_id.required' => 'Data siswa tidak ditemukan. Pastikan sekolah dan NTA/NIS/NISN sudah benar.',
             'matched_student_id.exists' => 'Data siswa tidak tersedia atau sudah terhubung ke akun lain.',
-            'student_identifier.required' => 'NIS atau NISN wajib diisi.',
+            'student_identifier.required' => 'NTA, NIS, atau NISN wajib diisi.',
             'coach_position.required' => 'Jabatan pembina wajib diisi.',
             'admin_position.required' => 'Jabatan di sekolah wajib diisi.',
             'phone.required' => 'Nomor telepon wajib diisi untuk jenis akun ini.',
