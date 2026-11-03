@@ -188,7 +188,15 @@
                        md:grid-cols-2"
             >
 
-                {{-- NIS --}}
+                {{-- Nomor Tanda Anggota Pramuka --}}
+                <div>
+                    <label class="mb-1 block text-sm font-medium">NTA (Nomor Tanda Anggota Pramuka)</label>
+                    <input type="text" wire:model="nta" maxlength="100" placeholder="Opsional jika belum diterbitkan" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
+                    <p class="mt-1 text-xs text-zinc-500">Identitas utama dalam dokumen Pramuka. Tidak menggantikan NIS atau NISN sekolah.</p>
+                    @error('nta') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
+                </div>
+
+                {{-- NIS (tetap dipertahankan) --}}
                 <div>
                     <label
                         class="mb-1 block
@@ -952,7 +960,7 @@
                         </th>
 
                         <th class="p-3">
-                            NIS
+                            NTA / NIS
                         </th>
 
                         <th class="p-3">
@@ -1028,7 +1036,8 @@
 
 
                             <td class="p-3">
-                                {{ $student->nis }}
+                                <div class="font-medium">NTA: {{ $student->nta ?: 'Belum tersedia' }}</div>
+                                <div class="mt-1 text-xs text-zinc-500">NIS: {{ $student->nis ?: '-' }}</div>
                             </td>
 
 
