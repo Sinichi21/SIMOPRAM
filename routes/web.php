@@ -168,6 +168,17 @@ Route::middleware([
             'dashboard'
         );
 
+    // Phase 0: modular workspaces; existing module routes remain unchanged.
+    Route::view('/modul', 'modules.portal')->name('modules.portal');
+
+    Route::get('/modul/{module}', function (string $module) {
+        $workspace = \\App\\Support\\ModuleWorkspace::find($module);
+        abort_unless($workspace, 404);
+        abort_unless(\\App\\Support\\ModuleWorkspace::permitted(auth()->user(), $workspace), 403);
+
+        return view('modules.workspace', compact('workspace'));
+    })->middleware('school.required')->name('modules.show');
+
     /*
     |--------------------------------------------------------------------------
     | Switch Sekolah / Global
