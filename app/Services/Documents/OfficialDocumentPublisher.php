@@ -162,7 +162,7 @@ final class OfficialDocumentPublisher
                     documentNumber: $documentNumber,
                     title: $title,
                     metadata: $metadata,
-                    issuedBy: $issuedBy ?? auth()->id(),
+                    issuedBy: $issuedBy ?? (auth()->id() !== null ? (int) auth()->id() : null),
                 );
 
                 $binary = $renderPdf($created);
