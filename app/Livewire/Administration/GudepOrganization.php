@@ -135,7 +135,7 @@ class GudepOrganization extends Component
         $officer = GudepOfficer::query()->where('school_id', $this->schoolId())
             ->where('scout_group_id', $this->selectedGudep()->id)->find($id);
 
-        abort_unless($officer, 404);
+        abort_unless($officer !== null, 404);
 
         $this->editingOfficerId = $officer->id;
         $this->coachId = $officer->coach_id;
@@ -179,7 +179,7 @@ class GudepOrganization extends Component
             'formationNotes' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        $level = ScoutLevel::query()->findOrFail($validated['formationScoutLevelId']);
+        $level = ScoutLevel::query()->findOrFail((int) $validated['formationScoutLevelId']);
         $type = match (strtoupper($level->code)) {
             'SIAGA' => 'perindukan',
             'PENGGALANG' => 'pasukan',
@@ -187,7 +187,7 @@ class GudepOrganization extends Component
             'PANDEGA' => 'racana',
             default => null,
         };
-        abort_unless($type, 422, 'Golongan satuan tidak didukung.');
+        abort_unless($type !== null, 422, 'Golongan satuan tidak didukung.');
 
         GudepFormation::query()->create([
             'school_id' => $this->schoolId(),
@@ -219,10 +219,10 @@ class GudepOrganization extends Component
         ]);
 
         $unit = ScoutUnit::query()->where('school_id', $this->schoolId())
-            ->whereNull('scout_group_id')->findOrFail($validated['unitId']);
+            ->whereNull('scout_group_id')->findOrFail((int) $validated['unitId']);
         $formation = $validated['unitFormationId']
             ? GudepFormation::query()->where('school_id', $this->schoolId())
-                ->where('scout_group_id', $gudep->id)->findOrFail($validated['unitFormationId'])
+                ->where('scout_group_id', $gudep->id)->findOrFail((int) $validated['unitFormationId'])
             : null;
 
         if ($formation && ((int) $formation->scout_level_id !== (int) $unit->scout_level_id
@@ -298,13 +298,15 @@ class GudepOrganization extends Component
         $memberRows = [];
         foreach ($units as $unit) {
             foreach ($unit->memberships->whereNull('left_at') as $membership) {
-                if ($membership->student && (int) $membership->student->school_id === $this->schoolId()) {
+                /** @var ScoutUnitMember $membership */
+                $student = $membership->student;
+                if ($student !== null && (int) $student->school_id === $this->schoolId()) {
                     $memberRows[] = [
                         'unit' => $unit->name,
                         'formation' => $unit->gudepFormation?->name ?? '-',
                         'level' => $unit->scoutLevel?->name ?? '-',
-                        'name' => $membership->student->name,
-                        'member_number' => $membership->student->nis ?? '-',
+                        'name' => $student->name,
+                        'member_number' => $student->nis ?? '-',
                         'position' => $membership->position,
                         'joined_at' => $membership->joined_at?->toDateString(),
                     ];
@@ -379,14 +381,14 @@ class GudepOrganization extends Component
     private function schoolId(): int
     {
         $id = app(SchoolContext::class)->id();
-        abort_unless($id, 409, 'Pilih sekolah aktif terlebih dahulu.');
+        abort_unless($id !== null, 409, 'Pilih sekolah aktif terlebih dahulu.');
 
         return (int) $id;
     }
 
     private function selectedGudep(): ScoutGroup
     {
-        abort_unless($this->scoutGroupId, 422, 'Pilih Gudep terlebih dahulu.');
+        abort_unless($this->scoutGroupId !== null, 422, 'Pilih Gudep terlebih dahulu.');
 
         return ScoutGroup::query()->where('school_id', $this->schoolId())
             ->findOrFail($this->scoutGroupId);
