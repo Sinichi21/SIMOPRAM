@@ -26,8 +26,14 @@ class PendingAccountRegistration
                 $student = Student::query()->where('school_id', $school->id)
                     ->where('status', 'active')->whereNull('user_id')
                     ->where(fn ($query) => $query->where('nta', $identifier)->orWhere('nis', $identifier)->orWhere('nisn', $identifier))
-                    ->lockForUpdate()->first();
-                if (! $student) {
+                    ->lockForUpdate()->limit(2)->get();
+                if ($student->count() !== 1) {
+                    throw ValidationException::withMessages([
+                        'student_identifier' => 'Nomor identitas tidak ditemukan atau ambigu. Hubungi admin sekolah.',
+                    ]);
+                }
+                $student = $student->first();
+                if ($student === null) {
                     throw ValidationException::withMessages(['student_identifier' => 'Data siswa tidak tersedia atau sudah terhubung ke akun lain.']);
                 }
                 $name = $student->name;
