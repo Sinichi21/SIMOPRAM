@@ -408,7 +408,7 @@ class GudepDevelopment extends Component
     private function authorizeManage(): void
     {
         $this->authorizeView();
-        abort_unless(auth()->user()?->can('gudep.manage'), 403);
+        abort_unless(auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.development.manage'), 403);
     }
 
     public function render(): View
