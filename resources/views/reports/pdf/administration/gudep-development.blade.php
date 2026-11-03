@@ -29,7 +29,11 @@
 <table style="width:100%;border-collapse:collapse;font-size:8pt;" border="1" cellpadding="5">
     <thead><tr><th>No.</th><th>Tanggal</th><th>Jenis</th><th>Prestasi/Pelatihan</th><th>Penerima</th><th>Referensi</th></tr></thead><tbody>
     @forelse ($achievements as $row)
-        <tr><td>{{ $loop->iteration }}</td><td>{{ $row->awarded_at?->format('d/m/Y') }}</td><td>{{ $row->kind }}</td><td>{{ $row->title }}</td>
+        <tr><td>{{ $loop->iteration }}</td><td>{{ $row->awarded_at?->format('d/m/Y') }}</td><td>{{ $row->kind }}</td><td>{{ $row->title }}
+                @foreach ($row->evidences as $evidence)
+                    <div style="font-size:7pt;">Bukti: {{ $evidence->original_filename }} (SHA-256: {{ substr($evidence->sha256, 0, 12) }}…)</div>
+                @endforeach
+            </td>
             <td>{{ $row->student?->name ?? $row->coach?->name ?? 'Gudep' }}</td><td>{{ $row->reference_number ?: '-' }}</td></tr>
     @empty
         <tr><td colspan="6">Belum ada prestasi/pengembangan.</td></tr>
