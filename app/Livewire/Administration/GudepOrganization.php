@@ -178,7 +178,7 @@ class GudepOrganization extends Component
             ->where('school_id', $this->schoolId())
             ->where('scout_group_id', $gudep->id)
             ->when($year, fn ($q) => $q->where('academic_year_id', $year->id))
-            ->with(['scoutLevel', 'memberships.student'])
+            ->with(['scoutLevel', 'academicYear', 'memberships.student'])
             ->orderBy('scout_level_id')->orderBy('name')->get();
 
         $officers = GudepOfficer::query()->where('school_id', $this->schoolId())
@@ -221,6 +221,7 @@ class GudepOrganization extends Component
             'units' => $units->map(fn ($unit) => [
                 'id' => $unit->id, 'name' => $unit->name,
                 'level' => $unit->scoutLevel?->name,
+                'academic_year' => $unit->academicYear?->name,
             ])->all(),
             'officers' => $officers->map(fn ($officer) => $officer->only([
                 'id', 'scope', 'position', 'person_name', 'started_at',
