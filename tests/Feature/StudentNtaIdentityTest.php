@@ -5,10 +5,9 @@ namespace Tests\Feature;
 use App\Livewire\Auth\Register;
 use App\Models\School;
 use App\Models\Student;
-use App\Models\User;
 use App\Support\SchoolContext;
-use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Database\QueryException;
 use Livewire\Livewire;
 use Tests\TestCase;
 
