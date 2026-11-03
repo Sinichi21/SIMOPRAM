@@ -59,6 +59,28 @@ final class ModuleWorkspace
         ];
     }
 
+    public static function activeSlug(): ?string
+    {
+        if (request()->routeIs('modules.show')) {
+            return (string) request()->route('module');
+        }
+
+        $routes = [
+            'administrasi' => ['scout-groups.*', 'letters.*', 'reports.published-documents.*'],
+            'inventaris' => ['inventory.*'],
+            'kegiatan' => ['activities.*', 'journals.*'],
+            'keanggotaan' => ['students.*', 'coaches.*', 'scout-units.*'],
+        ];
+
+        foreach ($routes as $slug => $patterns) {
+            if (request()->routeIs(...$patterns)) {
+                return $slug;
+            }
+        }
+
+        return null;
+    }
+
     public static function find(string $slug): ?array
     {
         $modules = self::all();
