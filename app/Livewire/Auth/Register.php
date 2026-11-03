@@ -113,9 +113,21 @@ class Register extends Component
                     ->orWhere('nis', $identifier)
                     ->orWhere('nisn', $identifier);
             })
-            ->first();
+            ->limit(2)
+            ->get();
 
-        if (! $student) {
+        // A number may be one student's NTA and another student's NIS.
+        // Never silently select an arbitrary person in this situation.
+        if ($student->count() !== 1) {
+            $this->name = '';
+            $this->resetValidation('matched_student_id');
+
+            return;
+        }
+
+        $student = $student->first();
+
+        if ($student === null) {
             $this->name = '';
             $this->resetValidation('matched_student_id');
 
