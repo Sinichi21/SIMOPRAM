@@ -26,6 +26,10 @@
 @empty<tr><td colspan="7">Belum ada transaksi terposting.</td></tr>@endforelse
 </tbody></table>
 <p>Saldo awal: Rp {{ number_format($openingBalance, 0, ',', '.') }}</p>
+@if ($reconciliation)
+<p>Rekonsiliasi terakhir: saldo buku Rp {{ number_format($reconciliation->book_balance, 0, ',', '.') }}, kas fisik Rp {{ number_format($reconciliation->counted_cash, 0, ',', '.') }}, selisih Rp {{ number_format($reconciliation->difference, 0, ',', '.') }}</p>
+<p style="font-size:7pt;">Rekonsiliasi ID #{{ $reconciliation->id }}, checksum buku {{ $reconciliation->ledger_checksum }}</p>
+@endif
 <p>Total penerimaan: Rp {{ number_format($income, 0, ',', '.') }}</p>
 <p>Total pengeluaran: Rp {{ number_format($expense, 0, ',', '.') }}</p>
 <p>Saldo berjalan: Rp {{ number_format($openingBalance + $income - $expense, 0, ',', '.') }}</p>
