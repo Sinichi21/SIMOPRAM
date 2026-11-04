@@ -29,6 +29,7 @@ use App\Http\Controllers\SchoolSwitchController;
 use App\Http\Controllers\StudentDocumentController;
 use App\Http\Middleware\SetGlobalContentContext;
 use App\Livewire\Administration\GudepDevelopment;
+use App\Livewire\Administration\GudepFinance;
 use App\Livewire\Administration\GudepOperations;
 use App\Livewire\Administration\GudepOrganization;
 use App\Livewire\Auth\Register;
@@ -247,6 +248,10 @@ Route::middleware([
             ->whereNumber('evidence')
             ->middleware(['can:gudep.view', 'throttle:30,1'])
             ->name('administration.development.evidence.download');
+
+        Route::get('/administrasi/keuangan-sarana', GudepFinance::class)
+            ->middleware('can:gudep.finance.view')
+            ->name('administration.finance');
 
         Route::get('/administrasi/operasional', GudepOperations::class)
             ->middleware('can:gudep.view')
