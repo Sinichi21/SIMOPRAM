@@ -391,7 +391,6 @@ class GudepFinance extends Component
             'receiptAttachment' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:8192'],
         ]);
 
-        $this->lockOpenPeriod();
         $entry = $this->cashEntries()->findOrFail((int) $validated['receiptCashEntryId']);
         $file = $this->receiptAttachment;
         $temp = $file->getRealPath();
@@ -419,18 +418,21 @@ class GudepFinance extends Component
         }
 
         try {
-            GudepCashEvidence::query()->create([
-                'school_id' => $this->schoolId(),
-                'scout_group_id' => $gudep->id,
-                'gudep_cash_entry_id' => $entry->id,
-                'uploaded_by' => auth()->id(),
-                'original_filename' => $file->getClientOriginalName(),
-                'disk' => 'local',
-                'path' => $path,
-                'mime_type' => $file->getMimeType() ?: 'application/octet-stream',
-                'size_bytes' => (int) $file->getSize(),
-                'sha256' => $hash,
-            ]);
+            DB::transaction(function () use ($entry, $gudep, $file, $path, $hash): void {
+                $this->lockOpenPeriod();
+                GudepCashEvidence::query()->create([
+                    'school_id' => $this->schoolId(),
+                    'scout_group_id' => $gudep->id,
+                    'gudep_cash_entry_id' => $entry->id,
+                    'uploaded_by' => auth()->id(),
+                    'original_filename' => $file->getClientOriginalName(),
+                    'disk' => 'local',
+                    'path' => $path,
+                    'mime_type' => $file->getMimeType() ?: 'application/octet-stream',
+                    'size_bytes' => (int) $file->getSize(),
+                    'sha256' => $hash,
+                ]);
+            });
         } catch (Throwable $exception) {
             Storage::disk('local')->delete($path);
 
