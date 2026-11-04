@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Support\SchoolContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Livewire\Features\SupportTesting\Testable;
 use Tests\TestCase;
 
 class GudepCashReconciliationTest extends TestCase
@@ -36,7 +37,7 @@ class GudepCashReconciliationTest extends TestCase
         return [$school, $gudep, $year];
     }
 
-    private function component(ScoutGroup $gudep, AcademicYear $year): \Livewire\Features\SupportTesting\Testable
+    private function component(ScoutGroup $gudep, AcademicYear $year): Testable
     {
         return Livewire::test(GudepFinance::class)
             ->set('scoutGroupId', $gudep->id)
