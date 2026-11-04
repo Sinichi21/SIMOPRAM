@@ -34,6 +34,12 @@ class GudepCashEntry extends Model
         return $this->belongsTo(self::class, 'reversal_of_id');
     }
 
+    /** @return HasMany<GudepCashEntry, $this> */
+    public function reversals(): HasMany
+    {
+        return $this->hasMany(self::class, 'reversal_of_id');
+    }
+
     /** @return HasMany<GudepCashEvidence, $this> */
     public function evidences(): HasMany
     {
