@@ -172,6 +172,30 @@
             @endif
         </section>
 
+        @if ($closeDecisions->isNotEmpty())
+            <section aria-labelledby="cash-decision-history-heading" class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                <h2 id="cash-decision-history-heading" class="text-base font-semibold">Riwayat permohonan & keputusan tutup buku</h2>
+                <p class="mt-1 text-xs text-zinc-500">Riwayat tersimpan permanen, termasuk permohonan yang pernah ditolak (30 peristiwa terbaru).</p>
+                <div class="mt-3 overflow-x-auto">
+                    <table class="min-w-full text-left text-sm">
+                        <thead><tr class="border-b border-zinc-200 text-zinc-500 dark:border-zinc-700">
+                            <th class="py-2 pr-3">Waktu</th><th class="py-2 pr-3">Keputusan</th><th class="py-2 pr-3">Pelaksana</th><th class="py-2">Catatan</th>
+                        </tr></thead>
+                        <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                            @foreach ($closeDecisions as $decision)
+                                <tr>
+                                    <td class="whitespace-nowrap py-2 pr-3">{{ $decision->decided_at?->format('d/m/Y H:i') }}</td>
+                                    <td class="py-2 pr-3 font-medium">{{ ['requested' => 'Diajukan', 'approved' => 'Disetujui', 'rejected' => 'Ditolak'][$decision->action] ?? $decision->action }}</td>
+                                    <td class="py-2 pr-3">User #{{ $decision->actor_id ?? '-' }}</td>
+                                    <td class="py-2">{{ $decision->notes ?: '-' }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        @endif
+
         {{-- Budget --}}
         <section id="anggaran" aria-labelledby="finance-budget-heading" class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <div class="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 px-4 py-5 dark:border-zinc-800 sm:px-6">
