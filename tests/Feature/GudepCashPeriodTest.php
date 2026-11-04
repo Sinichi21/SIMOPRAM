@@ -58,7 +58,7 @@ class GudepCashPeriodTest extends TestCase
         ]);
     }
 
-    private function component(int $gudepId, int $yearId): Testable
+    private function financeComponent(int $gudepId, int $yearId): Testable
     {
         return Livewire::test(GudepFinance::class)
             ->set('scoutGroupId', $gudepId)
@@ -80,7 +80,7 @@ class GudepCashPeriodTest extends TestCase
 
     private function reconcile(int $gudepId, int $yearId, int $countedCash): void
     {
-        $this->component($gudepId, $yearId)
+        $this->financeComponent($gudepId, $yearId)
             ->set('countedCashInput', (string) $countedCash)
             ->set('reconciliationNotesInput', 'Kas fisik dihitung dan dicocokkan.')
             ->call('reconcileCash')
@@ -91,7 +91,7 @@ class GudepCashPeriodTest extends TestCase
     {
         [$school, $gudep, $year] = $this->context();
 
-        $this->component($gudep->id, $year->id)
+        $this->financeComponent($gudep->id, $year->id)
             ->set('openingBalanceInput', '100000')
             ->call('saveOpeningBalance')
             ->assertHasNoErrors()
@@ -101,7 +101,7 @@ class GudepCashPeriodTest extends TestCase
         $this->assertSame('open', $period->status);
         $this->assertSame(100000, $period->opening_balance);
 
-        $this->component($gudep->id, $year->id)
+        $this->financeComponent($gudep->id, $year->id)
             ->set('openingBalanceInput', '150000')
             ->call('saveOpeningBalance')
             ->assertStatus(409);
@@ -114,7 +114,7 @@ class GudepCashPeriodTest extends TestCase
         [$school, $gudep, $year] = $this->context();
         $this->cash($school->id, $gudep->id, $year->id);
 
-        $this->component($gudep->id, $year->id)
+        $this->financeComponent($gudep->id, $year->id)
             ->set('openingBalanceInput', '50000')
             ->call('saveOpeningBalance')
             ->assertStatus(409);
@@ -125,7 +125,7 @@ class GudepCashPeriodTest extends TestCase
         [$school, $gudep, $year] = $this->context();
         $this->cash($school->id, $gudep->id, $year->id);
 
-        $this->component($gudep->id, $year->id)
+        $this->financeComponent($gudep->id, $year->id)
             ->set('openingBalanceInput', '0')
             ->call('saveOpeningBalance')
             ->assertHasNoErrors()
@@ -133,7 +133,7 @@ class GudepCashPeriodTest extends TestCase
 
         $this->reconcile($gudep->id, $year->id, 25000);
 
-        $this->component($gudep->id, $year->id)
+        $this->financeComponent($gudep->id, $year->id)
             ->set('closingNotesInput', 'Buku kas warisan telah diverifikasi.')
             ->call('closeCashPeriod')
             ->assertHasNoErrors();
@@ -147,18 +147,18 @@ class GudepCashPeriodTest extends TestCase
     {
         [$school, $gudep, $year] = $this->context();
 
-        $this->component($gudep->id, $year->id)
+        $this->financeComponent($gudep->id, $year->id)
             ->set('closingNotesInput', 'Kas tahunan telah diperiksa.')
             ->call('closeCashPeriod')
             ->assertStatus(409);
 
-        $this->component($gudep->id, $year->id)
+        $this->financeComponent($gudep->id, $year->id)
             ->set('openingBalanceInput', '0')
             ->call('saveOpeningBalance')
             ->assertHasNoErrors();
 
         $draft = $this->cash($school->id, $gudep->id, $year->id, 'draft');
-        $this->component($gudep->id, $year->id)
+        $this->financeComponent($gudep->id, $year->id)
             ->set('closingNotesInput', 'Kas tahunan telah diperiksa.')
             ->call('closeCashPeriod')
             ->assertStatus(409);
@@ -171,7 +171,7 @@ class GudepCashPeriodTest extends TestCase
     {
         [$school, $gudep, $year] = $this->context();
 
-        $this->component($gudep->id, $year->id)
+        $this->financeComponent($gudep->id, $year->id)
             ->set('openingBalanceInput', '75000')
             ->call('saveOpeningBalance')
             ->assertHasNoErrors();
@@ -180,7 +180,7 @@ class GudepCashPeriodTest extends TestCase
 
         $this->reconcile($gudep->id, $year->id, 100000);
 
-        $this->component($gudep->id, $year->id)
+        $this->financeComponent($gudep->id, $year->id)
             ->set('closingNotesInput', 'Buku kas telah diperiksa dan ditutup.')
             ->call('closeCashPeriod')
             ->assertHasNoErrors();
@@ -192,7 +192,7 @@ class GudepCashPeriodTest extends TestCase
         $this->assertSame(100000, $period->closing_balance);
         $this->assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $period->closing_checksum);
 
-        $this->component($gudep->id, $year->id)
+        $this->financeComponent($gudep->id, $year->id)
             ->set('cashDirection', 'expense')
             ->set('cashCategory', 'ATK')
             ->set('cashDate', '2026-11-02')
@@ -201,20 +201,20 @@ class GudepCashPeriodTest extends TestCase
             ->call('saveCash')
             ->assertStatus(409);
 
-        $this->component($gudep->id, $year->id)
+        $this->financeComponent($gudep->id, $year->id)
             ->set('budgetCategory', 'Latihan')
             ->set('budgetAmount', '50000')
             ->call('saveBudget')
             ->assertStatus(409);
 
         $entry = GudepCashEntry::query()->firstOrFail();
-        $this->component($gudep->id, $year->id)
+        $this->financeComponent($gudep->id, $year->id)
             ->call('selectCashForReversal', $entry->id)
             ->set('reversalReason', 'Koreksi karena data tercatat salah.')
             ->call('reverseCash')
             ->assertStatus(409);
 
-        $this->component($gudep->id, $year->id)
+        $this->financeComponent($gudep->id, $year->id)
             ->set('closingNotesInput', 'Permintaan penutupan ulang buku kas.')
             ->call('closeCashPeriod')
             ->assertStatus(409);
@@ -228,12 +228,12 @@ class GudepCashPeriodTest extends TestCase
         [$school, $gudep, $year] = $this->context();
         $other = ScoutGroup::query()->create(['school_id' => $school->id, 'name' => 'Gudep Kedua']);
 
-        $this->component($gudep->id, $year->id)
+        $this->financeComponent($gudep->id, $year->id)
             ->set('openingBalanceInput', '12000')
             ->call('saveOpeningBalance')
             ->assertHasNoErrors();
 
-        $this->component($other->id, $year->id)
+        $this->financeComponent($other->id, $year->id)
             ->assertViewHas('openingBalance', 0);
 
         $this->assertSame(1, GudepCashPeriod::query()->count());
@@ -244,11 +244,11 @@ class GudepCashPeriodTest extends TestCase
         Storage::fake('local');
         [$school, $gudep, $year] = $this->context();
 
-        $publish = fn () => $this->component($gudep->id, $year->id)
+        $publish = fn () => $this->financeComponent($gudep->id, $year->id)
             ->call('publishCashBook')
             ->assertHasNoErrors();
 
-        $this->component($gudep->id, $year->id)
+        $this->financeComponent($gudep->id, $year->id)
             ->set('openingBalanceInput', '20000')
             ->call('saveOpeningBalance')
             ->assertHasNoErrors();
@@ -259,7 +259,7 @@ class GudepCashPeriodTest extends TestCase
 
         $this->reconcile($gudep->id, $year->id, 20000);
 
-        $this->component($gudep->id, $year->id)
+        $this->financeComponent($gudep->id, $year->id)
             ->set('closingNotesInput', 'Periode tahunan ditutup secara resmi.')
             ->call('closeCashPeriod')
             ->assertHasNoErrors();
