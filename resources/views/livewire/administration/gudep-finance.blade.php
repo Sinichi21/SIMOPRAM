@@ -124,6 +124,8 @@
                         <tr>
                             <th scope="col" class="px-4 py-3 font-semibold sm:px-6">Kategori</th>
                             <th scope="col" class="px-4 py-3 text-right font-semibold">Alokasi</th>
+                            <th scope="col" class="px-4 py-3 text-right font-semibold">Realisasi</th>
+                            <th scope="col" class="px-4 py-3 text-right font-semibold">Sisa / Selisih</th>
                             <th scope="col" class="hidden px-4 py-3 font-semibold md:table-cell sm:px-6">Keterangan</th>
                         </tr>
                     </thead>
@@ -131,15 +133,22 @@
                         @forelse ($budgets as $budget)
                             <tr>
                                 <td class="px-4 py-3 font-medium sm:px-6">{{ $budget->category }}</td>
+                                @php
+                                    $realized = (int) ($expenseByCategory[$budget->category] ?? 0);
+                                    $remaining = (int) $budget->allocated_amount - $realized;
+                                @endphp
                                 <td class="whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums">Rp {{ number_format($budget->allocated_amount, 0, ',', '.') }}</td>
+                                <td class="whitespace-nowrap px-4 py-3 text-right tabular-nums">Rp {{ number_format($realized, 0, ',', '.') }}</td>
+                                <td class="whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums {{ $remaining < 0 ? 'text-red-600 dark:text-red-400' : 'text-zinc-900 dark:text-zinc-100' }}">Rp {{ number_format($remaining, 0, ',', '.') }}</td>
                                 <td class="hidden px-4 py-3 text-zinc-500 dark:text-zinc-400 md:table-cell sm:px-6">{{ $budget->notes ?: '-' }}</td>
                             </tr>
                         @empty
-                            <tr><td colspan="3" class="px-4 py-8 text-center text-zinc-500">Belum ada anggaran untuk tahun ajaran ini.</td></tr>
+                            <tr><td colspan="5" class="px-4 py-8 text-center text-zinc-500">Belum ada anggaran untuk tahun ajaran ini.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
+            <p class="border-t border-zinc-100 px-4 py-3 text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400 sm:px-6">Realisasi adalah seluruh pengeluaran yang sudah diposting pada kategori yang persis sama. Pengeluaran tanpa kategori anggaran tetap tercatat dalam Buku Kas, tetapi tidak masuk salah satu baris anggaran.</p>
         </section>
 
         {{-- Cash ledger --}}
@@ -234,6 +243,36 @@
                 </details>
             @endif
 
+            @if (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage'))
+                <details class="group border-b border-zinc-100 dark:border-zinc-800">
+                    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-sm font-semibold text-emerald-700 hover:bg-zinc-50 dark:text-emerald-400 dark:hover:bg-zinc-800/50 sm:px-6">
+                        <span>Lampirkan nota atau kuitansi</span>
+                        <span aria-hidden="true" class="text-lg transition-transform group-open:rotate-45">+</span>
+                    </summary>
+                    <form wire:submit="uploadCashEvidence" class="grid gap-4 bg-zinc-50/60 px-4 pb-5 pt-3 dark:bg-zinc-800/30 sm:px-6 md:grid-cols-3">
+                        <div>
+                            <label for="finance-receipt-entry" class="mb-1.5 block text-sm font-medium">Transaksi kas</label>
+                            <select id="finance-receipt-entry" wire:model="receiptCashEntryId" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+                                <option value="">Pilih transaksi</option>
+                                @foreach ($entries as $entry)
+                                    <option value="{{ $entry->id }}">{{ $entry->occurred_at?->format('d/m/Y') }} · {{ $entry->description }} · Rp {{ number_format($entry->amount, 0, ',', '.') }}</option>
+                                @endforeach
+                            </select>
+                            @error('receiptCashEntryId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label for="finance-receipt-file" class="mb-1.5 block text-sm font-medium">Bukti PDF/JPG/PNG (maks. 8 MB)</label>
+                            <input id="finance-receipt-file" type="file" wire:model="receiptAttachment" accept=".pdf,.jpg,.jpeg,.png" class="block w-full text-sm">
+                            @error('receiptAttachment') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                        </div>
+                        <div class="flex items-end">
+                            <button type="submit" wire:loading.attr="disabled" wire:target="receiptAttachment,uploadCashEvidence" class="rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50">Arsipkan bukti</button>
+                        </div>
+                        <p class="text-xs text-zinc-500 dark:text-zinc-400 md:col-span-3">Lampiran tersimpan privat. Mengunggah bukti baru tidak menghapus bukti sebelumnya. Pilih transaksi dari daftar yang sedang ditampilkan.</p>
+                    </form>
+                </details>
+            @endif
+
             <div class="space-y-3 border-b border-zinc-100 px-4 py-4 dark:border-zinc-800 sm:px-6">
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <div class="sm:col-span-2">
@@ -285,6 +324,9 @@
                                 <td class="px-4 py-4">
                                     <p class="font-medium text-zinc-900 dark:text-zinc-100">{{ $entry->description }}</p>
                                     <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ $entry->category }} @if ($entry->reference_number) · {{ $entry->reference_number }} @endif</p>
+                                    @foreach ($entry->evidences as $evidence)
+                                        <a href="{{ route('administration.finance.evidence.download', $evidence->id) }}" class="mt-1 block text-xs font-medium text-emerald-700 hover:underline dark:text-emerald-400">Bukti: {{ $evidence->original_filename }}</a>
+                                    @endforeach
                                 </td>
                                 <td class="px-4 py-4">
                                     @if ($entry->direction === 'income')
