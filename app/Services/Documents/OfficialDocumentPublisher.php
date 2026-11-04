@@ -6,8 +6,8 @@ use App\Models\ReportVerification;
 use App\Models\School;
 use App\Services\ReportVerificationService;
 use App\Support\SchoolContext;
-use Closure;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Closure;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -30,9 +30,9 @@ final class OfficialDocumentPublisher
      * Preferred entrypoint for administrative forms: central QR/footer wrapper.
      * Content view must be a trusted application Blade partial, not user input.
      *
-     * @param array<string, mixed> $contentData
-     * @param array<string, mixed> $metadata
-     * @param array<int, int|null>|null $signatoryUserIds
+     * @param  array<string, mixed>  $contentData
+     * @param  array<string, mixed>  $metadata
+     * @param  array<int, int|null>|null  $signatoryUserIds
      */
     public function publishBlade(
         int $schoolId,
@@ -48,8 +48,9 @@ final class OfficialDocumentPublisher
         array $metadata = [],
         ?int $issuedBy = null,
         ?array $signatoryUserIds = null,
+        string $seriesKey = 'general',
     ): ReportVerification {
-        if (! preg_match('/^reports\\.pdf\\.administration\\.[a-z][a-z0-9_-]*$/', $contentView)) {
+        if (preg_match('/^reports\\.pdf\\.administration\\.[a-z][a-z0-9_-]*$/', $contentView) !== 1) {
             throw ValidationException::withMessages([
                 'document' => 'Template administrasi tidak dikenal.',
             ]);
@@ -76,13 +77,14 @@ final class OfficialDocumentPublisher
             metadata: $metadata,
             issuedBy: $issuedBy,
             signatoryUserIds: $signatoryUserIds,
+            seriesKey: $seriesKey,
         );
     }
 
     /**
-     * @param Closure(ReportVerification):string $renderPdf
-     * @param array<string, mixed> $metadata
-     * @param array<int, int|null>|null $signatoryUserIds
+     * @param  Closure(ReportVerification):string  $renderPdf
+     * @param  array<string, mixed>  $metadata
+     * @param  array<int, int|null>|null  $signatoryUserIds
      */
     public function publish(
         int $schoolId,
@@ -97,13 +99,15 @@ final class OfficialDocumentPublisher
         array $metadata = [],
         ?int $issuedBy = null,
         ?array $signatoryUserIds = null,
+        string $seriesKey = 'general',
     ): ReportVerification {
         abort_unless(app(SchoolContext::class)->id() === $schoolId, 404);
         abort_unless(auth()->user()?->can('reports.export'), 403);
 
-        if ($sourceType === '' || $sourceId < 1 || ! preg_match('/^[a-z][a-z0-9_]{1,49}$/', $documentType)
-            || ! preg_match('/^[a-f0-9]{64}$/', $snapshotChecksum)
-            || ! str_ends_with(strtolower($filename), '.pdf')) {
+        if (preg_match('/^[a-z0-9][a-z0-9_-]{0,99}$/', $seriesKey) !== 1
+            || $sourceType === '' || $sourceId < 1 || preg_match('/^[a-z][a-z0-9_]{1,49}$/', $documentType) !== 1
+            || preg_match('/^[a-f0-9]{64}$/', $snapshotChecksum) !== 1
+            || str_ends_with(strtolower($filename), '.pdf') === false) {
             throw ValidationException::withMessages(['document' => 'Identitas penerbitan tidak valid.']);
         }
 
@@ -113,7 +117,7 @@ final class OfficialDocumentPublisher
             return DB::transaction(function () use (
                 $schoolId, $sourceType, $sourceId, $documentType,
                 $snapshotChecksum, $filename, $renderPdf, $title,
-                $documentNumber, $metadata, $issuedBy, $signatoryUserIds, &$created
+                $documentNumber, $metadata, $issuedBy, $signatoryUserIds, $seriesKey, &$created
             ): ReportVerification {
                 // Serialize issuance per school on MySQL and avoid concurrent revision numbers.
                 School::query()->whereKey($schoolId)->lockForUpdate()->firstOrFail();
@@ -123,18 +127,19 @@ final class OfficialDocumentPublisher
                     ->where('source_type', $sourceType)
                     ->where('source_id', $sourceId)
                     ->where('document_type', $documentType)
+                    ->where('series_key', $seriesKey)
                     ->orderByDesc('revision')
                     ->orderByDesc('id')
                     ->first();
 
-                if ($latest && ! $latest->hasArchivedPdf()) {
+                if ($latest && $latest->hasArchivedPdf() === false) {
                     throw ValidationException::withMessages([
                         'document' => 'Penerbitan sebelumnya belum mempunyai arsip PDF.',
                     ]);
                 }
 
                 // Repeated clicks / downloads on an unchanged snapshot do not issue a new QR.
-                if ($latest && ! $latest->isRevoked()
+                if ($latest && $latest->isRevoked() === false
                     && hash_equals((string) $latest->snapshot_checksum, $snapshotChecksum)) {
                     return $latest;
                 }
@@ -152,15 +157,16 @@ final class OfficialDocumentPublisher
                     sourceId: $sourceId,
                     snapshotChecksum: $snapshotChecksum,
                     revision: $latest ? (int) $latest->revision + 1 : 1,
+                    seriesKey: $seriesKey,
                     replacesId: $latest?->id,
                     documentNumber: $documentNumber,
                     title: $title,
                     metadata: $metadata,
-                    issuedBy: $issuedBy ?? auth()->id(),
+                    issuedBy: $issuedBy ?? (auth()->id() !== null ? (int) auth()->id() : null),
                 );
 
                 $binary = $renderPdf($created);
-                if (! str_starts_with($binary, '%PDF-')) {
+                if (str_starts_with($binary, '%PDF-') === false) {
                     throw ValidationException::withMessages([
                         'document' => 'Hasil render bukan PDF yang valid.',
                     ]);

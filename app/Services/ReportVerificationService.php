@@ -146,7 +146,7 @@ class ReportVerificationService
      * Allocate a distinct version for the official document publisher.
      * issueDocument() is intentionally left idempotent for legacy callers.
      *
-     * @param array<string, mixed> $metadata
+     * @param  array<string, mixed>  $metadata
      */
     public function issueDocumentVersion(
         int $schoolId,
@@ -155,6 +155,7 @@ class ReportVerificationService
         int $sourceId,
         string $snapshotChecksum,
         int $revision,
+        string $seriesKey = 'general',
         ?int $replacesId = null,
         ?string $documentNumber = null,
         ?string $title = null,
@@ -175,6 +176,7 @@ class ReportVerificationService
             'snapshot_checksum' => $snapshotChecksum,
             'metadata' => $metadata,
             'revision' => $revision,
+            'series_key' => $seriesKey,
             'replaces_id' => $replacesId,
             'file_disk' => 'local',
             'issued_by' => $issuedBy,
@@ -776,11 +778,11 @@ class ReportVerificationService
             );
 
         if (
-            ! hash_equals(
+            hash_equals(
                 (string) $verification
                     ->file_sha256,
                 $actualHash
-            )
+            ) === false
         ) {
             throw ValidationException::withMessages([
                 'document' => 'Integritas arsip PDF tidak valid. '

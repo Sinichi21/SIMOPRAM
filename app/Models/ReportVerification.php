@@ -16,6 +16,7 @@ class ReportVerification extends Model
         'code',
         'document_type',
         'revision',
+        'series_key',
         'replaces_id',
         'superseded_by_id',
         'document_number',

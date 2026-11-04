@@ -5,7 +5,16 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToSchool;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property int $id
+ * @property int $student_id
+ * @property int $scout_unit_id
+ * @property string|null $position
+ * @property Carbon|null $joined_at
+ * @property Carbon|null $left_at
+ */
 class ScoutUnitMember extends Model
 {
     use BelongsToSchool;
@@ -26,6 +35,7 @@ class ScoutUnitMember extends Model
         ];
     }
 
+    /** @return BelongsTo<ScoutUnit, $this> */
     public function scoutUnit(): BelongsTo
     {
         return $this->belongsTo(
@@ -33,6 +43,7 @@ class ScoutUnitMember extends Model
         );
     }
 
+    /** @return BelongsTo<Student, $this> */
     public function student(): BelongsTo
     {
         return $this->belongsTo(

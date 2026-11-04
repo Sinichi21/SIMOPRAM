@@ -2,15 +2,19 @@
 
 namespace Tests\Feature;
 
+use App\Models\Letter;
 use App\Models\ReportVerification;
 use App\Models\School;
 use App\Models\User;
 use App\Services\Documents\OfficialDocumentPublisher;
+use App\Services\ReportVerificationService;
 use App\Support\SchoolContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 use Spatie\Permission\Models\Permission;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class OfficialDocumentPublisherTest extends TestCase
@@ -33,7 +37,7 @@ class OfficialDocumentPublisherTest extends TestCase
     {
         return app(OfficialDocumentPublisher::class)->publish(
             schoolId: $schoolId,
-            sourceType: \App\Models\Letter::class,
+            sourceType: Letter::class,
             sourceId: 987,
             documentType: 'administration_log',
             snapshotChecksum: hash('sha256', $payload),
@@ -54,8 +58,8 @@ class OfficialDocumentPublisherTest extends TestCase
         $this->assertSame(48, strlen($issued->code));
         $this->assertSame(hash('sha256', '%PDF-1.4 test '.$issued->code), $issued->file_sha256);
         Storage::disk('local')->assertExists($issued->file_path);
-        $this->assertStringContainsString($issued->code, app(\App\Services\ReportVerificationService::class)->publicUrl($issued));
-        $this->assertStringStartsWith('data:image/', app(\App\Services\ReportVerificationService::class)->qrDataUri($issued));
+        $this->assertStringContainsString($issued->code, app(ReportVerificationService::class)->publicUrl($issued));
+        $this->assertStringStartsWith('data:image/', app(ReportVerificationService::class)->qrDataUri($issued));
     }
 
     public function test_same_snapshot_reuses_document_and_changed_snapshot_creates_revision(): void
@@ -87,7 +91,7 @@ class OfficialDocumentPublisherTest extends TestCase
         try {
             app(OfficialDocumentPublisher::class)->publish(
                 schoolId: $school->id,
-                sourceType: \App\Models\Letter::class,
+                sourceType: Letter::class,
                 sourceId: 987,
                 documentType: 'administration_log',
                 snapshotChecksum: hash('sha256', 'second'),
@@ -110,7 +114,7 @@ class OfficialDocumentPublisherTest extends TestCase
         $this->readySchool();
         $another = School::factory()->create();
 
-        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
+        $this->expectException(HttpException::class);
         $this->publish($another->id, 'foreign');
     }
 
@@ -119,10 +123,10 @@ class OfficialDocumentPublisherTest extends TestCase
         Storage::fake('local');
         $school = $this->readySchool();
 
-        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        $this->expectException(ValidationException::class);
         app(OfficialDocumentPublisher::class)->publish(
             schoolId: $school->id,
-            sourceType: \App\Models\Letter::class,
+            sourceType: Letter::class,
             sourceId: 987,
             documentType: 'administration_log',
             snapshotChecksum: hash('sha256', 'invalid'),
