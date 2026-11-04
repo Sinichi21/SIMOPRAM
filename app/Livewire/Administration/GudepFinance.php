@@ -81,6 +81,8 @@ class GudepFinance extends Component
 
     public string $closingNotesInput = '';
 
+    public string $closeRejectionReason = '';
+
     public string $countedCashInput = '';
 
     public string $reconciliationNotesInput = '';
@@ -332,15 +334,18 @@ class GudepFinance extends Component
     {
         $this->authorizeManage();
         abort_unless(auth()->user()?->can('gudep.finance.close.approve'), 403);
+        $data = $this->validate([
+            'closeRejectionReason' => ['required', 'string', 'min:10', 'max:3000'],
+        ]);
 
-        DB::transaction(function (): void {
+        DB::transaction(function () use ($data): void {
             $period = $this->cashPeriod();
             abort_unless($period !== null, 404);
             $period = GudepCashPeriod::query()->whereKey($period->id)->lockForUpdate()->firstOrFail();
             abort_unless($period->status === 'open' && $period->close_requested_at !== null, 409);
             abort_if((int) $period->close_requested_by === (int) auth()->id(), 403);
 
-            $this->recordCloseDecision($period, 'rejected', 'Permohonan penutupan ditolak oleh pemeriksa.');
+            $this->recordCloseDecision($period, 'rejected', trim($data['closeRejectionReason']));
             $period->update([
                 'close_requested_by' => null,
                 'close_requested_at' => null,
@@ -351,6 +356,7 @@ class GudepFinance extends Component
             ]);
         });
 
+        $this->closeRejectionReason = '';
         session()->flash('status', 'Permohonan penutupan ditolak. Periode kembali dapat dikelola.');
     }
 
