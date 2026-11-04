@@ -5,6 +5,7 @@ namespace App\Livewire\Administration;
 use App\Models\AcademicYear;
 use App\Models\Activity;
 use App\Models\GudepCashEntry;
+use App\Models\GudepCashEvidence;
 use App\Models\GudepFinanceBudget;
 use App\Models\InventoryAsset;
 use App\Models\InventoryItem;
@@ -19,12 +20,22 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
+use Livewire\WithFileUploads;
+use Throwable;
 
 class GudepFinance extends Component
 {
+    use WithFileUploads;
+
+    public ?int $receiptCashEntryId = null;
+
+    public $receiptAttachment = null;
+
     public ?int $scoutGroupId = null;
 
     public ?int $academicYearId = null;
@@ -198,6 +209,86 @@ class GudepFinance extends Component
         session()->flash('status', 'Transaksi telah diposting ke buku kas.');
     }
 
+    public function uploadCashEvidence(): void
+    {
+        $this->authorizeManage();
+        $gudep = $this->selectedGudep();
+        $year = $this->selectedYear();
+
+        $validated = $this->validate([
+            'receiptCashEntryId' => ['required', 'integer',
+                Rule::exists('gudep_cash_entries', 'id')
+                    ->where('school_id', $this->schoolId())
+                    ->where('scout_group_id', $gudep->id)
+                    ->where('academic_year_id', $year->id)],
+            'receiptAttachment' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:8192'],
+        ]);
+
+        $entry = $this->cashEntries()->findOrFail((int) $validated['receiptCashEntryId']);
+        $file = $this->receiptAttachment;
+        $temp = $file->getRealPath();
+        if (! is_string($temp) || ! is_file($temp)) {
+            throw ValidationException::withMessages([
+                'receiptAttachment' => 'Berkas sementara tidak ditemukan.',
+            ]);
+        }
+
+        $hash = hash_file('sha256', $temp);
+        if (! is_string($hash)) {
+            throw ValidationException::withMessages([
+                'receiptAttachment' => 'Bukti tidak dapat diverifikasi.',
+            ]);
+        }
+
+        $directory = 'gudep-cash-evidences/'.$this->schoolId().'/'.$gudep->id.'/'.$entry->id;
+        $filename = (string) Str::uuid().'.'.strtolower((string) $file->extension());
+        $path = $file->storeAs($directory, $filename, 'local');
+
+        if (! is_string($path)) {
+            throw ValidationException::withMessages([
+                'receiptAttachment' => 'Bukti kas gagal disimpan.',
+            ]);
+        }
+
+        try {
+            GudepCashEvidence::query()->create([
+                'school_id' => $this->schoolId(),
+                'scout_group_id' => $gudep->id,
+                'gudep_cash_entry_id' => $entry->id,
+                'uploaded_by' => auth()->id(),
+                'original_filename' => $file->getClientOriginalName(),
+                'disk' => 'local',
+                'path' => $path,
+                'mime_type' => $file->getMimeType() ?: 'application/octet-stream',
+                'size_bytes' => (int) $file->getSize(),
+                'sha256' => $hash,
+            ]);
+        } catch (Throwable $exception) {
+            Storage::disk('local')->delete($path);
+
+            throw $exception;
+        }
+
+        $this->reset(['receiptCashEntryId', 'receiptAttachment']);
+        session()->flash('status', 'Bukti kas berhasil diarsipkan secara privat.');
+    }
+
+    /**
+     * Calculate posted expenses for every category, without using the 100-row preview.
+     *
+     * @return array<string, int>
+     */
+    private function expenseByCategory(): array
+    {
+        return $this->cashEntries()->where('status', 'posted')
+            ->where('direction', 'expense')
+            ->selectRaw('category, SUM(amount) AS total_amount')
+            ->groupBy('category')
+            ->pluck('total_amount', 'category')
+            ->map(fn ($total) => (int) $total)
+            ->all();
+    }
+
     public function publishCashBook(
         OfficialDocumentPublisher $publisher,
         ReportVerificationService $verifier,
@@ -207,17 +298,23 @@ class GudepFinance extends Component
         $year = $this->selectedYear();
 
         $entries = $this->cashEntries()->where('status', 'posted')
-            ->orderBy('occurred_at')->orderBy('id')->get();
+            ->with('evidences')->orderBy('occurred_at')->orderBy('id')->get();
         $budgets = $this->budgets()->orderBy('category')->get();
         $income = (int) $entries->where('direction', 'income')->sum('amount');
         $expense = (int) $entries->where('direction', 'expense')->sum('amount');
+        $expenseByCategory = $this->expenseByCategory();
         $snapshot = [
             'gudep' => $gudep->name,
             'year' => $year->name,
             'entries' => $entries->map(fn ($item) => $item->only([
                 'id', 'direction', 'category', 'occurred_at', 'description', 'amount',
                 'reference_number', 'activity_id', 'inventory_item_id', 'posted_at',
-            ]))->all(),
+            ]) + ['evidences' => $item->evidences->map(fn ($evidence) => [
+                'id' => $evidence->id,
+                'original_filename' => $evidence->original_filename,
+                'sha256' => $evidence->sha256,
+            ])->all()])->all(),
+            'expense_by_category' => $expenseByCategory,
             'budgets' => $budgets->map(fn ($item) => $item->only([
                 'id', 'category', 'allocated_amount', 'notes',
             ]))->all(),
@@ -232,7 +329,7 @@ class GudepFinance extends Component
             snapshotChecksum: $verifier->contentChecksum($snapshot),
             filename: 'buku-kas-gudep-'.$gudep->id.'-'.$year->id.'.pdf',
             contentView: 'reports.pdf.administration.gudep-cash-book',
-            contentData: compact('gudep', 'year', 'entries', 'budgets', 'income', 'expense'),
+            contentData: compact('gudep', 'year', 'entries', 'budgets', 'income', 'expense', 'expenseByCategory'),
             title: 'Buku Kas '.$gudep->name.' '.$year->name,
             metadata: ['academic_year' => $year->name, 'security_classification' => 'Terbatas'],
         );
@@ -326,12 +423,13 @@ class GudepFinance extends Component
 
         $ledgerMatches = $ledgerQuery !== null ? (clone $ledgerQuery)->count() : 0;
         $cash = $ledgerQuery !== null
-            ? $ledgerQuery->orderByDesc('occurred_at')->orderByDesc('id')->limit(100)->get()
+            ? $ledgerQuery->with('evidences')->orderByDesc('occurred_at')->orderByDesc('id')->limit(100)->get()
             : collect();
         $income = $gudep && $year ? (int) $this->cashEntries()
             ->where('status', 'posted')->where('direction', 'income')->sum('amount') : 0;
         $expense = $gudep && $year ? (int) $this->cashEntries()
             ->where('status', 'posted')->where('direction', 'expense')->sum('amount') : 0;
+        $expenseByCategory = $gudep && $year ? $this->expenseByCategory() : [];
         $ownerIds = $gudep ? InventoryOwner::query()->where('school_id', $schoolId)
             ->where('owner_type', 'gudep')->where('scout_group_id', $gudep->id)
             ->pluck('id')->all() : [];
@@ -346,6 +444,7 @@ class GudepFinance extends Component
             'ledgerMatches' => $ledgerMatches,
             'income' => $income,
             'expense' => $expense,
+            'expenseByCategory' => $expenseByCategory,
             'activities' => $year ? Activity::query()->where('school_id', $schoolId)
                 ->where('academic_year_id', $year->id)->orderBy('title')->get() : collect(),
             'inventoryOptions' => $gudep && auth()->user()?->can('inventory.view')
