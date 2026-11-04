@@ -8,6 +8,7 @@ use App\Http\Controllers\ActivityParticipantPortalController;
 use App\Http\Controllers\ActivityRegistrationController;
 use App\Http\Controllers\ComplaintController;
 use App\Http\Controllers\GudepAchievementEvidenceController;
+use App\Http\Controllers\GudepCashEvidenceController;
 use App\Http\Controllers\GudepOfficerDocumentController;
 use App\Http\Controllers\InventoryAssetBatchLabelController;
 use App\Http\Controllers\InventoryAssetLabelController;
@@ -248,6 +249,11 @@ Route::middleware([
             ->whereNumber('evidence')
             ->middleware(['can:gudep.view', 'throttle:30,1'])
             ->name('administration.development.evidence.download');
+
+        Route::get('/administrasi/keuangan-sarana/bukti/{evidence}', [GudepCashEvidenceController::class, 'download'])
+            ->whereNumber('evidence')
+            ->middleware(['can:gudep.finance.view', 'throttle:30,1'])
+            ->name('administration.finance.evidence.download');
 
         Route::get('/administrasi/keuangan-sarana', GudepFinance::class)
             ->middleware('can:gudep.finance.view')
