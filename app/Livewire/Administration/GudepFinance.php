@@ -293,7 +293,10 @@ class GudepFinance extends Component
         $year = $this->academicYearId !== null ? $this->selectedYear() : null;
 
         $cash = $gudep && $year ? $this->cashEntries()->orderByDesc('occurred_at')->limit(100)->get() : collect();
-        $posted = $cash->where('status', 'posted');
+        $income = $gudep && $year ? (int) $this->cashEntries()
+            ->where('status', 'posted')->where('direction', 'income')->sum('amount') : 0;
+        $expense = $gudep && $year ? (int) $this->cashEntries()
+            ->where('status', 'posted')->where('direction', 'expense')->sum('amount') : 0;
         $ownerIds = $gudep ? InventoryOwner::query()->where('school_id', $schoolId)
             ->where('owner_type', 'gudep')->where('scout_group_id', $gudep->id)
             ->pluck('id')->all() : [];
@@ -305,8 +308,8 @@ class GudepFinance extends Component
             'years' => AcademicYear::query()->where('school_id', $schoolId)->orderByDesc('start_date')->get(),
             'budgets' => $gudep && $year ? $this->budgets()->orderBy('category')->get() : collect(),
             'entries' => $cash,
-            'income' => (int) $posted->where('direction', 'income')->sum('amount'),
-            'expense' => (int) $posted->where('direction', 'expense')->sum('amount'),
+            'income' => $income,
+            'expense' => $expense,
             'activities' => $year ? Activity::query()->where('school_id', $schoolId)
                 ->where('academic_year_id', $year->id)->orderBy('title')->get() : collect(),
             'inventoryOptions' => $gudep && auth()->user()?->can('inventory.view')
