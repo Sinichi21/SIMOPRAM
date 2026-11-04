@@ -65,6 +65,19 @@ class GudepCashPeriodTest extends TestCase
             ->set('academicYearId', $yearId);
     }
 
+    private function approve(int $gudepId, int $yearId): void
+    {
+        $schoolId = app(SchoolContext::class)->id();
+        $reviewer = User::factory()->create(['system_role' => 'super_admin']);
+        $this->actingAs($reviewer)->withSession(['active_school_id' => $schoolId]);
+
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudepId)
+            ->set('academicYearId', $yearId)
+            ->call('approveCashPeriodClosure')
+            ->assertHasNoErrors();
+    }
+
     private function reconcile(int $gudepId, int $yearId, int $countedCash): void
     {
         $this->component($gudepId, $yearId)
@@ -125,6 +138,8 @@ class GudepCashPeriodTest extends TestCase
             ->call('closeCashPeriod')
             ->assertHasNoErrors();
 
+        $this->approve($gudep->id, $year->id);
+
         $this->assertSame(25000, GudepCashPeriod::query()->firstOrFail()->closing_balance);
     }
 
@@ -169,6 +184,8 @@ class GudepCashPeriodTest extends TestCase
             ->set('closingNotesInput', 'Buku kas telah diperiksa dan ditutup.')
             ->call('closeCashPeriod')
             ->assertHasNoErrors();
+
+        $this->approve($gudep->id, $year->id);
 
         $period = GudepCashPeriod::query()->firstOrFail();
         $this->assertSame('closed', $period->status);
@@ -246,6 +263,8 @@ class GudepCashPeriodTest extends TestCase
             ->set('closingNotesInput', 'Periode tahunan ditutup secara resmi.')
             ->call('closeCashPeriod')
             ->assertHasNoErrors();
+
+        $this->approve($gudep->id, $year->id);
 
         $publish();
         $this->assertSame(2, ReportVerification::query()->where('document_type', 'gudep_cash_book')->count());
