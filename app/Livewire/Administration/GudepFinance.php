@@ -70,6 +70,10 @@ class GudepFinance extends Component
 
     public string $ledgerStatus = 'all';
 
+    public ?int $reversalEntryId = null;
+
+    public string $reversalReason = '';
+
     public function mount(): void
     {
         $this->authorizeView();
@@ -209,6 +213,62 @@ class GudepFinance extends Component
         session()->flash('status', 'Transaksi telah diposting ke buku kas.');
     }
 
+    public function selectCashForReversal(int $id): void
+    {
+        $this->authorizeManage();
+
+        $entry = $this->cashEntries()->find($id);
+        abort_unless($entry !== null, 404);
+        abort_unless($entry->status === 'posted' && $entry->reversal_of_id === null, 409);
+        abort_if($this->cashEntries()->where('reversal_of_id', $entry->id)->exists(), 409,
+            'Transaksi sudah dibalik.');
+
+        $this->reversalEntryId = $entry->id;
+        $this->reversalReason = '';
+    }
+
+    public function reverseCash(): void
+    {
+        $this->authorizeManage();
+        $data = $this->validate([
+            'reversalEntryId' => ['required', 'integer'],
+            'reversalReason' => ['required', 'string', 'min:10', 'max:1000'],
+        ]);
+
+        DB::transaction(function () use ($data): void {
+            $original = $this->cashEntries()->lockForUpdate()->find((int) $data['reversalEntryId']);
+            abort_unless($original !== null, 404);
+            abort_unless($original->status === 'posted' && $original->reversal_of_id === null, 409,
+                'Hanya transaksi asli yang sudah diposting dapat dibalik.');
+            abort_if($this->cashEntries()->where('reversal_of_id', $original->id)->exists(), 409,
+                'Transaksi ini sudah pernah dibalik.');
+
+            GudepCashEntry::query()->create([
+                'school_id' => $this->schoolId(),
+                'scout_group_id' => $original->scout_group_id,
+                'academic_year_id' => $original->academic_year_id,
+                'activity_id' => $original->activity_id,
+                'inventory_item_id' => $original->inventory_item_id,
+                'direction' => $original->direction === 'income' ? 'expense' : 'income',
+                'category' => $original->category,
+                'occurred_at' => $original->occurred_at,
+                'description' => 'Pembalikan: '.$original->description,
+                'amount' => $original->amount,
+                'reference_number' => $original->reference_number,
+                'notes' => 'Pembalikan transaksi #'.$original->id,
+                'status' => 'posted',
+                'created_by' => auth()->id(),
+                'posted_by' => auth()->id(),
+                'posted_at' => now(),
+                'reversal_of_id' => $original->id,
+                'reversal_reason' => trim($data['reversalReason']),
+            ]);
+        });
+
+        $this->reset(['reversalEntryId', 'reversalReason']);
+        session()->flash('status', 'Pembalikan berhasil diposting. Transaksi asli tetap tersimpan.');
+    }
+
     public function uploadCashEvidence(): void
     {
         $this->authorizeManage();
@@ -274,19 +334,50 @@ class GudepFinance extends Component
     }
 
     /**
-     * Calculate posted expenses for every category, without using the 100-row preview.
+     * Posted cash totals use original entries minus reversals of the same type.
+     * Reversal entries appear in the ledger but do not become operating income/expense.
+     *
+     * @return array{income: int, expense: int}
+     */
+    private function cashTotals(): array
+    {
+        $originalIncome = (int) $this->cashEntries()->where('status', 'posted')
+            ->whereNull('reversal_of_id')->where('direction', 'income')->sum('amount');
+        $originalExpense = (int) $this->cashEntries()->where('status', 'posted')
+            ->whereNull('reversal_of_id')->where('direction', 'expense')->sum('amount');
+        $reversedIncome = (int) $this->cashEntries()->where('status', 'posted')
+            ->whereNotNull('reversal_of_id')->where('direction', 'expense')->sum('amount');
+        $reversedExpense = (int) $this->cashEntries()->where('status', 'posted')
+            ->whereNotNull('reversal_of_id')->where('direction', 'income')->sum('amount');
+
+        return [
+            'income' => $originalIncome - $reversedIncome,
+            'expense' => $originalExpense - $reversedExpense,
+        ];
+    }
+
+    /**
+     * Expense realization excludes reversed expense while retaining the audit trail.
      *
      * @return array<string, int>
      */
     private function expenseByCategory(): array
     {
-        return $this->cashEntries()->where('status', 'posted')
-            ->where('direction', 'expense')
-            ->selectRaw('category, SUM(amount) AS total_amount')
-            ->groupBy('category')
-            ->pluck('total_amount', 'category')
-            ->map(fn ($total) => (int) $total)
-            ->all();
+        $expense = $this->cashEntries()->where('status', 'posted')
+            ->whereNull('reversal_of_id')->where('direction', 'expense')
+            ->selectRaw('category, SUM(amount) AS total_amount')->groupBy('category')
+            ->pluck('total_amount', 'category')->map(fn ($total) => (int) $total)->all();
+
+        $reversals = $this->cashEntries()->where('status', 'posted')
+            ->whereNotNull('reversal_of_id')->where('direction', 'income')
+            ->selectRaw('category, SUM(amount) AS total_amount')->groupBy('category')
+            ->pluck('total_amount', 'category');
+
+        foreach ($reversals as $category => $amount) {
+            $expense[$category] = ($expense[$category] ?? 0) - (int) $amount;
+        }
+
+        return $expense;
     }
 
     public function publishCashBook(
@@ -298,10 +389,11 @@ class GudepFinance extends Component
         $year = $this->selectedYear();
 
         $entries = $this->cashEntries()->where('status', 'posted')
-            ->with('evidences')->orderBy('occurred_at')->orderBy('id')->get();
+            ->with(['evidences', 'reversedEntry'])->orderBy('occurred_at')->orderBy('id')->get();
         $budgets = $this->budgets()->orderBy('category')->get();
-        $income = (int) $entries->where('direction', 'income')->sum('amount');
-        $expense = (int) $entries->where('direction', 'expense')->sum('amount');
+        $totals = $this->cashTotals();
+        $income = $totals['income'];
+        $expense = $totals['expense'];
         $expenseByCategory = $this->expenseByCategory();
         $snapshot = [
             'gudep' => $gudep->name,
@@ -309,6 +401,7 @@ class GudepFinance extends Component
             'entries' => $entries->map(fn ($item) => $item->only([
                 'id', 'direction', 'category', 'occurred_at', 'description', 'amount',
                 'reference_number', 'activity_id', 'inventory_item_id', 'posted_at',
+                'reversal_of_id', 'reversal_reason',
             ]) + ['evidences' => $item->evidences->map(fn ($evidence) => [
                 'id' => $evidence->id,
                 'original_filename' => $evidence->original_filename,
@@ -423,12 +516,11 @@ class GudepFinance extends Component
 
         $ledgerMatches = $ledgerQuery !== null ? (clone $ledgerQuery)->count() : 0;
         $cash = $ledgerQuery !== null
-            ? $ledgerQuery->with('evidences')->orderByDesc('occurred_at')->orderByDesc('id')->limit(100)->get()
+            ? $ledgerQuery->with(['evidences', 'reversedEntry'])->orderByDesc('occurred_at')->orderByDesc('id')->limit(100)->get()
             : collect();
-        $income = $gudep && $year ? (int) $this->cashEntries()
-            ->where('status', 'posted')->where('direction', 'income')->sum('amount') : 0;
-        $expense = $gudep && $year ? (int) $this->cashEntries()
-            ->where('status', 'posted')->where('direction', 'expense')->sum('amount') : 0;
+        $totals = $gudep && $year ? $this->cashTotals() : ['income' => 0, 'expense' => 0];
+        $income = $totals['income'];
+        $expense = $totals['expense'];
         $expenseByCategory = $gudep && $year ? $this->expenseByCategory() : [];
         $ownerIds = $gudep ? InventoryOwner::query()->where('school_id', $schoolId)
             ->where('owner_type', 'gudep')->where('scout_group_id', $gudep->id)
@@ -442,6 +534,8 @@ class GudepFinance extends Component
             'budgets' => $gudep && $year ? $this->budgets()->orderBy('category')->get() : collect(),
             'entries' => $cash,
             'ledgerMatches' => $ledgerMatches,
+            'reversalSelectedEntry' => $gudep && $year && $this->reversalEntryId !== null
+                ? $this->cashEntries()->find($this->reversalEntryId) : null,
             'income' => $income,
             'expense' => $expense,
             'expenseByCategory' => $expenseByCategory,
