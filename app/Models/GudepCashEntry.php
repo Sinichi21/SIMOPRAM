@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToSchool;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class GudepCashEntry extends Model
 {
@@ -24,6 +25,12 @@ class GudepCashEntry extends Model
             'occurred_at' => 'date',
             'posted_at' => 'datetime',
         ];
+    }
+
+    /** @return HasMany<GudepCashEvidence, $this> */
+    public function evidences(): HasMany
+    {
+        return $this->hasMany(GudepCashEvidence::class, 'gudep_cash_entry_id');
     }
 
     /** @return BelongsTo<Activity, $this> */
