@@ -96,6 +96,7 @@ class StudentCsvImporter
     private function importRow(array $row, int $schoolId): void
     {
         $data = [
+            'nta' => $this->nullable($row['nta'] ?? null),
             'nis' => $this->nullable($row['nis'] ?? null),
             'nisn' => $this->nullable($row['nisn'] ?? null),
             'name' => $this->nullable($row['nama'] ?? null),
@@ -113,6 +114,10 @@ class StudentCsvImporter
         ];
 
         Validator::make($data, [
+            'nta' => [
+                'nullable', 'string', 'max:100',
+                Rule::unique('students', 'nta')->where('school_id', $schoolId),
+            ],
             'nis' => [
                 'required',
                 'string',
@@ -169,6 +174,7 @@ class StudentCsvImporter
 
         DB::transaction(function () use ($data, $academicYear, $classroom, $scoutLevel): void {
             $student = Student::query()->create([
+                'nta' => $data['nta'],
                 'nis' => $data['nis'],
                 'nisn' => $data['nisn'],
                 'name' => $data['name'],
