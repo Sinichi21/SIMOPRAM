@@ -213,4 +213,29 @@ class GudepFinancePhaseFiveTest extends TestCase
         $this->assertSame([1, 1], ReportVerification::query()->where('document_type', 'gudep_cash_book')
             ->orderBy('id')->pluck('revision')->all());
     }
+
+    public function test_balance_includes_all_posted_entries_beyond_preview_limit(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+
+        for ($i = 0; $i < 101; $i++) {
+            GudepCashEntry::query()->create([
+                'school_id' => $school->id,
+                'scout_group_id' => $gudep->id,
+                'academic_year_id' => $year->id,
+                'direction' => 'income',
+                'category' => 'Iuran',
+                'occurred_at' => '2026-11-02',
+                'description' => 'Iuran '.$i,
+                'amount' => 1000,
+                'status' => 'posted',
+            ]);
+        }
+
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->assertViewHas('income', 101000)
+            ->assertViewHas('expense', 0);
+    }
 }
