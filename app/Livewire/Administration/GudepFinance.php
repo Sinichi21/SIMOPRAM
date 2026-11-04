@@ -202,21 +202,22 @@ class GudepFinance extends Component
 
         $year = $this->selectedYear();
         $gudep = $this->selectedGudep();
-        $this->lockOpenPeriod();
-
-        GudepFinanceBudget::query()->updateOrCreate(
-            [
-                'school_id' => $this->schoolId(),
-                'scout_group_id' => $gudep->id,
-                'academic_year_id' => $year->id,
-                'category' => trim($data['budgetCategory']),
-            ],
-            [
-                'allocated_amount' => (int) $data['budgetAmount'],
-                'notes' => $data['budgetNotes'] ?: null,
-                'created_by' => auth()->id(),
-            ]
-        );
+        DB::transaction(function () use ($data, $gudep, $year): void {
+            $this->lockOpenPeriod();
+            GudepFinanceBudget::query()->updateOrCreate(
+                [
+                    'school_id' => $this->schoolId(),
+                    'scout_group_id' => $gudep->id,
+                    'academic_year_id' => $year->id,
+                    'category' => trim($data['budgetCategory']),
+                ],
+                [
+                    'allocated_amount' => (int) $data['budgetAmount'],
+                    'notes' => $data['budgetNotes'] ?: null,
+                    'created_by' => auth()->id(),
+                ]
+            );
+        });
 
         $this->reset(['budgetCategory', 'budgetAmount', 'budgetNotes']);
         session()->flash('status', 'Anggaran kategori berhasil disimpan.');
@@ -272,9 +273,10 @@ class GudepFinance extends Component
             }
         }
 
-        $this->lockOpenPeriod();
+        DB::transaction(function (): void {
+            $this->lockOpenPeriod();
 
-        GudepCashEntry::query()->create([
+            GudepCashEntry::query()->create([
             'school_id' => $this->schoolId(),
             'scout_group_id' => $gudep->id,
             'academic_year_id' => $year->id,
@@ -290,6 +292,7 @@ class GudepFinance extends Component
             'status' => 'draft',
             'created_by' => auth()->id(),
         ]);
+        });
 
         $this->reset(['cashCategory', 'cashDescription', 'cashAmount', 'cashReference',
             'cashNotes', 'cashActivityId', 'cashInventoryItemId']);
