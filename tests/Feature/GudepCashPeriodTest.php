@@ -98,6 +98,25 @@ class GudepCashPeriodTest extends TestCase
             ->assertStatus(409);
     }
 
+    public function test_legacy_posted_cash_may_explicitly_confirm_zero_opening(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+        $this->cash($school->id, $gudep->id, $year->id);
+
+        $this->component($gudep->id, $year->id)
+            ->set('openingBalanceInput', '0')
+            ->call('saveOpeningBalance')
+            ->assertHasNoErrors()
+            ->assertViewHas('openingBalance', 0);
+
+        $this->component($gudep->id, $year->id)
+            ->set('closingNotesInput', 'Buku kas warisan telah diverifikasi.')
+            ->call('closeCashPeriod')
+            ->assertHasNoErrors();
+
+        $this->assertSame(25000, GudepCashPeriod::query()->firstOrFail()->closing_balance);
+    }
+
     public function test_closing_requires_opening_balance_and_no_drafts(): void
     {
         [$school, $gudep, $year] = $this->context();
