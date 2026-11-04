@@ -362,7 +362,7 @@ class GudepFinance extends Component
                 'notes' => $data['cashNotes'] ?: null,
                 'status' => 'draft',
                 'created_by' => auth()->id(),
-        ]);
+            ]);
         });
 
         $this->reset(['cashCategory', 'cashDescription', 'cashAmount', 'cashReference',
