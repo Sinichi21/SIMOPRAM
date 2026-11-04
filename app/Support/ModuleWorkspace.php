@@ -17,8 +17,9 @@ final class ModuleWorkspace
                 'title' => 'Administrasi Gudep',
                 'description' => 'Profil Gudep, persuratan, arsip, dan dokumen terbit.',
                 'icon' => 'folder-open',
-                'permissions' => ['gudep.view', 'letters.view', 'report_verifications.view'],
+                'permissions' => ['gudep.view', 'gudep.finance.view', 'letters.view', 'report_verifications.view'],
                 'links' => [
+                    ['label' => 'Keuangan & Sarana', 'route' => 'administration.finance', 'permission' => 'gudep.finance.view'],
                     ['label' => 'Buku Operasional', 'route' => 'administration.operations', 'permission' => 'gudep.view'],
                     ['label' => 'Program & Pembinaan', 'route' => 'administration.development', 'permission' => 'gudep.view'],
                     ['label' => 'Organisasi & Buku Induk', 'route' => 'administration.organization', 'permission' => 'gudep.view'],
