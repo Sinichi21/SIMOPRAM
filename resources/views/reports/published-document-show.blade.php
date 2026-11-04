@@ -37,6 +37,13 @@
                         <span class="rounded-full px-2.5 py-1 text-xs font-medium {{ $statusClasses }}">{{ $statusLabel }}</span>
                     </div>
                     <dl class="mt-5 grid grid-cols-[140px_1fr] gap-x-4 gap-y-3 text-sm">
+                        <dt class="text-zinc-500">Versi</dt><dd>Revisi {{ $verification->revision ?? 1 }}</dd>
+                        @if ($verification->replaces_id)
+                            <dt class="text-zinc-500">Menggantikan</dt><dd><a class="underline" href="{{ route('reports.published-documents.show', ['code' => $verification->replaces?->code]) }}">Lihat dokumen lama</a></dd>
+                        @endif
+                        @if ($verification->superseded_by_id)
+                            <dt class="text-zinc-500">Digantikan oleh</dt><dd><a class="underline" href="{{ route('reports.published-documents.show', ['code' => $verification->supersededBy?->code]) }}">Lihat revisi baru</a></dd>
+                        @endif
                         <dt class="text-zinc-500">Jenis</dt><dd class="font-medium">{{ $verification->documentTypeLabel() }}</dd>
                         <dt class="text-zinc-500">Judul</dt><dd>{{ $verification->publicTitle() }}</dd>
                         <dt class="text-zinc-500">Nomor</dt><dd>{{ $verification->document_number ?: '-' }}</dd>

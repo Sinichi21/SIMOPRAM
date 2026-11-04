@@ -116,7 +116,7 @@ class Index extends Component
     protected function applyStatusFilter(Builder $query): void
     {
         if ($this->status === 'pending') {
-            $query->whereNull('revoked_at')->whereNull('approval_completed_at')
+            $query->whereNull('revoked_at')->whereNull('superseded_by_id')->whereNull('approval_completed_at')
                 ->whereJsonLength('required_signatories', '>', 0)
                 ->whereDoesntHave('closure', fn ($closure) => $closure->where('status', 'reopened'));
 
@@ -130,10 +130,10 @@ class Index extends Component
         }
 
         if ($this->status === 'superseded') {
-            $query->whereNull('revoked_at')->whereHas(
-                'closure',
-                fn ($q) => $q->where('status', 'reopened')
-            );
+            $query->whereNull('revoked_at')->whereNull('superseded_by_id')->where(function ($q): void {
+                $q->whereNotNull('superseded_by_id')
+                    ->orWhereHas('closure', fn ($closure) => $closure->where('status', 'reopened'));
+            });
 
             return;
         }
@@ -157,6 +157,7 @@ class Index extends Component
             'total' => (clone $base)->count(),
             'valid' => $valid
                 ->whereNull('revoked_at')
+                ->whereNull('superseded_by_id')
                 ->where(function ($q): void {
                     $q->whereNull('semester_closure_id')
                         ->orWhereHas('closure', fn ($closure) => $closure->where('status', 'locked'));
@@ -164,8 +165,10 @@ class Index extends Component
                 ->count(),
             'superseded' => (clone $base)
                 ->whereNull('revoked_at')
-                ->whereHas('closure', fn ($q) => $q->where('status', 'reopened'))
-                ->count(),
+                ->where(function ($q): void {
+                    $q->whereNotNull('superseded_by_id')
+                        ->orWhereHas('closure', fn ($closure) => $closure->where('status', 'reopened'));
+                })->count(),
             'revoked' => (clone $base)->whereNotNull('revoked_at')->count(),
             'verification_count' => (int) (clone $base)->sum('verification_count'),
         ];
