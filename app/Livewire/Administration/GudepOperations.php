@@ -98,6 +98,14 @@ class GudepOperations extends Component
             'guestNotes' => ['nullable', 'string', 'max:2000'],
         ]);
 
+        $year = $this->selectedYear();
+        $visitedAt = IlluminateSupportCarbon::parse($data['guestVisitedAt'])->toDateString();
+        if ($visitedAt < $year->start_date->toDateString() || $visitedAt > $year->end_date->toDateString()) {
+            throw ValidationException::withMessages([
+                'guestVisitedAt' => 'Tanggal kunjungan harus berada dalam tahun ajaran yang dipilih.',
+            ]);
+        }
+
         GudepGuestEntry::query()->create([
             'school_id' => $this->schoolId(),
             'scout_group_id' => $this->selectedGudep()->id,
@@ -129,6 +137,14 @@ class GudepOperations extends Component
             'meetingActivityId' => ['nullable', 'integer', Rule::exists('activities', 'id')
                 ->where('school_id', $this->schoolId())->whereNull('deleted_at')],
         ]);
+
+        $year = $this->selectedYear();
+        $heldDate = IlluminateSupportCarbon::parse($data['meetingHeldAt'])->toDateString();
+        if ($heldDate < $year->start_date->toDateString() || $heldDate > $year->end_date->toDateString()) {
+            throw ValidationException::withMessages([
+                'meetingHeldAt' => 'Tanggal rapat harus berada dalam tahun ajaran yang dipilih.',
+            ]);
+        }
 
         if (! empty($data['meetingActivityId'])) {
             $activity = Activity::query()->where('school_id', $this->schoolId())
@@ -406,7 +422,8 @@ class GudepOperations extends Component
                 ->where('academic_year_id', $year->id)->orderBy('title')->get() : collect(),
             // Letters are school-owned in the existing module. Never mislabel
             // them as Gudep-specific without an explicit source relationship.
-            'letters' => $gudep && $year ? Letter::query()->where('school_id', $schoolId)
+            'letters' => $gudep && $year && auth()->user()?->can('letters.view')
+                ? Letter::query()->where('school_id', $schoolId)
                 ->whereBetween('letter_date', [$year->start_date, $year->end_date])
                 ->orderByDesc('letter_date')->limit(15)->get() : collect(),
         ]);
