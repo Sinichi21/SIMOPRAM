@@ -116,10 +116,40 @@
                     </form>
                 @endif
                 @if ($cashPeriod?->opening_set_at)
+                    <div class="mt-4 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+                        <h3 class="text-sm font-semibold">Rekonsiliasi kas fisik</h3>
+                        <p class="mt-1 text-xs text-zinc-500">Bandingkan uang yang dihitung dengan saldo buku. Selisih harus nol, dan transaksi tidak boleh berubah setelah pemeriksaan untuk bisa tutup buku.</p>
+                        @if ($latestReconciliation)
+                            <div class="mt-3 grid gap-2 text-sm sm:grid-cols-3">
+                                <div>Saldo buku: <strong>Rp {{ number_format($latestReconciliation->book_balance, 0, ',', '.') }}</strong></div>
+                                <div>Kas fisik: <strong>Rp {{ number_format($latestReconciliation->counted_cash, 0, ',', '.') }}</strong></div>
+                                <div>Selisih: <strong class="{{ $latestReconciliation->difference === 0 ? 'text-emerald-700' : 'text-red-600' }}">Rp {{ number_format($latestReconciliation->difference, 0, ',', '.') }}</strong></div>
+                            </div>
+                        @endif
+                        <form wire:submit="reconcileCash" class="mt-3 grid gap-3 md:grid-cols-2">
+                            <div>
+                                <label for="cash-counted-balance" class="mb-1 block text-sm font-medium">Jumlah kas fisik (Rp)</label>
+                                <input id="cash-counted-balance" type="number" min="0" step="1" wire:model="countedCashInput" required
+                                    class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800">
+                                @error('countedCashInput') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label for="cash-reconciliation-notes" class="mb-1 block text-sm font-medium">Catatan pemeriksaan</label>
+                                <textarea id="cash-reconciliation-notes" wire:model="reconciliationNotesInput" rows="2" required maxlength="3000"
+                                    class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"></textarea>
+                                @error('reconciliationNotesInput') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
+                            </div>
+                            <div class="md:col-span-2">
+                                <button type="submit" wire:loading.attr="disabled" wire:target="reconcileCash"
+                                    class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Catat rekonsiliasi</button>
+                            </div>
+                        </form>
+                    </div>
+                @if ($cashPeriod?->opening_set_at)
                     <details class="mt-4 rounded-xl border border-amber-200 p-4 dark:border-amber-900">
                         <summary class="cursor-pointer text-sm font-semibold text-amber-800 dark:text-amber-300">Tutup buku tahun ajaran</summary>
                         <form wire:submit="closeCashPeriod" class="mt-3 space-y-3">
-                            <p class="text-xs text-zinc-500 dark:text-zinc-400">Seluruh draf harus diselesaikan terlebih dahulu. Setelah ditutup, anggaran, transaksi, pembalikan dan lampiran bukti tidak bisa diubah.</p>
+                            <p class="text-xs text-zinc-500 dark:text-zinc-400">Seluruh draf harus diselesaikan dan rekonsiliasi terakhir harus cocok dengan saldo buku. Setelah ditutup, anggaran, transaksi, pembalikan dan lampiran bukti tidak bisa diubah.</p>
                             <label for="finance-close-notes" class="block text-sm font-medium">Catatan penutupan (min. 10 karakter)</label>
                             <textarea id="finance-close-notes" wire:model="closingNotesInput" rows="2" maxlength="3000" required class="w-full rounded-lg border border-zinc-300 bg-white p-3 text-sm dark:border-zinc-700 dark:bg-zinc-800"></textarea>
                             @error('closingNotesInput') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
