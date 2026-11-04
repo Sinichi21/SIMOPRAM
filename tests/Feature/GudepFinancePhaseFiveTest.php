@@ -238,4 +238,82 @@ class GudepFinancePhaseFiveTest extends TestCase
             ->assertViewHas('income', 101000)
             ->assertViewHas('expense', 0);
     }
+    public function test_ledger_filters_do_not_modify_the_financial_balance(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+
+        foreach ([
+            ['income', 'Iuran', 'Iuran anggota', 'KAS-01', 100000, 'posted'],
+            ['expense', 'ATK', 'Pembelian kertas', 'KAS-02', 30000, 'posted'],
+            ['income', 'Iuran', 'Iuran belum disetujui', 'KAS-03', 50000, 'draft'],
+        ] as [$direction, $category, $description, $reference, $amount, $status]) {
+            GudepCashEntry::query()->create([
+                'school_id' => $school->id,
+                'scout_group_id' => $gudep->id,
+                'academic_year_id' => $year->id,
+                'direction' => $direction,
+                'category' => $category,
+                'occurred_at' => '2026-11-02',
+                'description' => $description,
+                'reference_number' => $reference,
+                'amount' => $amount,
+                'status' => $status,
+            ]);
+        }
+
+        $component = Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->assertViewHas('ledgerMatches', 3)
+            ->assertViewHas('income', 100000)
+            ->assertViewHas('expense', 30000);
+
+        $component->set('ledgerDirection', 'expense')
+            ->assertViewHas('ledgerMatches', 1)
+            ->assertViewHas('income', 100000)
+            ->assertViewHas('expense', 30000);
+
+        $component->set('ledgerDirection', 'all')
+            ->set('ledgerStatus', 'draft')
+            ->set('ledgerSearch', 'KAS-03')
+            ->assertViewHas('ledgerMatches', 1)
+            ->assertViewHas('income', 100000)
+            ->assertViewHas('expense', 30000);
+
+        $component->call('clearLedgerFilters')
+            ->assertSet('ledgerSearch', '')
+            ->assertSet('ledgerStatus', 'all')
+            ->assertSet('ledgerDirection', 'all')
+            ->assertViewHas('ledgerMatches', 3);
+    }
+
+    public function test_ledger_filters_remain_scoped_to_selected_gudep(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+        $foreign = ScoutGroup::query()->create([
+            'school_id' => $school->id,
+            'name' => 'Gudep Lain',
+        ]);
+
+        foreach ([$gudep, $foreign] as $group) {
+            GudepCashEntry::query()->create([
+                'school_id' => $school->id,
+                'scout_group_id' => $group->id,
+                'academic_year_id' => $year->id,
+                'direction' => 'income',
+                'category' => 'Iuran',
+                'occurred_at' => '2026-11-02',
+                'description' => 'Iuran anggota',
+                'amount' => 10000,
+                'status' => 'posted',
+            ]);
+        }
+
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->set('ledgerSearch', 'Iuran')
+            ->assertViewHas('ledgerMatches', 1)
+            ->assertViewHas('income', 10000);
+    }
 }
