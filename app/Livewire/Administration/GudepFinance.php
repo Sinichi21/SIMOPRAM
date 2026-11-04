@@ -7,6 +7,7 @@ use App\Models\Activity;
 use App\Models\GudepCashEntry;
 use App\Models\GudepCashEvidence;
 use App\Models\GudepCashPeriod;
+use App\Models\GudepCashReconciliation;
 use App\Models\GudepFinanceBudget;
 use App\Models\InventoryAsset;
 use App\Models\InventoryItem;
@@ -79,6 +80,10 @@ class GudepFinance extends Component
 
     public string $closingNotesInput = '';
 
+    public string $countedCashInput = '';
+
+    public string $reconciliationNotesInput = '';
+
     public function mount(): void
     {
         $this->authorizeView();
@@ -144,6 +149,60 @@ class GudepFinance extends Component
         session()->flash('status', 'Saldo awal berhasil ditetapkan untuk tahun ajaran ini.');
     }
 
+    /**
+     * Stable checksum of the full scoped ledger and budgets.
+     */
+    private function ledgerFingerprint(ReportVerificationService $verifier, GudepCashPeriod $period): string
+    {
+        $entries = $this->cashEntries()->with('evidences')
+            ->orderBy('occurred_at')->orderBy('id')->get();
+
+        return $verifier->contentChecksum([
+            'opening_balance' => $period->opening_balance,
+            'entries' => $entries->map(fn ($item) => $item->only([
+                'id', 'status', 'direction', 'category', 'amount', 'occurred_at',
+                'reversal_of_id', 'reversal_reason', 'posted_at',
+            ]) + ['evidence_hashes' => $item->evidences->pluck('sha256')->all()])->all(),
+            'budgets' => $this->budgets()->orderBy('category')->get()
+                ->map(fn ($item) => $item->only(['category', 'allocated_amount', 'notes']))->all(),
+        ]);
+    }
+
+    public function reconcileCash(ReportVerificationService $verifier): void
+    {
+        $this->authorizeManage();
+        $data = $this->validate([
+            'countedCashInput' => ['required', 'integer', 'min:0', 'max:999999999999'],
+            'reconciliationNotesInput' => ['required', 'string', 'min:10', 'max:3000'],
+        ]);
+
+        DB::transaction(function () use ($verifier, $data): void {
+            $period = $this->lockOpenPeriod();
+            abort_unless($period->opening_set_at !== null, 409, 'Tetapkan saldo awal terlebih dahulu.');
+
+            $totals = $this->cashTotals();
+            $bookBalance = (int) $period->opening_balance + $totals['income'] - $totals['expense'];
+            $counted = (int) $data['countedCashInput'];
+
+            GudepCashReconciliation::query()->create([
+                'school_id' => $this->schoolId(),
+                'scout_group_id' => $this->selectedGudep()->id,
+                'academic_year_id' => $this->selectedYear()->id,
+                'gudep_cash_period_id' => $period->id,
+                'book_balance' => $bookBalance,
+                'counted_cash' => $counted,
+                'difference' => $counted - $bookBalance,
+                'ledger_checksum' => $this->ledgerFingerprint($verifier, $period),
+                'notes' => trim($data['reconciliationNotesInput']),
+                'recorded_by' => auth()->id(),
+                'recorded_at' => now(),
+            ]);
+        });
+
+        $this->reset(['countedCashInput', 'reconciliationNotesInput']);
+        session()->flash('status', 'Hasil pemeriksaan kas fisik berhasil dicatat.');
+    }
+
     public function closeCashPeriod(ReportVerificationService $verifier): void
     {
         $this->authorizeManage();
@@ -159,18 +218,27 @@ class GudepFinance extends Component
 
             $totals = $this->cashTotals();
             $closingBalance = (int) $period->opening_balance + $totals['income'] - $totals['expense'];
-            $entries = $this->cashEntries()->where('status', 'posted')
-                ->with('evidences')->orderBy('occurred_at')->orderBy('id')->get();
+            $fingerprint = $this->ledgerFingerprint($verifier, $period);
+            $reconciliation = GudepCashReconciliation::query()
+                ->where('school_id', $this->schoolId())
+                ->where('scout_group_id', $this->selectedGudep()->id)
+                ->where('academic_year_id', $this->selectedYear()->id)
+                ->where('gudep_cash_period_id', $period->id)
+                ->orderByDesc('id')->first();
+
+            abort_unless($reconciliation !== null, 409,
+                'Catat rekonsiliasi kas fisik sebelum tutup buku.');
+            abort_unless($reconciliation->difference === 0, 409,
+                'Saldo kas fisik belum sesuai dengan saldo buku.');
+            abort_unless($reconciliation->ledger_checksum === $fingerprint
+                && $reconciliation->book_balance === $closingBalance, 409,
+                'Buku kas berubah sejak rekonsiliasi. Ulangi pemeriksaan kas fisik.');
 
             $checksum = $verifier->contentChecksum([
-                'opening_balance' => $period->opening_balance,
+                'ledger_checksum' => $fingerprint,
+                'reconciliation_id' => $reconciliation->id,
                 'closing_balance' => $closingBalance,
-                'entries' => $entries->map(fn ($item) => $item->only([
-                    'id', 'direction', 'category', 'amount', 'occurred_at',
-                    'reversal_of_id', 'reversal_reason', 'posted_at',
-                ]) + ['evidence_hashes' => $item->evidences->pluck('sha256')->all()])->all(),
-                'budgets' => $this->budgets()->orderBy('category')->get()
-                    ->map(fn ($item) => $item->only(['category', 'allocated_amount', 'notes']))->all(),
+                'counted_cash' => $reconciliation->counted_cash,
             ]);
 
             $period->update([
@@ -506,6 +574,8 @@ class GudepFinance extends Component
         $budgets = $this->budgets()->orderBy('category')->get();
         $period = $this->cashPeriod();
         $openingBalance = (int) ($period?->opening_balance ?? 0);
+        $reconciliation = $period ? GudepCashReconciliation::query()
+            ->where('gudep_cash_period_id', $period->id)->orderByDesc('id')->first() : null;
         $totals = $this->cashTotals();
         $income = $totals['income'];
         $expense = $totals['expense'];
@@ -525,6 +595,7 @@ class GudepFinance extends Component
             'opening_balance' => $openingBalance,
             'period_status' => $period?->status ?? 'open',
             'closing_checksum' => $period?->closing_checksum,
+            'reconciliation' => $reconciliation?->only(['id', 'book_balance', 'counted_cash', 'difference', 'ledger_checksum']),
             'expense_by_category' => $expenseByCategory,
             'budgets' => $budgets->map(fn ($item) => $item->only([
                 'id', 'category', 'allocated_amount', 'notes',
@@ -540,7 +611,7 @@ class GudepFinance extends Component
             snapshotChecksum: $verifier->contentChecksum($snapshot),
             filename: 'buku-kas-gudep-'.$gudep->id.'-'.$year->id.'.pdf',
             contentView: 'reports.pdf.administration.gudep-cash-book',
-            contentData: compact('gudep', 'year', 'entries', 'budgets', 'income', 'expense', 'expenseByCategory', 'openingBalance', 'period'),
+            contentData: compact('gudep', 'year', 'entries', 'budgets', 'income', 'expense', 'expenseByCategory', 'openingBalance', 'period', 'reconciliation'),
             title: 'Buku Kas '.$gudep->name.' '.$year->name,
             metadata: ['academic_year' => $year->name, 'security_classification' => 'Terbatas'],
         );
@@ -641,6 +712,8 @@ class GudepFinance extends Component
         $expense = $totals['expense'];
         $expenseByCategory = $gudep && $year ? $this->expenseByCategory() : [];
         $period = $gudep && $year ? $this->cashPeriod() : null;
+        $latestReconciliation = $period ? GudepCashReconciliation::query()
+            ->where('gudep_cash_period_id', $period->id)->orderByDesc('id')->first() : null;
         $openingBalance = (int) ($period?->opening_balance ?? 0);
         $ownerIds = $gudep ? InventoryOwner::query()->where('school_id', $schoolId)
             ->where('owner_type', 'gudep')->where('scout_group_id', $gudep->id)
@@ -660,6 +733,7 @@ class GudepFinance extends Component
             'expense' => $expense,
             'expenseByCategory' => $expenseByCategory,
             'cashPeriod' => $period,
+            'latestReconciliation' => $latestReconciliation,
             'openingBalance' => $openingBalance,
             'activities' => $year ? Activity::query()->where('school_id', $schoolId)
                 ->where('academic_year_id', $year->id)->orderBy('title')->get() : collect(),
