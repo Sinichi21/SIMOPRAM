@@ -122,6 +122,7 @@ class RolePermissionSeeder extends Seeder
 
             'gudep.view',
             'gudep.manage',
+            'gudep.development.manage',
 
             'classrooms.view',
             'classrooms.manage',
@@ -291,6 +292,7 @@ class RolePermissionSeeder extends Seeder
                 'academic_years.view',
                 'semesters.view',
                 'gudep.view',
+                'gudep.development.manage',
                 'classrooms.view',
                 'scout_units.view',
                 'scout_units.manage',
