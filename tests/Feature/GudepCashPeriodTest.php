@@ -6,7 +6,6 @@ use App\Livewire\Administration\GudepFinance;
 use App\Models\AcademicYear;
 use App\Models\GudepCashEntry;
 use App\Models\GudepCashPeriod;
-use App\Models\GudepFinanceBudget;
 use App\Models\ReportVerification;
 use App\Models\School;
 use App\Models\ScoutGroup;
@@ -15,6 +14,7 @@ use App\Support\SchoolContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
+use Livewire\Features\SupportTesting\Testable;
 use Tests\TestCase;
 
 class GudepCashPeriodTest extends TestCase
@@ -58,11 +58,20 @@ class GudepCashPeriodTest extends TestCase
         ]);
     }
 
-    private function component(int $gudepId, int $yearId): \Livewire\Features\SupportTesting\Testable
+    private function component(int $gudepId, int $yearId): Testable
     {
         return Livewire::test(GudepFinance::class)
             ->set('scoutGroupId', $gudepId)
             ->set('academicYearId', $yearId);
+    }
+
+    private function reconcile(int $gudepId, int $yearId, int $countedCash): void
+    {
+        $this->component($gudepId, $yearId)
+            ->set('countedCashInput', (string) $countedCash)
+            ->set('reconciliationNotesInput', 'Kas fisik dihitung dan dicocokkan.')
+            ->call('reconcileCash')
+            ->assertHasNoErrors();
     }
 
     public function test_opening_balance_is_set_once_and_included_in_running_balance(): void
@@ -109,6 +118,8 @@ class GudepCashPeriodTest extends TestCase
             ->assertHasNoErrors()
             ->assertViewHas('openingBalance', 0);
 
+        $this->reconcile($gudep->id, $year->id, 25000);
+
         $this->component($gudep->id, $year->id)
             ->set('closingNotesInput', 'Buku kas warisan telah diverifikasi.')
             ->call('closeCashPeriod')
@@ -151,6 +162,8 @@ class GudepCashPeriodTest extends TestCase
             ->assertHasNoErrors();
 
         $this->cash($school->id, $gudep->id, $year->id);
+
+        $this->reconcile($gudep->id, $year->id, 100000);
 
         $this->component($gudep->id, $year->id)
             ->set('closingNotesInput', 'Buku kas telah diperiksa dan ditutup.')
@@ -226,6 +239,8 @@ class GudepCashPeriodTest extends TestCase
         $publish();
         $first = ReportVerification::query()->where('document_type', 'gudep_cash_book')->firstOrFail();
         $originalPdf = Storage::disk('local')->get($first->file_path);
+
+        $this->reconcile($gudep->id, $year->id, 20000);
 
         $this->component($gudep->id, $year->id)
             ->set('closingNotesInput', 'Periode tahunan ditutup secara resmi.')
