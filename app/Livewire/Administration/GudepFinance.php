@@ -6,6 +6,7 @@ use App\Models\AcademicYear;
 use App\Models\Activity;
 use App\Models\GudepCashEntry;
 use App\Models\GudepCashEvidence;
+use App\Models\GudepCashPeriod;
 use App\Models\GudepFinanceBudget;
 use App\Models\InventoryAsset;
 use App\Models\InventoryItem;
@@ -74,6 +75,10 @@ class GudepFinance extends Component
 
     public string $reversalReason = '';
 
+    public string $openingBalanceInput = '';
+
+    public string $closingNotesInput = '';
+
     public function mount(): void
     {
         $this->authorizeView();
@@ -83,6 +88,100 @@ class GudepFinance extends Component
         $this->academicYearId = AcademicYear::query()->where('school_id', $schoolId)
             ->where('is_active', true)->value('id');
         $this->cashDate = now()->toDateString();
+    }
+
+    private function cashPeriod(): ?GudepCashPeriod
+    {
+        return GudepCashPeriod::query()->where('school_id', $this->schoolId())
+            ->where('scout_group_id', $this->selectedGudep()->id)
+            ->where('academic_year_id', $this->selectedYear()->id)
+            ->first();
+    }
+
+    /**
+     * Every ledger mutation locks the same scoped period before writing.
+     * A missing period is created only after the Gudep and year are verified.
+     */
+    private function lockOpenPeriod(): GudepCashPeriod
+    {
+        $period = GudepCashPeriod::query()->firstOrCreate([
+            'school_id' => $this->schoolId(),
+            'scout_group_id' => $this->selectedGudep()->id,
+            'academic_year_id' => $this->selectedYear()->id,
+        ], [
+            'opening_balance' => 0,
+            'status' => 'open',
+        ]);
+
+        $locked = GudepCashPeriod::query()->whereKey($period->id)->lockForUpdate()->firstOrFail();
+        abort_unless($locked->status === 'open', 409, 'Buku kas periode ini sudah ditutup.');
+
+        return $locked;
+    }
+
+    public function saveOpeningBalance(): void
+    {
+        $this->authorizeManage();
+        $data = $this->validate([
+            'openingBalanceInput' => ['required', 'integer', 'min:0', 'max:999999999999'],
+        ]);
+
+        DB::transaction(function () use ($data): void {
+            $period = $this->lockOpenPeriod();
+            abort_if($period->opening_set_at !== null, 409, 'Saldo awal sudah ditetapkan.');
+            abort_if($this->cashEntries()->where('status', 'posted')->exists(), 409,
+                'Saldo awal harus ditetapkan sebelum transaksi pertama diposting.');
+
+            $period->update([
+                'opening_balance' => (int) $data['openingBalanceInput'],
+                'opening_set_by' => auth()->id(),
+                'opening_set_at' => now(),
+            ]);
+        });
+
+        $this->openingBalanceInput = '';
+        session()->flash('status', 'Saldo awal berhasil ditetapkan untuk tahun ajaran ini.');
+    }
+
+    public function closeCashPeriod(ReportVerificationService $verifier): void
+    {
+        $this->authorizeManage();
+        $data = $this->validate([
+            'closingNotesInput' => ['required', 'string', 'min:10', 'max:3000'],
+        ]);
+
+        DB::transaction(function () use ($data, $verifier): void {
+            $period = $this->lockOpenPeriod();
+            abort_unless($period->opening_set_at !== null, 409, 'Tetapkan saldo awal sebelum tutup buku.');
+            abort_if($this->cashEntries()->where('status', 'draft')->exists(), 409,
+                'Selesaikan seluruh transaksi draf sebelum menutup buku.');
+
+            $totals = $this->cashTotals();
+            $closingBalance = (int) $period->opening_balance + $totals['income'] - $totals['expense'];
+            $entries = $this->cashEntries()->where('status', 'posted')
+                ->with('evidences')->orderBy('occurred_at')->orderBy('id')->get();
+
+            $checksum = $verifier->contentChecksum([
+                'opening_balance' => $period->opening_balance,
+                'closing_balance' => $closingBalance,
+                'entries' => $entries->map(fn ($item) => $item->only([
+                    'id', 'direction', 'category', 'amount', 'occurred_at',
+                    'reversal_of_id', 'reversal_reason', 'posted_at',
+                ]) + ['evidence_hashes' => $item->evidences->pluck('sha256')->all()])->all(),
+            ]);
+
+            $period->update([
+                'status' => 'closed',
+                'closing_balance' => $closingBalance,
+                'closing_checksum' => $checksum,
+                'closed_by' => auth()->id(),
+                'closed_at' => now(),
+                'closing_notes' => trim($data['closingNotesInput']),
+            ]);
+        });
+
+        $this->closingNotesInput = '';
+        session()->flash('status', 'Buku kas tahun ajaran berhasil ditutup dan dikunci.');
     }
 
     public function clearLedgerFilters(): void
@@ -103,6 +202,7 @@ class GudepFinance extends Component
 
         $year = $this->selectedYear();
         $gudep = $this->selectedGudep();
+        $this->lockOpenPeriod();
 
         GudepFinanceBudget::query()->updateOrCreate(
             [
@@ -172,6 +272,8 @@ class GudepFinance extends Component
             }
         }
 
+        $this->lockOpenPeriod();
+
         GudepCashEntry::query()->create([
             'school_id' => $this->schoolId(),
             'scout_group_id' => $gudep->id,
@@ -199,6 +301,7 @@ class GudepFinance extends Component
     {
         $this->authorizeManage();
         DB::transaction(function () use ($id): void {
+            $this->lockOpenPeriod();
             $entry = $this->cashEntries()->lockForUpdate()->find($id);
             abort_unless($entry !== null, 404);
             abort_unless($entry->status === 'draft', 409, 'Transaksi sudah diposting.');
@@ -236,6 +339,7 @@ class GudepFinance extends Component
         ]);
 
         DB::transaction(function () use ($data): void {
+            $this->lockOpenPeriod();
             $original = $this->cashEntries()->lockForUpdate()->find((int) $data['reversalEntryId']);
             abort_unless($original !== null, 404);
             abort_unless($original->status === 'posted' && $original->reversal_of_id === null, 409,
@@ -284,6 +388,7 @@ class GudepFinance extends Component
             'receiptAttachment' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:8192'],
         ]);
 
+        $this->lockOpenPeriod();
         $entry = $this->cashEntries()->findOrFail((int) $validated['receiptCashEntryId']);
         $file = $this->receiptAttachment;
         $temp = $file->getRealPath();
@@ -391,6 +496,8 @@ class GudepFinance extends Component
         $entries = $this->cashEntries()->where('status', 'posted')
             ->with(['evidences', 'reversedEntry'])->orderBy('occurred_at')->orderBy('id')->get();
         $budgets = $this->budgets()->orderBy('category')->get();
+        $period = $this->cashPeriod();
+        $openingBalance = (int) ($period?->opening_balance ?? 0);
         $totals = $this->cashTotals();
         $income = $totals['income'];
         $expense = $totals['expense'];
@@ -407,6 +514,9 @@ class GudepFinance extends Component
                 'original_filename' => $evidence->original_filename,
                 'sha256' => $evidence->sha256,
             ])->all()])->all(),
+            'opening_balance' => $openingBalance,
+            'period_status' => $period?->status ?? 'open',
+            'closing_checksum' => $period?->closing_checksum,
             'expense_by_category' => $expenseByCategory,
             'budgets' => $budgets->map(fn ($item) => $item->only([
                 'id', 'category', 'allocated_amount', 'notes',
@@ -422,7 +532,7 @@ class GudepFinance extends Component
             snapshotChecksum: $verifier->contentChecksum($snapshot),
             filename: 'buku-kas-gudep-'.$gudep->id.'-'.$year->id.'.pdf',
             contentView: 'reports.pdf.administration.gudep-cash-book',
-            contentData: compact('gudep', 'year', 'entries', 'budgets', 'income', 'expense', 'expenseByCategory'),
+            contentData: compact('gudep', 'year', 'entries', 'budgets', 'income', 'expense', 'expenseByCategory', 'openingBalance', 'period'),
             title: 'Buku Kas '.$gudep->name.' '.$year->name,
             metadata: ['academic_year' => $year->name, 'security_classification' => 'Terbatas'],
         );
@@ -522,6 +632,8 @@ class GudepFinance extends Component
         $income = $totals['income'];
         $expense = $totals['expense'];
         $expenseByCategory = $gudep && $year ? $this->expenseByCategory() : [];
+        $period = $gudep && $year ? $this->cashPeriod() : null;
+        $openingBalance = (int) ($period?->opening_balance ?? 0);
         $ownerIds = $gudep ? InventoryOwner::query()->where('school_id', $schoolId)
             ->where('owner_type', 'gudep')->where('scout_group_id', $gudep->id)
             ->pluck('id')->all() : [];
@@ -539,6 +651,8 @@ class GudepFinance extends Component
             'income' => $income,
             'expense' => $expense,
             'expenseByCategory' => $expenseByCategory,
+            'cashPeriod' => $period,
+            'openingBalance' => $openingBalance,
             'activities' => $year ? Activity::query()->where('school_id', $schoolId)
                 ->where('academic_year_id', $year->id)->orderBy('title')->get() : collect(),
             'inventoryOptions' => $gudep && auth()->user()?->can('inventory.view')
