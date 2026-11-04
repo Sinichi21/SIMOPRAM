@@ -16,6 +16,7 @@ class GudepCashEntry extends Model
         'activity_id', 'inventory_item_id', 'direction', 'category',
         'occurred_at', 'description', 'amount', 'reference_number',
         'notes', 'status', 'created_by', 'posted_by', 'posted_at',
+        'reversal_of_id', 'reversal_reason',
     ];
 
     protected function casts(): array
@@ -25,6 +26,12 @@ class GudepCashEntry extends Model
             'occurred_at' => 'date',
             'posted_at' => 'datetime',
         ];
+    }
+
+    /** @return BelongsTo<GudepCashEntry, $this> */
+    public function reversedEntry(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'reversal_of_id');
     }
 
     /** @return HasMany<GudepCashEvidence, $this> */
