@@ -19,6 +19,7 @@ final class ModuleWorkspace
                 'icon' => 'folder-open',
                 'permissions' => ['gudep.view', 'letters.view', 'report_verifications.view'],
                 'links' => [
+                    ['label' => 'Buku Operasional', 'route' => 'administration.operations', 'permission' => 'gudep.view'],
                     ['label' => 'Program & Pembinaan', 'route' => 'administration.development', 'permission' => 'gudep.view'],
                     ['label' => 'Organisasi & Buku Induk', 'route' => 'administration.organization', 'permission' => 'gudep.view'],
                     ['label' => 'Gugusdepan', 'route' => 'scout-groups.index', 'permission' => 'gudep.view'],
