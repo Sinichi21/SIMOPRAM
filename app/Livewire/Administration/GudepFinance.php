@@ -516,7 +516,7 @@ class GudepFinance extends Component
 
         $ledgerMatches = $ledgerQuery !== null ? (clone $ledgerQuery)->count() : 0;
         $cash = $ledgerQuery !== null
-            ? $ledgerQuery->with(['evidences', 'reversedEntry'])->orderByDesc('occurred_at')->orderByDesc('id')->limit(100)->get()
+            ? $ledgerQuery->with(['evidences', 'reversedEntry'])->withExists('reversals')->orderByDesc('occurred_at')->orderByDesc('id')->limit(100)->get()
             : collect();
         $totals = $gudep && $year ? $this->cashTotals() : ['income' => 0, 'expense' => 0];
         $income = $totals['income'];
