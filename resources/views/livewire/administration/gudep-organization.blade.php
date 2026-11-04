@@ -152,6 +152,30 @@
                 </form>
             @endcan
 
+            @can('gudep.manage')
+                <form wire:submit="uploadOfficerSk" class="mt-5 grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800 md:grid-cols-3">
+                    <div>
+                        <label for="sk-officer" class="mb-1 block text-sm font-medium">Lampirkan SK untuk pengurus</label>
+                        <select id="sk-officer" wire:model="skOfficerId" class="w-full rounded-lg border border-zinc-300 p-2.5 dark:border-zinc-700 dark:bg-zinc-900">
+                            <option value="">Pilih pengurus</option>
+                            @foreach ($officers as $item)
+                                <option value="{{ $item->id }}">{{ $item->person_name }} · {{ $item->position }}</option>
+                            @endforeach
+                        </select>
+                        @error('skOfficerId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label for="sk-attachment" class="mb-1 block text-sm font-medium">Bukti SK (PDF/JPG/PNG, maks. 8 MB)</label>
+                        <input id="sk-attachment" type="file" wire:model="skAttachment" accept=".pdf,.jpg,.jpeg,.png" class="block w-full text-sm">
+                        @error('skAttachment') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div class="flex items-end">
+                        <button type="submit" wire:loading.attr="disabled" wire:target="skAttachment,uploadOfficerSk" class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">Simpan Lampiran SK</button>
+                    </div>
+                    <p class="text-xs text-zinc-500 md:col-span-3">File disimpan secara privat dan hanya dapat diunduh pengguna yang memiliki akses Gudep pada sekolah aktif. Mengunggah SK baru tidak menghapus arsip sebelumnya.</p>
+                </form>
+            @endcan
+
             <div class="mt-5 overflow-x-auto">
                 <table class="min-w-full text-left text-sm">
                     <thead class="bg-zinc-50 dark:bg-zinc-800"><tr><th class="px-3 py-2">Kelompok</th><th class="px-3 py-2">Nama / Jabatan</th><th class="px-3 py-2">Masa jabatan</th><th class="px-3 py-2">SK</th><th class="px-3 py-2">Aksi</th></tr></thead>
@@ -161,7 +185,13 @@
                                 <td class="px-3 py-2">{{ strtoupper($officer->scope) }}</td>
                                 <td class="px-3 py-2">{{ $officer->person_name }}<div class="text-xs text-zinc-500">{{ $officer->position }} @if ($officer->formation) · {{ $officer->formation->name }} @endif</div></td>
                                 <td class="px-3 py-2">{{ $officer->started_at?->format('d/m/Y') }} — {{ $officer->ended_at?->format('d/m/Y') ?? 'Sekarang' }}</td>
-                                <td class="px-3 py-2">{{ $officer->decree_number ?: '-' }}<div class="text-xs text-zinc-500">{{ $officer->decree_date?->format('d/m/Y') }}</div></td>
+                                <td class="px-3 py-2">
+                                    {{ $officer->decree_number ?: '-' }}
+                                    <div class="text-xs text-zinc-500">{{ $officer->decree_date?->format('d/m/Y') }}</div>
+                                    @foreach ($officer->documents as $attachment)
+                                        <a href="{{ route('administration.officers.sk.download', $attachment->id) }}" class="mt-1 block text-xs font-medium text-emerald-700 hover:underline">Unduh SK: {{ $attachment->original_filename }}</a>
+                                    @endforeach
+                                </td>
                                 <td class="px-3 py-2">@can('gudep.manage')<button type="button" wire:click="editOfficer({{ $officer->id }})" class="font-medium text-emerald-700 hover:underline">Edit</button>@endcan</td>
                             </tr>
                         @empty

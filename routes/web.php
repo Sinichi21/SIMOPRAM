@@ -7,6 +7,7 @@ use App\Http\Controllers\ActivityLogExportController;
 use App\Http\Controllers\ActivityParticipantPortalController;
 use App\Http\Controllers\ActivityRegistrationController;
 use App\Http\Controllers\ComplaintController;
+use App\Http\Controllers\GudepOfficerDocumentController;
 use App\Http\Controllers\InventoryAssetBatchLabelController;
 use App\Http\Controllers\InventoryAssetLabelController;
 use App\Http\Controllers\InventoryAssetVerificationController;
@@ -242,6 +243,11 @@ Route::middleware([
         Route::get('/administrasi/organisasi', GudepOrganization::class)
             ->middleware('can:gudep.view')
             ->name('administration.organization');
+
+        Route::get('/administrasi/organisasi/sk/{document}', [GudepOfficerDocumentController::class, 'download'])
+            ->whereNumber('document')
+            ->middleware(['can:gudep.view', 'throttle:30,1'])
+            ->name('administration.officers.sk.download');
 
         Route::get('/inventaris', Index::class)
             ->middleware('can:inventory.view')

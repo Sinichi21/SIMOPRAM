@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToSchool;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -54,6 +55,12 @@ class GudepOfficer extends Model
     }
 
     /** @return BelongsTo<Coach, $this> */
+    /** @return HasMany<GudepOfficerDocument, $this> */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(GudepOfficerDocument::class, 'gudep_officer_id');
+    }
+
     public function coach(): BelongsTo
     {
         return $this->belongsTo(Coach::class);
