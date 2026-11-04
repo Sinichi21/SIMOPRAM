@@ -344,24 +344,24 @@ class GudepFinance extends Component
             }
         }
 
-        DB::transaction(function () use ($data, $date, $gudep): void {
+        DB::transaction(function () use ($data, $date, $gudep, $year): void {
             $this->lockOpenPeriod();
 
             GudepCashEntry::query()->create([
-            'school_id' => $this->schoolId(),
-            'scout_group_id' => $gudep->id,
-            'academic_year_id' => $year->id,
-            'activity_id' => $data['cashActivityId'] ?: null,
-            'inventory_item_id' => $data['cashInventoryItemId'] ?: null,
-            'direction' => $data['cashDirection'],
-            'category' => trim($data['cashCategory']),
-            'occurred_at' => $date,
-            'description' => trim($data['cashDescription']),
-            'amount' => (int) $data['cashAmount'],
-            'reference_number' => $data['cashReference'] ?: null,
-            'notes' => $data['cashNotes'] ?: null,
-            'status' => 'draft',
-            'created_by' => auth()->id(),
+                'school_id' => $this->schoolId(),
+                'scout_group_id' => $gudep->id,
+                'academic_year_id' => $year->id,
+                'activity_id' => $data['cashActivityId'] ?: null,
+                'inventory_item_id' => $data['cashInventoryItemId'] ?: null,
+                'direction' => $data['cashDirection'],
+                'category' => trim($data['cashCategory']),
+                'occurred_at' => $date,
+                'description' => trim($data['cashDescription']),
+                'amount' => (int) $data['cashAmount'],
+                'reference_number' => $data['cashReference'] ?: null,
+                'notes' => $data['cashNotes'] ?: null,
+                'status' => 'draft',
+                'created_by' => auth()->id(),
         ]);
         });
 
