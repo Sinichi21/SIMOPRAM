@@ -53,6 +53,12 @@ class GudepFinance extends Component
 
     public ?int $cashInventoryItemId = null;
 
+    public string $ledgerSearch = '';
+
+    public string $ledgerDirection = 'all';
+
+    public string $ledgerStatus = 'all';
+
     public function mount(): void
     {
         $this->authorizeView();
@@ -62,6 +68,13 @@ class GudepFinance extends Component
         $this->academicYearId = AcademicYear::query()->where('school_id', $schoolId)
             ->where('is_active', true)->value('id');
         $this->cashDate = now()->toDateString();
+    }
+
+    public function clearLedgerFilters(): void
+    {
+        $this->reset(['ledgerSearch', 'ledgerDirection', 'ledgerStatus']);
+        $this->ledgerDirection = 'all';
+        $this->ledgerStatus = 'all';
     }
 
     public function saveBudget(): void
@@ -292,7 +305,29 @@ class GudepFinance extends Component
         $gudep = $this->scoutGroupId !== null ? $this->selectedGudep() : null;
         $year = $this->academicYearId !== null ? $this->selectedYear() : null;
 
-        $cash = $gudep && $year ? $this->cashEntries()->orderByDesc('occurred_at')->limit(100)->get() : collect();
+        $ledgerQuery = $gudep && $year ? $this->cashEntries() : null;
+        if ($ledgerQuery !== null) {
+            $search = trim($this->ledgerSearch);
+            if ($search !== '') {
+                $ledgerQuery->where(function (Builder $query) use ($search): void {
+                    $query->where('description', 'like', '%'.$search.'%')
+                        ->orWhere('category', 'like', '%'.$search.'%')
+                        ->orWhere('reference_number', 'like', '%'.$search.'%');
+                });
+            }
+
+            if (in_array($this->ledgerDirection, ['income', 'expense'], true)) {
+                $ledgerQuery->where('direction', $this->ledgerDirection);
+            }
+            if (in_array($this->ledgerStatus, ['draft', 'posted'], true)) {
+                $ledgerQuery->where('status', $this->ledgerStatus);
+            }
+        }
+
+        $ledgerMatches = $ledgerQuery !== null ? (clone $ledgerQuery)->count() : 0;
+        $cash = $ledgerQuery !== null
+            ? $ledgerQuery->orderByDesc('occurred_at')->orderByDesc('id')->limit(100)->get()
+            : collect();
         $income = $gudep && $year ? (int) $this->cashEntries()
             ->where('status', 'posted')->where('direction', 'income')->sum('amount') : 0;
         $expense = $gudep && $year ? (int) $this->cashEntries()
@@ -308,6 +343,7 @@ class GudepFinance extends Component
             'years' => AcademicYear::query()->where('school_id', $schoolId)->orderByDesc('start_date')->get(),
             'budgets' => $gudep && $year ? $this->budgets()->orderBy('category')->get() : collect(),
             'entries' => $cash,
+            'ledgerMatches' => $ledgerMatches,
             'income' => $income,
             'expense' => $expense,
             'activities' => $year ? Activity::query()->where('school_id', $schoolId)
