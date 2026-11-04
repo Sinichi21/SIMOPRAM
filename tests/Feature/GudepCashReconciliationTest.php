@@ -148,6 +148,33 @@ class GudepCashReconciliationTest extends TestCase
             ->assertStatus(409);
     }
 
+    public function test_budget_change_invalidates_matching_reconciliation_even_when_balance_is_equal(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+
+        $this->component($gudep, $year)
+            ->set('openingBalanceInput', '8000')
+            ->call('saveOpeningBalance')
+            ->assertHasNoErrors();
+
+        $this->component($gudep, $year)
+            ->set('countedCashInput', '8000')
+            ->set('reconciliationNotesInput', 'Kas fisik sama dengan saldo buku.')
+            ->call('reconcileCash')
+            ->assertHasNoErrors();
+
+        $this->component($gudep, $year)
+            ->set('budgetCategory', 'Latihan')
+            ->set('budgetAmount', '50000')
+            ->call('saveBudget')
+            ->assertHasNoErrors();
+
+        $this->component($gudep, $year)
+            ->set('closingNotesInput', 'Penutupan setelah rencana anggaran berubah.')
+            ->call('closeCashPeriod')
+            ->assertStatus(409);
+    }
+
     public function test_reconciliation_cannot_be_recorded_after_closure(): void
     {
         [, $gudep, $year] = $this->context();
