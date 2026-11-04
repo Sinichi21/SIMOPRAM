@@ -234,9 +234,38 @@
                 </details>
             @endif
 
-            <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-xs text-zinc-500 dark:text-zinc-400 sm:px-6">
-                <span>100 transaksi terbaru</span>
-                <span>Jumlah saldo menggunakan seluruh transaksi terposting.</span>
+            <div class="space-y-3 border-b border-zinc-100 px-4 py-4 dark:border-zinc-800 sm:px-6">
+                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div class="sm:col-span-2">
+                        <label for="finance-ledger-search" class="mb-1.5 block text-xs font-medium text-zinc-600 dark:text-zinc-300">Cari transaksi</label>
+                        <input id="finance-ledger-search" type="search" wire:model.live.debounce.350ms="ledgerSearch"
+                            placeholder="Cari uraian, kategori, atau nomor bukti..."
+                            class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800">
+                    </div>
+                    <div>
+                        <label for="finance-ledger-direction" class="mb-1.5 block text-xs font-medium text-zinc-600 dark:text-zinc-300">Jenis transaksi</label>
+                        <select id="finance-ledger-direction" wire:model.live="ledgerDirection"
+                            class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800">
+                            <option value="all">Semua jenis</option>
+                            <option value="income">Penerimaan</option>
+                            <option value="expense">Pengeluaran</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="finance-ledger-status" class="mb-1.5 block text-xs font-medium text-zinc-600 dark:text-zinc-300">Status</label>
+                        <select id="finance-ledger-status" wire:model.live="ledgerStatus"
+                            class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800">
+                            <option value="all">Semua status</option>
+                            <option value="draft">Draf</option>
+                            <option value="posted">Tercatat</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+                    <span>Menampilkan {{ $entries->count() }} dari {{ number_format($ledgerMatches, 0, ',', '.') }} transaksi yang sesuai (maksimum 100 baris).</span>
+                    <button type="button" wire:click="clearLedgerFilters" class="font-semibold text-emerald-700 hover:underline dark:text-emerald-400">Reset filter</button>
+                </div>
+                <p class="text-xs text-zinc-500 dark:text-zinc-400">Filter hanya mengubah tabel, bukan angka ringkasan saldo atau isi PDF resmi.</p>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full text-left text-sm">
@@ -282,7 +311,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="5" class="px-4 py-10 text-center text-zinc-500">Belum ada transaksi kas. Gunakan formulir di atas untuk membuat draf pertama.</td></tr>
+                            <tr><td colspan="5" class="px-4 py-10 text-center text-zinc-500">Tidak ada transaksi yang sesuai. Ubah atau reset filter untuk melihat transaksi lain.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
