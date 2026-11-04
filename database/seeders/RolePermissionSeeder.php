@@ -126,6 +126,7 @@ class RolePermissionSeeder extends Seeder
             'gudep.operations.manage',
             'gudep.finance.view',
             'gudep.finance.manage',
+            'gudep.finance.close.approve',
 
             'classrooms.view',
             'classrooms.manage',
