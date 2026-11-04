@@ -660,6 +660,62 @@ class GudepFinance extends Component
         return $expense;
     }
 
+    public function publishFinanceLpj(
+        OfficialDocumentPublisher $publisher,
+        ReportVerificationService $verifier,
+    ): void {
+        $this->authorizeExport();
+        $gudep = $this->selectedGudep();
+        $year = $this->selectedYear();
+        $period = $this->cashPeriod();
+
+        abort_unless($period?->status === 'closed', 409,
+            'LPJ resmi hanya dapat diterbitkan setelah penutupan buku disetujui.');
+
+        $entries = $this->cashEntries()->where('status', 'posted')
+            ->with('evidences')->orderBy('occurred_at')->orderBy('id')->get();
+        $budgets = $this->budgets()->orderBy('category')->get();
+        $totals = $this->cashTotals();
+        $income = $totals['income'];
+        $expense = $totals['expense'];
+        $openingBalance = (int) $period->opening_balance;
+        $expenseByCategory = $this->expenseByCategory();
+        $reconciliation = $this->latestCashReconciliation($period);
+        $evidenceCount = $entries->sum(fn ($entry) => $entry->evidences->count());
+
+        $snapshot = [
+            'source_checksum' => $period->closing_checksum,
+            'year' => $year->id,
+            'gudep' => $gudep->id,
+            'opening_balance' => $openingBalance,
+            'income' => $income,
+            'expense' => $expense,
+            'budgets' => $budgets->map(fn ($item) => $item->only(['category', 'allocated_amount', 'notes']))->all(),
+            'expense_by_category' => $expenseByCategory,
+            'evidences' => $entries->flatMap(fn ($entry) => $entry->evidences->pluck('sha256'))->all(),
+            'reconciliation_id' => $reconciliation?->id,
+        ];
+
+        $document = $publisher->publishBlade(
+            schoolId: $this->schoolId(),
+            sourceType: ScoutGroup::class,
+            sourceId: $gudep->id,
+            documentType: 'gudep_finance_lpj',
+            seriesKey: 'year-'.$year->id,
+            snapshotChecksum: $verifier->contentChecksum($snapshot),
+            filename: 'lpj-keuangan-gudep-'.$gudep->id.'-'.$year->id.'.pdf',
+            contentView: 'reports.pdf.administration.gudep-finance-lpj',
+            contentData: compact(
+                'gudep', 'year', 'period', 'entries', 'budgets', 'income', 'expense',
+                'openingBalance', 'expenseByCategory', 'reconciliation', 'evidenceCount',
+            ),
+            title: 'LPJ Keuangan '.$gudep->name.' '.$year->name,
+            metadata: ['academic_year' => $year->name, 'security_classification' => 'Terbatas'],
+        );
+
+        $this->redirectRoute('reports.published-documents.show', ['code' => $document->code], navigate: false);
+    }
+
     public function publishCashBook(
         OfficialDocumentPublisher $publisher,
         ReportVerificationService $verifier,
