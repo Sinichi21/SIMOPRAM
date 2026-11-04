@@ -13,6 +13,8 @@ use App\Services\Documents\OfficialDocumentPublisher;
 use App\Services\ReportVerificationService;
 use App\Support\SchoolContext;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
@@ -373,7 +375,8 @@ class GudepOperations extends Component
         return $meeting;
     }
 
-    private function guests(): \Illuminate\Database\Eloquent\Builder
+    /** @return Builder<GudepGuestEntry> */
+    private function guests(): Builder
     {
         return GudepGuestEntry::query()->where('school_id', $this->schoolId())
             ->where('scout_group_id', $this->selectedGudep()->id)
