@@ -35,6 +35,7 @@
 <p>Saldo berjalan: Rp {{ number_format($openingBalance + $income - $expense, 0, ',', '.') }}</p>
 @if ($period?->status === 'closed')
 <p><strong>Periode ditutup:</strong> {{ $period->closed_at?->format('d/m/Y H:i') }}</p>
+<p style="font-size:8pt;">Diajukan oleh pengguna #{{ $period->close_requested_by }} pada {{ $period->close_requested_at?->format('d/m/Y H:i') }}. Disetujui oleh pengguna #{{ $period->closed_by }} pada {{ $period->closed_at?->format('d/m/Y H:i') }}.</p>
 <p style="font-size:7pt;">Checksum penutupan: {{ $period->closing_checksum }}</p>
 <p style="font-size:8pt;">Catatan: {{ $period->closing_notes }}</p>
 @endif
