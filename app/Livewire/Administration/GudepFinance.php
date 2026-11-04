@@ -273,7 +273,7 @@ class GudepFinance extends Component
             }
         }
 
-        DB::transaction(function (): void {
+        DB::transaction(function () use ($data, $date, $gudep): void {
             $this->lockOpenPeriod();
 
             GudepCashEntry::query()->create([
