@@ -141,6 +141,7 @@
                                 <div>Selisih: <strong class="{{ $latestReconciliation->difference === 0 ? 'text-emerald-700' : 'text-red-600' }}">Rp {{ number_format($latestReconciliation->difference, 0, ',', '.') }}</strong></div>
                             </div>
                         @endif
+                        @if ($cashPeriod?->close_requested_at === null)
                         <form wire:submit="reconcileCash" class="mt-3 grid gap-3 md:grid-cols-2">
                             <div>
                                 <label for="cash-counted-balance" class="mb-1 block text-sm font-medium">Jumlah kas fisik (Rp)</label>
@@ -159,6 +160,7 @@
                                     class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Catat rekonsiliasi</button>
                             </div>
                         </form>
+                        @endif
                     </div>
                 @if ($cashPeriod?->close_requested_at)
                     <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
@@ -194,6 +196,7 @@
                             <button type="submit" wire:confirm="Ajukan penutupan untuk diperiksa dan disetujui petugas berbeda?" class="rounded-lg bg-amber-800 px-4 py-2 text-sm font-semibold text-white">Ajukan penutupan</button>
                         </form>
                     </details>
+                @endif
                 @endif
             @endif
         </section>
