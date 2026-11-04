@@ -183,7 +183,7 @@
                 <span class="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">{{ $budgets->count() }} kategori</span>
             </div>
 
-            @if ($cashPeriod?->status !== 'closed' && (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage')))
+            @if ($cashPeriod?->status !== 'closed' && $cashPeriod?->close_requested_at === null && (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage')))
                 <details class="group border-b border-zinc-100 dark:border-zinc-800">
                     <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-sm font-semibold text-emerald-700 hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 dark:text-emerald-400 dark:hover:bg-zinc-800/50 sm:px-6">
                         <span>Tambah atau perbarui anggaran</span>
@@ -266,7 +266,7 @@
                 @endcan
             </div>
 
-            @if ($cashPeriod?->status !== 'closed' && (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage')))
+            @if ($cashPeriod?->status !== 'closed' && $cashPeriod?->close_requested_at === null && (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage')))
                 <details class="group border-b border-zinc-100 dark:border-zinc-800">
                     <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-sm font-semibold text-emerald-700 hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 dark:text-emerald-400 dark:hover:bg-zinc-800/50 sm:px-6">
                         <span>Catat transaksi baru</span>
@@ -342,7 +342,7 @@
                 </details>
             @endif
 
-            @if ($cashPeriod?->status !== 'closed' && (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage')))
+            @if ($cashPeriod?->status !== 'closed' && $cashPeriod?->close_requested_at === null && (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage')))
                 <details class="group border-b border-zinc-100 dark:border-zinc-800">
                     <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-sm font-semibold text-emerald-700 hover:bg-zinc-50 dark:text-emerald-400 dark:hover:bg-zinc-800/50 sm:px-6">
                         <span>Lampirkan nota atau kuitansi</span>
@@ -372,7 +372,7 @@
                 </details>
             @endif
 
-            @if ($reversalSelectedEntry && $cashPeriod?->status !== 'closed' && (auth()->user()?->can('gudep.finance.manage') || auth()->user()?->can('gudep.manage')))
+            @if ($reversalSelectedEntry && $cashPeriod?->status !== 'closed' && $cashPeriod?->close_requested_at === null && (auth()->user()?->can('gudep.finance.manage') || auth()->user()?->can('gudep.manage')))
                 <form wire:submit="reverseCash" class="space-y-3 border-b border-amber-200 bg-amber-50/70 px-4 py-5 dark:border-amber-900 dark:bg-amber-950/30 sm:px-6">
                     <div>
                         <h3 class="text-sm font-semibold text-amber-900 dark:text-amber-200">Koreksi transaksi #{{ $reversalSelectedEntry->id }}</h3>
@@ -461,12 +461,12 @@
                                             <span class="mt-1 block text-xs text-zinc-500">{{ $entry->reversal_reason }}</span>
                                         @elseif ($entry->reversals_exists)
                                             <span class="mt-1 block text-xs text-amber-700 dark:text-amber-300">Sudah dibalik</span>
-                                        @elseif ($cashPeriod?->status !== 'closed' && (auth()->user()?->can('gudep.finance.manage') || auth()->user()?->can('gudep.manage')))
+                                        @elseif ($cashPeriod?->status !== 'closed' && $cashPeriod?->close_requested_at === null && (auth()->user()?->can('gudep.finance.manage') || auth()->user()?->can('gudep.manage')))
                                             <button type="button" wire:click="selectCashForReversal({{ $entry->id }})" class="mt-2 block text-xs font-semibold text-amber-700 hover:underline dark:text-amber-300">Ajukan pembalikan</button>
                                         @endif
                                     @else
                                         <span class="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">Draf</span>
-                                        @if ($cashPeriod?->status !== 'closed' && (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage')))
+                                        @if ($cashPeriod?->status !== 'closed' && $cashPeriod?->close_requested_at === null && (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage')))
                                             <button type="button" wire:click="postCash({{ $entry->id }})" wire:confirm="Posting transaksi ini ke buku kas?" wire:loading.attr="disabled" wire:target="postCash({{ $entry->id }})"
                                                 class="mt-2 block rounded-md border border-emerald-600 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 dark:text-emerald-400 dark:hover:bg-emerald-950">
                                                 Posting transaksi
