@@ -238,6 +238,7 @@ class GudepFinancePhaseFiveTest extends TestCase
             ->assertViewHas('income', 101000)
             ->assertViewHas('expense', 0);
     }
+
     public function test_ledger_filters_do_not_modify_the_financial_balance(): void
     {
         [$school, $gudep, $year] = $this->context();
