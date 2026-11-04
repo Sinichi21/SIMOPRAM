@@ -129,8 +129,9 @@ class GudepFinance extends Component
         DB::transaction(function () use ($data): void {
             $period = $this->lockOpenPeriod();
             abort_if($period->opening_set_at !== null, 409, 'Saldo awal sudah ditetapkan.');
-            abort_if($this->cashEntries()->where('status', 'posted')->exists(), 409,
-                'Saldo awal harus ditetapkan sebelum transaksi pertama diposting.');
+            abort_if((int) $data['openingBalanceInput'] !== 0
+                && $this->cashEntries()->where('status', 'posted')->exists(), 409,
+                'Untuk buku kas yang sudah memiliki transaksi, saldo awal hanya boleh dinyatakan nol.');
 
             $period->update([
                 'opening_balance' => (int) $data['openingBalanceInput'],
@@ -168,6 +169,8 @@ class GudepFinance extends Component
                     'id', 'direction', 'category', 'amount', 'occurred_at',
                     'reversal_of_id', 'reversal_reason', 'posted_at',
                 ]) + ['evidence_hashes' => $item->evidences->pluck('sha256')->all()])->all(),
+                'budgets' => $this->budgets()->orderBy('category')->get()
+                    ->map(fn ($item) => $item->only(['category', 'allocated_amount', 'notes']))->all(),
             ]);
 
             $period->update([
