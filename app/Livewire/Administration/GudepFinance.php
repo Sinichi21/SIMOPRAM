@@ -4,6 +4,7 @@ namespace App\Livewire\Administration;
 
 use App\Models\AcademicYear;
 use App\Models\Activity;
+use App\Models\GudepCashCloseDecision;
 use App\Models\GudepCashEntry;
 use App\Models\GudepCashEvidence;
 use App\Models\GudepCashPeriod;
@@ -241,10 +242,28 @@ class GudepFinance extends Component
                 'close_requested_balance' => $closingBalance,
                 'close_requested_reconciliation_id' => $reconciliation->id,
             ]);
+            $this->recordCloseDecision($period, 'requested', trim($data['closingNotesInput']));
         });
 
         $this->closingNotesInput = '';
         session()->flash('status', 'Permohonan tutup buku terkirim. Menunggu persetujuan petugas lain.');
+    }
+
+    private function recordCloseDecision(GudepCashPeriod $period, string $action, ?string $notes = null): void
+    {
+        GudepCashCloseDecision::query()->create([
+            'school_id' => $this->schoolId(),
+            'scout_group_id' => $period->scout_group_id,
+            'academic_year_id' => $period->academic_year_id,
+            'gudep_cash_period_id' => $period->id,
+            'action' => $action,
+            'actor_id' => auth()->id(),
+            'requester_id' => $action === 'requested' ? auth()->id() : $period->close_requested_by,
+            'ledger_checksum' => $period->close_requested_checksum,
+            'book_balance' => $period->close_requested_balance,
+            'notes' => $notes,
+            'decided_at' => now(),
+        ]);
     }
 
     private function latestCashReconciliation(GudepCashPeriod $period): ?GudepCashReconciliation
@@ -303,6 +322,7 @@ class GudepFinance extends Component
                 'closed_at' => now(),
                 'closing_notes' => $period->close_requested_notes,
             ]);
+            $this->recordCloseDecision($period, 'approved', $period->close_requested_notes);
         });
 
         session()->flash('status', 'Penutupan buku berhasil disetujui dan periode dikunci.');
@@ -320,6 +340,7 @@ class GudepFinance extends Component
             abort_unless($period->status === 'open' && $period->close_requested_at !== null, 409);
             abort_if((int) $period->close_requested_by === (int) auth()->id(), 403);
 
+            $this->recordCloseDecision($period, 'rejected', 'Permohonan penutupan ditolak oleh pemeriksa.');
             $period->update([
                 'close_requested_by' => null,
                 'close_requested_at' => null,
@@ -675,6 +696,15 @@ class GudepFinance extends Component
             'closing_checksum' => $period?->closing_checksum,
             'closing_approved_by' => $period?->closed_by,
             'closing_requested_by' => $period?->close_requested_by,
+            'close_decisions' => GudepCashCloseDecision::query()
+                ->where('school_id', $this->schoolId())
+                ->where('scout_group_id', $gudep->id)
+                ->where('academic_year_id', $year->id)
+                ->orderBy('id')->get()
+                ->map(fn ($decision) => $decision->only([
+                    'id', 'action', 'actor_id', 'requester_id', 'book_balance',
+                    'ledger_checksum', 'decided_at', 'notes',
+                ]))->all(),
             'reconciliation' => $reconciliation?->only(['id', 'book_balance', 'counted_cash', 'difference', 'ledger_checksum']),
             'expense_by_category' => $expenseByCategory,
             'budgets' => $budgets->map(fn ($item) => $item->only([
@@ -813,6 +843,12 @@ class GudepFinance extends Component
             'expense' => $expense,
             'expenseByCategory' => $expenseByCategory,
             'cashPeriod' => $period,
+            'closeDecisions' => $period ? GudepCashCloseDecision::query()
+                ->where('school_id', $schoolId)
+                ->where('scout_group_id', $gudep->id)
+                ->where('academic_year_id', $year->id)
+                ->where('gudep_cash_period_id', $period->id)
+                ->orderByDesc('id')->limit(30)->get() : collect(),
             'latestReconciliation' => $latestReconciliation,
             'openingBalance' => $openingBalance,
             'activities' => $year ? Activity::query()->where('school_id', $schoolId)
