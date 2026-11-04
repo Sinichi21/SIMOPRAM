@@ -1,78 +1,348 @@
-<div class="mx-auto max-w-7xl space-y-6 p-6">
-    <h1 class="text-2xl font-bold">Buku Kas, Anggaran & Sarana Gudep</h1>
-    <p class="text-sm text-zinc-500">Keuangan Gudep memakai Rupiah bulat; stok dan peminjaman tetap di Inventaris SIMPRAM.</p>
-    @if (session('status'))<p role="status" class="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">{{ session('status') }}</p>@endif
-    <div class="grid gap-3 md:grid-cols-2">
-        <label>Gudep<select wire:model.live="scoutGroupId" class="w-full rounded-lg border p-2 dark:bg-zinc-900"><option value="">Pilih Gudep</option>@foreach ($gudepOptions as $g)<option value="{{ $g->id }}">{{ $g->name }}</option>@endforeach</select></label>
-        <label>Tahun Ajaran<select wire:model.live="academicYearId" class="w-full rounded-lg border p-2 dark:bg-zinc-900"><option value="">Pilih Tahun Ajaran</option>@foreach ($years as $y)<option value="{{ $y->id }}">{{ $y->name }}</option>@endforeach</select></label>
-    </div>
-    @if ($gudep && $year)
-        <div class="grid gap-3 md:grid-cols-3">
-            <div class="rounded-lg border p-4">Penerimaan terposting: <strong>Rp {{ number_format($income, 0, ',', '.') }}</strong></div>
-            <div class="rounded-lg border p-4">Pengeluaran terposting: <strong>Rp {{ number_format($expense, 0, ',', '.') }}</strong></div>
-            <div class="rounded-lg border p-4">Saldo: <strong>Rp {{ number_format($income - $expense, 0, ',', '.') }}</strong></div>
+<div class="mx-auto max-w-7xl space-y-6 px-4 py-5 sm:px-6 lg:py-8">
+    {{-- Heading --}}
+    <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div class="space-y-1">
+            <p class="text-xs font-semibold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">Administrasi Gugusdepan</p>
+            <h1 class="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-3xl">Keuangan & Sarana</h1>
+            <p class="max-w-2xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
+                Kelola anggaran dan buku kas Gudep. Aset, stok, dan peminjaman tetap bersumber dari Inventaris SIMPRAM.
+            </p>
         </div>
-        <section class="rounded-xl border p-5">
-            <h2 class="text-lg font-semibold">1. Rencana Anggaran</h2>
-            @if (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage'))
-                <form wire:submit="saveBudget" class="mt-3 grid gap-3 md:grid-cols-3">
-                    <label>Kategori<input wire:model="budgetCategory" required maxlength="100" class="w-full rounded-lg border p-2 dark:bg-zinc-900">@error('budgetCategory')<span class="text-red-600">{{ $message }}</span>@enderror</label>
-                    <label>Alokasi Rp<input type="number" wire:model="budgetAmount" required min="0" step="1" class="w-full rounded-lg border p-2 dark:bg-zinc-900">@error('budgetAmount')<span class="text-red-600">{{ $message }}</span>@enderror</label>
-                    <label>Catatan<input wire:model="budgetNotes" maxlength="2000" class="w-full rounded-lg border p-2 dark:bg-zinc-900"></label>
-                    <button class="rounded-lg bg-emerald-700 px-4 py-2 text-white">Simpan Anggaran</button>
-                </form>
-            @endif
-            <table class="mt-4 w-full text-left text-sm"><thead><tr><th>Kategori</th><th>Alokasi</th></tr></thead><tbody>
-                @forelse ($budgets as $b)<tr class="border-t"><td class="p-2">{{ $b->category }}</td><td class="p-2">Rp {{ number_format($b->allocated_amount, 0, ',', '.') }}</td></tr>
-                @empty<tr><td colspan="2" class="p-3">Belum ada anggaran.</td></tr>@endforelse
-            </tbody></table>
+        <a href="{{ route('modules.show', 'administrasi') }}" wire:navigate
+            class="inline-flex shrink-0 items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800">
+            Kembali ke Administrasi
+        </a>
+    </header>
+
+    @if (session('status'))
+        <div role="status" class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+            {{ session('status') }}
+        </div>
+    @endif
+
+    {{-- Context filters --}}
+    <section aria-label="Lingkup data" class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-5">
+        <div class="mb-4 flex items-center justify-between gap-3">
+            <div>
+                <h2 class="font-semibold text-zinc-900 dark:text-zinc-100">Lingkup administrasi</h2>
+                <p class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Data kas dan anggaran mengikuti Gudep serta tahun ajaran yang dipilih.</p>
+            </div>
+            <span class="hidden rounded-full bg-zinc-100 px-3 py-1 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 sm:inline-flex">Data per Gudep</span>
+        </div>
+        <div class="grid gap-4 md:grid-cols-2">
+            <div>
+                <label for="finance-scout-group" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200">Gugusdepan</label>
+                <select id="finance-scout-group" wire:model.live="scoutGroupId"
+                    class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 focus:border-emerald-600 focus:ring-emerald-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100">
+                    <option value="">Pilih Gudep</option>
+                    @foreach ($gudepOptions as $option)
+                        <option value="{{ $option->id }}">{{ $option->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <label for="finance-academic-year" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200">Tahun ajaran</label>
+                <select id="finance-academic-year" wire:model.live="academicYearId"
+                    class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 focus:border-emerald-600 focus:ring-emerald-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100">
+                    <option value="">Pilih tahun ajaran</option>
+                    @foreach ($years as $option)
+                        <option value="{{ $option->id }}">{{ $option->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+        </div>
+    </section>
+
+    @if ($gudep && $year)
+        {{-- Financial overview --}}
+        <section aria-label="Ringkasan buku kas" class="grid gap-3 sm:grid-cols-3">
+            <div class="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-5 dark:border-emerald-900 dark:bg-emerald-950/30">
+                <p class="text-sm font-medium text-emerald-800 dark:text-emerald-300">Total penerimaan</p>
+                <p class="mt-2 break-words text-2xl font-bold tabular-nums tracking-tight text-emerald-950 dark:text-emerald-100">Rp {{ number_format($income, 0, ',', '.') }}</p>
+                <p class="mt-2 text-xs text-emerald-700 dark:text-emerald-400">Transaksi yang sudah diposting</p>
+            </div>
+            <div class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+                <p class="text-sm font-medium text-zinc-600 dark:text-zinc-300">Total pengeluaran</p>
+                <p class="mt-2 break-words text-2xl font-bold tabular-nums tracking-tight text-zinc-900 dark:text-zinc-100">Rp {{ number_format($expense, 0, ',', '.') }}</p>
+                <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">Transaksi yang sudah diposting</p>
+            </div>
+            <div class="rounded-2xl border border-zinc-200 bg-zinc-900 p-5 text-white dark:border-zinc-700 dark:bg-zinc-800">
+                <p class="text-sm font-medium text-zinc-300">Saldo buku kas</p>
+                <p class="mt-2 break-words text-2xl font-bold tabular-nums tracking-tight text-white">Rp {{ number_format($income - $expense, 0, ',', '.') }}</p>
+                <p class="mt-2 text-xs text-zinc-300">Belum termasuk saldo awal atau rekonsiliasi</p>
+            </div>
         </section>
-        <section class="rounded-xl border p-5">
-            <h2 class="text-lg font-semibold">2. Buku Kas</h2>
-            <p class="text-sm text-zinc-500">Simpan draf lalu posting. Transaksi yang diposting tidak dapat diubah dalam MVP ini.</p>
-            @if (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage'))
-                <form wire:submit="saveCash" class="mt-3 grid gap-3 md:grid-cols-3">
-                    <label>Jenis<select wire:model="cashDirection" class="w-full rounded-lg border p-2 dark:bg-zinc-900"><option value="income">Penerimaan</option><option value="expense">Pengeluaran</option></select></label>
-                    <label>Tanggal<input type="date" wire:model="cashDate" required class="w-full rounded-lg border p-2 dark:bg-zinc-900">@error('cashDate')<span class="text-red-600">{{ $message }}</span>@enderror</label>
-                    <label>Kategori<input wire:model="cashCategory" required maxlength="100" class="w-full rounded-lg border p-2 dark:bg-zinc-900">@error('cashCategory')<span class="text-red-600">{{ $message }}</span>@enderror</label>
-                    <label>Uraian<input wire:model="cashDescription" required maxlength="255" class="w-full rounded-lg border p-2 dark:bg-zinc-900">@error('cashDescription')<span class="text-red-600">{{ $message }}</span>@enderror</label>
-                    <label>Jumlah (Rp)<input type="number" wire:model="cashAmount" min="1" step="1" required class="w-full rounded-lg border p-2 dark:bg-zinc-900">@error('cashAmount')<span class="text-red-600">{{ $message }}</span>@enderror</label>
-                    <label>No. bukti<input wire:model="cashReference" maxlength="100" class="w-full rounded-lg border p-2 dark:bg-zinc-900"></label>
-                    <label>Kegiatan terkait<select wire:model="cashActivityId" class="w-full rounded-lg border p-2 dark:bg-zinc-900"><option value="">Tidak ditautkan</option>@foreach ($activities as $activity)<option value="{{ $activity->id }}">{{ $activity->title }}</option>@endforeach</select>@error('cashActivityId')<span class="text-red-600">{{ $message }}</span>@enderror</label>
-                    @can('inventory.view')
-                        <label>Referensi barang<select wire:model="cashInventoryItemId" class="w-full rounded-lg border p-2 dark:bg-zinc-900"><option value="">Tidak ditautkan</option>@foreach ($inventoryOptions as $item)<option value="{{ $item->id }}">{{ $item->name }}</option>@endforeach</select>@error('cashInventoryItemId')<span class="text-red-600">{{ $message }}</span>@enderror</label>
-                    @endcan
-                    <label>Catatan<input wire:model="cashNotes" maxlength="3000" class="w-full rounded-lg border p-2 dark:bg-zinc-900"></label>
-                    <div class="md:col-span-3"><button class="rounded-lg bg-emerald-700 px-4 py-2 text-white">Simpan Draf</button></div>
-                </form>
-            @endif
-            <div class="mt-4 overflow-x-auto"><table class="w-full text-left text-sm"><thead><tr><th>Tanggal</th><th>Uraian</th><th>Jenis</th><th>Jumlah</th><th>Status</th></tr></thead><tbody>
-                @forelse ($entries as $entry)
-                    <tr class="border-t" wire:key="cash-{{ $entry->id }}"><td class="p-2">{{ $entry->occurred_at?->format('d/m/Y') }}</td><td class="p-2">{{ $entry->description }}</td><td class="p-2">{{ $entry->direction === 'income' ? 'Masuk' : 'Keluar' }}</td><td class="p-2">Rp {{ number_format($entry->amount, 0, ',', '.') }}</td><td class="p-2">{{ $entry->status === 'posted' ? 'Tercatat' : 'Draf' }}
-                        @if ($entry->status === 'draft' && (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage')))
-                            <button type="button" wire:click="postCash({{ $entry->id }})" wire:confirm="Posting transaksi ini?" class="text-emerald-700 underline">Posting</button>
-                        @endif
-                    </td></tr>
-                @empty<tr><td colspan="5" class="p-3">Belum ada transaksi.</td></tr>@endforelse
-            </tbody></table></div>
-            @can('reports.export')<button wire:click="publishCashBook" wire:loading.attr="disabled" class="mt-4 rounded-lg bg-emerald-700 px-4 py-2 text-white">Terbitkan Buku Kas PDF</button>@endcan
-        </section>
-        <section class="rounded-xl border p-5">
-            <h2 class="text-lg font-semibold">3. Sarana Milik Gudep</h2>
-            <p class="text-sm text-zinc-500">Menggunakan owner Gudep di Inventaris; tidak membuat stok atau transaksi peminjaman baru.</p>
-            @can('inventory.view')
-                <p class="mt-2 text-sm">Aset ditampilkan: {{ $assets->count() }} · Stok ditampilkan: {{ $stocks->count() }} · Peminjaman terkait: {{ $loanCount }}</p>
-                <a href="{{ route('inventory.index') }}" wire:navigate class="mt-2 inline-block text-emerald-700 underline">Kelola Inventaris</a>
-                <a href="{{ route('inventory.loans.index') }}" wire:navigate class="ml-3 text-emerald-700 underline">Peminjaman</a>
-                <div class="mt-3 grid gap-4 md:grid-cols-2">
-                    <div><h3 class="font-semibold">Aset</h3><ul>@forelse ($assets as $asset)<li>{{ $asset->item?->name ?? '-' }} — {{ $asset->asset_code }}</li>@empty<li>Belum ada aset.</li>@endforelse</ul></div>
-                    <div><h3 class="font-semibold">Stok</h3><ul>@forelse ($stocks as $stock)<li>{{ $stock->item?->name ?? '-' }}: {{ $stock->quantity_on_hand }}</li>@empty<li>Belum ada stok.</li>@endforelse</ul></div>
+
+        {{-- Budget --}}
+        <section id="anggaran" aria-labelledby="finance-budget-heading" class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 px-4 py-5 dark:border-zinc-800 sm:px-6">
+                <div>
+                    <p class="text-xs font-medium text-zinc-500 dark:text-zinc-400">01 / Perencanaan</p>
+                    <h2 id="finance-budget-heading" class="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-100">Rencana anggaran</h2>
+                    <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Alokasi per kategori untuk {{ $year->name }}.</p>
                 </div>
+                <span class="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">{{ $budgets->count() }} kategori</span>
+            </div>
+
+            @if (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage'))
+                <details class="group border-b border-zinc-100 dark:border-zinc-800">
+                    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-sm font-semibold text-emerald-700 hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 dark:text-emerald-400 dark:hover:bg-zinc-800/50 sm:px-6">
+                        <span>Tambah atau perbarui anggaran</span>
+                        <span aria-hidden="true" class="text-lg transition-transform group-open:rotate-45">+</span>
+                    </summary>
+                    <form wire:submit="saveBudget" class="grid gap-4 bg-zinc-50/60 px-4 pb-5 pt-2 dark:bg-zinc-800/30 sm:px-6 md:grid-cols-2">
+                        <div>
+                            <label for="finance-budget-category" class="mb-1.5 block text-sm font-medium">Kategori anggaran <span class="text-red-600">*</span></label>
+                            <input id="finance-budget-category" wire:model="budgetCategory" maxlength="100" required placeholder="Contoh: Latihan rutin"
+                                class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+                            @error('budgetCategory') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label for="finance-budget-amount" class="mb-1.5 block text-sm font-medium">Alokasi (Rp) <span class="text-red-600">*</span></label>
+                            <input id="finance-budget-amount" wire:model="budgetAmount" type="number" inputmode="numeric" min="0" step="1" required placeholder="0"
+                                class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+                            @error('budgetAmount') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="finance-budget-notes" class="mb-1.5 block text-sm font-medium">Keterangan <span class="font-normal text-zinc-500">(opsional)</span></label>
+                            <textarea id="finance-budget-notes" wire:model="budgetNotes" rows="2" maxlength="2000" placeholder="Keterangan alokasi anggaran"
+                                class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"></textarea>
+                        </div>
+                        <div class="md:col-span-2">
+                            <button type="submit" wire:loading.attr="disabled" wire:target="saveBudget"
+                                class="inline-flex items-center justify-center rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50">
+                                Simpan anggaran
+                            </button>
+                        </div>
+                    </form>
+                </details>
+            @endif
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-left text-sm">
+                    <thead class="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-800/50 dark:text-zinc-400">
+                        <tr>
+                            <th scope="col" class="px-4 py-3 font-semibold sm:px-6">Kategori</th>
+                            <th scope="col" class="px-4 py-3 text-right font-semibold">Alokasi</th>
+                            <th scope="col" class="hidden px-4 py-3 font-semibold md:table-cell sm:px-6">Keterangan</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                        @forelse ($budgets as $budget)
+                            <tr>
+                                <td class="px-4 py-3 font-medium sm:px-6">{{ $budget->category }}</td>
+                                <td class="whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums">Rp {{ number_format($budget->allocated_amount, 0, ',', '.') }}</td>
+                                <td class="hidden px-4 py-3 text-zinc-500 dark:text-zinc-400 md:table-cell sm:px-6">{{ $budget->notes ?: '-' }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="3" class="px-4 py-8 text-center text-zinc-500">Belum ada anggaran untuk tahun ajaran ini.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        {{-- Cash ledger --}}
+        <section id="buku-kas" aria-labelledby="finance-ledger-heading" class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 px-4 py-5 dark:border-zinc-800 sm:px-6">
+                <div>
+                    <p class="text-xs font-medium text-zinc-500 dark:text-zinc-400">02 / Pencatatan</p>
+                    <h2 id="finance-ledger-heading" class="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-100">Buku kas</h2>
+                    <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Transaksi draf tidak dihitung dalam saldo sampai diposting.</p>
+                </div>
+                @can('reports.export')
+                    <button type="button" wire:click="publishCashBook" wire:loading.attr="disabled" wire:target="publishCashBook"
+                        class="rounded-lg border border-emerald-700 px-4 py-2.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 dark:text-emerald-400 dark:hover:bg-emerald-950">
+                        Terbitkan buku kas PDF
+                    </button>
+                @endcan
+            </div>
+
+            @if (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage'))
+                <details class="group border-b border-zinc-100 dark:border-zinc-800">
+                    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-sm font-semibold text-emerald-700 hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 dark:text-emerald-400 dark:hover:bg-zinc-800/50 sm:px-6">
+                        <span>Catat transaksi baru</span>
+                        <span aria-hidden="true" class="text-lg transition-transform group-open:rotate-45">+</span>
+                    </summary>
+                    <form wire:submit="saveCash" class="space-y-5 bg-zinc-50/60 px-4 pb-5 pt-2 dark:bg-zinc-800/30 sm:px-6">
+                        <div class="grid gap-4 md:grid-cols-3">
+                            <div>
+                                <label for="finance-cash-direction" class="mb-1.5 block text-sm font-medium">Jenis transaksi</label>
+                                <select id="finance-cash-direction" wire:model="cashDirection" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+                                    <option value="income">Penerimaan</option>
+                                    <option value="expense">Pengeluaran</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="finance-cash-date" class="mb-1.5 block text-sm font-medium">Tanggal <span class="text-red-600">*</span></label>
+                                <input id="finance-cash-date" wire:model="cashDate" type="date" required class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+                                @error('cashDate') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label for="finance-cash-category" class="mb-1.5 block text-sm font-medium">Kategori <span class="text-red-600">*</span></label>
+                                <input id="finance-cash-category" wire:model="cashCategory" maxlength="100" required placeholder="Contoh: Iuran" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+                                @error('cashCategory') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                            </div>
+                            <div class="md:col-span-2">
+                                <label for="finance-cash-description" class="mb-1.5 block text-sm font-medium">Uraian <span class="text-red-600">*</span></label>
+                                <input id="finance-cash-description" wire:model="cashDescription" maxlength="255" required placeholder="Deskripsi transaksi" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+                                @error('cashDescription') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label for="finance-cash-amount" class="mb-1.5 block text-sm font-medium">Jumlah (Rp) <span class="text-red-600">*</span></label>
+                                <input id="finance-cash-amount" wire:model="cashAmount" type="number" min="1" step="1" inputmode="numeric" required placeholder="0" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+                                @error('cashAmount') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label for="finance-cash-reference" class="mb-1.5 block text-sm font-medium">Nomor bukti <span class="font-normal text-zinc-500">(opsional)</span></label>
+                                <input id="finance-cash-reference" wire:model="cashReference" maxlength="100" placeholder="Nomor kuitansi / nota" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+                            </div>
+                            <div>
+                                <label for="finance-cash-activity" class="mb-1.5 block text-sm font-medium">Kegiatan terkait</label>
+                                <select id="finance-cash-activity" wire:model="cashActivityId" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+                                    <option value="">Tidak ditautkan</option>
+                                    @foreach ($activities as $activity)
+                                        <option value="{{ $activity->id }}">{{ $activity->title }}</option>
+                                    @endforeach
+                                </select>
+                                @error('cashActivityId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                            </div>
+                            @can('inventory.view')
+                                <div>
+                                    <label for="finance-cash-item" class="mb-1.5 block text-sm font-medium">Referensi barang</label>
+                                    <select id="finance-cash-item" wire:model="cashInventoryItemId" class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+                                        <option value="">Tidak ditautkan</option>
+                                        @foreach ($inventoryOptions as $item)
+                                            <option value="{{ $item->id }}">{{ $item->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('cashInventoryItemId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                </div>
+                            @endcan
+                            <div class="md:col-span-3">
+                                <label for="finance-cash-notes" class="mb-1.5 block text-sm font-medium">Catatan tambahan</label>
+                                <textarea id="finance-cash-notes" wire:model="cashNotes" rows="2" maxlength="3000" placeholder="Informasi tambahan (opsional)"
+                                    class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"></textarea>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-700">
+                            <button type="submit" wire:loading.attr="disabled" wire:target="saveCash"
+                                class="rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50">Simpan sebagai draf</button>
+                            <span class="text-xs text-zinc-500 dark:text-zinc-400">Draf tidak memengaruhi saldo buku kas.</span>
+                        </div>
+                    </form>
+                </details>
+            @endif
+
+            <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-xs text-zinc-500 dark:text-zinc-400 sm:px-6">
+                <span>100 transaksi terbaru</span>
+                <span>Jumlah saldo menggunakan seluruh transaksi terposting.</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-left text-sm">
+                    <thead class="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-800/50 dark:text-zinc-400">
+                        <tr>
+                            <th scope="col" class="whitespace-nowrap px-4 py-3 font-semibold sm:px-6">Tanggal</th>
+                            <th scope="col" class="min-w-48 px-4 py-3 font-semibold">Transaksi</th>
+                            <th scope="col" class="px-4 py-3 font-semibold">Jenis</th>
+                            <th scope="col" class="whitespace-nowrap px-4 py-3 text-right font-semibold">Jumlah</th>
+                            <th scope="col" class="px-4 py-3 font-semibold sm:px-6">Status / Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                        @forelse ($entries as $entry)
+                            <tr wire:key="cash-{{ $entry->id }}" class="align-top transition hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40">
+                                <td class="whitespace-nowrap px-4 py-4 text-zinc-600 dark:text-zinc-300 sm:px-6">{{ $entry->occurred_at?->format('d/m/Y') }}</td>
+                                <td class="px-4 py-4">
+                                    <p class="font-medium text-zinc-900 dark:text-zinc-100">{{ $entry->description }}</p>
+                                    <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ $entry->category }} @if ($entry->reference_number) · {{ $entry->reference_number }} @endif</p>
+                                </td>
+                                <td class="px-4 py-4">
+                                    @if ($entry->direction === 'income')
+                                        <span class="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">Masuk</span>
+                                    @else
+                                        <span class="inline-flex rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">Keluar</span>
+                                    @endif
+                                </td>
+                                <td class="whitespace-nowrap px-4 py-4 text-right font-semibold tabular-nums {{ $entry->direction === 'income' ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-900 dark:text-zinc-100' }}">
+                                    {{ $entry->direction === 'income' ? '+' : '−' }} Rp {{ number_format($entry->amount, 0, ',', '.') }}
+                                </td>
+                                <td class="px-4 py-4 sm:px-6">
+                                    @if ($entry->status === 'posted')
+                                        <span class="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">Tercatat</span>
+                                    @else
+                                        <span class="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">Draf</span>
+                                        @if (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage'))
+                                            <button type="button" wire:click="postCash({{ $entry->id }})" wire:confirm="Posting transaksi ini ke buku kas?" wire:loading.attr="disabled" wire:target="postCash({{ $entry->id }})"
+                                                class="mt-2 block rounded-md border border-emerald-600 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 dark:text-emerald-400 dark:hover:bg-emerald-950">
+                                                Posting transaksi
+                                            </button>
+                                        @endif
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="5" class="px-4 py-10 text-center text-zinc-500">Belum ada transaksi kas. Gunakan formulir di atas untuk membuat draf pertama.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        {{-- Existing inventory read-only summary --}}
+        <section id="sarana" aria-labelledby="finance-inventory-heading" class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <div class="border-b border-zinc-100 px-4 py-5 dark:border-zinc-800 sm:px-6">
+                <p class="text-xs font-medium text-zinc-500 dark:text-zinc-400">03 / Inventaris</p>
+                <h2 id="finance-inventory-heading" class="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-100">Sarana milik Gudep</h2>
+                <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Ringkasan dari modul Inventaris. Transaksi peminjaman, pengembalian, dan perubahan stok dikelola di sana.</p>
+            </div>
+            @can('inventory.view')
+                <div class="grid gap-3 p-4 sm:grid-cols-3 sm:p-6">
+                    <div class="rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/60"><p class="text-xs text-zinc-500 dark:text-zinc-400">Aset ditampilkan</p><p class="mt-1 text-2xl font-semibold tabular-nums">{{ $assets->count() }}</p></div>
+                    <div class="rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/60"><p class="text-xs text-zinc-500 dark:text-zinc-400">Baris stok ditampilkan</p><p class="mt-1 text-2xl font-semibold tabular-nums">{{ $stocks->count() }}</p></div>
+                    <div class="rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/60"><p class="text-xs text-zinc-500 dark:text-zinc-400">Peminjaman terkait</p><p class="mt-1 text-2xl font-semibold tabular-nums">{{ $loanCount }}</p></div>
+                </div>
+                <div class="flex flex-wrap gap-3 px-4 pb-5 sm:px-6">
+                    <a href="{{ route('inventory.index') }}" wire:navigate class="rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800">Kelola inventaris</a>
+                    <a href="{{ route('inventory.loans.index') }}" wire:navigate class="rounded-lg border border-zinc-300 px-4 py-2.5 text-sm font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800">Transaksi peminjaman</a>
+                </div>
+                <div class="grid border-t border-zinc-100 dark:border-zinc-800 md:grid-cols-2">
+                    <div class="p-4 sm:p-6">
+                        <h3 class="mb-3 text-sm font-semibold">Daftar aset</h3>
+                        <ul class="space-y-2 text-sm">
+                            @forelse ($assets as $asset)
+                                <li class="flex justify-between gap-3 rounded-lg border border-zinc-100 p-3 dark:border-zinc-800">
+                                    <span class="min-w-0 truncate font-medium">{{ $asset->item?->name ?? 'Barang tanpa nama' }}</span>
+                                    <span class="shrink-0 text-xs text-zinc-500 dark:text-zinc-400">{{ $asset->asset_code }}</span>
+                                </li>
+                            @empty
+                                <li class="rounded-lg border border-dashed border-zinc-200 p-5 text-center text-zinc-500 dark:border-zinc-700">Belum ada aset Gudep.</li>
+                            @endforelse
+                        </ul>
+                    </div>
+                    <div class="border-t border-zinc-100 p-4 dark:border-zinc-800 sm:p-6 md:border-l md:border-t-0">
+                        <h3 class="mb-3 text-sm font-semibold">Stok barang</h3>
+                        <ul class="space-y-2 text-sm">
+                            @forelse ($stocks as $stock)
+                                <li class="flex items-center justify-between gap-3 rounded-lg border border-zinc-100 p-3 dark:border-zinc-800">
+                                    <span class="min-w-0 truncate font-medium">{{ $stock->item?->name ?? 'Barang tanpa nama' }}</span>
+                                    <span class="shrink-0 font-semibold tabular-nums">{{ $stock->quantity_on_hand }} <span class="font-normal text-zinc-500">{{ $stock->item?->unit }}</span></span>
+                                </li>
+                            @empty
+                                <li class="rounded-lg border border-dashed border-zinc-200 p-5 text-center text-zinc-500 dark:border-zinc-700">Belum ada stok Gudep.</li>
+                            @endforelse
+                        </ul>
+                    </div>
+                </div>
+                <p class="border-t border-zinc-100 px-4 py-3 text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400 sm:px-6">Maksimum 100 aset dan 100 baris stok ditampilkan. Angka ini bukan total keseluruhan jika data lebih banyak.</p>
             @else
-                <p class="mt-3 text-sm">Melihat daftar sarana memerlukan izin Inventaris.</p>
+                <div class="p-6 text-sm text-zinc-500 dark:text-zinc-400">Detail sarana hanya tersedia untuk pengguna dengan izin melihat inventaris.</div>
             @endcan
         </section>
     @else
-        <p>Pilih Gudep dan tahun ajaran untuk melihat data.</p>
+        <div class="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-5 py-12 text-center dark:border-zinc-700 dark:bg-zinc-900">
+            <h2 class="text-lg font-semibold">Pilih lingkup administrasi</h2>
+            <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Pilih Gugusdepan dan tahun ajaran pada bagian atas untuk menampilkan anggaran, buku kas, serta sarana.</p>
+        </div>
     @endif
 </div>
