@@ -135,9 +135,9 @@ class GudepFinance extends Component
             $ownerIds = InventoryOwner::query()->where('school_id', $this->schoolId())
                 ->where('owner_type', 'gudep')->where('scout_group_id', $gudep->id)
                 ->pluck('id');
-            if (! InventoryStockBalance::query()->where('school_id', $this->schoolId())
+            if (InventoryStockBalance::query()->where('school_id', $this->schoolId())
                 ->whereIn('owner_id', $ownerIds)
-                ->where('item_id', (int) $data['cashInventoryItemId'])->exists()) {
+                ->where('item_id', (int) $data['cashInventoryItemId'])->doesntExist()) {
                 throw ValidationException::withMessages([
                     'cashInventoryItemId' => 'Barang harus termasuk stok Gudep terpilih.',
                 ]);
