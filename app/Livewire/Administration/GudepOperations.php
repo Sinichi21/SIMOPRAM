@@ -101,7 +101,7 @@ class GudepOperations extends Component
         ]);
 
         $year = $this->selectedYear();
-        $visitedAt = IlluminateSupportCarbon::parse($data['guestVisitedAt'])->toDateString();
+        $visitedAt = Carbon::parse($data['guestVisitedAt'])->toDateString();
         if ($visitedAt < $year->start_date->toDateString() || $visitedAt > $year->end_date->toDateString()) {
             throw ValidationException::withMessages([
                 'guestVisitedAt' => 'Tanggal kunjungan harus berada dalam tahun ajaran yang dipilih.',
@@ -141,14 +141,14 @@ class GudepOperations extends Component
         ]);
 
         $year = $this->selectedYear();
-        $heldDate = IlluminateSupportCarbon::parse($data['meetingHeldAt'])->toDateString();
+        $heldDate = Carbon::parse($data['meetingHeldAt'])->toDateString();
         if ($heldDate < $year->start_date->toDateString() || $heldDate > $year->end_date->toDateString()) {
             throw ValidationException::withMessages([
                 'meetingHeldAt' => 'Tanggal rapat harus berada dalam tahun ajaran yang dipilih.',
             ]);
         }
 
-        if (! empty($data['meetingActivityId'])) {
+        if (filled($data['meetingActivityId'])) {
             $activity = Activity::query()->where('school_id', $this->schoolId())
                 ->findOrFail((int) $data['meetingActivityId']);
 
@@ -427,8 +427,8 @@ class GudepOperations extends Component
             // them as Gudep-specific without an explicit source relationship.
             'letters' => $gudep && $year && auth()->user()?->can('letters.view')
                 ? Letter::query()->where('school_id', $schoolId)
-                ->whereBetween('letter_date', [$year->start_date, $year->end_date])
-                ->orderByDesc('letter_date')->limit(15)->get() : collect(),
+                    ->whereBetween('letter_date', [$year->start_date, $year->end_date])
+                    ->orderByDesc('letter_date')->limit(15)->get() : collect(),
         ]);
     }
 }
