@@ -4,12 +4,15 @@ namespace Tests\Feature;
 
 use App\Livewire\Administration\GudepFinance;
 use App\Models\AcademicYear;
+use App\Models\GudepCashCloseDecision;
 use App\Models\GudepCashPeriod;
+use App\Models\ReportVerification;
 use App\Models\School;
 use App\Models\ScoutGroup;
 use App\Models\User;
 use App\Support\SchoolContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -121,6 +124,56 @@ class GudepCashCloseApprovalTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertNotNull($period->fresh()->close_requested_at);
+    }
+
+    public function test_every_decision_is_preserved_after_rejection_and_reapplication(): void
+    {
+        [$school, $gudep, $year, $requester] = $this->context();
+        $this->requestClose($gudep, $year);
+        $this->assertSame(['requested'], GudepCashCloseDecision::query()->orderBy('id')->pluck('action')->all());
+
+        $this->actingAs(User::factory()->create(['system_role' => 'super_admin']))
+            ->withSession(['active_school_id' => $school->id]);
+        $this->financeComponent($gudep, $year)->call('rejectCashPeriodClosure')->assertHasNoErrors();
+
+        $this->actingAs($requester)->withSession(['active_school_id' => $school->id]);
+        $this->financeComponent($gudep, $year)
+            ->set('closingNotesInput', 'Pengajuan ulang setelah dilakukan pemeriksaan.')
+            ->call('closeCashPeriod')->assertHasNoErrors();
+
+        $this->assertSame(
+            ['requested', 'rejected', 'requested'],
+            GudepCashCloseDecision::query()->orderBy('id')->pluck('action')->all()
+        );
+        $this->assertDatabaseCount('gudep_cash_close_decisions', 3);
+    }
+
+    public function test_lpj_can_only_be_published_after_a_different_reviewer_approves(): void
+    {
+        Storage::fake('local');
+        [$school, $gudep, $year] = $this->context();
+
+        $this->financeComponent($gudep, $year)->call('publishFinanceLpj')->assertStatus(409);
+
+        $this->requestClose($gudep, $year);
+        $this->financeComponent($gudep, $year)->call('publishFinanceLpj')->assertStatus(409);
+
+        $this->actingAs(User::factory()->create(['system_role' => 'super_admin']))
+            ->withSession(['active_school_id' => $school->id]);
+
+        $this->financeComponent($gudep, $year)->call('approveCashPeriodClosure')->assertHasNoErrors();
+        $this->financeComponent($gudep, $year)->call('publishFinanceLpj')->assertHasNoErrors();
+        $this->financeComponent($gudep, $year)->call('publishFinanceLpj')->assertHasNoErrors();
+
+        $this->assertSame(1, ReportVerification::query()
+            ->where('document_type', 'gudep_finance_lpj')->count());
+        $this->assertSame(
+            ['requested', 'approved'],
+            GudepCashCloseDecision::query()->orderBy('id')->pluck('action')->all()
+        );
+
+        $document = ReportVerification::query()->where('document_type', 'gudep_finance_lpj')->firstOrFail();
+        Storage::disk('local')->assertExists($document->file_path);
     }
 
     public function test_another_gudep_cannot_approve_first_gudep_close(): void
