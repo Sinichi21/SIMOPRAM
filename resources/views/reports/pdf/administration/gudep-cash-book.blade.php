@@ -25,7 +25,13 @@
 </td></tr>
 @empty<tr><td colspan="7">Belum ada transaksi terposting.</td></tr>@endforelse
 </tbody></table>
+<p>Saldo awal: Rp {{ number_format($openingBalance, 0, ',', '.') }}</p>
 <p>Total penerimaan: Rp {{ number_format($income, 0, ',', '.') }}</p>
 <p>Total pengeluaran: Rp {{ number_format($expense, 0, ',', '.') }}</p>
-<p>Saldo buku kas: Rp {{ number_format($income - $expense, 0, ',', '.') }}</p>
-<p style="font-size:8pt;">Realisasi menggunakan pengeluaran terposting sesuai kategori anggaran. Bukti asli disimpan privat dan hanya dapat diunduh pengguna berizin. Belum termasuk saldo awal, koreksi akuntansi, atau rekonsiliasi kas fisik.</p>
+<p>Saldo berjalan: Rp {{ number_format($openingBalance + $income - $expense, 0, ',', '.') }}</p>
+@if ($period?->status === 'closed')
+<p><strong>Periode ditutup:</strong> {{ $period->closed_at?->format('d/m/Y H:i') }}</p>
+<p style="font-size:7pt;">Checksum penutupan: {{ $period->closing_checksum }}</p>
+<p style="font-size:8pt;">Catatan: {{ $period->closing_notes }}</p>
+@endif
+<p style="font-size:8pt;">Realisasi menggunakan pengeluaran terposting sesuai kategori anggaran. Bukti asli disimpan privat dan hanya dapat diunduh pengguna berizin. Saldo sudah mencakup saldo awal; rekonsiliasi kas fisik belum otomatis dilakukan.</p>
