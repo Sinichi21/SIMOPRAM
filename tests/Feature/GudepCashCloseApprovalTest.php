@@ -36,7 +36,7 @@ class GudepCashCloseApprovalTest extends TestCase
         return [$school, $gudep, $year, $requester];
     }
 
-    private function component(ScoutGroup $gudep, AcademicYear $year): Testable
+    private function financeComponent(ScoutGroup $gudep, AcademicYear $year): Testable
     {
         return Livewire::test(GudepFinance::class)
             ->set('scoutGroupId', $gudep->id)
@@ -45,18 +45,18 @@ class GudepCashCloseApprovalTest extends TestCase
 
     private function requestClose(ScoutGroup $gudep, AcademicYear $year): void
     {
-        $this->component($gudep, $year)
+        $this->financeComponent($gudep, $year)
             ->set('openingBalanceInput', '50000')
             ->call('saveOpeningBalance')
             ->assertHasNoErrors();
 
-        $this->component($gudep, $year)
+        $this->financeComponent($gudep, $year)
             ->set('countedCashInput', '50000')
             ->set('reconciliationNotesInput', 'Pemeriksaan kas awal sudah lengkap.')
             ->call('reconcileCash')
             ->assertHasNoErrors();
 
-        $this->component($gudep, $year)
+        $this->financeComponent($gudep, $year)
             ->set('closingNotesInput', 'Rekonsiliasi sudah sesuai, mohon persetujuan.')
             ->call('closeCashPeriod')
             ->assertHasNoErrors();
@@ -72,9 +72,9 @@ class GudepCashCloseApprovalTest extends TestCase
         $this->assertSame($requester->id, $period->close_requested_by);
         $this->assertNotNull($period->close_requested_at);
 
-        $this->component($gudep, $year)->call('approveCashPeriodClosure')->assertForbidden();
+        $this->financeComponent($gudep, $year)->call('approveCashPeriodClosure')->assertForbidden();
 
-        $this->component($gudep, $year)
+        $this->financeComponent($gudep, $year)
             ->set('budgetCategory', 'Latihan')
             ->set('budgetAmount', '10000')
             ->call('saveBudget')
@@ -91,14 +91,14 @@ class GudepCashCloseApprovalTest extends TestCase
         $this->actingAs(User::factory()->create(['system_role' => 'super_admin']))
             ->withSession(['active_school_id' => $school->id]);
 
-        $this->component($gudep, $year)->call('approveCashPeriodClosure')->assertHasNoErrors();
+        $this->financeComponent($gudep, $year)->call('approveCashPeriodClosure')->assertHasNoErrors();
 
         $period = GudepCashPeriod::query()->firstOrFail();
         $this->assertSame('closed', $period->status);
         $this->assertSame(50000, $period->closing_balance);
         $this->assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $period->closing_checksum);
 
-        $this->component($gudep, $year)->call('approveCashPeriodClosure')->assertStatus(409);
+        $this->financeComponent($gudep, $year)->call('approveCashPeriodClosure')->assertStatus(409);
     }
 
     public function test_second_reviewer_can_reject_and_requester_can_retry(): void
@@ -109,13 +109,13 @@ class GudepCashCloseApprovalTest extends TestCase
         $this->actingAs(User::factory()->create(['system_role' => 'super_admin']))
             ->withSession(['active_school_id' => $school->id]);
 
-        $this->component($gudep, $year)->call('rejectCashPeriodClosure')->assertHasNoErrors();
+        $this->financeComponent($gudep, $year)->call('rejectCashPeriodClosure')->assertHasNoErrors();
         $period = GudepCashPeriod::query()->firstOrFail();
         $this->assertNull($period->close_requested_at);
         $this->assertSame('open', $period->status);
 
         $this->actingAs($requester)->withSession(['active_school_id' => $school->id]);
-        $this->component($gudep, $year)
+        $this->financeComponent($gudep, $year)
             ->set('closingNotesInput', 'Diajukan kembali setelah diperiksa ulang.')
             ->call('closeCashPeriod')
             ->assertHasNoErrors();
@@ -132,7 +132,7 @@ class GudepCashCloseApprovalTest extends TestCase
         $this->actingAs(User::factory()->create(['system_role' => 'super_admin']))
             ->withSession(['active_school_id' => $school->id]);
 
-        $this->component($other, $year)->call('approveCashPeriodClosure')->assertNotFound();
+        $this->financeComponent($other, $year)->call('approveCashPeriodClosure')->assertNotFound();
         $this->assertSame('open', GudepCashPeriod::query()->firstOrFail()->status);
     }
 }
