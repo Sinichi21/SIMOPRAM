@@ -360,7 +360,9 @@
                                         @if ($entry->reversal_of_id !== null)
                                             <span class="mt-1 block text-xs text-amber-700 dark:text-amber-300">Pembalikan #{{ $entry->reversal_of_id }}</span>
                                             <span class="mt-1 block text-xs text-zinc-500">{{ $entry->reversal_reason }}</span>
-                                        @elseif ($entry->reversal_of_id === null && (auth()->user()?->can('gudep.finance.manage') || auth()->user()?->can('gudep.manage')))
+                                        @elseif ($entry->reversals_exists)
+                                            <span class="mt-1 block text-xs text-amber-700 dark:text-amber-300">Sudah dibalik</span>
+                                        @elseif (auth()->user()?->can('gudep.finance.manage') || auth()->user()?->can('gudep.manage'))
                                             <button type="button" wire:click="selectCashForReversal({{ $entry->id }})" class="mt-2 block text-xs font-semibold text-amber-700 hover:underline dark:text-amber-300">Ajukan pembalikan</button>
                                         @endif
                                     @else
