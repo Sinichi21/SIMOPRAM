@@ -119,7 +119,8 @@ class GudepFinance extends Component
         ]);
 
         $locked = GudepCashPeriod::query()->whereKey($period->id)->lockForUpdate()->firstOrFail();
-        abort_unless($locked->status === 'open', 409, 'Buku kas periode ini sudah ditutup.');
+        abort_unless($locked->status === 'open' && $locked->close_requested_at === null,
+            409, 'Buku kas sudah ditutup atau menunggu persetujuan penutupan.');
 
         return $locked;
     }
@@ -203,6 +204,9 @@ class GudepFinance extends Component
         session()->flash('status', 'Hasil pemeriksaan kas fisik berhasil dicatat.');
     }
 
+    /**
+     * Request a reviewed close. The requester cannot approve their own request.
+     */
     public function closeCashPeriod(ReportVerificationService $verifier): void
     {
         $this->authorizeManage();
@@ -219,12 +223,7 @@ class GudepFinance extends Component
             $totals = $this->cashTotals();
             $closingBalance = (int) $period->opening_balance + $totals['income'] - $totals['expense'];
             $fingerprint = $this->ledgerFingerprint($verifier, $period);
-            $reconciliation = GudepCashReconciliation::query()
-                ->where('school_id', $this->schoolId())
-                ->where('scout_group_id', $this->selectedGudep()->id)
-                ->where('academic_year_id', $this->selectedYear()->id)
-                ->where('gudep_cash_period_id', $period->id)
-                ->orderByDesc('id')->first();
+            $reconciliation = $this->latestCashReconciliation($period);
 
             abort_unless($reconciliation !== null, 409,
                 'Catat rekonsiliasi kas fisik sebelum tutup buku.');
@@ -234,25 +233,104 @@ class GudepFinance extends Component
                 && $reconciliation->book_balance === $closingBalance, 409,
                 'Buku kas berubah sejak rekonsiliasi. Ulangi pemeriksaan kas fisik.');
 
-            $checksum = $verifier->contentChecksum([
-                'ledger_checksum' => $fingerprint,
-                'reconciliation_id' => $reconciliation->id,
-                'closing_balance' => $closingBalance,
-                'counted_cash' => $reconciliation->counted_cash,
-            ]);
-
             $period->update([
-                'status' => 'closed',
-                'closing_balance' => $closingBalance,
-                'closing_checksum' => $checksum,
-                'closed_by' => auth()->id(),
-                'closed_at' => now(),
-                'closing_notes' => trim($data['closingNotesInput']),
+                'close_requested_by' => auth()->id(),
+                'close_requested_at' => now(),
+                'close_requested_notes' => trim($data['closingNotesInput']),
+                'close_requested_checksum' => $fingerprint,
+                'close_requested_balance' => $closingBalance,
+                'close_requested_reconciliation_id' => $reconciliation->id,
             ]);
         });
 
         $this->closingNotesInput = '';
-        session()->flash('status', 'Buku kas tahun ajaran berhasil ditutup dan dikunci.');
+        session()->flash('status', 'Permohonan tutup buku terkirim. Menunggu persetujuan petugas lain.');
+    }
+
+    private function latestCashReconciliation(GudepCashPeriod $period): ?GudepCashReconciliation
+    {
+        return GudepCashReconciliation::query()
+            ->where('school_id', $this->schoolId())
+            ->where('scout_group_id', $this->selectedGudep()->id)
+            ->where('academic_year_id', $this->selectedYear()->id)
+            ->where('gudep_cash_period_id', $period->id)
+            ->orderByDesc('id')->first();
+    }
+
+    public function approveCashPeriodClosure(ReportVerificationService $verifier): void
+    {
+        $this->authorizeManage();
+        abort_unless(auth()->user()?->can('gudep.finance.close.approve'), 403);
+
+        DB::transaction(function () use ($verifier): void {
+            $period = $this->cashPeriod();
+            abort_unless($period !== null, 404);
+            $period = GudepCashPeriod::query()->whereKey($period->id)->lockForUpdate()->firstOrFail();
+            abort_unless($period->status === 'open' && $period->close_requested_at !== null, 409,
+                'Tidak ada permohonan penutupan yang aktif.');
+            abort_if((int) $period->close_requested_by === (int) auth()->id(), 403,
+                'Pemeriksa harus berbeda dari pemohon penutupan.');
+            abort_if($this->cashEntries()->where('status', 'draft')->exists(), 409);
+
+            $totals = $this->cashTotals();
+            $balance = (int) $period->opening_balance + $totals['income'] - $totals['expense'];
+            $fingerprint = $this->ledgerFingerprint($verifier, $period);
+            $reconciliation = $this->latestCashReconciliation($period);
+
+            abort_unless($reconciliation !== null
+                && $reconciliation->difference === 0
+                && $reconciliation->ledger_checksum === $fingerprint
+                && $reconciliation->book_balance === $balance
+                && (int) $reconciliation->id === (int) $period->close_requested_reconciliation_id
+                && $period->close_requested_checksum === $fingerprint
+                && $period->close_requested_balance === $balance, 409,
+                'Rekonsiliasi atau data keuangan berubah. Permohonan harus diajukan ulang.');
+
+            $checksum = $verifier->contentChecksum([
+                'ledger_checksum' => $fingerprint,
+                'reconciliation_id' => $reconciliation->id,
+                'closing_balance' => $balance,
+                'counted_cash' => $reconciliation->counted_cash,
+                'requested_by' => $period->close_requested_by,
+                'approved_by' => auth()->id(),
+            ]);
+
+            $period->update([
+                'status' => 'closed',
+                'closing_balance' => $balance,
+                'closing_checksum' => $checksum,
+                'closed_by' => auth()->id(),
+                'closed_at' => now(),
+                'closing_notes' => $period->close_requested_notes,
+            ]);
+        });
+
+        session()->flash('status', 'Penutupan buku berhasil disetujui dan periode dikunci.');
+    }
+
+    public function rejectCashPeriodClosure(): void
+    {
+        $this->authorizeManage();
+        abort_unless(auth()->user()?->can('gudep.finance.close.approve'), 403);
+
+        DB::transaction(function (): void {
+            $period = $this->cashPeriod();
+            abort_unless($period !== null, 404);
+            $period = GudepCashPeriod::query()->whereKey($period->id)->lockForUpdate()->firstOrFail();
+            abort_unless($period->status === 'open' && $period->close_requested_at !== null, 409);
+            abort_if((int) $period->close_requested_by === (int) auth()->id(), 403);
+
+            $period->update([
+                'close_requested_by' => null,
+                'close_requested_at' => null,
+                'close_requested_notes' => null,
+                'close_requested_checksum' => null,
+                'close_requested_balance' => null,
+                'close_requested_reconciliation_id' => null,
+            ]);
+        });
+
+        session()->flash('status', 'Permohonan penutupan ditolak. Periode kembali dapat dikelola.');
     }
 
     public function clearLedgerFilters(): void
@@ -595,6 +673,8 @@ class GudepFinance extends Component
             'opening_balance' => $openingBalance,
             'period_status' => $period?->status ?? 'open',
             'closing_checksum' => $period?->closing_checksum,
+            'closing_approved_by' => $period?->closed_by,
+            'closing_requested_by' => $period?->close_requested_by,
             'reconciliation' => $reconciliation?->only(['id', 'book_balance', 'counted_cash', 'difference', 'ledger_checksum']),
             'expense_by_category' => $expenseByCategory,
             'budgets' => $budgets->map(fn ($item) => $item->only([
