@@ -164,7 +164,24 @@
         </section>
 
         <section class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
-            <h2 class="text-lg font-semibold">3. Persuratan & Arsip Tingkat Sekolah</h2>
+            <h2 class="text-lg font-semibold">3. Agenda & Buku Kehadiran</h2>
+            <p class="mt-1 text-sm text-zinc-500">Agenda, jurnal kegiatan, dan presensi sudah tersimpan di modul Kegiatan SIMPRAM. Buka modul sumber untuk memeriksa kehadiran dan bukti latihan; tidak dibuat tabel absensi duplikat di Gudep.</p>
+            <div class="mt-3 flex flex-wrap gap-2 text-sm">
+                @can('activities.view')
+                    <a href="{{ route('activities.index') }}" wire:navigate class="rounded-lg border border-zinc-300 px-3 py-2">Agenda Kegiatan</a>
+                @endcan
+                @can('attendance_sessions.view')
+                    <a href="{{ route('attendances.index') }}" wire:navigate class="rounded-lg border border-zinc-300 px-3 py-2">Buku Kehadiran / Absensi</a>
+                @endcan
+                @can('journals.view')
+                    <a href="{{ route('journals.index') }}" wire:navigate class="rounded-lg border border-zinc-300 px-3 py-2">Jurnal Kegiatan</a>
+                @endcan
+            </div>
+            <p class="mt-3 text-xs text-zinc-500">Menu sumber dapat menampilkan data pada lingkup sekolah sesuai hak akses yang berlaku, belum otomatis dibatasi ke Gudep yang dipilih di halaman ini.</p>
+        </section>
+
+        <section class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
+            <h2 class="text-lg font-semibold">4. Persuratan & Arsip Tingkat Sekolah</h2>
             <p class="mt-1 text-sm text-zinc-500">Daftar di bawah menampilkan surat milik sekolah aktif, bukan hanya Gudep terpilih. Penerbitan, disposisi, dan lampiran tetap memakai modul Persuratan SIMPRAM.</p>
             <div class="mt-3 flex flex-wrap gap-2 text-sm">
                 @can('letters.view')
