@@ -112,7 +112,8 @@ class GudepCashCloseApprovalTest extends TestCase
         $this->actingAs(User::factory()->create(['system_role' => 'super_admin']))
             ->withSession(['active_school_id' => $school->id]);
 
-        $this->financeComponent($gudep, $year)->call('rejectCashPeriodClosure')->assertHasNoErrors();
+        $this->financeComponent($gudep, $year)->set('closeRejectionReason', 'Kuitansi belum lengkap, lakukan verifikasi ulang.')
+            ->call('rejectCashPeriodClosure')->assertHasNoErrors();
         $period = GudepCashPeriod::query()->firstOrFail();
         $this->assertNull($period->close_requested_at);
         $this->assertSame('open', $period->status);
@@ -126,6 +127,37 @@ class GudepCashCloseApprovalTest extends TestCase
         $this->assertNotNull($period->fresh()->close_requested_at);
     }
 
+    public function test_rejection_requires_a_meaningful_reason_and_keeps_request_pending(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+        $this->requestClose($gudep, $year);
+
+        $this->actingAs(User::factory()->create(['system_role' => 'super_admin']))
+            ->withSession(['active_school_id' => $school->id]);
+
+        $this->financeComponent($gudep, $year)
+            ->call('rejectCashPeriodClosure')
+            ->assertHasErrors(['closeRejectionReason' => 'required']);
+
+        $this->financeComponent($gudep, $year)
+            ->set('closeRejectionReason', 'salah')
+            ->call('rejectCashPeriodClosure')
+            ->assertHasErrors(['closeRejectionReason' => 'min']);
+
+        $this->assertNotNull(GudepCashPeriod::query()->firstOrFail()->close_requested_at);
+        $this->assertSame(['requested'], GudepCashCloseDecision::query()->orderBy('id')->pluck('action')->all());
+
+        $reason = 'Lampiran kuitansi perlu diperiksa ulang sebelum tutup buku.';
+        $this->financeComponent($gudep, $year)
+            ->set('closeRejectionReason', $reason)
+            ->call('rejectCashPeriodClosure')
+            ->assertHasNoErrors();
+
+        $decision = GudepCashCloseDecision::query()->where('action', 'rejected')->firstOrFail();
+        $this->assertSame($reason, $decision->notes);
+        $this->assertSame('open', GudepCashPeriod::query()->firstOrFail()->status);
+    }
+
     public function test_every_decision_is_preserved_after_rejection_and_reapplication(): void
     {
         [$school, $gudep, $year, $requester] = $this->context();
@@ -134,7 +166,8 @@ class GudepCashCloseApprovalTest extends TestCase
 
         $this->actingAs(User::factory()->create(['system_role' => 'super_admin']))
             ->withSession(['active_school_id' => $school->id]);
-        $this->financeComponent($gudep, $year)->call('rejectCashPeriodClosure')->assertHasNoErrors();
+        $this->financeComponent($gudep, $year)->set('closeRejectionReason', 'Kuitansi belum lengkap, lakukan verifikasi ulang.')
+            ->call('rejectCashPeriodClosure')->assertHasNoErrors();
 
         $this->actingAs($requester)->withSession(['active_school_id' => $school->id]);
         $this->financeComponent($gudep, $year)
