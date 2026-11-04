@@ -273,6 +273,22 @@
                 </details>
             @endif
 
+            @if ($reversalSelectedEntry && (auth()->user()?->can('gudep.finance.manage') || auth()->user()?->can('gudep.manage')))
+                <form wire:submit="reverseCash" class="space-y-3 border-b border-amber-200 bg-amber-50/70 px-4 py-5 dark:border-amber-900 dark:bg-amber-950/30 sm:px-6">
+                    <div>
+                        <h3 class="text-sm font-semibold text-amber-900 dark:text-amber-200">Koreksi transaksi #{{ $reversalSelectedEntry->id }}</h3>
+                        <p class="mt-1 text-xs text-amber-800 dark:text-amber-300">{{ $reversalSelectedEntry->description }} · Rp {{ number_format($reversalSelectedEntry->amount, 0, ',', '.') }}</p>
+                        <p class="mt-1 text-xs text-zinc-600 dark:text-zinc-400">Transaksi asli tidak dihapus. Pembalikan masuk sebagai entri baru yang diposting dan dapat ditelusuri.</p>
+                    </div>
+                    <div>
+                        <label for="finance-reversal-reason" class="mb-1.5 block text-sm font-medium">Alasan koreksi (minimal 10 karakter)</label>
+                        <textarea id="finance-reversal-reason" wire:model="reversalReason" rows="2" maxlength="1000" required class="w-full rounded-lg border border-amber-300 bg-white px-3 py-2.5 text-sm dark:border-amber-800 dark:bg-zinc-900" placeholder="Jelaskan alasan pembalikan transaksi..."></textarea>
+                        @error('reversalReason') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <button type="submit" wire:confirm="Buat transaksi pembalik resmi? Transaksi asli tetap tersimpan." wire:loading.attr="disabled" wire:target="reverseCash" class="rounded-lg bg-amber-800 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-900 disabled:opacity-50">Konfirmasi pembalikan</button>
+                </form>
+            @endif
+
             <div class="space-y-3 border-b border-zinc-100 px-4 py-4 dark:border-zinc-800 sm:px-6">
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <div class="sm:col-span-2">
@@ -304,7 +320,7 @@
                     <span>Menampilkan {{ $entries->count() }} dari {{ number_format($ledgerMatches, 0, ',', '.') }} transaksi yang sesuai (maksimum 100 baris).</span>
                     <button type="button" wire:click="clearLedgerFilters" class="font-semibold text-emerald-700 hover:underline dark:text-emerald-400">Reset filter</button>
                 </div>
-                <p class="text-xs text-zinc-500 dark:text-zinc-400">Filter hanya mengubah tabel, bukan angka ringkasan saldo atau isi PDF resmi.</p>
+                <p class="text-xs text-zinc-500 dark:text-zinc-400">Filter hanya mengubah tabel, bukan angka ringkasan saldo atau isi PDF resmi. Pembalikan dan transaksi asli ditampilkan sebagai jejak audit.</p>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full text-left text-sm">
@@ -341,6 +357,12 @@
                                 <td class="px-4 py-4 sm:px-6">
                                     @if ($entry->status === 'posted')
                                         <span class="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">Tercatat</span>
+                                        @if ($entry->reversal_of_id !== null)
+                                            <span class="mt-1 block text-xs text-amber-700 dark:text-amber-300">Pembalikan #{{ $entry->reversal_of_id }}</span>
+                                            <span class="mt-1 block text-xs text-zinc-500">{{ $entry->reversal_reason }}</span>
+                                        @elseif ($entry->reversal_of_id === null && (auth()->user()?->can('gudep.finance.manage') || auth()->user()?->can('gudep.manage')))
+                                            <button type="button" wire:click="selectCashForReversal({{ $entry->id }})" class="mt-2 block text-xs font-semibold text-amber-700 hover:underline dark:text-amber-300">Ajukan pembalikan</button>
+                                        @endif
                                     @else
                                         <span class="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">Draf</span>
                                         @if (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage'))
