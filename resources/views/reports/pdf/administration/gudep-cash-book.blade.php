@@ -1,6 +1,6 @@
 <h1 style="text-align:center;font-size:15pt;">BUKU KAS GUGUSDEPAN</h1>
 <p style="text-align:center;">{{ $gudep->name }} — Tahun Ajaran {{ $year->name }}</p>
-<p style="font-size:8pt;">Hanya transaksi terposting; mata uang Rupiah. Arsip terbatas dengan QR verifikasi.</p>
+<p style="font-size:8pt;">Hanya transaksi terposting; mata uang Rupiah. Pembalikan dicatat sebagai pengurang kategori semula, bukan pendapatan atau biaya baru. Arsip terbatas dengan QR verifikasi.</p>
 <h2 style="font-size:11pt;">A. Anggaran</h2>
 <table style="width:100%;border-collapse:collapse;font-size:8pt;" border="1" cellpadding="5">
 <thead><tr><th>Kategori</th><th>Alokasi (Rp)</th><th>Realisasi (Rp)</th><th>Sisa / Selisih (Rp)</th></tr></thead><tbody>
@@ -15,7 +15,10 @@
 <table style="width:100%;border-collapse:collapse;font-size:8pt;" border="1" cellpadding="5">
 <thead><tr><th>No.</th><th>Tanggal</th><th>Uraian</th><th>Kategori</th><th>Masuk</th><th>Keluar</th><th>No. Bukti</th></tr></thead><tbody>
 @forelse ($entries as $row)
-<tr><td>{{ $loop->iteration }}</td><td>{{ $row->occurred_at?->format('d/m/Y') }}</td><td>{{ $row->description }}</td><td>{{ $row->category }}</td><td>{{ $row->direction === 'income' ? number_format($row->amount, 0, ',', '.') : '-' }}</td><td>{{ $row->direction === 'expense' ? number_format($row->amount, 0, ',', '.') : '-' }}</td><td>{{ $row->reference_number ?: '-' }}
+<tr><td>{{ $loop->iteration }}</td><td>{{ $row->occurred_at?->format('d/m/Y') }}</td><td>{{ $row->description }}</td><td>{{ $row->category }}</td><td>{{ $row->reversal_of_id !== null ? ($row->direction === 'expense' ? '-'.number_format($row->amount, 0, ',', '.') : '-') : ($row->direction === 'income' ? number_format($row->amount, 0, ',', '.') : '-') }}</td><td>{{ $row->reversal_of_id !== null ? ($row->direction === 'income' ? '-'.number_format($row->amount, 0, ',', '.') : '-') : ($row->direction === 'expense' ? number_format($row->amount, 0, ',', '.') : '-') }}</td><td>{{ $row->reference_number ?: '-' }}
+@if ($row->reversal_of_id !== null)
+<div style="font-size:7pt;">Pembalikan transaksi #{{ $row->reversal_of_id }}. Alasan: {{ $row->reversal_reason }}</div>
+@endif
 @foreach ($row->evidences as $evidence)
 <div style="font-size:7pt;">Bukti: {{ $evidence->original_filename }} (SHA-256: {{ substr($evidence->sha256, 0, 12) }}…)</div>
 @endforeach
