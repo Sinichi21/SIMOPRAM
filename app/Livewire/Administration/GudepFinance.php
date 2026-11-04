@@ -130,6 +130,20 @@ class GudepFinance extends Component
         }
 
         $gudep = $this->selectedGudep();
+        if (filled($data['cashInventoryItemId'])) {
+            abort_unless(auth()->user()?->can('inventory.view'), 403);
+            $ownerIds = InventoryOwner::query()->where('school_id', $this->schoolId())
+                ->where('owner_type', 'gudep')->where('scout_group_id', $gudep->id)
+                ->pluck('id');
+            if (! InventoryStockBalance::query()->where('school_id', $this->schoolId())
+                ->whereIn('owner_id', $ownerIds)
+                ->where('item_id', (int) $data['cashInventoryItemId'])->exists()) {
+                throw ValidationException::withMessages([
+                    'cashInventoryItemId' => 'Barang harus termasuk stok Gudep terpilih.',
+                ]);
+            }
+        }
+
         GudepCashEntry::query()->create([
             'school_id' => $this->schoolId(),
             'scout_group_id' => $gudep->id,
@@ -255,7 +269,7 @@ class GudepFinance extends Component
 
     private function authorizeView(): void
     {
-        abort_unless(auth()->user()?->can('gudep.view'), 403);
+        abort_unless(auth()->user()?->can('gudep.finance.view'), 403);
         $this->schoolId();
     }
 
