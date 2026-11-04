@@ -5,7 +5,12 @@ namespace App\Livewire\Letters;
 use App\Models\Letter;
 use App\Models\LetterTemplate;
 use App\Models\LetterType;
+use App\Models\School;
+use App\Models\SchoolDocumentSetting;
+use App\Models\SchoolLetterSetting;
+use App\Models\ScoutAdministrationProfile;
 use App\Services\LetterAdministrationBootstrapService;
+use App\Services\LetterNumberService;
 use App\Services\LetterTemplateHtmlSanitizer;
 use App\Services\LetterTemplateRenderer;
 use App\Support\SchoolContext;
@@ -32,6 +37,10 @@ class Templates extends Component
 
     public bool $is_active = true;
 
+    public string $previewAdministrationType = 'mabigus';
+
+    public int $editorVersion = 0;
+
     public function mount(LetterAdministrationBootstrapService $bootstrap): void
     {
         abort_unless(auth()->user()->can('letters.templates'), 403);
@@ -47,6 +56,7 @@ class Templates extends Component
         $this->requires_recipient = false;
         $this->is_active = true;
         $this->body_template = $this->starterHtml('general');
+        $this->editorVersion++;
     }
 
     public function applyStarter(string $starter): void
@@ -54,6 +64,7 @@ class Templates extends Component
         abort_unless(in_array($starter, ['general', 'decision', 'assignment', 'blank'], true), 422);
         $this->body_template = $this->starterHtml($starter);
         $this->requires_recipient = $starter === 'general';
+        $this->editorVersion++;
     }
 
     public function edit(int $id, LetterTemplateHtmlSanitizer $sanitizer): void
@@ -68,6 +79,7 @@ class Templates extends Component
         $this->default_field_code = (string) $template->default_field_code;
         $this->requires_recipient = (bool) $template->requires_recipient;
         $this->is_active = (bool) $template->is_active;
+        $this->editorVersion++;
     }
 
     public function duplicate(int $id, LetterTemplateHtmlSanitizer $sanitizer): void
@@ -82,6 +94,7 @@ class Templates extends Component
         $this->default_field_code = (string) $template->default_field_code;
         $this->requires_recipient = (bool) $template->requires_recipient;
         $this->is_active = true;
+        $this->editorVersion++;
     }
 
     public function insertPlaceholder(string $placeholder, LetterTemplateRenderer $renderer): void
@@ -150,10 +163,55 @@ class Templates extends Component
         $this->resetEditor();
     }
 
-    public function render(LetterTemplateRenderer $renderer)
+    public function render(LetterTemplateRenderer $renderer, LetterNumberService $numberService)
     {
         $templates = LetterTemplate::query()->with('letterType')->orderBy('sort_order')->orderBy('name')->get();
         $placeholders = $this->body_template ? $renderer->placeholders($this->body_template) : [];
+        $schoolId = app(SchoolContext::class)->id();
+        $school = $schoolId ? School::query()->find($schoolId) : null;
+        $documentSetting = SchoolDocumentSetting::query()->first();
+        $legacySetting = SchoolLetterSetting::query()->first();
+        $previewAdministrationType = in_array($this->previewAdministrationType, ['male', 'female', 'mabigus'], true)
+            ? $this->previewAdministrationType
+            : 'mabigus';
+        $previewAdministrationProfile = ScoutAdministrationProfile::query()
+            ->where('type', $previewAdministrationType)
+            ->where('is_active', true)
+            ->first();
+        $previewContext = [
+            'letter_number' => '001/04/III.26/03.061-C',
+            'letter_date' => now()->locale('id')->translatedFormat('d F Y'),
+            'published_date' => now()->locale('id')->translatedFormat('d F Y'),
+            'subject' => $this->title ?: 'Perihal Surat',
+            'recipient' => 'Kepala Sekolah / Penerima Surat',
+            'recipient_location' => 'Tempat',
+            'attachment_label' => '1 berkas',
+            'attachment_count' => '1',
+            'city' => (string) ($documentSetting?->signing_city ?: $legacySetting?->city ?: $school?->city ?: ''),
+            'signatory_name' => 'Nama Penandatangan',
+            'signatory_position' => 'Jabatan Penandatangan',
+            'signatory_identity' => 'NTA / Identitas',
+        ];
+        $gudepTokens = $schoolId
+            ? $numberService->gudepTokens($schoolId, (string) ($legacySetting?->gudep_code ?? ''), $previewAdministrationType)
+            : ['gudep' => '', 'gudep_male' => '', 'gudep_female' => '', 'gudep_pair' => ''];
+        $previewContext = array_merge($previewContext, $gudepTokens);
+        if (filled($gudepTokens['gudep'])) {
+            $previewContext['letter_number'] = '001/04/III.26/'.$gudepTokens['gudep'].'-C';
+        }
+        foreach ($renderer->contentCatalog() as $key => $label) {
+            $previewContext[$key] = 'Contoh '.$label;
+        }
+
+        $previewTemplate = new LetterTemplate(['body_template' => $this->body_template]);
+        $previewBody = $this->body_template !== ''
+            ? $renderer->render($previewTemplate, $previewContext, true)
+            : '<p style="color:#777">Isi template akan tampil di sini.</p>';
+        $previewAddress = trim((string) ($previewAdministrationProfile?->letterhead_address ?: $school?->address));
+        $postalCode = trim((string) ($school?->postal_code ?? ''));
+        if ($postalCode !== '' && ! preg_match('/(?:^|\D)'.preg_quote($postalCode, '/').'(?:\D|$)/u', $previewAddress)) {
+            $previewAddress = trim($previewAddress.' '.$postalCode);
+        }
 
         return view('livewire.letters.templates', [
             'templates' => $templates,
@@ -161,6 +219,13 @@ class Templates extends Component
             'placeholders' => $placeholders,
             'systemPlaceholderCatalog' => $renderer->systemCatalog(),
             'contentPlaceholderCatalog' => $renderer->contentCatalog(),
+            'previewBody' => $previewBody,
+            'previewAdministrationProfile' => $previewAdministrationProfile,
+            'previewAdministrationType' => $previewAdministrationType,
+            'previewSchool' => $school,
+            'previewDocumentSetting' => $documentSetting,
+            'previewAddress' => $previewAddress,
+            'previewContext' => $previewContext,
         ]);
     }
 

@@ -40,7 +40,7 @@
     <form wire:submit="save" class="space-y-5 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <div>
             <h2 class="font-semibold">{{ $administrationTypes[$administrationType] ?? 'Administrasi' }}</h2>
-            <p class="mt-1 text-xs text-zinc-500">Pengaturan berikut hanya berlaku untuk profil administrasi yang sedang dipilih.</p>
+            <p class="mt-1 text-xs text-zinc-500">Baris kop mengikuti urutan pada preview. Nomor Gugusdepan diambil dari Pengaturan Dokumen.</p>
         </div>
 
         <div>
@@ -75,15 +75,27 @@
 
         <div class="grid gap-4 md:grid-cols-2">
             <div>
-                <label class="mb-1 block text-sm font-medium">Judul Kop</label>
+                <label class="mb-1 block text-sm font-medium">1. Instansi Induk</label>
                 <input wire:model="letterhead_title" placeholder="Contoh: GERAKAN PRAMUKA" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
             </div>
+            @if ($administrationType === 'mabigus' || $administrationType === 'male')
+                <div>
+                    <label class="mb-1 block text-sm font-medium">2. Gugusdepan Putra</label>
+                    <input readonly value="{{ $documentSetting?->gudep_male_number ? 'GUGUSDEPAN '.strtoupper($school?->city ?: '').' '.$documentSetting->gudep_male_number : 'Nomor Gudep belum diatur' }}" class="w-full rounded-lg border border-zinc-300 bg-zinc-100 px-3 py-2 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                </div>
+            @endif
+            @if ($administrationType === 'mabigus' || $administrationType === 'female')
+                <div>
+                    <label class="mb-1 block text-sm font-medium">{{ $administrationType === 'mabigus' ? '3.' : '2.' }} Gugusdepan Putri</label>
+                    <input readonly value="{{ $documentSetting?->gudep_female_number ? 'GUGUSDEPAN '.strtoupper($school?->city ?: '').' '.$documentSetting->gudep_female_number : 'Nomor Gudep belum diatur' }}" class="w-full rounded-lg border border-zinc-300 bg-zinc-100 px-3 py-2 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                </div>
+            @endif
             <div>
-                <label class="mb-1 block text-sm font-medium">Subjudul Kop</label>
-                <input wire:model="letterhead_subtitle" placeholder="Contoh: GUGUS DEPAN ..." class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
+                <label class="mb-1 block text-sm font-medium">{{ $administrationType === 'mabigus' ? '4. Instansi/Pangkalan' : '3. Instansi/Pangkalan' }}</label>
+                <input wire:model="letterhead_subtitle" placeholder="Contoh: SD NEGERI 16 PEMECUTAN" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
             </div>
             <div class="md:col-span-2">
-                <label class="mb-1 block text-sm font-medium">Alamat Kop</label>
+                <label class="mb-1 block text-sm font-medium">{{ $administrationType === 'mabigus' ? '5. Alamat' : '4. Alamat' }}</label>
                 <textarea wire:model="letterhead_address" rows="2" class="w-full rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"></textarea>
             </div>
         </div>

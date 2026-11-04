@@ -6,7 +6,7 @@ class LetterTemplateHtmlSanitizer
 {
     /** @var array<int, string> */
     private array $allowedTags = [
-        'p', 'div', 'br', 'strong', 'b', 'em', 'i', 'u', 's',
+        'p', 'div', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'strong', 'b', 'em', 'i', 'u', 's',
         'ul', 'ol', 'li', 'blockquote',
         'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td',
         'hr', 'span',
@@ -161,9 +161,33 @@ class LetterTemplateHtmlSanitizer
 
                 continue;
             }
+
+            if ($property === 'border-style' && in_array($value, ['solid', 'dashed', 'dotted', 'double', 'none'], true)) {
+                $safe[] = 'border-style: '.$value;
+
+                continue;
+            }
+
+            if ($property === 'border-width' && preg_match('/^(?:0|(?:0?\.\d{1,2}|[1-5](?:\.\d{1,2})?))(?:px|pt|mm)$/', $value) === 1) {
+                $safe[] = 'border-width: '.$value;
+
+                continue;
+            }
+
+            if (in_array($property, ['border-color', 'background-color'], true) && $this->isSafeColor($value)) {
+                $safe[] = $property.': '.$value;
+            }
         }
 
         return implode('; ', $safe);
+    }
+
+    private function isSafeColor(string $value): bool
+    {
+        return in_array($value, ['black', 'white', 'red', 'blue', 'green', 'transparent'], true)
+            || preg_match('/^#[0-9a-f]{3,8}$/', $value) === 1
+            || preg_match('/^rgba?\([0-9.,% ]+\)$/', $value) === 1
+            || preg_match('/^hsla?\([0-9.,% ]+\)$/', $value) === 1;
     }
 
     private function plainTextToHtml(string $text): string
