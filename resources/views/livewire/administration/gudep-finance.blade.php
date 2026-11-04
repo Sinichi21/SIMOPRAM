@@ -168,8 +168,19 @@
                         @if (auth()->user()?->can('gudep.finance.close.approve') && (int) $cashPeriod->close_requested_by !== (int) auth()->id())
                             <div class="mt-3 flex flex-wrap gap-2">
                                 <button type="button" wire:click="approveCashPeriodClosure" wire:confirm="Setujui dan kunci buku kas tahun ajaran ini secara permanen?" class="rounded-lg bg-emerald-700 px-4 py-2 text-xs font-semibold text-white">Setujui tutup buku</button>
-                                <button type="button" wire:click="rejectCashPeriodClosure" wire:confirm="Tolak permohonan dan buka kembali pengelolaan buku kas?" class="rounded-lg border border-amber-700 px-4 py-2 text-xs font-semibold">Tolak permohonan</button>
                             </div>
+                            <form wire:submit="rejectCashPeriodClosure" class="mt-3 space-y-2 rounded-lg border border-amber-300 p-3 dark:border-amber-800">
+                                <label for="cash-close-rejection-reason" class="block text-xs font-semibold">Alasan penolakan (wajib, minimal 10 karakter)</label>
+                                <textarea id="cash-close-rejection-reason" wire:model="closeRejectionReason" rows="2" maxlength="3000" required
+                                    class="w-full rounded-lg border border-amber-300 bg-white p-2.5 text-sm text-zinc-900 dark:border-amber-800 dark:bg-zinc-900 dark:text-zinc-100"
+                                    placeholder="Jelaskan data atau bukti yang harus diperbaiki sebelum mengajukan ulang..."></textarea>
+                                @error('closeRejectionReason') <p class="text-xs text-red-700 dark:text-red-400">{{ $message }}</p> @enderror
+                                <button type="submit" wire:loading.attr="disabled" wire:target="rejectCashPeriodClosure"
+                                    wire:confirm="Tolak permohonan dengan alasan ini dan buka kembali pengelolaan kas?"
+                                    class="rounded-lg border border-amber-700 px-4 py-2 text-xs font-semibold hover:bg-amber-100 disabled:opacity-50 dark:hover:bg-amber-950">
+                                    Tolak dengan alasan
+                                </button>
+                            </form>
                         @endif
                     </div>
                 @elseif ($cashPeriod?->opening_set_at)
