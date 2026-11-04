@@ -44,6 +44,19 @@ class GudepCashReconciliationTest extends TestCase
             ->set('academicYearId', $year->id);
     }
 
+    private function approve(int $gudepId, int $yearId): void
+    {
+        $schoolId = app(SchoolContext::class)->id();
+        $reviewer = User::factory()->create(['system_role' => 'super_admin']);
+        $this->actingAs($reviewer)->withSession(['active_school_id' => $schoolId]);
+
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudepId)
+            ->set('academicYearId', $yearId)
+            ->call('approveCashPeriodClosure')
+            ->assertHasNoErrors();
+    }
+
     public function test_cash_difference_prevents_closing_until_a_matching_review(): void
     {
         [$school, $gudep, $year] = $this->context();
@@ -83,6 +96,8 @@ class GudepCashReconciliationTest extends TestCase
             ->set('closingNotesInput', 'Saldo kas fisik dan buku telah cocok.')
             ->call('closeCashPeriod')
             ->assertHasNoErrors();
+
+        $this->approve($gudep->id, $year->id);
 
         $this->assertSame(2, GudepCashReconciliation::query()->count());
     }
@@ -192,6 +207,8 @@ class GudepCashReconciliationTest extends TestCase
             ->set('closingNotesInput', 'Tutup buku sesudah pemeriksaan kas.')
             ->call('closeCashPeriod')
             ->assertHasNoErrors();
+
+        $this->approve($gudep->id, $year->id);
 
         $this->component($gudep, $year)
             ->set('countedCashInput', '12000')
