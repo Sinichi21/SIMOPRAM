@@ -67,10 +67,67 @@
                 <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">Transaksi yang sudah diposting</p>
             </div>
             <div class="rounded-2xl border border-zinc-200 bg-zinc-900 p-5 text-white dark:border-zinc-700 dark:bg-zinc-800">
-                <p class="text-sm font-medium text-zinc-300">Saldo buku kas</p>
-                <p class="mt-2 break-words text-2xl font-bold tabular-nums tracking-tight text-white">Rp {{ number_format($income - $expense, 0, ',', '.') }}</p>
-                <p class="mt-2 text-xs text-zinc-300">Belum termasuk saldo awal atau rekonsiliasi</p>
+                <p class="text-sm font-medium text-zinc-300">Saldo berjalan</p>
+                <p class="mt-2 break-words text-2xl font-bold tabular-nums tracking-tight text-white">Rp {{ number_format($openingBalance + $income - $expense, 0, ',', '.') }}</p>
+                <p class="mt-2 text-xs text-zinc-300">Termasuk saldo awal; belum direkonsiliasi dengan kas fisik</p>
             </div>
+        </section>
+
+        {{-- Annual financial period --}}
+        <section aria-labelledby="finance-period-heading" class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <p class="text-xs font-medium text-zinc-500 dark:text-zinc-400">Pengendalian periode</p>
+                    <h2 id="finance-period-heading" class="mt-1 text-lg font-semibold">Saldo awal & tutup buku</h2>
+                    <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Saldo awal ditetapkan sebelum transaksi pertama diposting. Tutup buku mengunci tahun ajaran ini.</p>
+                </div>
+                @if ($cashPeriod?->status === 'closed')
+                    <span class="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">Periode ditutup</span>
+                @else
+                    <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">Periode terbuka</span>
+                @endif
+            </div>
+            <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                <div class="rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/50">
+                    <p class="text-xs text-zinc-500 dark:text-zinc-400">Saldo awal</p>
+                    <p class="mt-1 text-xl font-semibold tabular-nums">Rp {{ number_format($openingBalance, 0, ',', '.') }}</p>
+                    <p class="mt-1 text-xs text-zinc-500">{{ $cashPeriod?->opening_set_at ? 'Ditetapkan '.$cashPeriod->opening_set_at->format('d/m/Y H:i') : 'Belum ditetapkan (diasumsikan nol)' }}</p>
+                </div>
+                <div class="rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/50">
+                    <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ $cashPeriod?->status === 'closed' ? 'Saldo akhir terkunci' : 'Saldo berjalan termasuk saldo awal' }}</p>
+                    <p class="mt-1 text-xl font-semibold tabular-nums">Rp {{ number_format($openingBalance + $income - $expense, 0, ',', '.') }}</p>
+                    @if ($cashPeriod?->closed_at)
+                        <p class="mt-1 text-xs text-zinc-500">Ditutup {{ $cashPeriod->closed_at->format('d/m/Y H:i') }}</p>
+                    @endif
+                </div>
+            </div>
+            @if ($cashPeriod?->status === 'closed')
+                <p class="mt-3 break-all text-xs text-zinc-500 dark:text-zinc-400">Checksum penutupan: {{ $cashPeriod->closing_checksum }}</p>
+            @elseif (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage'))
+                @if (! $cashPeriod?->opening_set_at)
+                    <form wire:submit="saveOpeningBalance" class="mt-4 flex flex-wrap items-end gap-3">
+                        <div>
+                            <label for="finance-opening-balance" class="mb-1 block text-sm font-medium">Tetapkan saldo awal (Rp)</label>
+                            <input id="finance-opening-balance" type="number" min="0" step="1" wire:model="openingBalanceInput"
+                                class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" required>
+                            @error('openingBalanceInput') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
+                        </div>
+                        <button type="submit" wire:confirm="Tetapkan saldo awal? Nilai ini tidak dapat diubah setelah tersimpan." class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white">Tetapkan saldo awal</button>
+                    </form>
+                @endif
+                @if ($cashPeriod?->opening_set_at)
+                    <details class="mt-4 rounded-xl border border-amber-200 p-4 dark:border-amber-900">
+                        <summary class="cursor-pointer text-sm font-semibold text-amber-800 dark:text-amber-300">Tutup buku tahun ajaran</summary>
+                        <form wire:submit="closeCashPeriod" class="mt-3 space-y-3">
+                            <p class="text-xs text-zinc-500 dark:text-zinc-400">Seluruh draf harus diselesaikan terlebih dahulu. Setelah ditutup, anggaran, transaksi, pembalikan dan lampiran bukti tidak bisa diubah.</p>
+                            <label for="finance-close-notes" class="block text-sm font-medium">Catatan penutupan (min. 10 karakter)</label>
+                            <textarea id="finance-close-notes" wire:model="closingNotesInput" rows="2" maxlength="3000" required class="w-full rounded-lg border border-zinc-300 bg-white p-3 text-sm dark:border-zinc-700 dark:bg-zinc-800"></textarea>
+                            @error('closingNotesInput') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
+                            <button type="submit" wire:confirm="Tutup buku secara permanen untuk tahun ajaran ini?" class="rounded-lg bg-amber-800 px-4 py-2 text-sm font-semibold text-white">Konfirmasi tutup buku</button>
+                        </form>
+                    </details>
+                @endif
+            @endif
         </section>
 
         {{-- Budget --}}
@@ -84,7 +141,7 @@
                 <span class="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">{{ $budgets->count() }} kategori</span>
             </div>
 
-            @if (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage'))
+            @if ($cashPeriod?->status !== 'closed' && (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage')))
                 <details class="group border-b border-zinc-100 dark:border-zinc-800">
                     <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-sm font-semibold text-emerald-700 hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 dark:text-emerald-400 dark:hover:bg-zinc-800/50 sm:px-6">
                         <span>Tambah atau perbarui anggaran</span>
@@ -167,7 +224,7 @@
                 @endcan
             </div>
 
-            @if (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage'))
+            @if ($cashPeriod?->status !== 'closed' && (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage')))
                 <details class="group border-b border-zinc-100 dark:border-zinc-800">
                     <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-sm font-semibold text-emerald-700 hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 dark:text-emerald-400 dark:hover:bg-zinc-800/50 sm:px-6">
                         <span>Catat transaksi baru</span>
@@ -243,7 +300,7 @@
                 </details>
             @endif
 
-            @if (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage'))
+            @if ($cashPeriod?->status !== 'closed' && (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage')))
                 <details class="group border-b border-zinc-100 dark:border-zinc-800">
                     <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-sm font-semibold text-emerald-700 hover:bg-zinc-50 dark:text-emerald-400 dark:hover:bg-zinc-800/50 sm:px-6">
                         <span>Lampirkan nota atau kuitansi</span>
@@ -273,7 +330,7 @@
                 </details>
             @endif
 
-            @if ($reversalSelectedEntry && (auth()->user()?->can('gudep.finance.manage') || auth()->user()?->can('gudep.manage')))
+            @if ($reversalSelectedEntry && $cashPeriod?->status !== 'closed' && (auth()->user()?->can('gudep.finance.manage') || auth()->user()?->can('gudep.manage')))
                 <form wire:submit="reverseCash" class="space-y-3 border-b border-amber-200 bg-amber-50/70 px-4 py-5 dark:border-amber-900 dark:bg-amber-950/30 sm:px-6">
                     <div>
                         <h3 class="text-sm font-semibold text-amber-900 dark:text-amber-200">Koreksi transaksi #{{ $reversalSelectedEntry->id }}</h3>
@@ -362,12 +419,12 @@
                                             <span class="mt-1 block text-xs text-zinc-500">{{ $entry->reversal_reason }}</span>
                                         @elseif ($entry->reversals_exists)
                                             <span class="mt-1 block text-xs text-amber-700 dark:text-amber-300">Sudah dibalik</span>
-                                        @elseif (auth()->user()?->can('gudep.finance.manage') || auth()->user()?->can('gudep.manage'))
+                                        @elseif ($cashPeriod?->status !== 'closed' && (auth()->user()?->can('gudep.finance.manage') || auth()->user()?->can('gudep.manage')))
                                             <button type="button" wire:click="selectCashForReversal({{ $entry->id }})" class="mt-2 block text-xs font-semibold text-amber-700 hover:underline dark:text-amber-300">Ajukan pembalikan</button>
                                         @endif
                                     @else
                                         <span class="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">Draf</span>
-                                        @if (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage'))
+                                        @if ($cashPeriod?->status !== 'closed' && (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage')))
                                             <button type="button" wire:click="postCash({{ $entry->id }})" wire:confirm="Posting transaksi ini ke buku kas?" wire:loading.attr="disabled" wire:target="postCash({{ $entry->id }})"
                                                 class="mt-2 block rounded-md border border-emerald-600 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 dark:text-emerald-400 dark:hover:bg-emerald-950">
                                                 Posting transaksi
