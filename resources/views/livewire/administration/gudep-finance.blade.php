@@ -73,6 +73,21 @@
             </div>
         </section>
 
+        @if ($cashPeriod?->status === 'closed')
+            @can('reports.export')
+                <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-900 dark:bg-emerald-950/30">
+                    <div>
+                        <p class="text-sm font-semibold text-emerald-900 dark:text-emerald-200">LPJ Keuangan siap diterbitkan</p>
+                        <p class="text-xs text-emerald-700 dark:text-emerald-400">Periode telah ditutup dan disetujui oleh petugas berbeda.</p>
+                    </div>
+                    <button type="button" wire:click="publishFinanceLpj" wire:loading.attr="disabled" wire:target="publishFinanceLpj"
+                        class="rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50">
+                        Terbitkan LPJ Keuangan PDF
+                    </button>
+                </div>
+            @endcan
+        @endif
+
         {{-- Annual financial period --}}
         <section aria-labelledby="finance-period-heading" class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <div class="flex flex-wrap items-center justify-between gap-3">
