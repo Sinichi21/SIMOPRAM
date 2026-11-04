@@ -14,6 +14,8 @@ class GudepCashPeriod extends Model
         'opening_balance', 'opening_set_by', 'opening_set_at',
         'status', 'closing_balance', 'closing_checksum', 'closed_by',
         'closed_at', 'closing_notes',
+        'close_requested_by', 'close_requested_at', 'close_requested_notes',
+        'close_requested_checksum', 'close_requested_balance', 'close_requested_reconciliation_id',
     ];
 
     protected function casts(): array
@@ -23,6 +25,8 @@ class GudepCashPeriod extends Model
             'closing_balance' => 'integer',
             'opening_set_at' => 'datetime',
             'closed_at' => 'datetime',
+            'close_requested_at' => 'datetime',
+            'close_requested_balance' => 'integer',
         ];
     }
 }
