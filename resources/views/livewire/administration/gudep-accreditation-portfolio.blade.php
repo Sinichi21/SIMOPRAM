@@ -55,9 +55,21 @@
         </div>
 
         <section class="space-y-4 rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
-            <div>
-                <h2 class="text-lg font-semibold">Matriks indikator internal</h2>
-                <p class="mt-1 text-sm text-zinc-500">Indikator sementara diisi secara internal, bukan daftar baku atau skor akreditasi resmi. Bukti tersimpan sebagai referensi ke data asal.</p>
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h2 class="text-lg font-semibold">Matriks indikator internal</h2>
+                    <p class="mt-1 text-sm text-zinc-500">Indikator sementara diisi secara internal, bukan daftar baku atau skor akreditasi resmi. Bukti tersimpan sebagai referensi ke data asal.</p>
+                </div>
+                @can('reports.export')
+                    @can('report_verifications.view')
+                        <button type="button" wire:click="publishPortfolio" wire:loading.attr="disabled" wire:target="publishPortfolio"
+                            wire:confirm="Terbitkan arsip portofolio terbatas dengan QR verifikasi? Perubahan setelah penerbitan akan membuat revisi baru."
+                            @disabled($completion['total'] === 0)
+                            class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                            Terbitkan Portofolio PDF
+                        </button>
+                    @endcan
+                @endcan
             </div>
             @can('gudep.manage')
                 <form wire:submit="saveIndicator" class="grid gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700 md:grid-cols-4">
