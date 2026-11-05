@@ -33,4 +33,10 @@ class GudepCashInventoryReceipt extends Model
     {
         return $this->hasMany(GudepCashInventoryReceiptItem::class, 'gudep_cash_inventory_receipt_id');
     }
+
+    /** @return HasMany<GudepCashInventoryCorrection, $this> */
+    public function corrections(): HasMany
+    {
+        return $this->hasMany(GudepCashInventoryCorrection::class, 'gudep_cash_inventory_receipt_id');
+    }
 }
