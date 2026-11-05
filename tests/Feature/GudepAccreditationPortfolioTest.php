@@ -80,6 +80,7 @@ class GudepAccreditationPortfolioTest extends TestCase
             ->assertDontSee('Gudep Rahasia')
             ->assertViewHas('levels', []);
     }
+
     public function test_evidence_link_rejects_foreign_gudep_and_review_requires_evidence(): void
     {
         $school = School::factory()->create();
@@ -204,5 +205,4 @@ class GudepAccreditationPortfolioTest extends TestCase
 
         $this->assertSame('draft', $indicator->fresh()->status);
     }
-
 }
