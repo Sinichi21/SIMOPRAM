@@ -6,6 +6,10 @@ use App\Livewire\Administration\GudepFinance;
 use App\Models\AcademicYear;
 use App\Models\GudepCashEntry;
 use App\Models\GudepFinanceBudget;
+use App\Models\InventoryAsset;
+use App\Models\InventoryCategory;
+use App\Models\InventoryItem;
+use App\Models\InventoryOwner;
 use App\Models\ReportVerification;
 use App\Models\School;
 use App\Models\ScoutGroup;
@@ -57,6 +61,165 @@ class GudepFinancePhaseFiveTest extends TestCase
             'amount' => 50000,
             'status' => 'draft',
         ]);
+    }
+
+    public function test_legacy_case_variations_are_counted_in_budget_realization(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+
+        GudepFinanceBudget::query()->create([
+            'school_id' => $school->id,
+            'scout_group_id' => $gudep->id,
+            'academic_year_id' => $year->id,
+            'category' => 'PERSARI',
+            'allocated_amount' => 3000000,
+        ]);
+
+        foreach (['Persari' => 149985, 'PERSARI' => 1500000] as $category => $amount) {
+            GudepCashEntry::query()->create([
+                'school_id' => $school->id,
+                'scout_group_id' => $gudep->id,
+                'academic_year_id' => $year->id,
+                'direction' => 'expense',
+                'category' => $category,
+                'occurred_at' => '2026-11-05',
+                'description' => 'Pengeluaran '.$category,
+                'amount' => $amount,
+                'status' => 'posted',
+            ]);
+        }
+
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->assertViewHas('expenseByCategory', ['PERSARI' => 1649985])
+            ->assertSee('1.649.985');
+
+        $this->assertDatabaseCount('gudep_cash_entries', 2);
+    }
+
+    public function test_category_dropdown_canonicalizes_name_from_budget(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+        GudepFinanceBudget::query()->create([
+            'school_id' => $school->id,
+            'scout_group_id' => $gudep->id,
+            'academic_year_id' => $year->id,
+            'category' => 'PERSARI',
+            'allocated_amount' => 3000000,
+        ]);
+
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->set('cashCategory', 'PERSARI')
+            ->set('cashDescription', 'Pembelian konsumsi')
+            ->set('cashAmount', '100000')
+            ->set('cashDate', '2026-11-05')
+            ->call('saveCash')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('gudep_cash_entries', [
+            'category' => 'PERSARI',
+            'amount' => 100000,
+            'status' => 'draft',
+        ]);
+    }
+
+    public function test_draft_can_be_edited_and_deleted_before_posting(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+        $draft = $this->cashEntry($school, $gudep, $year);
+
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->call('editCashDraft', $draft->id)
+            ->assertSet('editingCashId', $draft->id)
+            ->set('cashDescription', 'Iuran dikoreksi')
+            ->set('cashAmount', '55000')
+            ->call('saveCash')
+            ->assertHasNoErrors()
+            ->assertSet('editingCashId', null);
+
+        $this->assertDatabaseHas('gudep_cash_entries', [
+            'id' => $draft->id,
+            'amount' => 55000,
+            'description' => 'Iuran dikoreksi',
+        ]);
+        $this->assertDatabaseCount('gudep_cash_entries', 1);
+
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->call('deleteCashDraft', $draft->id)
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseCount('gudep_cash_entries', 0);
+    }
+
+    public function test_posted_transactions_cannot_be_edited_or_deleted_as_drafts(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+        $posted = $this->cashEntry($school, $gudep, $year);
+        $posted->update(['status' => 'posted', 'posted_at' => now()]);
+
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->call('editCashDraft', $posted->id)
+            ->assertStatus(409);
+
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->call('deleteCashDraft', $posted->id)
+            ->assertStatus(409);
+
+        $this->assertSame(50000, $posted->fresh()->amount);
+    }
+
+    public function test_school_owned_inventory_assets_are_visible_to_finance_without_changing_ownership(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+        $category = InventoryCategory::query()->create([
+            'school_id' => $school->id,
+            'name' => 'Peralatan',
+            'is_active' => true,
+        ]);
+        $item = InventoryItem::query()->create([
+            'school_id' => $school->id,
+            'category_id' => $category->id,
+            'item_code' => 'TONGKAT-01',
+            'name' => 'Tongkat',
+            'tracking_type' => 'individual',
+            'unit' => 'buah',
+            'is_active' => true,
+        ]);
+        $owner = InventoryOwner::query()->create([
+            'school_id' => $school->id,
+            'owner_type' => 'school',
+            'display_name' => 'Inventaris Sekolah',
+            'is_active' => true,
+        ]);
+        InventoryAsset::query()->create([
+            'school_id' => $school->id,
+            'item_id' => $item->id,
+            'owner_id' => $owner->id,
+            'asset_code' => 'TONGKAT-0001',
+            'status' => 'available',
+            'condition' => 'good',
+        ]);
+
+        $component = Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->assertSee('Tongkat')
+            ->assertSee('Inventaris Sekolah');
+
+        $component->set('inventoryScope', 'gudep')->assertDontSee('TONGKAT-0001');
+
+        $this->assertSame($owner->id, InventoryAsset::query()->firstOrFail()->owner_id);
     }
 
     public function test_finance_page_requires_authentication(): void
