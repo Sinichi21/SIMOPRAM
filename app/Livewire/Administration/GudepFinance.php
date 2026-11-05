@@ -419,7 +419,7 @@ class GudepFinance extends Component
         $names = array_merge(
             $this->budgets()->pluck('category')->all(),
             $this->cashEntries()->distinct()->pluck('category')->all(),
-            ['Iuran', 'Hibah BOS', 'Donasi', 'Lainnya']
+            ['Iuran', 'Kegiatan', 'ATK', 'Hibah BOS', 'Donasi', 'Lainnya']
         );
 
         $options = [];
@@ -618,6 +618,7 @@ class GudepFinance extends Component
     public function selectCashForReversal(int $id): void
     {
         $this->authorizeManage();
+        $this->lockOpenPeriod();
 
         $entry = $this->cashEntries()->find($id);
         abort_unless($entry !== null, 404);
