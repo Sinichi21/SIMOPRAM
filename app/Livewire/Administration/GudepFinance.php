@@ -994,7 +994,7 @@ class GudepFinance extends Component
         $year = $this->selectedYear();
 
         $entries = $this->cashEntries()->where('status', 'posted')
-            ->with(['evidences', 'reversedEntry'])->orderBy('occurred_at')->orderBy('id')->get();
+            ->with(['evidences', 'reversedEntry', 'inventoryReceipt'])->orderBy('occurred_at')->orderBy('id')->get();
         $budgets = $this->budgets()->orderBy('category')->get();
         $period = $this->cashPeriod();
         $openingBalance = (int) ($period?->opening_balance ?? 0);
@@ -1011,11 +1011,14 @@ class GudepFinance extends Component
                 'id', 'direction', 'category', 'occurred_at', 'description', 'amount',
                 'reference_number', 'activity_id', 'inventory_item_id', 'posted_at',
                 'reversal_of_id', 'reversal_reason',
-            ]) + ['evidences' => $item->evidences->map(fn ($evidence) => [
-                'id' => $evidence->id,
-                'original_filename' => $evidence->original_filename,
-                'sha256' => $evidence->sha256,
-            ])->all()])->all(),
+            ]) + [
+                'evidences' => $item->evidences->map(fn ($evidence) => [
+                    'id' => $evidence->id,
+                    'original_filename' => $evidence->original_filename,
+                    'sha256' => $evidence->sha256,
+                ])->all(),
+                'inventory_movement_id' => $item->inventoryReceipt?->inventory_stock_movement_id,
+            ])->all(),
             'opening_balance' => $openingBalance,
             'period_status' => $period?->status ?? 'open',
             'closing_checksum' => $period?->closing_checksum,
