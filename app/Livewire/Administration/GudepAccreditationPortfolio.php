@@ -13,6 +13,8 @@ use App\Models\ReportVerification;
 use App\Models\ScoutGroup;
 use App\Models\ScoutLevel;
 use App\Models\ScoutUnit;
+use App\Services\Documents\OfficialDocumentPublisher;
+use App\Services\ReportVerificationService;
 use App\Support\SchoolContext;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -221,6 +223,83 @@ class GudepAccreditationPortfolio extends Component
             ]);
         });
         session()->flash('status', 'Indikator ditandai sudah ditinjau secara internal.');
+    }
+
+    public function publishPortfolio(
+        OfficialDocumentPublisher $publisher,
+        ReportVerificationService $verifier,
+    ): void {
+        abort_unless(auth()->user()?->can('gudep.view')
+            && auth()->user()?->can('reports.export')
+            && auth()->user()?->can('report_verifications.view'), 403);
+
+        $scope = $this->selectedScope();
+        $gudep = ScoutGroup::query()->where('school_id', $scope['school_id'])
+            ->findOrFail($scope['scout_group_id']);
+        $year = AcademicYear::query()->where('school_id', $scope['school_id'])
+            ->findOrFail($scope['academic_year_id']);
+        $indicators = GudepAccreditationIndicator::query()->where($scope)
+            ->with('evidenceLinks')->orderBy('code')->orderBy('id')->get();
+
+        abort_if($indicators->isEmpty(), 409, 'Belum ada indikator yang dapat diterbitkan.');
+
+        $levels = ScoutLevel::query()->pluck('name', 'id');
+        $rows = [];
+        foreach ($indicators as $indicator) {
+            $references = [];
+            foreach ($indicator->evidenceLinks as $link) {
+                $source = $this->evidenceQuery($link->source_kind)
+                    ->find($link->source_id);
+                abort_unless($source !== null, 409,
+                    'Ada sumber bukti yang tidak tersedia lagi.');
+                if ($source instanceof ReportVerification) {
+                    abort_unless($source->publicStatus() === 'valid', 409,
+                        'Ada dokumen bukti yang belum valid atau sudah tidak berlaku.');
+                }
+                $references[] = [
+                    'kind' => $link->source_kind,
+                    'id' => $source->id,
+                    'code' => $source instanceof ReportVerification ? $source->code : null,
+                    'checksum' => $source instanceof ReportVerification ? $source->file_sha256 : null,
+                ];
+            }
+
+            $rows[] = [
+                'id' => $indicator->id,
+                'code' => $indicator->code,
+                'title' => $indicator->title,
+                'level' => $indicator->scout_level_id === null
+                    ? 'Seluruh Gudep' : ($levels[$indicator->scout_level_id] ?? 'Tidak diketahui'),
+                'status' => $indicator->status === 'reviewed'
+                    ? 'Ditinjau internal' : 'Draf',
+                'reviewed_at' => $indicator->reviewed_at?->toIso8601String(),
+                'references' => $references,
+            ];
+        }
+
+        $document = $publisher->publishBlade(
+            schoolId: $scope['school_id'],
+            sourceType: ScoutGroup::class,
+            sourceId: $gudep->id,
+            documentType: 'gudep_accreditation_portfolio',
+            seriesKey: 'year-'.$year->id,
+            snapshotChecksum: $verifier->contentChecksum([
+                'gudep' => $gudep->id,
+                'year' => $year->id,
+                'rows' => $rows,
+            ]),
+            filename: 'portofolio-akreditasi-'.$gudep->id.'-'.$year->id.'.pdf',
+            contentView: 'reports.pdf.administration.gudep-accreditation-portfolio',
+            contentData: compact('gudep', 'year', 'indicators', 'rows'),
+            title: 'Portofolio Akreditasi '.$gudep->name.' '.$year->name,
+            metadata: [
+                'academic_year' => $year->name,
+                'security_classification' => 'Terbatas',
+            ],
+        );
+
+        $this->redirectRoute('reports.published-documents.show',
+            ['code' => $document->code], navigate: false);
     }
 
     private function schoolId(): int
