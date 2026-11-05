@@ -7,6 +7,7 @@ use App\Models\Activity;
 use App\Models\GudepCashCloseDecision;
 use App\Models\GudepCashEntry;
 use App\Models\GudepCashEvidence;
+use App\Models\GudepCashInventoryCorrection;
 use App\Models\GudepCashInventoryReceipt;
 use App\Models\GudepCashInventoryReceiptItem;
 use App\Models\GudepCashPeriod;
@@ -18,6 +19,7 @@ use App\Models\InventoryLoanItem;
 use App\Models\InventoryLocation;
 use App\Models\InventoryOwner;
 use App\Models\InventoryStockBalance;
+use App\Models\InventoryStockMovement;
 use App\Models\ScoutGroup;
 use App\Services\Documents\OfficialDocumentPublisher;
 use App\Services\Inventory\InventoryStockService;
@@ -72,6 +74,14 @@ class GudepFinance extends Component
     public string $receivingNotes = '';
 
     public string $receivingBatchToken = '';
+
+    public ?int $correctionCashEntryId = null;
+
+    public ?int $correctionMovementId = null;
+
+    public string $correctionQuantity = '';
+
+    public string $correctionReason = '';
 
     /** @var array<int, array{item_id: string, owner_id: string, location_id: string, quantity: string}> */
     public array $receivingExtraItems = [];
@@ -183,7 +193,7 @@ class GudepFinance extends Component
      */
     private function ledgerFingerprint(ReportVerificationService $verifier, GudepCashPeriod $period): string
     {
-        $entries = $this->cashEntries()->with(['evidences', 'inventoryReceipt.additionalItems'])
+        $entries = $this->cashEntries()->with(['evidences', 'inventoryReceipt.additionalItems', 'inventoryReceipt.corrections'])
             ->orderBy('occurred_at')->orderBy('id')->get();
 
         return $verifier->contentChecksum([
@@ -195,6 +205,7 @@ class GudepFinance extends Component
                 'evidence_hashes' => $item->evidences->pluck('sha256')->all(),
                 'inventory_movement_id' => $item->inventoryReceipt?->inventory_stock_movement_id,
                 'additional_inventory_movement_ids' => $item->inventoryReceipt?->additionalItems->pluck('inventory_stock_movement_id')->all() ?? [],
+                'inventory_corrections' => $item->inventoryReceipt?->corrections->map(fn ($correction) => $correction->only(['original_stock_movement_id', 'correction_stock_movement_id', 'quantity', 'reason']))->all() ?? [],
             ])->all(),
             'budgets' => $this->budgets()->orderBy('category')->get()
                 ->map(fn ($item) => $item->only(['category', 'allocated_amount', 'notes']))->all(),
@@ -784,6 +795,101 @@ class GudepFinance extends Component
         session()->flash('status', 'Penerimaan stok bertahap dicatat. Saldo kas tidak berubah.');
     }
 
+    public function selectInventoryReceiptCorrection(int $entryId, int $movementId): void
+    {
+        $this->authorizeManage();
+        abort_unless(auth()->user()?->can('inventory.stock.manage'), 403);
+        $this->lockOpenPeriod();
+
+        $entry = $this->cashEntries()->with('inventoryReceipt')->findOrFail($entryId);
+        abort_unless($entry->status === 'posted' && $entry->direction === 'expense', 409);
+        $receipt = $entry->inventoryReceipt;
+        abort_unless($receipt !== null && $this->isReceiptMovement($receipt, $movementId), 404);
+
+        $movement = InventoryStockMovement::query()
+            ->where('school_id', $this->schoolId())->findOrFail($movementId);
+        abort_unless($movement->movement_type === 'receipt', 409);
+
+        $this->correctionCashEntryId = $entry->id;
+        $this->correctionMovementId = $movement->id;
+        $this->correctionQuantity = '';
+        $this->correctionReason = '';
+    }
+
+    public function cancelInventoryReceiptCorrection(): void
+    {
+        $this->reset(['correctionCashEntryId', 'correctionMovementId', 'correctionQuantity', 'correctionReason']);
+    }
+
+    private function isReceiptMovement(GudepCashInventoryReceipt $receipt, int $movementId): bool
+    {
+        return (int) $receipt->inventory_stock_movement_id === $movementId
+            || $receipt->additionalItems()->where('inventory_stock_movement_id', $movementId)->exists();
+    }
+
+    /**
+     * Append an inventory issue against a specific receipt movement, preserving
+     * the original incoming movement and the financial ledger.
+     */
+    public function correctInventoryReceipt(InventoryStockService $stockService): void
+    {
+        $this->authorizeManage();
+        abort_unless(auth()->user()?->can('inventory.stock.manage'), 403);
+        $data = $this->validate([
+            'correctionCashEntryId' => ['required', 'integer'],
+            'correctionMovementId' => ['required', 'integer'],
+            'correctionQuantity' => ['required', 'numeric', 'min:0.001', 'max:99999999999'],
+            'correctionReason' => ['required', 'string', 'min:10', 'max:1000'],
+        ]);
+
+        DB::transaction(function () use ($data, $stockService): void {
+            $this->lockOpenPeriod();
+            $entry = $this->cashEntries()->lockForUpdate()
+                ->findOrFail((int) $data['correctionCashEntryId']);
+            abort_unless($entry->status === 'posted' && $entry->direction === 'expense', 409);
+            $receipt = GudepCashInventoryReceipt::query()->where('school_id', $this->schoolId())
+                ->where('gudep_cash_entry_id', $entry->id)->lockForUpdate()->firstOrFail();
+            $movementId = (int) $data['correctionMovementId'];
+            abort_unless($this->isReceiptMovement($receipt, $movementId), 404);
+            $original = InventoryStockMovement::query()->where('school_id', $this->schoolId())
+                ->lockForUpdate()->findOrFail($movementId);
+            abort_unless($original->movement_type === 'receipt', 409);
+
+            // Quantities are decimals; compare thousandths as integers, never float sums.
+            $receivedMils = (int) round((float) $original->quantity * 1000);
+            $correctedMils = (int) round((float) GudepCashInventoryCorrection::query()
+                ->where('school_id', $this->schoolId())
+                ->where('original_stock_movement_id', $movementId)->sum('quantity') * 1000);
+            $requestedMils = (int) round((float) $data['correctionQuantity'] * 1000);
+            abort_unless($requestedMils > 0 && abs($requestedMils / 1000 - (float) $data['correctionQuantity']) < 0.000001, 422);
+            abort_unless($requestedMils <= $receivedMils - $correctedMils, 409,
+                'Koreksi tidak boleh melebihi sisa jumlah dari penerimaan awal.');
+
+            $movement = $stockService->recordMovement(
+                itemId: $original->item_id,
+                ownerId: $original->owner_id,
+                locationId: $original->location_id,
+                type: 'issue',
+                quantity: $data['correctionQuantity'],
+                reference: 'KOREKSI-'.$movementId,
+                notes: 'Koreksi penerimaan #'.$movementId.': '.trim($data['correctionReason']),
+            );
+
+            GudepCashInventoryCorrection::query()->create([
+                'school_id' => $this->schoolId(),
+                'gudep_cash_inventory_receipt_id' => $receipt->id,
+                'original_stock_movement_id' => $original->id,
+                'correction_stock_movement_id' => $movement->id,
+                'quantity' => $data['correctionQuantity'],
+                'reason' => trim($data['correctionReason']),
+                'recorded_by' => auth()->id(),
+            ]);
+        });
+
+        $this->cancelInventoryReceiptCorrection();
+        session()->flash('status', 'Koreksi stok dicatat sebagai pergerakan keluar dengan jejak audit. Saldo kas tetap.');
+    }
+
     public function postCash(int $id): void
     {
         $this->authorizeManage();
@@ -1063,7 +1169,7 @@ class GudepFinance extends Component
         $year = $this->selectedYear();
 
         $entries = $this->cashEntries()->where('status', 'posted')
-            ->with(['evidences', 'reversedEntry', 'inventoryReceipt.additionalItems'])->orderBy('occurred_at')->orderBy('id')->get();
+            ->with(['evidences', 'reversedEntry', 'inventoryReceipt.additionalItems', 'inventoryReceipt.corrections'])->orderBy('occurred_at')->orderBy('id')->get();
         $budgets = $this->budgets()->orderBy('category')->get();
         $period = $this->cashPeriod();
         $openingBalance = (int) ($period?->opening_balance ?? 0);
@@ -1088,6 +1194,7 @@ class GudepFinance extends Component
                 ])->all(),
                 'inventory_movement_id' => $item->inventoryReceipt?->inventory_stock_movement_id,
                 'additional_inventory_movement_ids' => $item->inventoryReceipt?->additionalItems->pluck('inventory_stock_movement_id')->all() ?? [],
+                'inventory_corrections' => $item->inventoryReceipt?->corrections->map(fn ($correction) => $correction->only(['original_stock_movement_id', 'correction_stock_movement_id', 'quantity', 'reason']))->all() ?? [],
             ])->all(),
             'opening_balance' => $openingBalance,
             'period_status' => $period?->status ?? 'open',
