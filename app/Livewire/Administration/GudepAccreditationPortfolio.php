@@ -14,6 +14,7 @@ use App\Models\ScoutLevel;
 use App\Models\ScoutUnit;
 use App\Support\SchoolContext;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
@@ -121,7 +122,7 @@ class GudepAccreditationPortfolio extends Component
         $this->evidenceSourceId = null;
     }
 
-    private function evidenceQuery(string $kind): \Illuminate\Database\Eloquent\Builder
+    private function evidenceQuery(string $kind): Builder
     {
         $scope = $this->selectedScope();
 
