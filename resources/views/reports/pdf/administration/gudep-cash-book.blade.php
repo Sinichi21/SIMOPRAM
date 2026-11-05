@@ -21,7 +21,7 @@
 <div style="font-size:7pt;">Pembalikan transaksi #{{ $row->reversal_of_id }}. Alasan: {{ $row->reversal_reason }}</div>
 @endif
 @if ($row->inventoryReceipt)
-<div style="font-size:7pt;">Penerimaan inventaris: pergerakan #{{ $row->inventoryReceipt->inventory_stock_movement_id }}</div>
+<div style="font-size:7pt;">Penerimaan inventaris: pergerakan #{{ $row->inventoryReceipt->inventory_stock_movement_id }}@foreach ($row->inventoryReceipt->additionalItems as $extra) · #{{ $extra->inventory_stock_movement_id }}@endforeach</div>
 @endif
 @foreach ($row->evidences as $evidence)
 <div style="font-size:7pt;">Bukti: {{ $evidence->original_filename }} (SHA-256: {{ substr($evidence->sha256, 0, 12) }}…)</div>
