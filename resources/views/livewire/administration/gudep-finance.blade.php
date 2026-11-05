@@ -574,10 +574,27 @@
                     <span class="text-xs text-zinc-500 dark:text-zinc-400">{{ $inventoryOwners->count() }} pemilik inventaris sekolah/Gudep terdaftar</span>
                 </div>
                 <div class="grid gap-3 p-4 sm:grid-cols-3 sm:p-6">
-                    <div class="rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/60"><p class="text-xs text-zinc-500 dark:text-zinc-400">Aset ditampilkan</p><p class="mt-1 text-2xl font-semibold tabular-nums">{{ $assets->count() }}</p></div>
-                    <div class="rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/60"><p class="text-xs text-zinc-500 dark:text-zinc-400">Baris stok ditampilkan</p><p class="mt-1 text-2xl font-semibold tabular-nums">{{ $stocks->count() }}</p></div>
-                    <div class="rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/60"><p class="text-xs text-zinc-500 dark:text-zinc-400">Peminjaman terkait</p><p class="mt-1 text-2xl font-semibold tabular-nums">{{ $loanCount }}</p></div>
+                    <div class="rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/60"><p class="text-xs text-zinc-500 dark:text-zinc-400">Barang pada katalog sekolah</p><p class="mt-1 text-2xl font-semibold tabular-nums">{{ $catalogCount }}</p></div>
+                    <div class="rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/60"><p class="text-xs text-zinc-500 dark:text-zinc-400">Aset terdaftar di lingkup ini</p><p class="mt-1 text-2xl font-semibold tabular-nums">{{ $assetTotal }}</p></div>
+                    <div class="rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/60"><p class="text-xs text-zinc-500 dark:text-zinc-400">Baris stok di lingkup ini</p><p class="mt-1 text-2xl font-semibold tabular-nums">{{ $stockTotal }}</p></div>
                 </div>
+                <div class="px-4 pb-4 text-xs text-zinc-500 dark:text-zinc-400 sm:px-6">
+                    {{ $unassignedCatalogCount }} barang katalog belum memiliki aset atau stok pada pemilik mana pun. Peminjaman terkait: {{ $loanCount ?? 0 }}.
+                </div>
+                @if ($unassignedCatalogCount > 0)
+                    <details class="mx-4 mb-4 rounded-xl border border-amber-200 p-4 text-sm dark:border-amber-900 sm:mx-6">
+                        <summary class="cursor-pointer font-medium text-amber-800 dark:text-amber-300">Barang katalog yang belum tercatat kepemilikan / stok</summary>
+                        <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">Barang pada katalog saja belum berarti telah tersedia untuk dipinjam. Tetapkan pemilik dan catat aset atau penerimaan stok melalui modul Inventaris.</p>
+                        <ul class="mt-3 space-y-1 text-xs text-zinc-700 dark:text-zinc-300">
+                            @foreach ($unassignedCatalogItems as $item)
+                                <li>{{ $item->item_code }} — {{ $item->name }}</li>
+                            @endforeach
+                        </ul>
+                        @if ($unassignedCatalogCount > $unassignedCatalogItems->count())
+                            <p class="mt-2 text-xs text-zinc-500">Menampilkan 15 barang pertama.</p>
+                        @endif
+                    </details>
+                @endif
                 <div class="flex flex-wrap gap-3 px-4 pb-5 sm:px-6">
                     <a href="{{ route('inventory.index') }}" wire:navigate class="rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800">Kelola inventaris</a>
                     <a href="{{ route('inventory.loans.index') }}" wire:navigate class="rounded-lg border border-zinc-300 px-4 py-2.5 text-sm font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800">Transaksi peminjaman</a>
@@ -592,7 +609,7 @@
                                     <span class="shrink-0 text-xs text-zinc-500 dark:text-zinc-400">{{ $asset->asset_code }}</span>
                                 </li>
                             @empty
-                                <li class="rounded-lg border border-dashed border-zinc-200 p-5 text-center text-zinc-500 dark:border-zinc-700">Belum ada aset Gudep.</li>
+                                <li class="rounded-lg border border-dashed border-zinc-200 p-5 text-center text-zinc-500 dark:border-zinc-700">Belum ada aset dalam lingkup kepemilikan yang dipilih.</li>
                             @endforelse
                         </ul>
                     </div>
@@ -605,7 +622,7 @@
                                     <span class="shrink-0 font-semibold tabular-nums">{{ $stock->quantity_on_hand }} <span class="font-normal text-zinc-500">{{ $stock->item?->unit }}</span></span>
                                 </li>
                             @empty
-                                <li class="rounded-lg border border-dashed border-zinc-200 p-5 text-center text-zinc-500 dark:border-zinc-700">Belum ada stok Gudep.</li>
+                                <li class="rounded-lg border border-dashed border-zinc-200 p-5 text-center text-zinc-500 dark:border-zinc-700">Belum ada stok dalam lingkup kepemilikan yang dipilih.</li>
                             @endforelse
                         </ul>
                     </div>
