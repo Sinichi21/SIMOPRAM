@@ -49,7 +49,7 @@ class GudepAccreditationPortfolioTest extends TestCase
         ScoutUnit::query()->create([
             'school_id' => $school->id, 'scout_group_id' => $gudep->id,
             'academic_year_id' => $year->id, 'scout_level_id' => $level->id,
-            'gudep_formation_id' => $formation->id, 'name' => 'Barung Merah',
+            'gudep_formation_id' => $formation->id, 'name' => 'Barung Merah', 'unit_type' => 'barung',
         ]);
         GudepWorkProgram::query()->create([
             'school_id' => $school->id, 'scout_group_id' => $gudep->id,
