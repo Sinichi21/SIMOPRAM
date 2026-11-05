@@ -1,0 +1,175 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Livewire\Administration\GudepFinance;
+use App\Models\AcademicYear;
+use App\Models\GudepCashEntry;
+use App\Models\GudepCashInventoryReceipt;
+use App\Models\InventoryCategory;
+use App\Models\InventoryItem;
+use App\Models\InventoryLocation;
+use App\Models\InventoryOwner;
+use App\Models\InventoryStockBalance;
+use App\Models\InventoryStockMovement;
+use App\Models\School;
+use App\Models\ScoutGroup;
+use App\Models\User;
+use App\Support\SchoolContext;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
+use Tests\TestCase;
+
+class GudepCashInventoryReceiptTest extends TestCase
+{
+    use RefreshDatabase;
+
+    /** @return array{School, ScoutGroup, AcademicYear, GudepCashEntry, InventoryItem, InventoryOwner, InventoryLocation} */
+    private function context(): array
+    {
+        $school = School::factory()->create();
+        app(SchoolContext::class)->set($school);
+        setPermissionsTeamId($school->id);
+        $this->actingAs(User::factory()->create(['system_role' => 'super_admin']))
+            ->withSession(['active_school_id' => $school->id]);
+
+        $gudep = ScoutGroup::query()->create(['school_id' => $school->id, 'name' => 'Gudep Stok']);
+        $year = AcademicYear::query()->create([
+            'school_id' => $school->id, 'name' => '2026/2027',
+            'start_date' => '2026-07-01', 'end_date' => '2027-06-30', 'is_active' => true,
+        ]);
+        $entry = GudepCashEntry::query()->create([
+            'school_id' => $school->id,
+            'scout_group_id' => $gudep->id,
+            'academic_year_id' => $year->id,
+            'direction' => 'expense',
+            'category' => 'ATK',
+            'occurred_at' => '2026-11-05',
+            'description' => 'Pembelian tali',
+            'amount' => 50000,
+            'status' => 'posted',
+            'posted_at' => now(),
+        ]);
+
+        $category = InventoryCategory::query()->create([
+            'school_id' => $school->id, 'name' => 'Peralatan', 'is_active' => true,
+        ]);
+        $item = InventoryItem::query()->create([
+            'school_id' => $school->id,
+            'category_id' => $category->id,
+            'item_code' => 'TALI-01',
+            'name' => 'Tali',
+            'tracking_type' => 'quantity',
+            'unit' => 'gulungan',
+            'is_active' => true,
+        ]);
+        $owner = InventoryOwner::query()->create([
+            'school_id' => $school->id,
+            'owner_type' => 'gudep',
+            'scout_group_id' => $gudep->id,
+            'display_name' => 'Gudep Stok',
+            'is_active' => true,
+        ]);
+        $location = InventoryLocation::query()->create([
+            'school_id' => $school->id,
+            'scout_group_id' => $gudep->id,
+            'name' => 'Gudang Gudep',
+            'is_active' => true,
+        ]);
+
+        return [$school, $gudep, $year, $entry, $item, $owner, $location];
+    }
+
+    public function test_posted_expense_adds_stock_only_after_explicit_receipt(): void
+    {
+        [, $gudep, $year, $entry, $item, $owner, $location] = $this->context();
+
+        $component = Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->assertViewHas('expense', 50000)
+            ->call('selectCashForInventoryReceipt', $entry->id)
+            ->assertSet('receivingCashEntryId', $entry->id)
+            ->set('receivingItemId', $item->id)
+            ->set('receivingOwnerId', $owner->id)
+            ->set('receivingLocationId', $location->id)
+            ->set('receivingQuantity', '3')
+            ->call('recordCashInventoryReceipt')
+            ->assertHasNoErrors()
+            ->assertViewHas('expense', 50000);
+
+        $this->assertSame(1, InventoryStockMovement::query()->count());
+        $this->assertSame(1, GudepCashInventoryReceipt::query()->count());
+        $this->assertSame('3.000', InventoryStockBalance::query()->firstOrFail()->quantity_on_hand);
+        $this->assertSame('KAS-'.$entry->id, InventoryStockMovement::query()->firstOrFail()->reference);
+        $this->assertSame(50000, $entry->fresh()->amount);
+
+        $component->assertSet('receivingCashEntryId', null);
+    }
+
+    public function test_receipt_cannot_be_recorded_twice_for_same_expense(): void
+    {
+        [, $gudep, $year, $entry, $item, $owner, $location] = $this->context();
+
+        $record = fn () => Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->set('receivingCashEntryId', $entry->id)
+            ->set('receivingItemId', $item->id)
+            ->set('receivingOwnerId', $owner->id)
+            ->set('receivingLocationId', $location->id)
+            ->set('receivingQuantity', '2')
+            ->call('recordCashInventoryReceipt');
+
+        $record()->assertHasNoErrors();
+        $record()->assertStatus(409);
+
+        $this->assertSame(1, InventoryStockMovement::query()->count());
+        $this->assertSame('2.000', InventoryStockBalance::query()->firstOrFail()->quantity_on_hand);
+    }
+
+    public function test_expense_cannot_use_another_gudep_owner(): void
+    {
+        [$school, $gudep, $year, $entry, $item, , $location] = $this->context();
+        $other = ScoutGroup::query()->create(['school_id' => $school->id, 'name' => 'Gudep Lain']);
+        $foreignOwner = InventoryOwner::query()->create([
+            'school_id' => $school->id,
+            'owner_type' => 'gudep',
+            'scout_group_id' => $other->id,
+            'display_name' => 'Gudep Lain',
+            'is_active' => true,
+        ]);
+
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->set('receivingCashEntryId', $entry->id)
+            ->set('receivingItemId', $item->id)
+            ->set('receivingOwnerId', $foreignOwner->id)
+            ->set('receivingLocationId', $location->id)
+            ->set('receivingQuantity', '1')
+            ->call('recordCashInventoryReceipt')
+            ->assertForbidden();
+
+        $this->assertDatabaseCount('inventory_stock_movements', 0);
+    }
+
+    public function test_draft_cannot_generate_inventory_receipt(): void
+    {
+        [, $gudep, $year, $entry, $item, $owner, $location] = $this->context();
+        $entry->update(['status' => 'draft', 'posted_at' => null]);
+
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->set('receivingCashEntryId', $entry->id)
+            ->set('receivingItemId', $item->id)
+            ->set('receivingOwnerId', $owner->id)
+            ->set('receivingLocationId', $location->id)
+            ->set('receivingQuantity', '1')
+            ->call('recordCashInventoryReceipt')
+            ->assertStatus(409);
+
+        $this->assertDatabaseCount('inventory_stock_movements', 0);
+    }
+}
