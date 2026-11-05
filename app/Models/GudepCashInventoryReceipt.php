@@ -27,6 +27,7 @@ class GudepCashInventoryReceipt extends Model
     {
         return $this->belongsTo(InventoryStockMovement::class, 'inventory_stock_movement_id');
     }
+
     /** @return HasMany<GudepCashInventoryReceiptItem, $this> */
     public function additionalItems(): HasMany
     {
