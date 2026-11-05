@@ -1027,6 +1027,16 @@ class GudepFinance extends Component
         $gudepOwnerIds = $gudep ? InventoryOwner::query()->where('school_id', $schoolId)
             ->where('owner_type', 'gudep')->where('scout_group_id', $gudep->id)->pluck('id')->all() : [];
         $visibleOwnerIds = $this->inventoryScope === 'gudep' ? $gudepOwnerIds : $ownerIds;
+        $canViewInventory = $gudep !== null && auth()->user()?->can('inventory.view');
+        $catalogCount = $canViewInventory
+            ? InventoryItem::query()->where('school_id', $schoolId)->count() : null;
+        $assetTotal = $canViewInventory
+            ? InventoryAsset::query()->where('school_id', $schoolId)->whereIn('owner_id', $visibleOwnerIds)->count() : null;
+        $stockTotal = $canViewInventory
+            ? InventoryStockBalance::query()->where('school_id', $schoolId)->whereIn('owner_id', $visibleOwnerIds)->count() : null;
+        $unassignedCatalogCount = $canViewInventory
+            ? InventoryItem::query()->where('school_id', $schoolId)
+                ->whereDoesntHave('assets')->whereDoesntHave('stockBalances')->count() : null;
 
         return view('livewire.administration.gudep-finance', [
             'gudep' => $gudep,
@@ -1053,6 +1063,14 @@ class GudepFinance extends Component
             'activities' => $year ? Activity::query()->where('school_id', $schoolId)
                 ->where('academic_year_id', $year->id)->orderBy('title')->get() : collect(),
             'cashCategoryOptions' => $gudep && $year ? $this->cashCategoryOptions() : [],
+            'catalogCount' => $catalogCount,
+            'assetTotal' => $assetTotal,
+            'stockTotal' => $stockTotal,
+            'unassignedCatalogCount' => $unassignedCatalogCount,
+            'unassignedCatalogItems' => $canViewInventory
+                ? InventoryItem::query()->where('school_id', $schoolId)
+                    ->whereDoesntHave('assets')->whereDoesntHave('stockBalances')
+                    ->orderBy('name')->limit(15)->get() : collect(),
             'inventoryOwners' => $gudep && auth()->user()?->can('inventory.view')
                 ? InventoryOwner::query()->where('school_id', $schoolId)
                     ->whereIn('id', $ownerIds)->orderBy('display_name')->get() : collect(),
