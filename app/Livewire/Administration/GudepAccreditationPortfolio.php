@@ -9,6 +9,7 @@ use App\Models\GudepAchievement;
 use App\Models\GudepCashPeriod;
 use App\Models\GudepFormation;
 use App\Models\GudepWorkProgram;
+use App\Models\ReportVerification;
 use App\Models\ScoutGroup;
 use App\Models\ScoutLevel;
 use App\Models\ScoutUnit;
@@ -130,8 +131,28 @@ class GudepAccreditationPortfolio extends Component
             'program' => GudepWorkProgram::query()->where($scope),
             'achievement' => GudepAchievement::query()->where($scope),
             'cash_period' => GudepCashPeriod::query()->where($scope),
+            'document' => $this->publishedDocumentQuery($scope),
             default => abort(422, 'Jenis bukti tidak dikenal.'),
         };
+    }
+
+    private function publishedDocumentQuery(array $scope): Builder
+    {
+        abort_unless(auth()->user()?->can('report_verifications.view'), 403);
+
+        return ReportVerification::query()
+            ->where('school_id', $scope['school_id'])
+            ->where('source_type', ScoutGroup::class)
+            ->where('source_id', $scope['scout_group_id'])
+            ->where('series_key', 'year-'.$scope['academic_year_id'])
+            ->whereIn('document_type', [
+                'gudep_profile', 'gudep_members', 'gudep_cash_book',
+                'gudep_finance_lpj', 'gudep_development',
+            ])
+            ->whereNotNull('file_path')
+            ->whereNotNull('file_sha256')
+            ->whereNull('revoked_at')
+            ->whereNull('superseded_by_id');
     }
 
     public function linkEvidence(): void
@@ -139,7 +160,7 @@ class GudepAccreditationPortfolio extends Component
         $this->authorizeManage();
         $this->validate([
             'selectedIndicatorId' => ['required', 'integer'],
-            'evidenceKind' => ['required', Rule::in(['program', 'achievement', 'cash_period'])],
+            'evidenceKind' => ['required', Rule::in(['program', 'achievement', 'cash_period', 'document'])],
             'evidenceSourceId' => ['required', 'integer'],
         ]);
 
@@ -253,7 +274,7 @@ class GudepAccreditationPortfolio extends Component
                 ->with('evidenceLinks')->orderBy('code')->get();
 
             $selectedIndicator = $indicators->firstWhere('id', $this->selectedIndicatorId);
-            if ($selectedIndicator !== null && in_array($this->evidenceKind, ['program', 'achievement', 'cash_period'], true)) {
+            if ($selectedIndicator !== null && in_array($this->evidenceKind, ['program', 'achievement', 'cash_period', 'document'], true)) {
                 $evidenceOptions = $this->evidenceQuery($this->evidenceKind)->orderBy('id')->get();
             }
 
