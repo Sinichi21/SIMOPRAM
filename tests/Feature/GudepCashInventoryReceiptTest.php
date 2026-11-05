@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\Administration\GudepFinance;
 use App\Models\AcademicYear;
 use App\Models\GudepCashEntry;
+use App\Models\GudepCashInventoryCorrection;
 use App\Models\GudepCashInventoryReceipt;
 use App\Models\GudepCashInventoryReceiptItem;
 use App\Models\InventoryCategory;
@@ -313,6 +314,142 @@ class GudepCashInventoryReceiptTest extends TestCase
             ->assertCount('receivingExtraItems', 0);
 
         $this->assertDatabaseCount('inventory_stock_movements', 0);
+    }
+
+    public function test_partial_receipt_can_follow_first_delivery_and_keep_original_cash(): void
+    {
+        [, $gudep, $year, $entry, $item, $owner, $location] = $this->context();
+        $newReceipt = fn () => Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->call('selectCashForInventoryReceipt', $entry->id)
+            ->set('receivingItemId', $item->id)
+            ->set('receivingOwnerId', $owner->id)
+            ->set('receivingLocationId', $location->id);
+
+        $newReceipt()->set('receivingQuantity', '2')
+            ->call('recordCashInventoryReceipt')->assertHasNoErrors();
+
+        $newReceipt()->set('receivingQuantity', '3')
+            ->call('recordCashInventoryReceipt')->assertHasNoErrors()
+            ->assertViewHas('expense', 50000);
+
+        $this->assertDatabaseCount('gudep_cash_inventory_receipts', 1);
+        $this->assertDatabaseCount('gudep_cash_inventory_receipt_items', 1);
+        $this->assertDatabaseCount('inventory_stock_movements', 2);
+        $this->assertSame('5.000', InventoryStockBalance::query()->firstOrFail()->quantity_on_hand);
+        $this->assertSame(50000, $entry->fresh()->amount);
+    }
+
+    public function test_replayed_partial_receipt_token_does_not_duplicate_stock(): void
+    {
+        [, $gudep, $year, $entry, $item, $owner, $location] = $this->context();
+        $first = Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->call('selectCashForInventoryReceipt', $entry->id)
+            ->set('receivingItemId', $item->id)
+            ->set('receivingOwnerId', $owner->id)
+            ->set('receivingLocationId', $location->id)
+            ->set('receivingQuantity', '2');
+        $firstToken = $first->get('receivingBatchToken');
+        $first->call('recordCashInventoryReceipt')->assertHasNoErrors();
+
+        $replay = fn (string $token) => Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->set('receivingCashEntryId', $entry->id)
+            ->set('receivingBatchToken', $token)
+            ->set('receivingItemId', $item->id)
+            ->set('receivingOwnerId', $owner->id)
+            ->set('receivingLocationId', $location->id)
+            ->set('receivingQuantity', '2')
+            ->call('recordCashInventoryReceipt');
+
+        $replay($firstToken)->assertStatus(409);
+
+        $partialToken = '550e8400-e29b-41d4-a716-446655440000';
+        $replay($partialToken)->assertHasNoErrors();
+        $replay($partialToken)->assertStatus(409);
+
+        $this->assertDatabaseCount('inventory_stock_movements', 2);
+        $this->assertSame('4.000', InventoryStockBalance::query()->firstOrFail()->quantity_on_hand);
+    }
+
+    public function test_receipt_correction_creates_issue_and_prevents_excessive_reversal(): void
+    {
+        [, $gudep, $year, $entry, $item, $owner, $location] = $this->context();
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->set('receivingCashEntryId', $entry->id)
+            ->set('receivingItemId', $item->id)
+            ->set('receivingOwnerId', $owner->id)
+            ->set('receivingLocationId', $location->id)
+            ->set('receivingQuantity', '3')
+            ->call('recordCashInventoryReceipt')->assertHasNoErrors();
+
+        $originalMovementId = InventoryStockMovement::query()->firstOrFail()->id;
+        $correct = fn (string $quantity) => Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->call('selectInventoryReceiptCorrection', $entry->id, $originalMovementId)
+            ->set('correctionQuantity', $quantity)
+            ->set('correctionReason', 'Salah input jumlah penerimaan barang.')
+            ->call('correctInventoryReceipt');
+
+        $correct('1')->assertHasNoErrors();
+        $correct('3')->assertStatus(409);
+        $correct('2')->assertHasNoErrors();
+
+        $this->assertDatabaseCount('gudep_cash_inventory_corrections', 2);
+        $this->assertDatabaseCount('inventory_stock_movements', 3);
+        $this->assertSame('0.000', InventoryStockBalance::query()->firstOrFail()->quantity_on_hand);
+        $this->assertSame(50000, $entry->fresh()->amount);
+        $this->assertSame(2, GudepCashInventoryCorrection::query()->count());
+    }
+
+    public function test_stock_correction_rejects_movement_from_unrelated_cash_receipt(): void
+    {
+        [$school, $gudep, $year, $entry, $item, $owner, $location] = $this->context();
+        $other = GudepCashEntry::query()->create([
+            'school_id' => $school->id,
+            'scout_group_id' => $gudep->id,
+            'academic_year_id' => $year->id,
+            'direction' => 'expense',
+            'category' => 'ATK',
+            'occurred_at' => '2026-11-05',
+            'description' => 'Pembelian barang lain',
+            'amount' => 10000,
+            'status' => 'posted',
+        ]);
+
+        foreach ([$entry, $other] as $e) {
+            Livewire::test(GudepFinance::class)
+                ->set('scoutGroupId', $gudep->id)
+                ->set('academicYearId', $year->id)
+                ->set('receivingCashEntryId', $e->id)
+                ->set('receivingItemId', $item->id)
+                ->set('receivingOwnerId', $owner->id)
+                ->set('receivingLocationId', $location->id)
+                ->set('receivingQuantity', '1')
+                ->call('recordCashInventoryReceipt')->assertHasNoErrors();
+        }
+
+        $otherMovement = GudepCashInventoryReceipt::query()
+            ->where('gudep_cash_entry_id', $other->id)->firstOrFail()->inventory_stock_movement_id;
+
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->set('correctionCashEntryId', $entry->id)
+            ->set('correctionMovementId', $otherMovement)
+            ->set('correctionQuantity', '1')
+            ->set('correctionReason', 'Tidak terkait dengan transaksi ini.')
+            ->call('correctInventoryReceipt')
+            ->assertNotFound();
+
+        $this->assertDatabaseCount('gudep_cash_inventory_corrections', 0);
     }
 
     public function test_draft_cannot_generate_inventory_receipt(): void
