@@ -98,6 +98,10 @@
                 </div>
                 @if ($cashPeriod?->status === 'closed')
                     <span class="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">Periode ditutup</span>
+                @elseif ($cashPeriod?->close_requested_at !== null)
+                    <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300">Menunggu persetujuan</span>
+                @elseif (! $cashPeriod?->opening_set_at)
+                    <span class="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 dark:bg-sky-950 dark:text-sky-300">Saldo awal belum ditetapkan</span>
                 @else
                     <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">Periode terbuka</span>
                 @endif
@@ -187,7 +191,10 @@
                     </div>
                 @elseif ($cashPeriod?->opening_set_at)
                     <details class="mt-4 rounded-xl border border-amber-200 p-4 dark:border-amber-900">
-                        <summary class="cursor-pointer text-sm font-semibold text-amber-800 dark:text-amber-300">Ajukan tutup buku tahun ajaran</summary>
+                        <summary class="flex cursor-pointer items-center gap-2 text-sm font-semibold text-amber-800 dark:text-amber-300">
+                            <span>Ajukan tutup buku tahun ajaran</span>
+                            <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs dark:bg-amber-900">Perlu persetujuan 2 petugas</span>
+                        </summary>
                         <form wire:submit="closeCashPeriod" class="mt-3 space-y-3">
                             <p class="text-xs text-zinc-500 dark:text-zinc-400">Seluruh draf harus diselesaikan dan rekonsiliasi terakhir harus cocok dengan saldo buku. Setelah ditutup, anggaran, transaksi, pembalikan dan lampiran bukti tidak bisa diubah.</p>
                             <label for="finance-close-notes" class="block text-sm font-medium">Catatan penutupan (min. 10 karakter)</label>
