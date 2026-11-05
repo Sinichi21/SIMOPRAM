@@ -85,6 +85,21 @@
                 </form>
             @endcan
 
+            <div class="grid gap-3 sm:grid-cols-3">
+                <div class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                    <p class="text-xs text-zinc-500">Jumlah indikator</p>
+                    <p class="mt-1 text-xl font-bold">{{ $completion['total'] }}</p>
+                </div>
+                <div class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                    <p class="text-xs text-zinc-500">Memiliki tautan bukti</p>
+                    <p class="mt-1 text-xl font-bold">{{ $completion['linked'] }}</p>
+                </div>
+                <div class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                    <p class="text-xs text-zinc-500">Ditinjau internal</p>
+                    <p class="mt-1 text-xl font-bold">{{ $completion['reviewed'] }}</p>
+                </div>
+            </div>
+            <p class="text-xs text-zinc-500">Angka merupakan ringkasan administrasi internal, bukan nilai atau tingkat akreditasi resmi.</p>
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm">
                     <thead class="border-b border-zinc-200 dark:border-zinc-700">
