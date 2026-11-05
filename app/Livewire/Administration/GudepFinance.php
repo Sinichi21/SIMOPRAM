@@ -177,7 +177,7 @@ class GudepFinance extends Component
      */
     private function ledgerFingerprint(ReportVerificationService $verifier, GudepCashPeriod $period): string
     {
-        $entries = $this->cashEntries()->with('evidences')
+        $entries = $this->cashEntries()->with(['evidences', 'inventoryReceipt'])
             ->orderBy('occurred_at')->orderBy('id')->get();
 
         return $verifier->contentChecksum([
@@ -185,7 +185,10 @@ class GudepFinance extends Component
             'entries' => $entries->map(fn ($item) => $item->only([
                 'id', 'status', 'direction', 'category', 'amount', 'occurred_at',
                 'reversal_of_id', 'reversal_reason', 'posted_at',
-            ]) + ['evidence_hashes' => $item->evidences->pluck('sha256')->all()])->all(),
+            ]) + [
+                'evidence_hashes' => $item->evidences->pluck('sha256')->all(),
+                'inventory_movement_id' => $item->inventoryReceipt?->inventory_stock_movement_id,
+            ])->all(),
             'budgets' => $this->budgets()->orderBy('category')->get()
                 ->map(fn ($item) => $item->only(['category', 'allocated_amount', 'notes']))->all(),
         ]);
@@ -741,6 +744,10 @@ class GudepFinance extends Component
         abort_unless($entry->status === 'posted' && $entry->reversal_of_id === null, 409);
         abort_if($this->cashEntries()->where('reversal_of_id', $entry->id)->exists(), 409,
             'Transaksi sudah dibalik.');
+        abort_if(GudepCashInventoryReceipt::query()
+            ->where('school_id', $this->schoolId())
+            ->where('gudep_cash_entry_id', $entry->id)->exists(), 409,
+            'Penerimaan stok sudah terhubung. Koreksi inventaris terlebih dahulu.');
 
         $this->reversalEntryId = $entry->id;
         $this->reversalReason = '';
@@ -762,6 +769,10 @@ class GudepFinance extends Component
                 'Hanya transaksi asli yang sudah diposting dapat dibalik.');
             abort_if($this->cashEntries()->where('reversal_of_id', $original->id)->exists(), 409,
                 'Transaksi ini sudah pernah dibalik.');
+            abort_if(GudepCashInventoryReceipt::query()
+                ->where('school_id', $this->schoolId())
+                ->where('gudep_cash_entry_id', $original->id)->exists(), 409,
+                'Pengeluaran memiliki penerimaan stok. Koreksi inventaris harus ditangani sebelum pembalikan kas.');
 
             GudepCashEntry::query()->create([
                 'school_id' => $this->schoolId(),
