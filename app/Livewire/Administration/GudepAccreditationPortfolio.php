@@ -36,6 +36,21 @@ class GudepAccreditationPortfolio extends Component
 
     public ?int $evidenceSourceId = null;
 
+    public function updatedScoutGroupId(): void
+    {
+        $this->reset(['selectedIndicatorId', 'evidenceSourceId']);
+    }
+
+    public function updatedAcademicYearId(): void
+    {
+        $this->reset(['selectedIndicatorId', 'evidenceSourceId']);
+    }
+
+    public function updatedEvidenceKind(): void
+    {
+        $this->evidenceSourceId = null;
+    }
+
     public function mount(): void
     {
         abort_unless(auth()->user()?->can('gudep.view'), 403);
@@ -218,6 +233,7 @@ class GudepAccreditationPortfolio extends Component
 
                 $levels[] = [
                     'name' => $name,
+                    'id' => $level?->id,
                     'formations' => count($formationIds),
                     'units' => $level === null ? 0 : ScoutUnit::query()
                         ->where($scope)->where('scout_level_id', $level->id)->count(),
