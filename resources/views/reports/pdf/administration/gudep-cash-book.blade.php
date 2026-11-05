@@ -1,5 +1,6 @@
 <h1 style="text-align:center;font-size:15pt;">BUKU KAS GUGUSDEPAN</h1>
 <p style="text-align:center;">{{ $gudep->name }} — Tahun Ajaran {{ $year->name }}</p>
+<p style="font-size:8pt;"><strong>Status buku kas:</strong> {{ $period?->status === 'closed' ? 'Ditutup' : ($period?->close_requested_at ? 'Menunggu persetujuan tutup buku' : 'Terbuka / Belum ditutup') }}.</p>
 <p style="font-size:8pt;">Hanya transaksi terposting; mata uang Rupiah. Pembalikan dicatat sebagai pengurang kategori semula, bukan pendapatan atau biaya baru. Arsip terbatas dengan QR verifikasi.</p>
 <h2 style="font-size:11pt;">A. Anggaran</h2>
 <table style="width:100%;border-collapse:collapse;font-size:8pt;" border="1" cellpadding="5">
@@ -39,4 +40,4 @@
 <p style="font-size:7pt;">Checksum penutupan: {{ $period->closing_checksum }}</p>
 <p style="font-size:8pt;">Catatan: {{ $period->closing_notes }}</p>
 @endif
-<p style="font-size:8pt;">Realisasi menggunakan pengeluaran terposting sesuai kategori anggaran. Bukti asli disimpan privat dan hanya dapat diunduh pengguna berizin. Saldo sudah mencakup saldo awal; rekonsiliasi kas fisik belum otomatis dilakukan.</p>
+<p style="font-size:8pt;">Realisasi menggunakan pengeluaran terposting dan pembalikan, dengan pencocokan nama kategori tanpa membedakan huruf besar/kecil. Bukti asli disimpan privat dan hanya dapat diunduh pengguna berizin. Saldo sudah mencakup saldo awal; rekonsiliasi kas fisik belum otomatis dilakukan.</p>
