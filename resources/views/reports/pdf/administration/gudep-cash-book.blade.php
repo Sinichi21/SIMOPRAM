@@ -20,6 +20,9 @@
 @if ($row->reversal_of_id !== null)
 <div style="font-size:7pt;">Pembalikan transaksi #{{ $row->reversal_of_id }}. Alasan: {{ $row->reversal_reason }}</div>
 @endif
+@if ($row->inventoryReceipt)
+<div style="font-size:7pt;">Penerimaan inventaris: pergerakan #{{ $row->inventoryReceipt->inventory_stock_movement_id }}</div>
+@endif
 @foreach ($row->evidences as $evidence)
 <div style="font-size:7pt;">Bukti: {{ $evidence->original_filename }} (SHA-256: {{ substr($evidence->sha256, 0, 12) }}…)</div>
 @endforeach
