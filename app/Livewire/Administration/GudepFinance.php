@@ -71,6 +71,8 @@ class GudepFinance extends Component
 
     public string $receivingNotes = '';
 
+    public string $receivingBatchToken = '';
+
     /** @var array<int, array{item_id: string, owner_id: string, location_id: string, quantity: string}> */
     public array $receivingExtraItems = [];
 
@@ -618,16 +620,17 @@ class GudepFinance extends Component
 
         $entry = $this->cashEntries()->with('inventoryReceipt')->findOrFail($id);
         abort_unless($entry->status === 'posted' && $entry->direction === 'expense'
-            && $entry->reversal_of_id === null && $entry->inventoryReceipt === null, 409);
+            && $entry->reversal_of_id === null, 409);
         abort_if($this->cashEntries()->where('reversal_of_id', $entry->id)->exists(), 409);
 
         $this->receivingCashEntryId = $entry->id;
-        $this->receivingItemId = $entry->inventory_item_id;
+        $this->receivingItemId = $entry->inventoryReceipt === null ? $entry->inventory_item_id : null;
         $this->receivingOwnerId = null;
         $this->receivingLocationId = null;
         $this->receivingQuantity = '1';
         $this->receivingNotes = '';
         $this->receivingExtraItems = [];
+        $this->receivingBatchToken = (string) Str::uuid();
     }
 
     public function addReceivingItem(): void
@@ -654,7 +657,7 @@ class GudepFinance extends Component
     {
         $this->reset([
             'receivingCashEntryId', 'receivingItemId', 'receivingOwnerId',
-            'receivingLocationId', 'receivingNotes', 'receivingExtraItems',
+            'receivingLocationId', 'receivingNotes', 'receivingExtraItems', 'receivingBatchToken',
         ]);
         $this->receivingQuantity = '1';
     }
@@ -688,10 +691,19 @@ class GudepFinance extends Component
             abort_unless($entry->status === 'posted' && $entry->direction === 'expense'
                 && $entry->reversal_of_id === null, 409);
             abort_if($this->cashEntries()->where('reversal_of_id', $entry->id)->exists(), 409);
-            abort_if(GudepCashInventoryReceipt::query()
+            $existingReceipt = GudepCashInventoryReceipt::query()
                 ->where('school_id', $this->schoolId())
-                ->where('gudep_cash_entry_id', $entry->id)->exists(), 409,
-                'Pengeluaran ini sudah mempunyai penerimaan inventaris.');
+                ->where('gudep_cash_entry_id', $entry->id)
+                ->lockForUpdate()->first();
+
+            if ($existingReceipt !== null) {
+                abort_unless($this->receivingBatchToken !== '', 409,
+                    'Penerimaan lanjutan harus dimulai melalui tombol Catat penerimaan berikutnya.');
+                abort_if($existingReceipt->first_batch_token === $this->receivingBatchToken
+                    || $existingReceipt->additionalItems()
+                        ->where('receipt_batch_token', $this->receivingBatchToken)->exists(), 409,
+                    'Permintaan penerimaan ini sudah tercatat.');
+            }
 
             $rows = array_merge([[
                 'item_id' => $data['receivingItemId'],
@@ -706,7 +718,7 @@ class GudepFinance extends Component
                     ->where('is_active', true)->findOrFail((int) $row['item_id']);
                 abort_unless($item->tracking_type === 'quantity', 422,
                     'Barang per-unit harus diregistrasikan sebagai aset di modul Inventaris.');
-                if ($entry->inventory_item_id !== null && $index === 0) {
+                if ($existingReceipt === null && $entry->inventory_item_id !== null && $index === 0) {
                     abort_unless((int) $entry->inventory_item_id === (int) $item->id, 422,
                         'Barang utama tidak cocok dengan referensi pengeluaran.');
                 }
@@ -735,7 +747,7 @@ class GudepFinance extends Component
                 ];
             }
 
-            $receipt = null;
+            $receipt = $existingReceipt;
             foreach ($validatedRows as $index => $row) {
                 $movement = $stockService->recordMovement(
                     itemId: $row['item_id'],
@@ -747,26 +759,29 @@ class GudepFinance extends Component
                     notes: 'Dari buku kas Gudep #'.$entry->id.'. '.trim($data['receivingNotes'] ?? ''),
                 );
 
-                if ($index === 0) {
+                if ($index === 0 && $existingReceipt === null) {
                     $receipt = GudepCashInventoryReceipt::query()->create([
                         'school_id' => $this->schoolId(),
                         'scout_group_id' => $entry->scout_group_id,
                         'gudep_cash_entry_id' => $entry->id,
                         'inventory_stock_movement_id' => $movement->id,
                         'recorded_by' => auth()->id(),
+                        'first_batch_token' => $this->receivingBatchToken !== '' ? $this->receivingBatchToken : null,
                     ]);
                 } else {
                     GudepCashInventoryReceiptItem::query()->create([
                         'school_id' => $this->schoolId(),
                         'gudep_cash_inventory_receipt_id' => $receipt->id,
                         'inventory_stock_movement_id' => $movement->id,
+                        'receipt_batch_token' => $existingReceipt !== null ? $this->receivingBatchToken : null,
+                        'batch_line_no' => $existingReceipt !== null ? $index + 1 : null,
                     ]);
                 }
             }
         });
 
         $this->cancelInventoryReceipt();
-        session()->flash('status', 'Penerimaan stok dicatat dan terhubung ke pengeluaran kas. Saldo kas tidak berubah.');
+        session()->flash('status', 'Penerimaan stok bertahap dicatat. Saldo kas tidak berubah.');
     }
 
     public function postCash(int $id): void
