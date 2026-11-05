@@ -485,10 +485,62 @@
                                 @error('receivingQuantity') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
                             </div>
                         </div>
+                        <div class="space-y-3">
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <p class="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Barang tambahan (maksimal 10 jenis dalam satu penerimaan)</p>
+                                <button type="button" wire:click="addReceivingItem" @disabled(count($receivingExtraItems) >= 9)
+                                    class="rounded-lg border border-sky-500 px-3 py-1.5 text-xs font-semibold text-sky-800 disabled:opacity-40 dark:text-sky-300">+ Tambah barang lain</button>
+                            </div>
+                            @foreach ($receivingExtraItems as $index => $line)
+                                <div wire:key="cash-receiving-extra-{{ $index }}" class="rounded-lg border border-sky-200 bg-white p-3 dark:border-sky-800 dark:bg-zinc-900">
+                                    <div class="mb-2 flex items-center justify-between">
+                                        <span class="text-xs font-semibold">Barang tambahan #{{ $index + 2 }}</span>
+                                        <button type="button" wire:click="removeReceivingItem({{ $index }})" class="text-xs font-semibold text-red-700 dark:text-red-400">Hapus baris</button>
+                                    </div>
+                                    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                        <div>
+                                            <label for="cash-extra-item-{{ $index }}" class="mb-1 block text-xs font-medium">Barang</label>
+                                            <select id="cash-extra-item-{{ $index }}" wire:model="receivingExtraItems.{{ $index }}.item_id" required class="w-full rounded-lg border border-zinc-300 bg-white p-2 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+                                                <option value="">Pilih barang</option>
+                                                @foreach ($receivingItems as $item)
+                                                    <option value="{{ $item->id }}">{{ $item->item_code }} — {{ $item->name }}</option>
+                                                @endforeach
+                                            </select>
+                                            @error('receivingExtraItems.'.$index.'.item_id') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
+                                        </div>
+                                        <div>
+                                            <label for="cash-extra-owner-{{ $index }}" class="mb-1 block text-xs font-medium">Pemilik</label>
+                                            <select id="cash-extra-owner-{{ $index }}" wire:model="receivingExtraItems.{{ $index }}.owner_id" required class="w-full rounded-lg border border-zinc-300 bg-white p-2 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+                                                <option value="">Pilih pemilik</option>
+                                                @foreach ($receivingOwners as $owner)
+                                                    <option value="{{ $owner->id }}">{{ $owner->display_name }}</option>
+                                                @endforeach
+                                            </select>
+                                            @error('receivingExtraItems.'.$index.'.owner_id') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
+                                        </div>
+                                        <div>
+                                            <label for="cash-extra-location-{{ $index }}" class="mb-1 block text-xs font-medium">Lokasi</label>
+                                            <select id="cash-extra-location-{{ $index }}" wire:model="receivingExtraItems.{{ $index }}.location_id" required class="w-full rounded-lg border border-zinc-300 bg-white p-2 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+                                                <option value="">Pilih lokasi</option>
+                                                @foreach ($receivingLocations as $location)
+                                                    <option value="{{ $location->id }}">{{ $location->name }}</option>
+                                                @endforeach
+                                            </select>
+                                            @error('receivingExtraItems.'.$index.'.location_id') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
+                                        </div>
+                                        <div>
+                                            <label for="cash-extra-quantity-{{ $index }}" class="mb-1 block text-xs font-medium">Jumlah</label>
+                                            <input id="cash-extra-quantity-{{ $index }}" type="number" min="0.001" step="0.001" required wire:model="receivingExtraItems.{{ $index }}.quantity" class="w-full rounded-lg border border-zinc-300 bg-white p-2 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+                                            @error('receivingExtraItems.'.$index.'.quantity') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
                         <label for="cash-receipt-notes" class="block text-xs font-medium">Catatan penerimaan (opsional)</label>
                         <textarea id="cash-receipt-notes" wire:model="receivingNotes" rows="2" maxlength="2000" class="w-full rounded-lg border border-zinc-300 bg-white p-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"></textarea>
                         <div class="flex flex-wrap gap-2">
-                            <button type="submit" wire:confirm="Barang benar-benar sudah diterima? Penerimaan stok hanya boleh dicatat satu kali untuk transaksi ini." wire:loading.attr="disabled" wire:target="recordCashInventoryReceipt" class="rounded-lg bg-sky-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Konfirmasi penerimaan stok</button>
+                            <button type="submit" wire:confirm="Barang benar-benar sudah diterima? Semua barang yang dipilih akan dicatat sekaligus. Penerimaan ini hanya boleh disimpan satu kali untuk transaksi ini." wire:loading.attr="disabled" wire:target="recordCashInventoryReceipt" class="rounded-lg bg-sky-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Konfirmasi penerimaan stok</button>
                             <button type="button" wire:click="cancelInventoryReceipt" class="rounded-lg border border-zinc-300 px-4 py-2 text-sm">Batal</button>
                         </div>
                     </form>
@@ -580,7 +632,7 @@
                                     @if ($entry->status === 'posted')
                                         <span class="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">Tercatat</span>
                                         @if ($entry->inventoryReceipt)
-                                            <span class="mt-1 block text-xs text-sky-700 dark:text-sky-300">Stok diterima · Pergerakan #{{ $entry->inventoryReceipt->inventory_stock_movement_id }}</span>
+                                            <span class="mt-1 block text-xs text-sky-700 dark:text-sky-300">Stok diterima · Pergerakan #{{ $entry->inventoryReceipt->inventory_stock_movement_id }} @if ($entry->inventoryReceipt->additionalItems->isNotEmpty()) (+{{ $entry->inventoryReceipt->additionalItems->count() }} barang lainnya) @endif</span>
                                         @elseif ($entry->direction === 'expense' && $entry->reversal_of_id === null && ! $entry->reversals_exists && $cashPeriod?->status !== 'closed' && $cashPeriod?->close_requested_at === null && (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage')))
                                             @can('inventory.stock.manage')
                                                 <button type="button" wire:click="selectCashForInventoryReceipt({{ $entry->id }})" class="mt-2 block text-xs font-semibold text-sky-700 hover:underline dark:text-sky-300">Catat penerimaan barang</button>
