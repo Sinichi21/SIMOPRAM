@@ -683,13 +683,13 @@ class GudepFinance extends Component
         abort_unless(auth()->user()?->can('inventory.stock.manage'), 403);
         $data = $this->validate([
             'receivingCashEntryId' => ['required', 'integer'],
-            'receivingItemId' => ['required', 'integer'],
+            'receivingItemId' => ['required', 'integer', Rule::exists('inventory_items', 'id')->where('school_id', $this->schoolId())->where('is_active', true)],
             'receivingOwnerId' => ['required', 'integer'],
             'receivingLocationId' => ['required', 'integer'],
             'receivingQuantity' => ['required', 'numeric', 'min:0.001', 'max:99999999999'],
             'receivingNotes' => ['nullable', 'string', 'max:2000'],
             'receivingExtraItems' => ['array', 'max:9'],
-            'receivingExtraItems.*.item_id' => ['required', 'integer'],
+            'receivingExtraItems.*.item_id' => ['required', 'integer', Rule::exists('inventory_items', 'id')->where('school_id', $this->schoolId())->where('is_active', true)],
             'receivingExtraItems.*.owner_id' => ['required', 'integer'],
             'receivingExtraItems.*.location_id' => ['required', 'integer'],
             'receivingExtraItems.*.quantity' => ['required', 'numeric', 'min:0.001', 'max:99999999999'],
