@@ -265,7 +265,7 @@ class GudepCashInventoryReceiptTest extends TestCase
                 'quantity' => '1',
             ]])
             ->call('recordCashInventoryReceipt')
-            ->assertNotFound();
+            ->assertHasErrors(['receivingExtraItems.0.item_id']);
 
         $this->assertDatabaseCount('gudep_cash_inventory_receipts', 0);
         $this->assertDatabaseCount('gudep_cash_inventory_receipt_items', 0);
