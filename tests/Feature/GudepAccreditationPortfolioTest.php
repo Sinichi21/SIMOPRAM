@@ -16,6 +16,7 @@ use App\Models\ScoutUnit;
 use App\Models\User;
 use App\Support\SchoolContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -268,6 +269,87 @@ class GudepAccreditationPortfolioTest extends TestCase
 
         $form()->call('markReviewed', $indicator->id)->assertHasNoErrors();
         $this->assertSame('reviewed', $indicator->fresh()->status);
+    }
+
+    public function test_portfolio_publishing_reuses_identical_snapshot_and_revises_changed_evidence(): void
+    {
+        Storage::fake('local');
+        $school = School::factory()->create();
+        $this->actingInSchool($school);
+        $gudep = ScoutGroup::query()->create(['school_id' => $school->id, 'name' => 'Gudep Portofolio']);
+        $year = AcademicYear::query()->create([
+            'school_id' => $school->id, 'name' => '2026/2027',
+            'start_date' => '2026-07-01', 'end_date' => '2027-06-30', 'is_active' => true,
+        ]);
+        $program = GudepWorkProgram::query()->create([
+            'school_id' => $school->id, 'scout_group_id' => $gudep->id,
+            'academic_year_id' => $year->id, 'title' => 'Program Pertama',
+            'status' => 'planned',
+        ]);
+        $indicator = GudepAccreditationIndicator::query()->create([
+            'school_id' => $school->id, 'scout_group_id' => $gudep->id,
+            'academic_year_id' => $year->id, 'code' => 'ADM-01',
+            'title' => 'Program Pembinaan', 'status' => 'draft',
+        ]);
+        GudepAccreditationEvidenceLink::query()->create([
+            'school_id' => $school->id, 'indicator_id' => $indicator->id,
+            'source_kind' => 'program', 'source_id' => $program->id,
+        ]);
+
+        $publish = fn () => Livewire::test(GudepAccreditationPortfolio::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->call('publishPortfolio')
+            ->assertHasNoErrors();
+
+        $publish();
+        $publish();
+        $first = ReportVerification::query()
+            ->where('document_type', 'gudep_accreditation_portfolio')->firstOrFail();
+        $this->assertDatabaseCount('report_verifications', 1);
+        $this->assertSame(1, $first->revision);
+        $this->assertNotNull($first->file_sha256);
+        Storage::disk('local')->assertExists($first->file_path);
+
+        $indicator->update(['title' => 'Program Pembinaan Diperbarui']);
+        $publish();
+        $latest = ReportVerification::query()
+            ->where('document_type', 'gudep_accreditation_portfolio')
+            ->orderByDesc('revision')->firstOrFail();
+        $this->assertSame(2, $latest->revision);
+        $this->assertSame($first->id, $latest->replaces_id);
+        $this->assertSame($latest->id, $first->fresh()->superseded_by_id);
+        Storage::disk('local')->assertExists($first->file_path);
+        Storage::disk('local')->assertExists($latest->file_path);
+    }
+
+    public function test_portfolio_publication_rejects_missing_source_without_archiving(): void
+    {
+        Storage::fake('local');
+        $school = School::factory()->create();
+        $this->actingInSchool($school);
+        $gudep = ScoutGroup::query()->create(['school_id' => $school->id, 'name' => 'Gudep A']);
+        $year = AcademicYear::query()->create([
+            'school_id' => $school->id, 'name' => '2026/2027',
+            'start_date' => '2026-07-01', 'end_date' => '2027-06-30', 'is_active' => true,
+        ]);
+        $indicator = GudepAccreditationIndicator::query()->create([
+            'school_id' => $school->id, 'scout_group_id' => $gudep->id,
+            'academic_year_id' => $year->id, 'code' => 'A-01',
+            'title' => 'Bukti belum valid', 'status' => 'draft',
+        ]);
+        GudepAccreditationEvidenceLink::query()->create([
+            'school_id' => $school->id, 'indicator_id' => $indicator->id,
+            'source_kind' => 'program', 'source_id' => 99999999,
+        ]);
+
+        Livewire::test(GudepAccreditationPortfolio::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->call('publishPortfolio')
+            ->assertStatus(409);
+
+        $this->assertDatabaseCount('report_verifications', 0);
     }
 
 }
