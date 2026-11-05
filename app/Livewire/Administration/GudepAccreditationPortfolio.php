@@ -169,6 +169,9 @@ class GudepAccreditationPortfolio extends Component
             abort_if($indicator->status === 'reviewed', 409, 'Indikator yang sudah ditinjau terkunci.');
             $source = $this->evidenceQuery($this->evidenceKind)
                 ->findOrFail($this->evidenceSourceId);
+            if ($source instanceof ReportVerification) {
+                abort_unless($source->publicStatus() === 'valid', 409, 'Dokumen belum valid atau sudah tidak berlaku.');
+            }
             GudepAccreditationEvidenceLink::query()->firstOrCreate([
                 'school_id' => $this->schoolId(),
                 'indicator_id' => $indicator->id,
@@ -202,9 +205,14 @@ class GudepAccreditationPortfolio extends Component
             $links = $indicator->evidenceLinks()->get();
             abort_unless($links->isNotEmpty(), 409, 'Tautkan minimal satu bukti.');
             foreach ($links as $link) {
-                abort_unless($this->evidenceQuery($link->source_kind)
-                    ->whereKey($link->source_id)->exists(), 409,
+                $source = $this->evidenceQuery($link->source_kind)
+                    ->find($link->source_id);
+                abort_unless($source !== null, 409,
                     'Ada bukti yang tidak tersedia lagi pada sumber aslinya.');
+                if ($source instanceof ReportVerification) {
+                    abort_unless($source->publicStatus() === 'valid', 409,
+                        'Dokumen belum valid atau sudah tidak berlaku.');
+                }
             }
             $indicator->update([
                 'status' => 'reviewed',
@@ -242,6 +250,7 @@ class GudepAccreditationPortfolio extends Component
         $indicators = collect();
         $evidenceOptions = collect();
         $selectedIndicator = null;
+        $completion = ['total' => 0, 'linked' => 0, 'reviewed' => 0];
         $shared = ['programs' => 0, 'achievements' => 0, 'cash_period' => null];
 
         if ($gudep !== null && $year !== null) {
@@ -273,6 +282,12 @@ class GudepAccreditationPortfolio extends Component
             $indicators = GudepAccreditationIndicator::query()->where($scope)
                 ->with('evidenceLinks')->orderBy('code')->get();
 
+            $completion = [
+                'total' => $indicators->count(),
+                'linked' => $indicators->filter(fn ($indicator) => $indicator->evidenceLinks->isNotEmpty())->count(),
+                'reviewed' => $indicators->where('status', 'reviewed')->count(),
+            ];
+
             $selectedIndicator = $indicators->firstWhere('id', $this->selectedIndicatorId);
             if ($selectedIndicator !== null && in_array($this->evidenceKind, ['program', 'achievement', 'cash_period', 'document'], true)) {
                 $evidenceOptions = $this->evidenceQuery($this->evidenceKind)->orderBy('id')->get();
@@ -288,7 +303,7 @@ class GudepAccreditationPortfolio extends Component
 
         return view('livewire.administration.gudep-accreditation-portfolio', compact(
             'gudepOptions', 'years', 'gudep', 'year', 'levels', 'shared',
-            'indicators', 'selectedIndicator', 'evidenceOptions'
+            'indicators', 'selectedIndicator', 'evidenceOptions', 'completion'
         ));
     }
 }
