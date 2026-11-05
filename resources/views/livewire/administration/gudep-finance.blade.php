@@ -779,6 +779,33 @@
                         </ul>
                     </div>
                 </div>
+                <div class="border-t border-zinc-100 p-4 dark:border-zinc-800 sm:p-6">
+                    <h3 class="text-sm font-semibold">Riwayat penerimaan yang terhubung ke Buku Kas</h3>
+                    <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Menampilkan maksimal 30 transaksi kas terbaru pada Gudep dan tahun ajaran terpilih. Penerimaan dan koreksi tidak mengubah nilai kas.</p>
+                    <div class="mt-3 space-y-3">
+                        @forelse ($inventoryReceiptHistory as $cashEntry)
+                            @php($receipt = $cashEntry->inventoryReceipt)
+                            <div wire:key="finance-receipt-history-{{ $cashEntry->id }}" class="rounded-xl border border-zinc-200 p-3 text-sm dark:border-zinc-700">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <p class="font-semibold">Kas #{{ $cashEntry->id }} · {{ $cashEntry->description }}</p>
+                                    <span class="text-xs text-zinc-500">{{ $cashEntry->occurred_at?->format('d/m/Y') }}</span>
+                                </div>
+                                <p class="mt-1 text-xs text-zinc-500">Pengeluaran Rp {{ number_format($cashEntry->amount, 0, ',', '.') }} · {{ 1 + $receipt->additionalItems->count() }} pergerakan masuk · {{ $receipt->corrections->count() }} koreksi</p>
+                                <ul class="mt-2 space-y-1 text-xs">
+                                    <li>Masuk #{{ $receipt->inventory_stock_movement_id }}: {{ $receipt->movement?->item?->name ?? 'Barang tidak tersedia' }} · {{ $receipt->movement?->quantity }} {{ $receipt->movement?->item?->unit }}</li>
+                                    @foreach ($receipt->additionalItems as $line)
+                                        <li>Masuk #{{ $line->inventory_stock_movement_id }}: {{ $line->movement?->item?->name ?? 'Barang tidak tersedia' }} · {{ $line->movement?->quantity }} {{ $line->movement?->item?->unit }}</li>
+                                    @endforeach
+                                    @foreach ($receipt->corrections as $correction)
+                                        <li class="text-amber-800 dark:text-amber-300">Koreksi #{{ $correction->correction_stock_movement_id }} atas pergerakan #{{ $correction->original_stock_movement_id }}: −{{ $correction->quantity }} · {{ $correction->reason }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @empty
+                            <p class="rounded-lg border border-dashed border-zinc-200 p-4 text-center text-xs text-zinc-500 dark:border-zinc-700">Belum ada penerimaan inventaris yang terhubung dengan pengeluaran kas pada tahun ajaran ini.</p>
+                        @endforelse
+                    </div>
+                </div>
                 <p class="border-t border-zinc-100 px-4 py-3 text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400 sm:px-6">Maksimum 100 aset dan 100 baris stok ditampilkan. Angka ini bukan total keseluruhan jika data lebih banyak.</p>
             @else
                 <div class="p-6 text-sm text-zinc-500 dark:text-zinc-400">Detail sarana hanya tersedia untuk pengguna dengan izin melihat inventaris.</div>
