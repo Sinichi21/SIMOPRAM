@@ -780,7 +780,20 @@ class GudepFinance extends Component
             $expense[$category] = ($expense[$category] ?? 0) - (int) $amount;
         }
 
-        return $expense;
+        $labels = array_merge(
+            $this->budgets()->pluck('category')->all(),
+            $this->cashEntries()->where('status', 'posted')->where('direction', 'expense')
+                ->distinct()->pluck('category')->all()
+        );
+        $result = [];
+        foreach ($expense as $categoryKey => $amount) {
+            $display = collect($labels)->first(
+                fn (string $label): bool => mb_strtolower(trim($label)) === $categoryKey
+            ) ?? $categoryKey;
+            $result[$display] = $amount;
+        }
+
+        return $result;
     }
 
     public function publishFinanceLpj(
