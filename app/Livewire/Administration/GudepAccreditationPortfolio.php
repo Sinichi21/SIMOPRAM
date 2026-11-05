@@ -177,7 +177,13 @@ class GudepAccreditationPortfolio extends Component
             $indicator = GudepAccreditationIndicator::query()
                 ->where($this->selectedScope())->lockForUpdate()->findOrFail($id);
             abort_if($indicator->status === 'reviewed', 409);
-            abort_unless($indicator->evidenceLinks()->exists(), 409, 'Tautkan minimal satu bukti.');
+            $links = $indicator->evidenceLinks()->get();
+            abort_unless($links->isNotEmpty(), 409, 'Tautkan minimal satu bukti.');
+            foreach ($links as $link) {
+                abort_unless($this->evidenceQuery($link->source_kind)
+                    ->whereKey($link->source_id)->exists(), 409,
+                    'Ada bukti yang tidak tersedia lagi pada sumber aslinya.');
+            }
             $indicator->update([
                 'status' => 'reviewed',
                 'reviewed_by' => auth()->id(),
