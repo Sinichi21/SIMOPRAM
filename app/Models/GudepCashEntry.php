@@ -46,6 +46,12 @@ class GudepCashEntry extends Model
         return $this->hasMany(GudepCashEvidence::class, 'gudep_cash_entry_id');
     }
 
+    /** @return \Illuminate\Database\Eloquent\Relations\HasOne<GudepCashInventoryReceipt, $this> */
+    public function inventoryReceipt(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(GudepCashInventoryReceipt::class, 'gudep_cash_entry_id');
+    }
+
     /** @return BelongsTo<Activity, $this> */
     public function activity(): BelongsTo
     {
