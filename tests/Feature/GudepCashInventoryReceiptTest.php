@@ -6,6 +6,7 @@ use App\Livewire\Administration\GudepFinance;
 use App\Models\AcademicYear;
 use App\Models\GudepCashEntry;
 use App\Models\GudepCashInventoryReceipt;
+use App\Models\GudepCashInventoryReceiptItem;
 use App\Models\InventoryCategory;
 use App\Models\InventoryItem;
 use App\Models\InventoryLocation;
@@ -202,6 +203,89 @@ class GudepCashInventoryReceiptTest extends TestCase
 
         $this->assertDatabaseCount('gudep_cash_entries', 1);
         $this->assertDatabaseCount('inventory_stock_movements', 1);
+    }
+
+    public function test_multiple_items_are_received_atomically_without_changing_cash_amount(): void
+    {
+        [$school, $gudep, $year, $entry, $item, $owner, $location] = $this->context();
+        $other = InventoryItem::query()->create([
+            'school_id' => $school->id,
+            'category_id' => $item->category_id,
+            'item_code' => 'KERTAS-01',
+            'name' => 'Kertas',
+            'tracking_type' => 'quantity',
+            'unit' => 'rim',
+            'is_active' => true,
+        ]);
+
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->call('selectCashForInventoryReceipt', $entry->id)
+            ->call('addReceivingItem')
+            ->set('receivingItemId', $item->id)
+            ->set('receivingOwnerId', $owner->id)
+            ->set('receivingLocationId', $location->id)
+            ->set('receivingQuantity', '3')
+            ->set('receivingExtraItems.0.item_id', (string) $other->id)
+            ->set('receivingExtraItems.0.owner_id', (string) $owner->id)
+            ->set('receivingExtraItems.0.location_id', (string) $location->id)
+            ->set('receivingExtraItems.0.quantity', '2')
+            ->call('recordCashInventoryReceipt')
+            ->assertHasNoErrors()
+            ->assertViewHas('expense', 50000);
+
+        $this->assertDatabaseCount('gudep_cash_inventory_receipts', 1);
+        $this->assertDatabaseCount('gudep_cash_inventory_receipt_items', 1);
+        $this->assertDatabaseCount('inventory_stock_movements', 2);
+        $this->assertSame(50000, $entry->fresh()->amount);
+        $this->assertSame(2, InventoryStockBalance::query()->count());
+        $this->assertSame(1, GudepCashInventoryReceiptItem::query()->count());
+        $this->assertSame('KAS-'.$entry->id, InventoryStockMovement::query()->orderBy('id')->firstOrFail()->reference);
+        $this->assertSame('KAS-'.$entry->id.'-2', InventoryStockMovement::query()->orderByDesc('id')->firstOrFail()->reference);
+    }
+
+    public function test_invalid_additional_item_does_not_create_any_stock_movement(): void
+    {
+        [, $gudep, $year, $entry, $item, $owner, $location] = $this->context();
+
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->set('receivingCashEntryId', $entry->id)
+            ->set('receivingItemId', $item->id)
+            ->set('receivingOwnerId', $owner->id)
+            ->set('receivingLocationId', $location->id)
+            ->set('receivingQuantity', '3')
+            ->set('receivingExtraItems', [[
+                'item_id' => '999999',
+                'owner_id' => (string) $owner->id,
+                'location_id' => (string) $location->id,
+                'quantity' => '1',
+            ]])
+            ->call('recordCashInventoryReceipt')
+            ->assertNotFound();
+
+        $this->assertDatabaseCount('gudep_cash_inventory_receipts', 0);
+        $this->assertDatabaseCount('gudep_cash_inventory_receipt_items', 0);
+        $this->assertDatabaseCount('inventory_stock_movements', 0);
+        $this->assertDatabaseCount('inventory_stock_balances', 0);
+    }
+
+    public function test_additional_item_rows_can_be_added_and_removed_without_stock_changes(): void
+    {
+        [, $gudep, $year, $entry] = $this->context();
+
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->call('selectCashForInventoryReceipt', $entry->id)
+            ->call('addReceivingItem')
+            ->assertCount('receivingExtraItems', 1)
+            ->call('removeReceivingItem', 0)
+            ->assertCount('receivingExtraItems', 0);
+
+        $this->assertDatabaseCount('inventory_stock_movements', 0);
     }
 
     public function test_draft_cannot_generate_inventory_receipt(): void
