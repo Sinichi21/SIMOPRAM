@@ -210,6 +210,10 @@ class GudepCashPeriodTest extends TestCase
         $entry = GudepCashEntry::query()->firstOrFail();
         $this->financeComponent($gudep->id, $year->id)
             ->call('selectCashForReversal', $entry->id)
+            ->assertStatus(409);
+
+        $this->financeComponent($gudep->id, $year->id)
+            ->set('reversalEntryId', $entry->id)
             ->set('reversalReason', 'Koreksi karena data tercatat salah.')
             ->call('reverseCash')
             ->assertStatus(409);
