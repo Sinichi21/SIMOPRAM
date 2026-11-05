@@ -171,4 +171,38 @@ class GudepAccreditationPortfolioTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_deleted_source_prevents_review_of_linked_evidence(): void
+    {
+        $school = School::factory()->create();
+        $this->actingInSchool($school);
+        $gudep = ScoutGroup::query()->create(['school_id' => $school->id, 'name' => 'Gudep A']);
+        $year = AcademicYear::query()->create([
+            'school_id' => $school->id, 'name' => '2026/2027',
+            'start_date' => '2026-07-01', 'end_date' => '2027-06-30', 'is_active' => true,
+        ]);
+        $program = GudepWorkProgram::query()->create([
+            'school_id' => $school->id, 'scout_group_id' => $gudep->id,
+            'academic_year_id' => $year->id, 'title' => 'Program dihapus',
+            'status' => 'planned',
+        ]);
+        $indicator = GudepAccreditationIndicator::query()->create([
+            'school_id' => $school->id, 'scout_group_id' => $gudep->id,
+            'academic_year_id' => $year->id, 'code' => 'P-01',
+            'title' => 'Program yang dibuktikan', 'status' => 'draft',
+        ]);
+        GudepAccreditationEvidenceLink::query()->create([
+            'school_id' => $school->id, 'indicator_id' => $indicator->id,
+            'source_kind' => 'program', 'source_id' => $program->id,
+        ]);
+        $program->delete();
+
+        Livewire::test(GudepAccreditationPortfolio::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->call('markReviewed', $indicator->id)
+            ->assertStatus(409);
+
+        $this->assertSame('draft', $indicator->fresh()->status);
+    }
+
 }
