@@ -1002,9 +1002,10 @@ class GudepFinance extends Component
         $latestReconciliation = $period ? GudepCashReconciliation::query()
             ->where('gudep_cash_period_id', $period->id)->orderByDesc('id')->first() : null;
         $openingBalance = (int) ($period?->opening_balance ?? 0);
-        $ownerIds = $gudep ? InventoryOwner::query()->where('school_id', $schoolId)
-            ->where('owner_type', 'gudep')->where('scout_group_id', $gudep->id)
-            ->pluck('id')->all() : [];
+        $ownerIds = $gudep ? $this->inventoryOwnerIds() : [];
+        $gudepOwnerIds = $gudep ? InventoryOwner::query()->where('school_id', $schoolId)
+            ->where('owner_type', 'gudep')->where('scout_group_id', $gudep->id)->pluck('id')->all() : [];
+        $visibleOwnerIds = $this->inventoryScope === 'gudep' ? $gudepOwnerIds : $ownerIds;
 
         return view('livewire.administration.gudep-finance', [
             'gudep' => $gudep,
@@ -1030,19 +1031,28 @@ class GudepFinance extends Component
             'openingBalance' => $openingBalance,
             'activities' => $year ? Activity::query()->where('school_id', $schoolId)
                 ->where('academic_year_id', $year->id)->orderBy('title')->get() : collect(),
+            'cashCategoryOptions' => $gudep && $year ? $this->cashCategoryOptions() : [],
+            'inventoryOwners' => $gudep && auth()->user()?->can('inventory.view')
+                ? InventoryOwner::query()->where('school_id', $schoolId)
+                    ->whereIn('id', $ownerIds)->orderBy('display_name')->get() : collect(),
             'inventoryOptions' => $gudep && auth()->user()?->can('inventory.view')
                 ? InventoryItem::query()->where('school_id', $schoolId)
-                    ->whereHas('stockBalances', fn ($q) => $q->whereIn('owner_id', $ownerIds))
-                    ->orderBy('name')->get() : collect(),
+                    ->where(function (Builder $query) use ($ownerIds): void {
+                        $query->whereHas('stockBalances', fn (Builder $stock) => $stock->whereIn('owner_id', $ownerIds))
+                            ->orWhereHas('assets', fn (Builder $assets) => $assets->whereIn('owner_id', $ownerIds));
+                    })->orderBy('name')->get() : collect(),
             'assets' => $gudep && auth()->user()?->can('inventory.view')
                 ? InventoryAsset::query()->where('school_id', $schoolId)
-                    ->whereIn('owner_id', $ownerIds)->with('item')->orderBy('asset_code')->limit(100)->get() : collect(),
+                    ->whereIn('owner_id', $visibleOwnerIds)->with(['item', 'owner'])
+                    ->orderBy('asset_code')->limit(100)->get() : collect(),
             'stocks' => $gudep && auth()->user()?->can('inventory.view')
                 ? InventoryStockBalance::query()->where('school_id', $schoolId)
-                    ->whereIn('owner_id', $ownerIds)->with('item')->orderBy('id')->limit(100)->get() : collect(),
+                    ->whereIn('owner_id', $visibleOwnerIds)->with(['item', 'owner'])
+                    ->orderBy('id')->limit(100)->get() : collect(),
             'loanCount' => $gudep && auth()->user()?->can('inventory.view')
                 ? InventoryLoanItem::query()->where('school_id', $schoolId)
-                    ->whereIn('owner_id', $ownerIds)->distinct()->count('loan_id') : null,
+                    ->whereIn('owner_id', $visibleOwnerIds)->distinct()->count('loan_id') : null,
+
         ]);
     }
 }
