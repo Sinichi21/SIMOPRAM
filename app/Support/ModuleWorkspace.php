@@ -19,6 +19,7 @@ final class ModuleWorkspace
                 'icon' => 'folder-open',
                 'permissions' => ['gudep.view', 'gudep.finance.view', 'letters.view', 'report_verifications.view'],
                 'links' => [
+                    ['label' => 'Portofolio Akreditasi', 'route' => 'administration.accreditation', 'permission' => 'gudep.view'],
                     ['label' => 'Keuangan & Sarana', 'route' => 'administration.finance', 'permission' => 'gudep.finance.view'],
                     ['label' => 'Buku Operasional', 'route' => 'administration.operations', 'permission' => 'gudep.view'],
                     ['label' => 'Program & Pembinaan', 'route' => 'administration.development', 'permission' => 'gudep.view'],
