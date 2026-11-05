@@ -1407,6 +1407,15 @@ class GudepFinance extends Component
                 ? InventoryStockBalance::query()->where('school_id', $schoolId)
                     ->whereIn('owner_id', $visibleOwnerIds)->with(['item', 'owner'])
                     ->orderBy('id')->limit(100)->get() : collect(),
+            'inventoryReceiptHistory' => $gudep && $year && $canViewInventory
+                ? $this->cashEntries()->whereHas('inventoryReceipt')
+                    ->with([
+                        'inventoryReceipt.movement.item',
+                        'inventoryReceipt.additionalItems.movement.item',
+                        'inventoryReceipt.corrections',
+                    ])
+                    ->orderByDesc('occurred_at')->orderByDesc('id')->limit(30)->get()
+                : collect(),
             'loanCount' => $gudep && auth()->user()?->can('inventory.view')
                 ? InventoryLoanItem::query()->where('school_id', $schoolId)
                     ->whereIn('owner_id', $visibleOwnerIds)->distinct()->count('loan_id') : null,
