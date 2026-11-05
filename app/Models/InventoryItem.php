@@ -26,16 +26,19 @@ class InventoryItem extends Model
         ];
     }
 
+    /** @return BelongsTo<InventoryCategory, $this> */
     public function category(): BelongsTo
     {
         return $this->belongsTo(InventoryCategory::class, 'category_id');
     }
 
+    /** @return HasMany<InventoryAsset, $this> */
     public function assets(): HasMany
     {
         return $this->hasMany(InventoryAsset::class, 'item_id');
     }
 
+    /** @return HasMany<InventoryStockBalance, $this> */
     public function stockBalances(): HasMany
     {
         return $this->hasMany(InventoryStockBalance::class, 'item_id');

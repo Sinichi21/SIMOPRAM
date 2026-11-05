@@ -20,16 +20,19 @@ class InventoryOwner extends Model
         return ['is_active' => 'boolean'];
     }
 
+    /** @return BelongsTo<ScoutGroup, $this> */
     public function scoutGroup(): BelongsTo
     {
         return $this->belongsTo(ScoutGroup::class);
     }
 
+    /** @return HasMany<InventoryAsset, $this> */
     public function assets(): HasMany
     {
         return $this->hasMany(InventoryAsset::class, 'owner_id');
     }
 
+    /** @return HasMany<InventoryStockBalance, $this> */
     public function stockBalances(): HasMany
     {
         return $this->hasMany(InventoryStockBalance::class, 'owner_id');

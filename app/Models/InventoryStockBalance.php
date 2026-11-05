@@ -22,16 +22,19 @@ class InventoryStockBalance extends Model
         ];
     }
 
+    /** @return BelongsTo<InventoryItem, $this> */
     public function item(): BelongsTo
     {
         return $this->belongsTo(InventoryItem::class, 'item_id');
     }
 
+    /** @return BelongsTo<InventoryOwner, $this> */
     public function owner(): BelongsTo
     {
         return $this->belongsTo(InventoryOwner::class, 'owner_id');
     }
 
+    /** @return BelongsTo<InventoryLocation, $this> */
     public function location(): BelongsTo
     {
         return $this->belongsTo(InventoryLocation::class, 'location_id');
