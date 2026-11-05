@@ -15,6 +15,7 @@ use App\Models\ScoutLevel;
 use App\Models\ScoutUnit;
 use App\Models\User;
 use App\Support\SchoolContext;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -32,13 +33,28 @@ class GudepAccreditationPortfolioTest extends TestCase
             ->withSession(['active_school_id' => $school->id]);
     }
 
+    private function assertSourceNotFound(callable $action): void
+    {
+        try {
+            $action();
+            $this->fail('Sumber di luar lingkup Gudep seharusnya ditolak.');
+        } catch (ModelNotFoundException $exception) {
+            $this->assertNotEmpty($exception->getModel());
+        }
+    }
+
     public function test_portfolio_shows_four_levels_without_cross_school_data(): void
     {
         $school = School::factory()->create();
         $other = School::factory()->create();
         $this->actingInSchool($school);
         $gudep = ScoutGroup::query()->create(['school_id' => $school->id, 'name' => 'Gudep Utama']);
-        $foreignGudep = ScoutGroup::query()->create(['school_id' => $other->id, 'name' => 'Gudep Rahasia']);
+        // Create the foreign record under its actual tenant context. The model
+        // derives school_id from SchoolContext rather than mass assignment.
+        app(SchoolContext::class)->set($other);
+        $foreignGudep = ScoutGroup::query()->create(['name' => 'Gudep Rahasia']);
+        app(SchoolContext::class)->set($school);
+        $this->assertSame($other->id, $foreignGudep->school_id);
         $year = AcademicYear::query()->create([
             'school_id' => $school->id, 'name' => '2026/2027',
             'start_date' => '2026-07-01', 'end_date' => '2027-06-30', 'is_active' => true,
@@ -116,11 +132,11 @@ class GudepAccreditationPortfolioTest extends TestCase
         $this->assertSame('ADM-01', $indicator->code);
 
         $form()->call('markReviewed', $indicator->id)->assertStatus(409);
-        $form()->call('selectIndicator', $indicator->id)
+        $this->assertSourceNotFound(fn () => $form()
+            ->call('selectIndicator', $indicator->id)
             ->set('evidenceKind', 'program')
             ->set('evidenceSourceId', $foreign->id)
-            ->call('linkEvidence')
-            ->assertNotFound();
+            ->call('linkEvidence'));
         $this->assertDatabaseCount('gudep_accreditation_evidence_links', 0);
 
         $form()->call('selectIndicator', $indicator->id)
@@ -161,17 +177,15 @@ class GudepAccreditationPortfolioTest extends TestCase
             'title' => 'Bukti internal', 'status' => 'draft',
         ]);
 
-        Livewire::test(GudepAccreditationPortfolio::class)
+        $this->assertSourceNotFound(fn () => Livewire::test(GudepAccreditationPortfolio::class)
             ->set('scoutGroupId', $other->id)
             ->set('academicYearId', $year->id)
-            ->call('selectIndicator', $indicator->id)
-            ->assertNotFound();
+            ->call('selectIndicator', $indicator->id));
 
-        Livewire::test(GudepAccreditationPortfolio::class)
+        $this->assertSourceNotFound(fn () => Livewire::test(GudepAccreditationPortfolio::class)
             ->set('scoutGroupId', $other->id)
             ->set('academicYearId', $year->id)
-            ->call('markReviewed', $indicator->id)
-            ->assertNotFound();
+            ->call('markReviewed', $indicator->id));
     }
 
     public function test_deleted_source_prevents_review_of_linked_evidence(): void
@@ -207,6 +221,7 @@ class GudepAccreditationPortfolioTest extends TestCase
 
         $this->assertSame('draft', $indicator->fresh()->status);
     }
+
     public function test_only_current_valid_issued_gudep_documents_can_be_linked(): void
     {
         $school = School::factory()->create();
@@ -253,8 +268,9 @@ class GudepAccreditationPortfolioTest extends TestCase
             ->set('evidenceKind', 'document');
 
         foreach ([$foreign, $wrongYear, $revoked] as $excluded) {
-            $form()->set('evidenceSourceId', $excluded->id)
-                ->call('linkEvidence')->assertNotFound();
+            $this->assertSourceNotFound(fn () => $form()
+                ->set('evidenceSourceId', $excluded->id)
+                ->call('linkEvidence'));
         }
 
         $form()->set('evidenceSourceId', $valid->id)
@@ -351,5 +367,4 @@ class GudepAccreditationPortfolioTest extends TestCase
 
         $this->assertDatabaseCount('report_verifications', 0);
     }
-
 }
