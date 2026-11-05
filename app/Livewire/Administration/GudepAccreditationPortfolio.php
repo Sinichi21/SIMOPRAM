@@ -66,10 +66,8 @@ class GudepAccreditationPortfolio extends Component
 
             $levelModels = ScoutLevel::query()->get();
             foreach (['Siaga', 'Penggalang', 'Penegak', 'Pandega'] as $name) {
-                $level = $levelModels->first(fn (ScoutLevel $item): bool =>
-                    strcasecmp((string) $item->name, $name) === 0
-                    || strcasecmp((string) $item->code, $name) === 0
-                );
+                $level = $levelModels->firstWhere('name', $name)
+                    ?? $levelModels->firstWhere('code', strtoupper($name));
 
                 $formationIds = $level === null ? [] : GudepFormation::query()
                     ->where($scope)->where('scout_level_id', $level->id)->pluck('id')->all();
