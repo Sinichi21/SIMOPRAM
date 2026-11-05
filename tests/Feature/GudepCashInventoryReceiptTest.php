@@ -452,6 +452,43 @@ class GudepCashInventoryReceiptTest extends TestCase
         $this->assertDatabaseCount('gudep_cash_inventory_corrections', 0);
     }
 
+    public function test_sarana_history_shows_received_items_and_correction_without_new_cash_expense(): void
+    {
+        [, $gudep, $year, $entry, $item, $owner, $location] = $this->context();
+
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->set('receivingCashEntryId', $entry->id)
+            ->set('receivingItemId', $item->id)
+            ->set('receivingOwnerId', $owner->id)
+            ->set('receivingLocationId', $location->id)
+            ->set('receivingQuantity', '3')
+            ->call('recordCashInventoryReceipt')
+            ->assertHasNoErrors();
+
+        $movementId = InventoryStockMovement::query()->firstOrFail()->id;
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->call('selectInventoryReceiptCorrection', $entry->id, $movementId)
+            ->set('correctionQuantity', '1')
+            ->set('correctionReason', 'Jumlah penerimaan sebelumnya salah.')
+            ->call('correctInventoryReceipt')
+            ->assertHasNoErrors();
+
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->assertSee('Riwayat penerimaan yang terhubung ke Buku Kas')
+            ->assertSee('Tali')
+            ->assertSee('Jumlah penerimaan sebelumnya salah.')
+            ->assertViewHas('expense', 50000);
+
+        $this->assertDatabaseCount('gudep_cash_entries', 1);
+        $this->assertSame('2.000', InventoryStockBalance::query()->firstOrFail()->quantity_on_hand);
+    }
+
     public function test_draft_cannot_generate_inventory_receipt(): void
     {
         [, $gudep, $year, $entry, $item, $owner, $location] = $this->context();
