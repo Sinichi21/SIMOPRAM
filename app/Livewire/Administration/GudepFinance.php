@@ -8,6 +8,7 @@ use App\Models\GudepCashCloseDecision;
 use App\Models\GudepCashEntry;
 use App\Models\GudepCashEvidence;
 use App\Models\GudepCashInventoryReceipt;
+use App\Models\GudepCashInventoryReceiptItem;
 use App\Models\GudepCashPeriod;
 use App\Models\GudepCashReconciliation;
 use App\Models\GudepFinanceBudget;
@@ -69,6 +70,9 @@ class GudepFinance extends Component
     public string $receivingQuantity = '1';
 
     public string $receivingNotes = '';
+
+    /** @var array<int, array{item_id: string, owner_id: string, location_id: string, quantity: string}> */
+    public array $receivingExtraItems = [];
 
     public string $cashCategory = '';
 
@@ -177,7 +181,7 @@ class GudepFinance extends Component
      */
     private function ledgerFingerprint(ReportVerificationService $verifier, GudepCashPeriod $period): string
     {
-        $entries = $this->cashEntries()->with(['evidences', 'inventoryReceipt'])
+        $entries = $this->cashEntries()->with(['evidences', 'inventoryReceipt.additionalItems'])
             ->orderBy('occurred_at')->orderBy('id')->get();
 
         return $verifier->contentChecksum([
@@ -188,6 +192,7 @@ class GudepFinance extends Component
             ]) + [
                 'evidence_hashes' => $item->evidences->pluck('sha256')->all(),
                 'inventory_movement_id' => $item->inventoryReceipt?->inventory_stock_movement_id,
+                'additional_inventory_movement_ids' => $item->inventoryReceipt?->additionalItems->pluck('inventory_stock_movement_id')->all() ?? [],
             ])->all(),
             'budgets' => $this->budgets()->orderBy('category')->get()
                 ->map(fn ($item) => $item->only(['category', 'allocated_amount', 'notes']))->all(),
@@ -622,13 +627,34 @@ class GudepFinance extends Component
         $this->receivingLocationId = null;
         $this->receivingQuantity = '1';
         $this->receivingNotes = '';
+        $this->receivingExtraItems = [];
+    }
+
+    public function addReceivingItem(): void
+    {
+        $this->authorizeManage();
+        abort_unless(auth()->user()?->can('inventory.stock.manage'), 403);
+        abort_if($this->receivingCashEntryId === null, 422);
+        abort_if(count($this->receivingExtraItems) >= 9, 422, 'Maksimal 10 jenis barang per penerimaan.');
+
+        $this->receivingExtraItems[] = [
+            'item_id' => '', 'owner_id' => '', 'location_id' => '', 'quantity' => '1',
+        ];
+    }
+
+    public function removeReceivingItem(int $index): void
+    {
+        $this->authorizeManage();
+        abort_unless(auth()->user()?->can('inventory.stock.manage'), 403);
+        abort_unless(array_key_exists($index, $this->receivingExtraItems), 404);
+        array_splice($this->receivingExtraItems, $index, 1);
     }
 
     public function cancelInventoryReceipt(): void
     {
         $this->reset([
             'receivingCashEntryId', 'receivingItemId', 'receivingOwnerId',
-            'receivingLocationId', 'receivingNotes',
+            'receivingLocationId', 'receivingNotes', 'receivingExtraItems',
         ]);
         $this->receivingQuantity = '1';
     }
@@ -648,6 +674,11 @@ class GudepFinance extends Component
             'receivingLocationId' => ['required', 'integer'],
             'receivingQuantity' => ['required', 'numeric', 'min:0.001', 'max:99999999999'],
             'receivingNotes' => ['nullable', 'string', 'max:2000'],
+            'receivingExtraItems' => ['array', 'max:9'],
+            'receivingExtraItems.*.item_id' => ['required', 'integer'],
+            'receivingExtraItems.*.owner_id' => ['required', 'integer'],
+            'receivingExtraItems.*.location_id' => ['required', 'integer'],
+            'receivingExtraItems.*.quantity' => ['required', 'numeric', 'min:0.001', 'max:99999999999'],
         ]);
 
         DB::transaction(function () use ($data, $stockService): void {
@@ -662,44 +693,76 @@ class GudepFinance extends Component
                 ->where('gudep_cash_entry_id', $entry->id)->exists(), 409,
                 'Pengeluaran ini sudah mempunyai penerimaan inventaris.');
 
-            $item = InventoryItem::query()->where('school_id', $this->schoolId())
-                ->where('is_active', true)->findOrFail((int) $data['receivingItemId']);
-            abort_unless($item->tracking_type === 'quantity', 422,
-                'Barang per-unit harus diregistrasikan sebagai aset di modul Inventaris.');
-            if ($entry->inventory_item_id !== null) {
-                abort_unless((int) $entry->inventory_item_id === (int) $item->id, 422,
-                    'Barang tidak cocok dengan referensi pengeluaran.');
+            $rows = array_merge([[
+                'item_id' => $data['receivingItemId'],
+                'owner_id' => $data['receivingOwnerId'],
+                'location_id' => $data['receivingLocationId'],
+                'quantity' => $data['receivingQuantity'],
+            ]], $data['receivingExtraItems'] ?? []);
+
+            $validatedRows = [];
+            foreach ($rows as $index => $row) {
+                $item = InventoryItem::query()->where('school_id', $this->schoolId())
+                    ->where('is_active', true)->findOrFail((int) $row['item_id']);
+                abort_unless($item->tracking_type === 'quantity', 422,
+                    'Barang per-unit harus diregistrasikan sebagai aset di modul Inventaris.');
+                if ($entry->inventory_item_id !== null && $index === 0) {
+                    abort_unless((int) $entry->inventory_item_id === (int) $item->id, 422,
+                        'Barang utama tidak cocok dengan referensi pengeluaran.');
+                }
+
+                $owner = InventoryOwner::query()->where('school_id', $this->schoolId())
+                    ->where('is_active', true)->findOrFail((int) $row['owner_id']);
+                abort_unless(
+                    ($owner->owner_type === 'school' && $owner->scout_group_id === null)
+                    || ($owner->owner_type === 'gudep'
+                        && (int) $owner->scout_group_id === (int) $entry->scout_group_id),
+                    403, 'Pemilik inventaris harus milik sekolah atau Gudep terpilih.'
+                );
+
+                $location = InventoryLocation::query()->where('school_id', $this->schoolId())
+                    ->where('is_active', true)->findOrFail((int) $row['location_id']);
+                abort_unless($location->scout_group_id === null
+                    || (int) $location->scout_group_id === (int) $entry->scout_group_id, 403);
+                abort_unless($owner->scout_group_id === null || $location->scout_group_id === null
+                    || (int) $owner->scout_group_id === (int) $location->scout_group_id, 403);
+
+                $validatedRows[] = [
+                    'item_id' => $item->id,
+                    'owner_id' => $owner->id,
+                    'location_id' => $location->id,
+                    'quantity' => $row['quantity'],
+                ];
             }
-            $owner = InventoryOwner::query()->where('school_id', $this->schoolId())
-                ->where('is_active', true)->findOrFail((int) $data['receivingOwnerId']);
-            abort_unless(
-                ($owner->owner_type === 'school' && $owner->scout_group_id === null)
-                || ($owner->owner_type === 'gudep'
-                    && (int) $owner->scout_group_id === (int) $entry->scout_group_id),
-                403, 'Pemilik inventaris harus milik sekolah atau Gudep terpilih.'
-            );
-            $location = InventoryLocation::query()->where('school_id', $this->schoolId())
-                ->where('is_active', true)->findOrFail((int) $data['receivingLocationId']);
-            abort_unless($location->scout_group_id === null
-                || (int) $location->scout_group_id === (int) $entry->scout_group_id, 403);
 
-            $movement = $stockService->recordMovement(
-                itemId: $item->id,
-                ownerId: $owner->id,
-                locationId: $location->id,
-                type: 'receipt',
-                quantity: $data['receivingQuantity'],
-                reference: 'KAS-'.$entry->id,
-                notes: 'Dari buku kas Gudep #'.$entry->id.'. '.trim($data['receivingNotes'] ?? ''),
-            );
+            $receipt = null;
+            foreach ($validatedRows as $index => $row) {
+                $movement = $stockService->recordMovement(
+                    itemId: $row['item_id'],
+                    ownerId: $row['owner_id'],
+                    locationId: $row['location_id'],
+                    type: 'receipt',
+                    quantity: $row['quantity'],
+                    reference: 'KAS-'.$entry->id.'-'.($index + 1),
+                    notes: 'Dari buku kas Gudep #'.$entry->id.'. '.trim($data['receivingNotes'] ?? ''),
+                );
 
-            GudepCashInventoryReceipt::query()->create([
-                'school_id' => $this->schoolId(),
-                'scout_group_id' => $entry->scout_group_id,
-                'gudep_cash_entry_id' => $entry->id,
-                'inventory_stock_movement_id' => $movement->id,
-                'recorded_by' => auth()->id(),
-            ]);
+                if ($index === 0) {
+                    $receipt = GudepCashInventoryReceipt::query()->create([
+                        'school_id' => $this->schoolId(),
+                        'scout_group_id' => $entry->scout_group_id,
+                        'gudep_cash_entry_id' => $entry->id,
+                        'inventory_stock_movement_id' => $movement->id,
+                        'recorded_by' => auth()->id(),
+                    ]);
+                } else {
+                    GudepCashInventoryReceiptItem::query()->create([
+                        'school_id' => $this->schoolId(),
+                        'gudep_cash_inventory_receipt_id' => $receipt->id,
+                        'inventory_stock_movement_id' => $movement->id,
+                    ]);
+                }
+            }
         });
 
         $this->cancelInventoryReceipt();
@@ -985,7 +1048,7 @@ class GudepFinance extends Component
         $year = $this->selectedYear();
 
         $entries = $this->cashEntries()->where('status', 'posted')
-            ->with(['evidences', 'reversedEntry', 'inventoryReceipt'])->orderBy('occurred_at')->orderBy('id')->get();
+            ->with(['evidences', 'reversedEntry', 'inventoryReceipt.additionalItems'])->orderBy('occurred_at')->orderBy('id')->get();
         $budgets = $this->budgets()->orderBy('category')->get();
         $period = $this->cashPeriod();
         $openingBalance = (int) ($period?->opening_balance ?? 0);
@@ -1009,6 +1072,7 @@ class GudepFinance extends Component
                     'sha256' => $evidence->sha256,
                 ])->all(),
                 'inventory_movement_id' => $item->inventoryReceipt?->inventory_stock_movement_id,
+                'additional_inventory_movement_ids' => $item->inventoryReceipt?->additionalItems->pluck('inventory_stock_movement_id')->all() ?? [],
             ])->all(),
             'opening_balance' => $openingBalance,
             'period_status' => $period?->status ?? 'open',
@@ -1134,7 +1198,7 @@ class GudepFinance extends Component
 
         $ledgerMatches = $ledgerQuery !== null ? (clone $ledgerQuery)->count() : 0;
         $cash = $ledgerQuery !== null
-            ? $ledgerQuery->with(['evidences', 'reversedEntry', 'inventoryReceipt.movement'])->withExists('reversals')->orderByDesc('occurred_at')->orderByDesc('id')->limit(100)->get()
+            ? $ledgerQuery->with(['evidences', 'reversedEntry', 'inventoryReceipt.additionalItems'])->withExists('reversals')->orderByDesc('occurred_at')->orderByDesc('id')->limit(100)->get()
             : collect();
         $totals = $gudep && $year ? $this->cashTotals() : ['income' => 0, 'expense' => 0];
         $income = $totals['income'];
