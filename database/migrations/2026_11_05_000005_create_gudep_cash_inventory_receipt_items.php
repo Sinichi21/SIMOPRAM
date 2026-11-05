@@ -12,9 +12,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('school_id')->constrained()->restrictOnDelete();
             $table->foreignId('gudep_cash_inventory_receipt_id')
-                ->constrained('gudep_cash_inventory_receipts', 'gcir_items_receipt_fk')->restrictOnDelete();
+                ->constrained(table: 'gudep_cash_inventory_receipts', indexName: 'gcir_items_receipt_fk')->restrictOnDelete();
             $table->foreignId('inventory_stock_movement_id')
-                ->constrained('inventory_stock_movements', 'gcir_items_movement_fk')->restrictOnDelete();
+                ->constrained(table: 'inventory_stock_movements', indexName: 'gcir_items_movement_fk')->restrictOnDelete();
             $table->unique('inventory_stock_movement_id', 'gcir_items_movement_unique');
             $table->timestamps();
         });
