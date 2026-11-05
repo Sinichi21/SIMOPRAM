@@ -6,6 +6,7 @@ use App\Models\Concerns\BelongsToSchool;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class GudepCashEntry extends Model
 {
@@ -46,8 +47,8 @@ class GudepCashEntry extends Model
         return $this->hasMany(GudepCashEvidence::class, 'gudep_cash_entry_id');
     }
 
-    /** @return \Illuminate\Database\Eloquent\Relations\HasOne<GudepCashInventoryReceipt, $this> */
-    public function inventoryReceipt(): \Illuminate\Database\Eloquent\Relations\HasOne
+    /** @return HasOne<GudepCashInventoryReceipt, $this> */
+    public function inventoryReceipt(): HasOne
     {
         return $this->hasOne(GudepCashInventoryReceipt::class, 'gudep_cash_entry_id');
     }
