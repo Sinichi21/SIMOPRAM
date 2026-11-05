@@ -384,12 +384,17 @@ class GudepFinance extends Component
         $gudep = $this->selectedGudep();
         DB::transaction(function () use ($data, $gudep, $year): void {
             $this->lockOpenPeriod();
+            $category = trim($data['budgetCategory']);
+            $existing = $this->budgets()
+                ->whereRaw('LOWER(TRIM(category)) = ?', [mb_strtolower($category)])
+                ->first();
+
             GudepFinanceBudget::query()->updateOrCreate(
                 [
                     'school_id' => $this->schoolId(),
                     'scout_group_id' => $gudep->id,
                     'academic_year_id' => $year->id,
-                    'category' => trim($data['budgetCategory']),
+                    'category' => $existing?->category ?? $category,
                 ],
                 [
                     'allocated_amount' => (int) $data['budgetAmount'],
