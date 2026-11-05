@@ -51,6 +51,10 @@ class GudepFinance extends Component
 
     public string $cashDirection = 'income';
 
+    public ?int $editingCashId = null;
+
+    public string $inventoryScope = 'all';
+
     public string $cashCategory = '';
 
     public string $cashDate = '';
@@ -399,12 +403,113 @@ class GudepFinance extends Component
         session()->flash('status', 'Anggaran kategori berhasil disimpan.');
     }
 
+    /**
+     * Dropdown choices come from budget categories, existing transaction categories,
+     * and common receipts. Historical records are kept without silent rewriting.
+     *
+     * @return array<int, string>
+     */
+    private function cashCategoryOptions(): array
+    {
+        $names = array_merge(
+            $this->budgets()->pluck('category')->all(),
+            $this->cashEntries()->distinct()->pluck('category')->all(),
+            ['Iuran', 'Hibah BOS', 'Donasi', 'Lainnya']
+        );
+
+        $options = [];
+        foreach ($names as $name) {
+            $name = trim((string) $name);
+            $key = mb_strtolower($name);
+            if ($name !== '' && ! isset($options[$key])) {
+                $options[$key] = $name;
+            }
+        }
+
+        return array_values($options);
+    }
+
+    private function canonicalCategory(string $selected): string
+    {
+        $selected = trim($selected);
+        foreach ($this->budgets()->pluck('category') as $budgetCategory) {
+            if (mb_strtolower(trim($budgetCategory)) === mb_strtolower($selected)) {
+                return $budgetCategory;
+            }
+        }
+
+        return $selected;
+    }
+
+    /**
+     * Available items from both school and selected Gudep owners.
+     *
+     * @return array<int, int>
+     */
+    private function inventoryOwnerIds(): array
+    {
+        return InventoryOwner::query()->where('school_id', $this->schoolId())
+            ->where(function (Builder $query): void {
+                $query->where('owner_type', 'school')
+                    ->orWhere(function (Builder $nested): void {
+                        $nested->where('owner_type', 'gudep')
+                            ->where('scout_group_id', $this->selectedGudep()->id);
+                    });
+            })->pluck('id')->all();
+    }
+
+    public function editCashDraft(int $id): void
+    {
+        $this->authorizeManage();
+        $this->lockOpenPeriod();
+        $entry = $this->cashEntries()->findOrFail($id);
+        abort_unless($entry->status === 'draft', 409, 'Hanya draf yang dapat diedit.');
+
+        $this->editingCashId = $entry->id;
+        $this->cashDirection = $entry->direction;
+        $this->cashCategory = $this->canonicalCategory($entry->category);
+        $this->cashDate = $entry->occurred_at->toDateString();
+        $this->cashDescription = $entry->description;
+        $this->cashAmount = (string) $entry->amount;
+        $this->cashReference = $entry->reference_number ?? '';
+        $this->cashNotes = $entry->notes ?? '';
+        $this->cashActivityId = $entry->activity_id;
+        $this->cashInventoryItemId = $entry->inventory_item_id;
+    }
+
+    public function cancelCashDraftEdit(): void
+    {
+        $this->reset([
+            'editingCashId', 'cashCategory', 'cashDescription', 'cashAmount',
+            'cashReference', 'cashNotes', 'cashActivityId', 'cashInventoryItemId',
+        ]);
+        $this->cashDirection = 'income';
+        $this->cashDate = now()->toDateString();
+    }
+
+    public function deleteCashDraft(int $id): void
+    {
+        $this->authorizeManage();
+        DB::transaction(function () use ($id): void {
+            $this->lockOpenPeriod();
+            $entry = $this->cashEntries()->lockForUpdate()->findOrFail($id);
+            abort_unless($entry->status === 'draft', 409, 'Transaksi terposting tidak dapat dihapus.');
+            abort_if($entry->evidences()->exists(), 409, 'Draf yang memiliki bukti tidak boleh dihapus.');
+            $entry->delete();
+        });
+
+        if ($this->editingCashId === $id) {
+            $this->cancelCashDraftEdit();
+        }
+        session()->flash('status', 'Draf transaksi dibatalkan dan dihapus.');
+    }
+
     public function saveCash(): void
     {
         $this->authorizeManage();
         $data = $this->validate([
             'cashDirection' => ['required', Rule::in(['income', 'expense'])],
-            'cashCategory' => ['required', 'string', 'max:100'],
+            'cashCategory' => ['required', 'string', 'max:100', Rule::in($this->cashCategoryOptions())],
             'cashDate' => ['required', 'date'],
             'cashDescription' => ['required', 'string', 'max:255'],
             'cashAmount' => ['required', 'integer', 'min:1', 'max:999999999999'],
@@ -437,14 +542,15 @@ class GudepFinance extends Component
         $gudep = $this->selectedGudep();
         if (filled($data['cashInventoryItemId'])) {
             abort_unless(auth()->user()?->can('inventory.view'), 403);
-            $ownerIds = InventoryOwner::query()->where('school_id', $this->schoolId())
-                ->where('owner_type', 'gudep')->where('scout_group_id', $gudep->id)
-                ->pluck('id');
+            $ownerIds = $this->inventoryOwnerIds();
             if (InventoryStockBalance::query()->where('school_id', $this->schoolId())
                 ->whereIn('owner_id', $ownerIds)
-                ->where('item_id', (int) $data['cashInventoryItemId'])->doesntExist()) {
+                ->where('item_id', (int) $data['cashInventoryItemId'])->doesntExist()
+                && InventoryAsset::query()->where('school_id', $this->schoolId())
+                    ->whereIn('owner_id', $ownerIds)
+                    ->where('item_id', (int) $data['cashInventoryItemId'])->doesntExist()) {
                 throw ValidationException::withMessages([
-                    'cashInventoryItemId' => 'Barang harus termasuk stok Gudep terpilih.',
+                    'cashInventoryItemId' => 'Barang harus dimiliki sekolah atau Gudep terpilih.',
                 ]);
             }
         }
@@ -452,28 +558,37 @@ class GudepFinance extends Component
         DB::transaction(function () use ($data, $date, $gudep, $year): void {
             $this->lockOpenPeriod();
 
-            GudepCashEntry::query()->create([
+            $entry = $this->editingCashId !== null
+                ? $this->cashEntries()->lockForUpdate()->findOrFail($this->editingCashId)
+                : new GudepCashEntry;
+
+            if ($this->editingCashId !== null) {
+                abort_unless($entry->status === 'draft', 409, 'Hanya draf yang dapat diedit.');
+            }
+
+            $entry->fill([
                 'school_id' => $this->schoolId(),
                 'scout_group_id' => $gudep->id,
                 'academic_year_id' => $year->id,
                 'activity_id' => $data['cashActivityId'] ?: null,
                 'inventory_item_id' => $data['cashInventoryItemId'] ?: null,
                 'direction' => $data['cashDirection'],
-                'category' => trim($data['cashCategory']),
+                'category' => $this->canonicalCategory($data['cashCategory']),
                 'occurred_at' => $date,
                 'description' => trim($data['cashDescription']),
                 'amount' => (int) $data['cashAmount'],
                 'reference_number' => $data['cashReference'] ?: null,
                 'notes' => $data['cashNotes'] ?: null,
                 'status' => 'draft',
-                'created_by' => auth()->id(),
+                'created_by' => $entry->created_by ?? auth()->id(),
             ]);
+            $entry->save();
         });
 
-        $this->reset(['cashCategory', 'cashDescription', 'cashAmount', 'cashReference',
+        $this->reset(['editingCashId', 'cashCategory', 'cashDescription', 'cashAmount', 'cashReference',
             'cashNotes', 'cashActivityId', 'cashInventoryItemId']);
         $this->cashDirection = 'income';
-        session()->flash('status', 'Transaksi tersimpan sebagai draf. Posting agar masuk buku kas.');
+        session()->flash('status', 'Draf transaksi berhasil disimpan. Posting agar masuk buku kas.');
     }
 
     public function postCash(int $id): void
