@@ -272,6 +272,33 @@ class GudepCashInventoryReceiptTest extends TestCase
         $this->assertDatabaseCount('inventory_stock_balances', 0);
     }
 
+    public function test_service_failure_on_second_item_rolls_back_first_receipt(): void
+    {
+        [, $gudep, $year, $entry, $item, $owner, $location] = $this->context();
+
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->set('receivingCashEntryId', $entry->id)
+            ->set('receivingItemId', $item->id)
+            ->set('receivingOwnerId', $owner->id)
+            ->set('receivingLocationId', $location->id)
+            ->set('receivingQuantity', '2')
+            ->set('receivingExtraItems', [[
+                'item_id' => (string) $item->id,
+                'owner_id' => (string) $owner->id,
+                'location_id' => (string) $location->id,
+                'quantity' => '0.1234',
+            ]])
+            ->call('recordCashInventoryReceipt')
+            ->assertHasErrors(['quantity']);
+
+        $this->assertDatabaseCount('inventory_stock_movements', 0);
+        $this->assertDatabaseCount('inventory_stock_balances', 0);
+        $this->assertDatabaseCount('gudep_cash_inventory_receipts', 0);
+        $this->assertDatabaseCount('gudep_cash_inventory_receipt_items', 0);
+    }
+
     public function test_additional_item_rows_can_be_added_and_removed_without_stock_changes(): void
     {
         [, $gudep, $year, $entry] = $this->context();
