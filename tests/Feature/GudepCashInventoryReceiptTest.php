@@ -154,6 +154,31 @@ class GudepCashInventoryReceiptTest extends TestCase
         $this->assertDatabaseCount('inventory_stock_movements', 0);
     }
 
+    public function test_expense_with_received_stock_cannot_be_reversed_without_inventory_correction(): void
+    {
+        [, $gudep, $year, $entry, $item, $owner, $location] = $this->context();
+
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->set('receivingCashEntryId', $entry->id)
+            ->set('receivingItemId', $item->id)
+            ->set('receivingOwnerId', $owner->id)
+            ->set('receivingLocationId', $location->id)
+            ->set('receivingQuantity', '1')
+            ->call('recordCashInventoryReceipt')
+            ->assertHasNoErrors();
+
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->call('selectCashForReversal', $entry->id)
+            ->assertStatus(409);
+
+        $this->assertDatabaseCount('gudep_cash_entries', 1);
+        $this->assertDatabaseCount('inventory_stock_movements', 1);
+    }
+
     public function test_draft_cannot_generate_inventory_receipt(): void
     {
         [, $gudep, $year, $entry, $item, $owner, $location] = $this->context();
