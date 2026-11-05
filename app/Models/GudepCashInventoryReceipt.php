@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToSchool;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class GudepCashInventoryReceipt extends Model
 {
@@ -25,5 +26,10 @@ class GudepCashInventoryReceipt extends Model
     public function movement(): BelongsTo
     {
         return $this->belongsTo(InventoryStockMovement::class, 'inventory_stock_movement_id');
+    }
+    /** @return HasMany<GudepCashInventoryReceiptItem, $this> */
+    public function additionalItems(): HasMany
+    {
+        return $this->hasMany(GudepCashInventoryReceiptItem::class, 'gudep_cash_inventory_receipt_id');
     }
 }
