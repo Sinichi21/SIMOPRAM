@@ -743,7 +743,7 @@ class GudepFinance extends Component
                     locationId: $row['location_id'],
                     type: 'receipt',
                     quantity: $row['quantity'],
-                    reference: 'KAS-'.$entry->id.'-'.($index + 1),
+                    reference: 'KAS-'.$entry->id.($index === 0 ? '' : '-'.($index + 1)),
                     notes: 'Dari buku kas Gudep #'.$entry->id.'. '.trim($data['receivingNotes'] ?? ''),
                 );
 
