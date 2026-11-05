@@ -22,6 +22,9 @@
 @endif
 @if ($row->inventoryReceipt)
 <div style="font-size:7pt;">Penerimaan inventaris: pergerakan #{{ $row->inventoryReceipt->inventory_stock_movement_id }}@foreach ($row->inventoryReceipt->additionalItems as $extra) · #{{ $extra->inventory_stock_movement_id }}@endforeach</div>
+@foreach ($row->inventoryReceipt->corrections as $correction)
+<div style="font-size:7pt;">Koreksi stok: #{{ $correction->original_stock_movement_id }} → #{{ $correction->correction_stock_movement_id }} ({{ $correction->quantity }}), {{ $correction->reason }}</div>
+@endforeach
 @endif
 @foreach ($row->evidences as $evidence)
 <div style="font-size:7pt;">Bukti: {{ $evidence->original_filename }} (SHA-256: {{ substr($evidence->sha256, 0, 12) }}…)</div>
