@@ -249,6 +249,7 @@ class GudepAccreditationPortfolio extends Component
         $levels = [];
         $indicators = collect();
         $evidenceOptions = collect();
+        $linkedDocuments = collect();
         $selectedIndicator = null;
         $completion = ['total' => 0, 'linked' => 0, 'reviewed' => 0];
         $shared = ['programs' => 0, 'achievements' => 0, 'cash_period' => null];
@@ -289,6 +290,14 @@ class GudepAccreditationPortfolio extends Component
             ];
 
             $selectedIndicator = $indicators->firstWhere('id', $this->selectedIndicatorId);
+            if ($selectedIndicator !== null && auth()->user()?->can('report_verifications.view')) {
+                $documentIds = $selectedIndicator->evidenceLinks
+                    ->where('source_kind', 'document')->pluck('source_id')->all();
+                if ($documentIds !== []) {
+                    $linkedDocuments = $this->publishedDocumentQuery($scope)
+                        ->whereIn('id', $documentIds)->get()->keyBy('id');
+                }
+            }
             if ($selectedIndicator !== null && in_array($this->evidenceKind, ['program', 'achievement', 'cash_period', 'document'], true)) {
                 $evidenceOptions = $this->evidenceQuery($this->evidenceKind)->orderBy('id')->get();
             }
@@ -303,7 +312,7 @@ class GudepAccreditationPortfolio extends Component
 
         return view('livewire.administration.gudep-accreditation-portfolio', compact(
             'gudepOptions', 'years', 'gudep', 'year', 'levels', 'shared',
-            'indicators', 'selectedIndicator', 'evidenceOptions', 'completion'
+            'indicators', 'selectedIndicator', 'evidenceOptions', 'completion', 'linkedDocuments'
         ));
     }
 }
