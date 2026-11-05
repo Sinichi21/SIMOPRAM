@@ -98,6 +98,24 @@ class GudepFinancePhaseFiveTest extends TestCase
         $this->assertDatabaseCount('gudep_cash_entries', 2);
     }
 
+    public function test_budget_category_name_cannot_be_duplicated_by_case_variation(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+
+        foreach (['PERSARI', 'Persari'] as $category) {
+            Livewire::test(GudepFinance::class)
+                ->set('scoutGroupId', $gudep->id)
+                ->set('academicYearId', $year->id)
+                ->set('budgetCategory', $category)
+                ->set('budgetAmount', '3000000')
+                ->call('saveBudget')
+                ->assertHasNoErrors();
+        }
+
+        $this->assertSame(1, GudepFinanceBudget::query()->count());
+        $this->assertSame('PERSARI', GudepFinanceBudget::query()->firstOrFail()->category);
+    }
+
     public function test_category_dropdown_canonicalizes_name_from_budget(): void
     {
         [$school, $gudep, $year] = $this->context();
