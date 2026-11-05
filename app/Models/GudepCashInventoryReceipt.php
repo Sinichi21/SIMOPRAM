@@ -13,7 +13,7 @@ class GudepCashInventoryReceipt extends Model
 
     protected $fillable = [
         'school_id', 'scout_group_id', 'gudep_cash_entry_id',
-        'inventory_stock_movement_id', 'recorded_by',
+        'inventory_stock_movement_id', 'recorded_by', 'first_batch_token',
     ];
 
     /** @return BelongsTo<GudepCashEntry, $this> */
