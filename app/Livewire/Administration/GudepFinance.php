@@ -766,13 +766,15 @@ class GudepFinance extends Component
     {
         $expense = $this->cashEntries()->where('status', 'posted')
             ->whereNull('reversal_of_id')->where('direction', 'expense')
-            ->selectRaw('category, SUM(amount) AS total_amount')->groupBy('category')
-            ->pluck('total_amount', 'category')->map(fn ($total) => (int) $total)->all();
+            ->selectRaw('LOWER(TRIM(category)) AS category_key, SUM(amount) AS total_amount')
+            ->groupByRaw('LOWER(TRIM(category))')
+            ->pluck('total_amount', 'category_key')->map(fn ($total) => (int) $total)->all();
 
         $reversals = $this->cashEntries()->where('status', 'posted')
             ->whereNotNull('reversal_of_id')->where('direction', 'income')
-            ->selectRaw('category, SUM(amount) AS total_amount')->groupBy('category')
-            ->pluck('total_amount', 'category');
+            ->selectRaw('LOWER(TRIM(category)) AS category_key, SUM(amount) AS total_amount')
+            ->groupByRaw('LOWER(TRIM(category))')
+            ->pluck('total_amount', 'category_key');
 
         foreach ($reversals as $category => $amount) {
             $expense[$category] = ($expense[$category] ?? 0) - (int) $amount;
