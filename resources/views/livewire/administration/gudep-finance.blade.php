@@ -441,6 +441,60 @@
                 </details>
             @endif
 
+            @if ($receivingCashEntry && $cashPeriod?->status !== 'closed' && $cashPeriod?->close_requested_at === null)
+                @can('inventory.stock.manage')
+                    <form wire:submit="recordCashInventoryReceipt" class="space-y-3 border-b border-sky-200 bg-sky-50/70 px-4 py-5 dark:border-sky-900 dark:bg-sky-950/20 sm:px-6">
+                        <div>
+                            <h3 class="text-sm font-semibold">Terima barang dari pengeluaran kas #{{ $receivingCashEntry->id }}</h3>
+                            <p class="mt-1 text-xs text-zinc-600 dark:text-zinc-400">{{ $receivingCashEntry->description }}. Pencatatan ini menambah stok fisik, tidak membuat pengeluaran kas baru.</p>
+                        </div>
+                        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                            <div>
+                                <label for="cash-receipt-item" class="mb-1 block text-xs font-medium">Barang katalog (stok kuantitas)</label>
+                                <select id="cash-receipt-item" wire:model="receivingItemId" required class="w-full rounded-lg border border-zinc-300 bg-white p-2 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+                                    <option value="">Pilih barang</option>
+                                    @foreach ($receivingItems as $item)
+                                        <option value="{{ $item->id }}">{{ $item->item_code }} — {{ $item->name }}</option>
+                                    @endforeach
+                                </select>
+                                @error('receivingItemId') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label for="cash-receipt-owner" class="mb-1 block text-xs font-medium">Pemilik</label>
+                                <select id="cash-receipt-owner" wire:model="receivingOwnerId" required class="w-full rounded-lg border border-zinc-300 bg-white p-2 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+                                    <option value="">Pilih pemilik</option>
+                                    @foreach ($receivingOwners as $owner)
+                                        <option value="{{ $owner->id }}">{{ $owner->display_name }}</option>
+                                    @endforeach
+                                </select>
+                                @error('receivingOwnerId') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label for="cash-receipt-location" class="mb-1 block text-xs font-medium">Lokasi penyimpanan</label>
+                                <select id="cash-receipt-location" wire:model="receivingLocationId" required class="w-full rounded-lg border border-zinc-300 bg-white p-2 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+                                    <option value="">Pilih lokasi</option>
+                                    @foreach ($receivingLocations as $location)
+                                        <option value="{{ $location->id }}">{{ $location->name }}</option>
+                                    @endforeach
+                                </select>
+                                @error('receivingLocationId') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label for="cash-receipt-quantity" class="mb-1 block text-xs font-medium">Jumlah diterima</label>
+                                <input id="cash-receipt-quantity" type="number" min="0.001" step="0.001" wire:model="receivingQuantity" required class="w-full rounded-lg border border-zinc-300 bg-white p-2 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+                                @error('receivingQuantity') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
+                            </div>
+                        </div>
+                        <label for="cash-receipt-notes" class="block text-xs font-medium">Catatan penerimaan (opsional)</label>
+                        <textarea id="cash-receipt-notes" wire:model="receivingNotes" rows="2" maxlength="2000" class="w-full rounded-lg border border-zinc-300 bg-white p-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"></textarea>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="submit" wire:confirm="Barang benar-benar sudah diterima? Penerimaan stok hanya boleh dicatat satu kali untuk transaksi ini." wire:loading.attr="disabled" wire:target="recordCashInventoryReceipt" class="rounded-lg bg-sky-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Konfirmasi penerimaan stok</button>
+                            <button type="button" wire:click="cancelInventoryReceipt" class="rounded-lg border border-zinc-300 px-4 py-2 text-sm">Batal</button>
+                        </div>
+                    </form>
+                @endcan
+            @endif
+
             @if ($reversalSelectedEntry && $cashPeriod?->status !== 'closed' && $cashPeriod?->close_requested_at === null && (auth()->user()?->can('gudep.finance.manage') || auth()->user()?->can('gudep.manage')))
                 <form wire:submit="reverseCash" class="space-y-3 border-b border-amber-200 bg-amber-50/70 px-4 py-5 dark:border-amber-900 dark:bg-amber-950/30 sm:px-6">
                     <div>
@@ -525,6 +579,13 @@
                                 <td class="px-4 py-4 sm:px-6">
                                     @if ($entry->status === 'posted')
                                         <span class="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">Tercatat</span>
+                                        @if ($entry->inventoryReceipt)
+                                            <span class="mt-1 block text-xs text-sky-700 dark:text-sky-300">Stok diterima · Pergerakan #{{ $entry->inventoryReceipt->inventory_stock_movement_id }}</span>
+                                        @elseif ($entry->direction === 'expense' && $entry->reversal_of_id === null && ! $entry->reversals_exists && $cashPeriod?->status !== 'closed' && $cashPeriod?->close_requested_at === null && (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage')))
+                                            @can('inventory.stock.manage')
+                                                <button type="button" wire:click="selectCashForInventoryReceipt({{ $entry->id }})" class="mt-2 block text-xs font-semibold text-sky-700 hover:underline dark:text-sky-300">Catat penerimaan barang</button>
+                                            @endcan
+                                        @endif
                                         @if ($entry->reversal_of_id !== null)
                                             <span class="mt-1 block text-xs text-amber-700 dark:text-amber-300">Pembalikan #{{ $entry->reversal_of_id }}</span>
                                             <span class="mt-1 block text-xs text-zinc-500">{{ $entry->reversal_reason }}</span>
