@@ -120,7 +120,7 @@
                     <div class="space-y-2 text-sm">
                         @forelse ($selectedIndicator->evidenceLinks as $link)
                             <div class="flex items-center justify-between gap-3 rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800">
-                                <span>{{ match ($link->source_kind) { 'program' => 'Program kerja', 'achievement' => 'Prestasi', 'cash_period' => 'Periode buku kas', default => 'Sumber' } }} #{{ $link->source_id }}</span>
+                                <span>{{ match ($link->source_kind) { 'program' => 'Program kerja', 'achievement' => 'Prestasi', 'cash_period' => 'Periode buku kas', 'document' => 'Dokumen terbit', default => 'Sumber' } }} #{{ $link->source_id }}</span>
                                 @if ($selectedIndicator->status !== 'reviewed')
                                     @can('gudep.manage')
                                         <button wire:click="removeEvidence({{ $link->id }})" wire:confirm="Lepas referensi bukti ini?" class="text-red-600 underline">Lepas</button>
@@ -140,6 +140,9 @@
                                         <option value="program">Program kerja</option>
                                         <option value="achievement">Prestasi</option>
                                         <option value="cash_period">Periode buku kas</option>
+                                        @can('report_verifications.view')
+                                            <option value="document">Dokumen PDF terbit</option>
+                                        @endcan
                                     </select>
                                 </label>
                                 <label class="text-sm">Data sumber
