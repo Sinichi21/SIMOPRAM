@@ -444,7 +444,7 @@ class GudepFinance extends Component
         foreach ($names as $name) {
             $name = trim((string) $name);
             $key = mb_strtolower($name);
-            if ($name !== '' && ! isset($options[$key])) {
+            if ($name !== '' && isset($options[$key]) === false) {
                 $options[$key] = $name;
             }
         }
@@ -809,14 +809,14 @@ class GudepFinance extends Component
         $entry = $this->cashEntries()->findOrFail((int) $validated['receiptCashEntryId']);
         $file = $this->receiptAttachment;
         $temp = $file->getRealPath();
-        if (! is_string($temp) || ! is_file($temp)) {
+        if (is_string($temp) === false || is_file($temp) === false) {
             throw ValidationException::withMessages([
                 'receiptAttachment' => 'Berkas sementara tidak ditemukan.',
             ]);
         }
 
         $hash = hash_file('sha256', $temp);
-        if (! is_string($hash)) {
+        if (is_string($hash) === false) {
             throw ValidationException::withMessages([
                 'receiptAttachment' => 'Bukti tidak dapat diverifikasi.',
             ]);
@@ -826,7 +826,7 @@ class GudepFinance extends Component
         $filename = (string) Str::uuid().'.'.strtolower((string) $file->extension());
         $path = $file->storeAs($directory, $filename, 'local');
 
-        if (! is_string($path)) {
+        if (is_string($path) === false) {
             throw ValidationException::withMessages([
                 'receiptAttachment' => 'Bukti kas gagal disimpan.',
             ]);
