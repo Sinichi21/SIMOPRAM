@@ -23,21 +23,25 @@ class InventoryAsset extends Model
         return ['purchased_at' => 'date'];
     }
 
+    /** @return HasMany<InventoryAssetEvent, $this> */
     public function events(): HasMany
     {
         return $this->hasMany(InventoryAssetEvent::class, 'asset_id')->latest('occurred_at');
     }
 
+    /** @return BelongsTo<InventoryItem, $this> */
     public function item(): BelongsTo
     {
         return $this->belongsTo(InventoryItem::class, 'item_id');
     }
 
+    /** @return BelongsTo<InventoryOwner, $this> */
     public function owner(): BelongsTo
     {
         return $this->belongsTo(InventoryOwner::class, 'owner_id');
     }
 
+    /** @return BelongsTo<InventoryLocation, $this> */
     public function location(): BelongsTo
     {
         return $this->belongsTo(InventoryLocation::class, 'location_id');
