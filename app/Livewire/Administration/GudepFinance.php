@@ -565,17 +565,8 @@ class GudepFinance extends Component
         $gudep = $this->selectedGudep();
         if (filled($data['cashInventoryItemId'])) {
             abort_unless(auth()->user()?->can('inventory.view'), 403);
-            $ownerIds = $this->inventoryOwnerIds();
-            if (InventoryStockBalance::query()->where('school_id', $this->schoolId())
-                ->whereIn('owner_id', $ownerIds)
-                ->where('item_id', (int) $data['cashInventoryItemId'])->doesntExist()
-                && InventoryAsset::query()->where('school_id', $this->schoolId())
-                    ->whereIn('owner_id', $ownerIds)
-                    ->where('item_id', (int) $data['cashInventoryItemId'])->doesntExist()) {
-                throw ValidationException::withMessages([
-                    'cashInventoryItemId' => 'Barang harus dimiliki sekolah atau Gudep terpilih.',
-                ]);
-            }
+            InventoryItem::query()->where('school_id', $this->schoolId())
+                ->where('is_active', true)->findOrFail((int) $data['cashInventoryItemId']);
         }
 
         DB::transaction(function () use ($data, $date, $gudep, $year): void {
@@ -1221,10 +1212,7 @@ class GudepFinance extends Component
                     ->whereIn('id', $ownerIds)->orderBy('display_name')->get() : collect(),
             'inventoryOptions' => $gudep && auth()->user()?->can('inventory.view')
                 ? InventoryItem::query()->where('school_id', $schoolId)
-                    ->where(function (Builder $query) use ($ownerIds): void {
-                        $query->whereHas('stockBalances', fn (Builder $stock) => $stock->whereIn('owner_id', $ownerIds))
-                            ->orWhereHas('assets', fn (Builder $assets) => $assets->whereIn('owner_id', $ownerIds));
-                    })->orderBy('name')->get() : collect(),
+                    ->where('is_active', true)->orderBy('name')->get() : collect(),
             'assets' => $gudep && auth()->user()?->can('inventory.view')
                 ? InventoryAsset::query()->where('school_id', $schoolId)
                     ->whereIn('owner_id', $visibleOwnerIds)->with(['item', 'owner'])
