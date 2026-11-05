@@ -547,6 +547,31 @@
                 @endcan
             @endif
 
+            @if ($correctionCashEntryId !== null && $correctionMovementId !== null && $cashPeriod?->status !== 'closed' && $cashPeriod?->close_requested_at === null)
+                @can('inventory.stock.manage')
+                    <form wire:submit="correctInventoryReceipt" class="space-y-3 border-b border-amber-200 bg-amber-50 px-4 py-5 dark:border-amber-900 dark:bg-amber-950/20 sm:px-6">
+                        <h3 class="text-sm font-semibold">Koreksi penerimaan stok · Kas #{{ $correctionCashEntryId }} / Pergerakan #{{ $correctionMovementId }}</h3>
+                        <p class="text-xs text-zinc-600 dark:text-zinc-400">Stok akan dikurangi melalui pergerakan baru; catatan penerimaan lama tidak dihapus. Koreksi tidak dapat melebihi jumlah yang diterima atau stok yang tersedia.</p>
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <div>
+                                <label for="cash-stock-correction-qty" class="mb-1 block text-xs font-medium">Jumlah yang dikoreksi</label>
+                                <input id="cash-stock-correction-qty" wire:model="correctionQuantity" type="number" step="0.001" min="0.001" required class="w-full rounded-lg border border-zinc-300 bg-white p-2 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+                                @error('correctionQuantity') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label for="cash-stock-correction-reason" class="mb-1 block text-xs font-medium">Alasan koreksi (minimal 10 karakter)</label>
+                                <textarea id="cash-stock-correction-reason" wire:model="correctionReason" maxlength="1000" rows="2" required class="w-full rounded-lg border border-zinc-300 bg-white p-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"></textarea>
+                                @error('correctionReason') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="submit" wire:confirm="Catat koreksi stok dengan jejak audit? Penerimaan sebelumnya tidak dihapus." wire:loading.attr="disabled" wire:target="correctInventoryReceipt" class="rounded-lg bg-amber-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Catat koreksi stok</button>
+                            <button type="button" wire:click="cancelInventoryReceiptCorrection" class="rounded-lg border border-zinc-300 px-4 py-2 text-sm">Batal</button>
+                        </div>
+                    </form>
+                @endcan
+            @endif
+
             @if ($reversalSelectedEntry && $cashPeriod?->status !== 'closed' && $cashPeriod?->close_requested_at === null && (auth()->user()?->can('gudep.finance.manage') || auth()->user()?->can('gudep.manage')))
                 <form wire:submit="reverseCash" class="space-y-3 border-b border-amber-200 bg-amber-50/70 px-4 py-5 dark:border-amber-900 dark:bg-amber-950/30 sm:px-6">
                     <div>
@@ -632,7 +657,18 @@
                                     @if ($entry->status === 'posted')
                                         <span class="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">Tercatat</span>
                                         @if ($entry->inventoryReceipt)
-                                            <span class="mt-1 block text-xs text-sky-700 dark:text-sky-300">Stok diterima · Pergerakan #{{ $entry->inventoryReceipt->inventory_stock_movement_id }} @if ($entry->inventoryReceipt->additionalItems->isNotEmpty()) (+{{ $entry->inventoryReceipt->additionalItems->count() }} baris lainnya) @endif</span>
+                                            <span class="mt-1 block text-xs text-sky-700 dark:text-sky-300">Stok diterima · {{ 1 + $entry->inventoryReceipt->additionalItems->count() }} pergerakan masuk</span>
+                                            @if ($cashPeriod?->status !== 'closed' && $cashPeriod?->close_requested_at === null)
+                                                @can('inventory.stock.manage')
+                                                    <button type="button" wire:click="selectInventoryReceiptCorrection({{ $entry->id }}, {{ $entry->inventoryReceipt->inventory_stock_movement_id }})" class="mt-1 block text-xs font-semibold text-amber-800 hover:underline dark:text-amber-300">Koreksi pergerakan #{{ $entry->inventoryReceipt->inventory_stock_movement_id }}</button>
+                                                    @foreach ($entry->inventoryReceipt->additionalItems as $extra)
+                                                        <button type="button" wire:click="selectInventoryReceiptCorrection({{ $entry->id }}, {{ $extra->inventory_stock_movement_id }})" class="mt-1 block text-xs font-semibold text-amber-800 hover:underline dark:text-amber-300">Koreksi pergerakan #{{ $extra->inventory_stock_movement_id }}</button>
+                                                    @endforeach
+                                                @endcan
+                                            @endif
+                                            @if ($entry->inventoryReceipt->corrections->isNotEmpty())
+                                                <span class="mt-1 block text-xs text-zinc-500">{{ $entry->inventoryReceipt->corrections->count() }} riwayat koreksi stok</span>
+                                            @endif
                                         @endif
                                         @if ($entry->direction === 'expense' && $entry->reversal_of_id === null && ! $entry->reversals_exists && $cashPeriod?->status !== 'closed' && $cashPeriod?->close_requested_at === null && (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage')))
                                             @can('inventory.stock.manage')
