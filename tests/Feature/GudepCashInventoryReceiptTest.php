@@ -489,6 +489,48 @@ class GudepCashInventoryReceiptTest extends TestCase
         $this->assertSame('2.000', InventoryStockBalance::query()->firstOrFail()->quantity_on_hand);
     }
 
+    public function test_two_deliveries_and_a_correction_keep_a_single_cash_expense(): void
+    {
+        [, $gudep, $year, $entry, $item, $owner, $location] = $this->context();
+
+        $receive = fn (string $quantity) => Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->call('selectCashForInventoryReceipt', $entry->id)
+            ->set('receivingItemId', $item->id)
+            ->set('receivingOwnerId', $owner->id)
+            ->set('receivingLocationId', $location->id)
+            ->set('receivingQuantity', $quantity)
+            ->call('recordCashInventoryReceipt');
+
+        $receive('2')->assertHasNoErrors();
+        $receive('3')->assertHasNoErrors();
+
+        $secondReceiptMovement = InventoryStockMovement::query()->orderByDesc('id')->firstOrFail();
+
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->call('selectInventoryReceiptCorrection', $entry->id, $secondReceiptMovement->id)
+            ->set('correctionQuantity', '1')
+            ->set('correctionReason', 'Koreksi satu unit dari pengiriman kedua.')
+            ->call('correctInventoryReceipt')
+            ->assertHasNoErrors();
+
+        $this->assertSame('4.000', InventoryStockBalance::query()->firstOrFail()->quantity_on_hand);
+        $this->assertDatabaseCount('inventory_stock_movements', 3);
+        $this->assertDatabaseCount('gudep_cash_inventory_corrections', 1);
+        $this->assertDatabaseCount('gudep_cash_entries', 1);
+        $this->assertSame(50000, $entry->fresh()->amount);
+
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->assertViewHas('expense', 50000)
+            ->assertSee('Riwayat penerimaan yang terhubung ke Buku Kas')
+            ->assertSee('Koreksi satu unit dari pengiriman kedua.');
+    }
+
     public function test_draft_cannot_generate_inventory_receipt(): void
     {
         [, $gudep, $year, $entry, $item, $owner, $location] = $this->context();
