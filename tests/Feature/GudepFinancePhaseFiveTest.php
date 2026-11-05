@@ -197,6 +197,37 @@ class GudepFinancePhaseFiveTest extends TestCase
         $this->assertSame(50000, $posted->fresh()->amount);
     }
 
+    public function test_catalog_only_inventory_is_identified_without_inventing_stock(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+        $category = InventoryCategory::query()->create([
+            'school_id' => $school->id,
+            'name' => 'Perlengkapan',
+            'is_active' => true,
+        ]);
+        InventoryItem::query()->create([
+            'school_id' => $school->id,
+            'category_id' => $category->id,
+            'item_code' => 'TALI-01',
+            'name' => 'Tali Pramuka',
+            'tracking_type' => 'quantity',
+            'unit' => 'gulungan',
+            'is_active' => true,
+        ]);
+
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->assertViewHas('catalogCount', 1)
+            ->assertViewHas('assetTotal', 0)
+            ->assertViewHas('stockTotal', 0)
+            ->assertViewHas('unassignedCatalogCount', 1)
+            ->assertSee('Tali Pramuka');
+
+        $this->assertDatabaseCount('inventory_assets', 0);
+        $this->assertDatabaseCount('inventory_stock_balances', 0);
+    }
+
     public function test_school_owned_inventory_assets_are_visible_to_finance_without_changing_ownership(): void
     {
         [$school, $gudep, $year] = $this->context();
