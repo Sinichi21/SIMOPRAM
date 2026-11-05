@@ -591,6 +591,8 @@
                                             <span class="mt-1 block text-xs text-zinc-500">{{ $entry->reversal_reason }}</span>
                                         @elseif ($entry->reversals_exists)
                                             <span class="mt-1 block text-xs text-amber-700 dark:text-amber-300">Sudah dibalik</span>
+                                        @elseif ($entry->inventoryReceipt)
+                                            <span class="mt-1 block text-xs text-zinc-500 dark:text-zinc-400">Koreksi penerimaan inventaris harus ditangani sebelum pembalikan kas.</span>
                                         @elseif ($cashPeriod?->status !== 'closed' && $cashPeriod?->close_requested_at === null && (auth()->user()?->can('gudep.finance.manage') || auth()->user()?->can('gudep.manage')))
                                             <button type="button" wire:click="selectCashForReversal({{ $entry->id }})" class="mt-2 block text-xs font-semibold text-amber-700 hover:underline dark:text-amber-300">Ajukan pembalikan</button>
                                         @endif
