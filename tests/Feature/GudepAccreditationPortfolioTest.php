@@ -8,6 +8,7 @@ use App\Models\GudepAccreditationEvidenceLink;
 use App\Models\GudepAccreditationIndicator;
 use App\Models\GudepFormation;
 use App\Models\GudepWorkProgram;
+use App\Models\ReportVerification;
 use App\Models\School;
 use App\Models\ScoutGroup;
 use App\Models\ScoutLevel;
@@ -205,4 +206,68 @@ class GudepAccreditationPortfolioTest extends TestCase
 
         $this->assertSame('draft', $indicator->fresh()->status);
     }
+    public function test_only_current_valid_issued_gudep_documents_can_be_linked(): void
+    {
+        $school = School::factory()->create();
+        $this->actingInSchool($school);
+        $gudep = ScoutGroup::query()->create(['school_id' => $school->id, 'name' => 'Gudep A']);
+        $other = ScoutGroup::query()->create(['school_id' => $school->id, 'name' => 'Gudep B']);
+        $year = AcademicYear::query()->create([
+            'school_id' => $school->id, 'name' => '2026/2027',
+            'start_date' => '2026-07-01', 'end_date' => '2027-06-30', 'is_active' => true,
+        ]);
+
+        $makeDocument = fn (ScoutGroup $owner, string $series, bool $revoked = false) =>
+            ReportVerification::query()->create([
+                'school_id' => $school->id,
+                'source_type' => ScoutGroup::class,
+                'source_id' => $owner->id,
+                'series_key' => $series,
+                'document_type' => 'gudep_profile',
+                'code' => bin2hex(random_bytes(24)),
+                'file_path' => 'test/gudep-profile.pdf',
+                'file_sha256' => str_repeat('a', 64),
+                'issued_at' => now(),
+                'revoked_at' => $revoked ? now() : null,
+            ]);
+
+        $valid = $makeDocument($gudep, 'year-'.$year->id);
+        $foreign = $makeDocument($other, 'year-'.$year->id);
+        $wrongYear = $makeDocument($gudep, 'year-99999');
+        $revoked = $makeDocument($gudep, 'year-'.$year->id, true);
+
+        $indicator = GudepAccreditationIndicator::query()->create([
+            'school_id' => $school->id,
+            'scout_group_id' => $gudep->id,
+            'academic_year_id' => $year->id,
+            'code' => 'D-01',
+            'title' => 'Dokumen organisasi',
+            'status' => 'draft',
+        ]);
+
+        $form = fn () => Livewire::test(GudepAccreditationPortfolio::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->call('selectIndicator', $indicator->id)
+            ->set('evidenceKind', 'document');
+
+        foreach ([$foreign, $wrongYear, $revoked] as $excluded) {
+            $form()->set('evidenceSourceId', $excluded->id)
+                ->call('linkEvidence')->assertNotFound();
+        }
+
+        $form()->set('evidenceSourceId', $valid->id)
+            ->call('linkEvidence')->assertHasNoErrors();
+
+        $this->assertDatabaseCount('gudep_accreditation_evidence_links', 1);
+        $this->assertDatabaseHas('gudep_accreditation_evidence_links', [
+            'indicator_id' => $indicator->id,
+            'source_kind' => 'document',
+            'source_id' => $valid->id,
+        ]);
+
+        $form()->call('markReviewed', $indicator->id)->assertHasNoErrors();
+        $this->assertSame('reviewed', $indicator->fresh()->status);
+    }
+
 }
