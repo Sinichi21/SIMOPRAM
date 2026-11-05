@@ -80,6 +80,31 @@ class GudepCashInventoryReceiptTest extends TestCase
         return [$school, $gudep, $year, $entry, $item, $owner, $location];
     }
 
+    public function test_new_purchase_can_reference_catalog_item_before_it_has_stock(): void
+    {
+        [, $gudep, $year, $existingEntry, $item] = $this->context();
+
+        Livewire::test(GudepFinance::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->set('cashDirection', 'expense')
+            ->set('cashCategory', 'ATK')
+            ->set('cashDate', '2026-11-05')
+            ->set('cashDescription', 'Tambahan pembelian tali')
+            ->set('cashAmount', '25000')
+            ->set('cashInventoryItemId', $item->id)
+            ->call('saveCash')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('gudep_cash_entries', [
+            'description' => 'Tambahan pembelian tali',
+            'inventory_item_id' => $item->id,
+            'status' => 'draft',
+        ]);
+        $this->assertDatabaseCount('inventory_stock_balances', 0);
+        $this->assertSame(50000, $existingEntry->fresh()->amount);
+    }
+
     public function test_posted_expense_adds_stock_only_after_explicit_receipt(): void
     {
         [, $gudep, $year, $entry, $item, $owner, $location] = $this->context();
