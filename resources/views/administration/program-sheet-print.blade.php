@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $program->title }} — {{ $gudep->name }}</title>
     <style>
-        @page { size: {{ $program->kind === 'annual' ? 'A5' : 'A4' }} portrait; margin: 16mm 14mm; }
+        @page { size: A4 portrait; margin: 16mm 14mm; }
         * { box-sizing: border-box; }
         body { margin: 0; color: #171717; font-family: Arial, Helvetica, sans-serif; font-size: 11px; line-height: 1.5; }
         .sheet { max-width: 210mm; margin: 0 auto; padding: 18px; }
@@ -41,6 +41,7 @@
         <span class="muted">Pratinjau cetak — belum merupakan dokumen resmi terbit.</span>
     </div>
     <main class="sheet">
+        @include('administration.partials.gudep-document-letterhead', ['letterhead' => $letterhead])
         @if ($program->kind !== 'annual')
         <header class="header">
             <p class="center" style="margin:0;font-size:12px;font-weight:bold">GERAKAN PRAMUKA</p>
