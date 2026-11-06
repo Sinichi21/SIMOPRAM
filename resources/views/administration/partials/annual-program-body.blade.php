@@ -59,6 +59,12 @@
     @php $financeRows = \App\Support\GudepAnnualProgram::numbered($entries, 'keuangan'); @endphp
     @forelse ($financeRows as $row)
         @php $item = $row['entry']; $type = $item['finance_type'] ?? ''; @endphp
+        @if ($row['depth'] === 0 && ($item['description'] ?? '') === 'Rencana Pengeluaran')
+            <div style="margin-left:43px;overflow:hidden;font-weight:bold;">Jumlah Pemasukan <span style="float:right;">Rp {{ number_format($financial['income'], 0, ',', '.') }}</span></div>
+        @endif
+        @if ($row['depth'] === 0 && ($item['description'] ?? '') === 'Usaha Dana')
+            <div style="margin-left:43px;overflow:hidden;font-weight:bold;">Jumlah Pengeluaran <span style="float:right;">Rp {{ number_format($financial['expense'], 0, ',', '.') }}</span></div>
+        @endif
         <div style="margin-left:{{ 20 + $row['depth'] * 23 }}px;text-align:justify;page-break-inside:avoid;">
             <span style="display:inline-block;width:23px;">{{ $row['marker'] }}</span>
             <span>{{ $item['description'] ?? '–' }}</span>
