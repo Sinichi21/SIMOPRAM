@@ -225,12 +225,15 @@ class GudepProgramPlanner extends Component
             $this->entries[$parentIndex]['key'] = (string) Str::uuid();
         }
         $key = $this->entries[$parentIndex]['key'];
-        array_splice($this->entries, $parentIndex + 1, 0, [[
+        // Preserve numeric wire:model paths of all existing rows. Inserting into
+        // the middle changes every later index and can make Livewire reuse input
+        // state across siblings (e.g. Siaga Mula/Bantu/Tata).
+        $this->entries[] = [
             'key' => (string) Str::uuid(), 'parent_key' => $key,
             'section' => $section, 'description' => '', 'detail' => '',
             'quantity' => null, 'unit' => 'kali', 'currency' => 'IDR',
             'finance_type' => '', 'amount' => null,
-        ]]);
+        ];
     }
 
     public function useBudgetSuggestion(int $index, int $suggestionIndex): void
