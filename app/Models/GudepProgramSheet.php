@@ -1,0 +1,53 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Models;
+
+use App\Models\Concerns\BelongsToSchool;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class GudepProgramSheet extends Model
+{
+    use BelongsToSchool;
+
+    protected $fillable = [
+        'school_id', 'scout_group_id', 'academic_year_id', 'semester_id',
+        'scout_level_id', 'parent_id', 'kind', 'title', 'scheduled_for',
+        'entries', 'notes', 'created_by',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'entries' => 'array',
+            'scheduled_for' => 'date',
+        ];
+    }
+
+    public function scoutGroup(): BelongsTo
+    {
+        return $this->belongsTo(ScoutGroup::class);
+    }
+
+    public function academicYear(): BelongsTo
+    {
+        return $this->belongsTo(AcademicYear::class);
+    }
+
+    public function semester(): BelongsTo
+    {
+        return $this->belongsTo(Semester::class);
+    }
+
+    public function scoutLevel(): BelongsTo
+    {
+        return $this->belongsTo(ScoutLevel::class);
+    }
+
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_id');
+    }
+}
