@@ -256,6 +256,62 @@ class GudepProgramPlannerTest extends TestCase
         $this->assertDatabaseCount('gudep_program_sheets', 0);
     }
 
+    public function test_program_print_view_formats_optional_counts_without_editing_master_data(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+
+        $sheet = GudepProgramSheet::query()->create([
+            'school_id' => $school->id,
+            'scout_group_id' => $gudep->id,
+            'academic_year_id' => $year->id,
+            'kind' => 'annual',
+            'title' => 'Program Tahunan Tanpa Penggalang',
+            'entries' => [
+                ['section' => 'siaga', 'description' => 'Latihan Sandi', 'quantity' => null],
+                ['section' => 'bersama', 'description' => 'Hari Pramuka', 'quantity' => 2],
+            ],
+        ]);
+
+        $this->get(route('administration.programs.print', $sheet))
+            ->assertOk()
+            ->assertSee('Program Kerja Tahunan')
+            ->assertSee('Program Tahunan Tanpa Penggalang')
+            ->assertSee('Hari Pramuka')
+            ->assertSee('Latihan Sandi')
+            ->assertSee('Cetak / Simpan sebagai PDF')
+            ->assertSee('–');
+
+        $this->assertDatabaseCount('gudep_program_sheets', 1);
+        $this->assertDatabaseCount('activities', 0);
+    }
+
+    public function test_program_print_does_not_expose_another_schools_sheet(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+
+        $otherSchool = School::factory()->create();
+        app(SchoolContext::class)->set($otherSchool);
+        $otherGudep = ScoutGroup::query()->create(['school_id' => $otherSchool->id, 'name' => 'Gudep Rahasia']);
+        $otherYear = AcademicYear::query()->create([
+            'school_id' => $otherSchool->id,
+            'name' => '2025/2026',
+            'start_date' => '2025-07-01',
+            'end_date' => '2026-06-30',
+            'is_active' => false,
+        ]);
+        $sheet = GudepProgramSheet::query()->create([
+            'school_id' => $otherSchool->id,
+            'scout_group_id' => $otherGudep->id,
+            'academic_year_id' => $otherYear->id,
+            'kind' => 'annual',
+            'title' => 'Program Gudep Rahasia',
+            'entries' => [['section' => 'siaga', 'description' => 'Rencana', 'quantity' => 1]],
+        ]);
+        app(SchoolContext::class)->set($school);
+
+        $this->get(route('administration.programs.print', $sheet))->assertNotFound();
+    }
+
     public function test_cross_gudep_edit_is_not_permitted(): void
     {
         [$school, $gudep, $year] = $this->context();
