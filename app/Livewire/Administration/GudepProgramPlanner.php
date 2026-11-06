@@ -32,6 +32,8 @@ class GudepProgramPlanner extends Component
 
     public ?int $scoutLevelId = null;
 
+    public ?int $formationId = null;
+
     public ?int $parentId = null;
 
     public ?int $activityId = null;
@@ -83,6 +85,7 @@ class GudepProgramPlanner extends Component
     public function updatedScoutLevelId(): void
     {
         $this->letterheadType = 'mabigus';
+        $this->formationId = null;
         if ($this->scoutGroupId === null || $this->academicYearId === null || $this->scoutLevelId === null) {
             return;
         }
@@ -96,6 +99,32 @@ class GudepProgramPlanner extends Component
             ['putri'] => 'female',
             default => 'mabigus',
         };
+        $formations = GudepFormation::query()->where('school_id', $this->schoolId())
+            ->where('scout_group_id', $this->selectedGudep()->id)
+            ->where('academic_year_id', $this->selectedYear()->id)
+            ->where('scout_level_id', $this->scoutLevelId)
+            ->where('is_active', true)->get();
+        if ($formations->count() === 1) {
+            $this->formationId = $formations->first()->id;
+        }
+    }
+
+    public function updatedFormationId(): void
+    {
+        if ($this->formationId === null) {
+            $this->letterheadType = 'mabigus';
+
+            return;
+        }
+        $formation = GudepFormation::query()->where('school_id', $this->schoolId())
+            ->where('scout_group_id', $this->selectedGudep()->id)
+            ->where('academic_year_id', $this->selectedYear()->id)
+            ->where('scout_level_id', $this->scoutLevelId)->find($this->formationId);
+        $this->letterheadType = match ($formation?->gender) {
+            'putra' => 'male',
+            'putri' => 'female',
+            default => 'mabigus',
+        };
     }
 
     public function updatedKind(): void
@@ -105,7 +134,7 @@ class GudepProgramPlanner extends Component
 
     public function resetDraft(): void
     {
-        $this->reset(['editingId', 'semesterId', 'scoutLevelId', 'parentId', 'activityId', 'scheduledFor', 'notes']);
+        $this->reset(['editingId', 'semesterId', 'scoutLevelId', 'formationId', 'parentId', 'activityId', 'scheduledFor', 'notes']);
         $this->title = '';
         $this->letterheadType = 'mabigus';
         $this->entries = [];
@@ -285,6 +314,7 @@ class GudepProgramPlanner extends Component
         $this->title = $sheet->title;
         $this->semesterId = $sheet->semester_id;
         $this->scoutLevelId = $sheet->scout_level_id;
+        $this->formationId = $sheet->gudep_formation_id;
         $this->parentId = $sheet->parent_id;
         $this->activityId = $sheet->activity_id;
         $this->scheduledFor = $sheet->scheduled_for?->format('Y-m-d') ?? '';
@@ -306,6 +336,9 @@ class GudepProgramPlanner extends Component
             'semesterId' => ['nullable', 'integer', Rule::exists('semesters', 'id')
                 ->where('school_id', $this->schoolId())->where('academic_year_id', $year->id)],
             'scoutLevelId' => ['nullable', 'integer', Rule::exists('scout_levels', 'id')],
+            'formationId' => ['nullable', 'integer', Rule::exists('gudep_formations', 'id')
+                ->where('school_id', $this->schoolId())->where('scout_group_id', $gudep->id)
+                ->where('academic_year_id', $year->id)->where('is_active', true)],
             'parentId' => ['nullable', 'integer', Rule::exists('gudep_program_sheets', 'id')
                 ->where('school_id', $this->schoolId())->where('scout_group_id', $gudep->id)
                 ->where('academic_year_id', $year->id)],
@@ -397,6 +430,7 @@ class GudepProgramPlanner extends Component
                 || ($this->kind === 'weekly' && (
                     $parent->semester_id !== $this->semesterId
                     || $parent->scout_level_id !== $this->scoutLevelId
+                    || ($parent->gudep_formation_id !== null && $parent->gudep_formation_id !== $this->formationId)
                 ))) {
                 $this->addError('parentId', 'Program induk tidak sesuai jenjang atau semester.');
 
@@ -433,8 +467,22 @@ class GudepProgramPlanner extends Component
             }
         }
 
+        if ($this->kind !== 'annual' && $this->formationId === null) {
+            $formationCandidates = GudepFormation::query()->where('school_id', $this->schoolId())
+                ->where('scout_group_id', $gudep->id)->where('academic_year_id', $year->id)
+                ->where('scout_level_id', $this->scoutLevelId)->where('is_active', true)->get();
+            if ($formationCandidates->count() === 1) {
+                $this->formationId = $formationCandidates->first()->id;
+                $this->letterheadType = match ($formationCandidates->first()->gender) {
+                    'putra' => 'male',
+                    'putri' => 'female',
+                    default => 'mabigus',
+                };
+            }
+        }
+
         $this->validateLetterheadScope($gudep, $year);
-        if ($this->getErrorBag()->has('letterheadType')) {
+        if ($this->getErrorBag()->has('letterheadType') || $this->getErrorBag()->has('formationId')) {
             return;
         }
 
@@ -472,6 +520,7 @@ class GudepProgramPlanner extends Component
             'title' => trim($this->title),
             'semester_id' => $this->kind === 'annual' ? null : $this->semesterId,
             'scout_level_id' => $this->kind === 'annual' ? null : $this->scoutLevelId,
+            'gudep_formation_id' => $this->kind === 'annual' ? null : $this->formationId,
             'parent_id' => $this->kind === 'annual' ? null : $this->parentId,
             'activity_id' => $this->kind === 'weekly' ? $this->activityId : null,
             'scheduled_for' => $this->kind === 'weekly' ? $this->scheduledFor : null,
@@ -499,13 +548,13 @@ class GudepProgramPlanner extends Component
         $sheet = GudepProgramSheet::query()->where('school_id', $this->schoolId())
             ->where('scout_group_id', $this->selectedGudep()->id)
             ->where('academic_year_id', $this->selectedYear()->id)
-            ->with(['scoutGroup', 'academicYear', 'semester', 'scoutLevel', 'activity'])
+            ->with(['scoutGroup', 'academicYear', 'semester', 'scoutLevel', 'gudepFormation', 'activity'])
             ->find($id);
         abort_unless($sheet !== null, 404);
 
         $letterheadType = $sheet->kind === 'annual' ? 'mabigus' : ($sheet->letterhead_type ?: 'mabigus');
-        $this->validateLetterheadScope($sheet->scoutGroup, $sheet->academicYear, $letterheadType, $sheet->scout_level_id, $sheet->kind);
-        abort_if($this->getErrorBag()->has('letterheadType'), 422, 'Jenis kop dokumen tidak sesuai formasi Gudep.');
+        $this->validateLetterheadScope($sheet->scoutGroup, $sheet->academicYear, $letterheadType, $sheet->scout_level_id, $sheet->kind, $sheet->gudep_formation_id);
+        abort_if($this->getErrorBag()->has('letterheadType') || $this->getErrorBag()->has('formationId'), 422, 'Jenis kop dokumen tidak sesuai formasi Gudep.');
         $school = School::query()->findOrFail($this->schoolId());
         $letterhead = GudepDocumentLetterhead::resolve($school, $sheet->scoutGroup, $letterheadType, true);
 
@@ -533,6 +582,7 @@ class GudepProgramPlanner extends Component
             'semester_id' => $sheet->semester_id,
             'semester_name' => $sheet->semester?->name,
             'level_id' => $sheet->scout_level_id,
+            'gudep_formation_id' => $sheet->gudep_formation_id,
             'level_name' => $sheet->scoutLevel?->name,
             'parent_id' => $sheet->parent_id,
             'scheduled_for' => $sheet->scheduled_for?->toDateString(),
@@ -575,7 +625,8 @@ class GudepProgramPlanner extends Component
         AcademicYear $year,
         ?string $type = null,
         ?int $levelId = null,
-        ?string $kind = null
+        ?string $kind = null,
+        ?int $formationId = null
     ): void {
         $type ??= $this->letterheadType;
         $kind ??= $this->kind;
@@ -588,29 +639,35 @@ class GudepProgramPlanner extends Component
         }
 
         $levelId ??= $this->scoutLevelId;
-        $formations = GudepFormation::query()
-            ->where('school_id', $this->schoolId())
+        $formationId ??= $this->formationId;
+        $query = GudepFormation::query()->where('school_id', $this->schoolId())
             ->where('scout_group_id', $gudep->id)
             ->where('academic_year_id', $year->id)
             ->where('scout_level_id', $levelId)
-            ->where('is_active', true)
-            ->get();
+            ->where('is_active', true);
+        $formations = $query->get();
 
-        // An unspecified/campuran formation represents a joint unit, never infer a gender from its title.
-        $genders = $formations->pluck('gender')->filter()->unique()->values()->all();
-        if ($genders === ['putra'] && $type !== 'male') {
-            $this->addError('letterheadType', 'Satuan putra harus memakai kop Gudep Putra.');
+        if ($formationId === null && $formations->count() > 1) {
+            $this->addError('formationId', 'Pilih satuan asal agar kop Putra atau Putri tidak tertukar.');
 
             return;
         }
-        if ($genders === ['putri'] && $type !== 'female') {
-            $this->addError('letterheadType', 'Satuan putri harus memakai kop Gudep Putri.');
+        $formation = $formationId !== null
+            ? $formations->firstWhere('id', $formationId)
+            : $formations->first();
+        if ($formation === null) {
+            $this->addError('formationId', 'Satuan tidak tersedia dalam Gudep/tahun/golongan ini.');
 
             return;
         }
-        if ($type === 'male' && ! in_array('putra', $genders, true)
-            || $type === 'female' && ! in_array('putri', $genders, true)) {
-            $this->addError('letterheadType', 'Jenis kop tidak sesuai formasi yang tercatat.');
+
+        $required = match ($formation->gender) {
+            'putra' => 'male',
+            'putri' => 'female',
+            default => 'mabigus',
+        };
+        if ($type !== $required) {
+            $this->addError('letterheadType', 'Jenis kop harus sesuai jenis satuan: '.$required.'.');
         }
     }
 
@@ -668,6 +725,11 @@ class GudepProgramPlanner extends Component
             'semesters' => $year ? Semester::query()->where('school_id', $this->schoolId())
                 ->where('academic_year_id', $year->id)->orderBy('semester_number')->get() : collect(),
             'levels' => $levels,
+            'formations' => $gudep && $year && $this->scoutLevelId !== null
+                ? GudepFormation::query()->where('school_id', $this->schoolId())
+                    ->where('scout_group_id', $gudep->id)->where('academic_year_id', $year->id)
+                    ->where('scout_level_id', $this->scoutLevelId)
+                    ->where('is_active', true)->get() : collect(),
             'letterheadProfile' => $gudep && $year ? GudepDocumentLetterhead::resolve(
                 School::query()->findOrFail($this->schoolId()), $gudep,
                 $this->kind === 'annual' ? 'mabigus' : $this->letterheadType
