@@ -12,6 +12,7 @@ use App\Models\GudepFormation;
 use App\Models\GudepProgramSheet;
 use App\Models\ReportVerification;
 use App\Models\School;
+use App\Models\ScoutAdministrationProfile;
 use App\Models\ScoutGroup;
 use App\Models\ScoutLevel;
 use App\Models\Semester;
@@ -531,6 +532,38 @@ class GudepProgramPlannerTest extends TestCase
             ->assertSee('04.191')
             ->assertSee('04.192')
             ->assertDontSee('A5 portrait');
+    }
+
+    public function test_annual_print_uses_the_custom_mabigus_letterhead_from_persuratan(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+        ScoutAdministrationProfile::query()->create([
+            'school_id' => $school->id,
+            'type' => 'mabigus',
+            'name' => 'Administrasi Mabigus',
+            'number_format' => '{sequence}/{year}',
+            'agenda_format' => '{sequence}/{year}',
+            'letterhead_title' => 'GERAKAN PRAMUKA KWARTIR RANTING',
+            'letterhead_subtitle' => 'KOP MABIGUS DARI PERSURATAN',
+            'letterhead_address' => 'Jalan Pramuka 10 Denpasar',
+            'is_active' => true,
+        ]);
+
+        $sheet = GudepProgramSheet::query()->create([
+            'school_id' => $school->id,
+            'scout_group_id' => $gudep->id,
+            'academic_year_id' => $year->id,
+            'kind' => 'annual',
+            'title' => 'Program Tahunan',
+            'entries' => [['section' => 'bersama', 'description' => 'Hari Pramuka', 'quantity' => null]],
+        ]);
+
+        $this->get(route('administration.programs.print', $sheet->id))
+            ->assertOk()
+            ->assertSee('GERAKAN PRAMUKA KWARTIR RANTING')
+            ->assertSee('KOP MABIGUS DARI PERSURATAN')
+            ->assertSee('Jalan Pramuka 10 Denpasar')
+            ->assertDontSee('MAJELIS PEMBIMBING GUGUSDEPAN');
     }
 
     public function test_female_unit_auto_selects_female_letterhead_and_persists_formation(): void
