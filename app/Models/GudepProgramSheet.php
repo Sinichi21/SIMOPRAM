@@ -14,7 +14,7 @@ class GudepProgramSheet extends Model
 
     protected $fillable = [
         'school_id', 'scout_group_id', 'academic_year_id', 'semester_id',
-        'scout_level_id', 'parent_id', 'kind', 'title', 'scheduled_for',
+        'scout_level_id', 'parent_id', 'activity_id', 'kind', 'title', 'scheduled_for',
         'entries', 'notes', 'created_by',
     ];
 
@@ -44,6 +44,11 @@ class GudepProgramSheet extends Model
     public function scoutLevel(): BelongsTo
     {
         return $this->belongsTo(ScoutLevel::class);
+    }
+
+    public function activity(): BelongsTo
+    {
+        return $this->belongsTo(Activity::class);
     }
 
     public function parent(): BelongsTo
