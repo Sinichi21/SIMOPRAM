@@ -1,18 +1,54 @@
+{{-- Reuse the exact Persuratan / LPJ letterhead renderer.
+     Data may originate from a saved immutable publication snapshot. --}}
 @php
-    $pramukaFile = public_path('images/reports/logo-pramuka.png');
-    $wosmFile = public_path('images/reports/logo-wosm.png');
-    $pramukaImage = is_file($pramukaFile) ? 'data:image/png;base64,'.base64_encode(file_get_contents($pramukaFile)) : null;
-    $wosmImage = is_file($wosmFile) ? 'data:image/png;base64,'.base64_encode(file_get_contents($wosmFile)) : null;
+    $school = (object) [
+        'name' => $letterhead['school_name'] ?? '',
+        'city' => $letterhead['school_city'] ?? '',
+        'address' => $letterhead['school_address'] ?? '',
+        'postal_code' => $letterhead['postal_code'] ?? '',
+    ];
+    $scoutGroup = (object) ['secretariat_address' => $letterhead['gudep_address'] ?? null];
+    $documentSetting = (object) [
+        'gudep_male_number' => $letterhead['male_number'] ?? null,
+        'gudep_female_number' => $letterhead['female_number'] ?? null,
+    ];
+    $administrationProfile = (object) [
+        'letterhead_title' => $letterhead['title'] ?? null,
+        'letterhead_subtitle' => $letterhead['subtitle'] ?? null,
+        'letterhead_address' => $letterhead['address'] ?? null,
+    ];
+    $administrationType = $letterhead['type'] ?? 'mabigus';
 @endphp
-<header style="position:relative;min-height:82px;border-bottom:2px solid #171717;padding:6px 75px 10px;text-align:center;margin-bottom:18px;font-family:'Times New Roman',Times,serif;color:#111;">
-    @if ($pramukaImage)
-        <img src="{{ $pramukaImage }}" alt="Logo Pramuka" style="position:absolute;top:4px;left:4px;max-width:66px;max-height:65px;">
-    @endif
-    @if ($wosmImage)
-        <img src="{{ $wosmImage }}" alt="Logo WOSM" style="position:absolute;top:4px;right:4px;max-width:66px;max-height:65px;">
-    @endif
-    <div style="font-weight:bold;font-size:14pt;line-height:1.17;">{{ $letterhead['title'] }}</div>
-    <div style="font-weight:bold;font-size:12pt;line-height:1.17;">{{ $letterhead['subtitle'] }}</div>
-    <div style="font-size:11pt;line-height:1.17;">PANGKALAN {{ mb_strtoupper($letterhead['school']) }}</div>
-    <div style="font-size:9pt;line-height:1.25;margin-top:5px;">{{ $letterhead['address'] ?: 'Alamat sekretariat belum diatur' }}</div>
-</header>
+<style>
+    .letterhead {
+        border-bottom: 1.6px solid #000;
+        margin-bottom: 4mm;
+        min-height: 22mm;
+        padding: 0 2mm 2.5mm;
+        position: relative;
+        text-align: center;
+    }
+    .letterhead-logo-left, .letterhead-logo-right {
+        height: 21mm;
+        max-width: 23mm;
+        object-fit: contain;
+        position: absolute;
+        top: 0;
+    }
+    .letterhead-logo-left { left: 1mm; }
+    .letterhead-logo-right { right: 1mm; }
+    .letterhead-title {
+        font-family: "Times New Roman", Times, serif;
+        font-size: 13pt;
+        font-weight: bold;
+        line-height: 1.05;
+        margin: 0 23mm;
+    }
+    .letterhead-address {
+        font-family: "Times New Roman", Times, serif;
+        font-size: 9pt;
+        line-height: 1.1;
+        margin: .8mm 23mm 0;
+    }
+</style>
+@include('reports.pdf.lpj.partials.letterhead')
