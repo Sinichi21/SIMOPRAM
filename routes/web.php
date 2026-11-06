@@ -260,6 +260,11 @@ Route::middleware([
             ->middleware('can:gudep.view')
             ->name('administration.accreditation');
 
+        // v2: standalone finance workspace, preserving the legacy URL for old links.
+        Route::get('/keuangan', GudepFinance::class)
+            ->middleware('can:gudep.finance.view')
+            ->name('finance.index');
+
         Route::get('/administrasi/keuangan-sarana', GudepFinance::class)
             ->middleware('can:gudep.finance.view')
             ->name('administration.finance');
