@@ -346,7 +346,7 @@
                             <tr>
                                 <td class="px-4 py-3 font-medium sm:px-6">{{ $budget->category }}</td>
                                 @php
-                                    $realized = (int) ($expenseByCategory[mb_strtolower(trim($budget->category))] ?? 0);
+                                    $realized = (int) (collect($expenseByCategory)->first(fn ($amount, $category): bool => mb_strtolower(trim((string) $category)) === mb_strtolower(trim($budget->category)), 0));
                                     $remaining = (int) $budget->allocated_amount - $realized;
                                 @endphp
                                 <td class="whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums">Rp {{ number_format($budget->allocated_amount, 0, ',', '.') }}</td>
