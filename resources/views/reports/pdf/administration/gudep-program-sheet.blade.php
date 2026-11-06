@@ -1,3 +1,4 @@
+@include('administration.partials.gudep-document-letterhead', ['letterhead' => $snapshot['letterhead']])
 @if ($snapshot['kind'] !== 'annual')
 <h1 style="text-align:center;font-size:15pt;margin-bottom:4px;">PROGRAM KERJA {{ ['annual' => 'TAHUNAN', 'semester' => 'SEMESTER', 'weekly' => 'LATIHAN MINGGUAN'][$snapshot['kind']] ?? 'GUGUSDEPAN' }}</h1>
 <p style="text-align:center;font-size:10pt;margin-top:0;">{{ $snapshot['gudep_name'] }} — {{ $snapshot['year_name'] }}</p>
