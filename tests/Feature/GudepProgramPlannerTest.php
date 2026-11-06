@@ -396,6 +396,87 @@ class GudepProgramPlannerTest extends TestCase
         $this->assertDatabaseCount('report_verifications', 0);
     }
 
+    public function test_editing_existing_annual_program_persists_nested_changes_and_keeps_editor_open(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+        $entries = GudepAnnualProgram::template(['Siaga']);
+        $sheet = GudepProgramSheet::query()->create([
+            'school_id' => $school->id,
+            'scout_group_id' => $gudep->id,
+            'academic_year_id' => $year->id,
+            'kind' => 'annual',
+            'title' => 'Rencana awal',
+            'entries' => $entries,
+        ]);
+        $mulaIndex = collect($entries)->search(fn (array $row): bool => $row['description'] === 'Mula');
+
+        Livewire::test(GudepProgramPlanner::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->call('edit', $sheet->id)
+            ->set('title', 'Rencana revisi')
+            ->set('entries.'.$mulaIndex.'.description', 'Siaga Mula Revisi')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertSet('editingId', $sheet->id)
+            ->assertSet('title', 'Rencana revisi')
+            ->assertSet('entries.'.$mulaIndex.'.description', 'Siaga Mula Revisi');
+
+        $this->assertSame('Rencana revisi', $sheet->fresh()->title);
+        $this->assertSame('Siaga Mula Revisi', $sheet->fresh()->entries[$mulaIndex]['description']);
+
+        Livewire::test(GudepProgramPlanner::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->call('edit', $sheet->id)
+            ->assertSet('entries.'.$mulaIndex.'.description', 'Siaga Mula Revisi');
+    }
+
+    public function test_new_annual_program_and_appended_child_save_correctly(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+        $entries = GudepAnnualProgram::template(['Siaga']);
+        $rootIndex = collect($entries)->search(fn (array $row): bool => $row['description'] === 'Pencapaian SKU');
+
+        Livewire::test(GudepProgramPlanner::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->set('title', 'Program Baru')
+            ->set('entries', $entries)
+            ->call('addChildRow', $rootIndex)
+            ->set('entries.'.count($entries).'.description', 'Subbutir baru')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertSet('title', 'Program Baru');
+
+        $sheet = GudepProgramSheet::query()->firstOrFail();
+        $this->assertCount(count($entries) + 1, $sheet->entries);
+        $this->assertSame('Subbutir baru', $sheet->entries[count($entries)]['description']);
+        $this->assertSame($entries[$rootIndex]['key'], $sheet->entries[count($entries)]['parent_key']);
+        $this->assertDatabaseCount('gudep_program_sheets', 1);
+    }
+
+    public function test_invalid_annual_row_shows_validation_and_does_not_discard_draft(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+
+        Livewire::test(GudepProgramPlanner::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->set('title', 'Belum lengkap')
+            ->set('entries', [[
+                'key' => 'first', 'parent_key' => null,
+                'section' => 'siaga', 'description' => '',
+                'detail' => '', 'quantity' => null,
+            ]])
+            ->call('save')
+            ->assertHasErrors(['entries.0.description' => 'required'])
+            ->assertSee('Program belum tersimpan')
+            ->assertSet('title', 'Belum lengkap');
+
+        $this->assertDatabaseCount('gudep_program_sheets', 0);
+    }
+
     public function test_added_subitem_does_not_change_existing_mula_bantu_tata_inputs(): void
     {
         [$school, $gudep, $year] = $this->context();
