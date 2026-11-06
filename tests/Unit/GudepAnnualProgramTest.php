@@ -31,6 +31,36 @@ class GudepAnnualProgramTest extends TestCase
         $this->assertStringContainsString('10 macam', $skk['entry']['detail']);
     }
 
+    public function test_appended_sibling_keeps_its_original_index_but_is_displayed_under_parent(): void
+    {
+        $rows = GudepAnnualProgram::template(['Siaga']);
+        $sku = collect($rows)->search(fn (array $row): bool => $row['description'] === 'Pencapaian SKU');
+        $this->assertIsInt($sku);
+        $first = (string) $rows[$sku]['key'];
+        $mulaIndex = collect($rows)->search(fn (array $row): bool => $row['description'] === 'Mula');
+        $bantuIndex = collect($rows)->search(fn (array $row): bool => $row['description'] === 'Bantu');
+        $tataIndex = collect($rows)->search(fn (array $row): bool => $row['description'] === 'Tata');
+        $this->assertIsInt($mulaIndex);
+        $this->assertIsInt($bantuIndex);
+        $this->assertIsInt($tataIndex);
+
+        $rows[] = [
+            'key' => 'new-child', 'parent_key' => $first, 'section' => 'siaga',
+            'description' => 'Tambahan', 'detail' => '', 'quantity' => null,
+        ];
+
+        $ordered = GudepAnnualProgram::numbered($rows, 'siaga');
+        $skuPosition = collect($ordered)->search(fn (array $r): bool => $r['entry']['description'] === 'Pencapaian SKU');
+        $names = array_slice(array_column(array_column($ordered, 'entry'), 'description'), $skuPosition, 5);
+
+        $this->assertSame(['Pencapaian SKU', 'Mula', 'Bantu', 'Tata', 'Tambahan'], $names);
+        $this->assertSame($mulaIndex, $ordered[$skuPosition + 1]['index']);
+        $this->assertSame($bantuIndex, $ordered[$skuPosition + 2]['index']);
+        $this->assertSame($tataIndex, $ordered[$skuPosition + 3]['index']);
+        $this->assertSame('4)', $ordered[$skuPosition + 4]['marker']);
+        $this->assertSame(count($rows) - 1, $ordered[$skuPosition + 4]['index']);
+    }
+
     public function test_finance_sections_follow_document_numbering_and_calculate_idr_totals(): void
     {
         $rows = GudepAnnualProgram::template([]);
