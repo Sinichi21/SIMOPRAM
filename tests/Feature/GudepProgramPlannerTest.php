@@ -396,6 +396,33 @@ class GudepProgramPlannerTest extends TestCase
         $this->assertDatabaseCount('report_verifications', 0);
     }
 
+    public function test_added_subitem_does_not_change_existing_mula_bantu_tata_inputs(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+        $entries = [
+            ['key' => 'sku-root', 'parent_key' => null, 'section' => 'siaga', 'description' => 'Pencapaian SKU', 'detail' => ''],
+            ['key' => 'siaga-mula', 'parent_key' => 'sku-root', 'section' => 'siaga', 'description' => 'Mula', 'detail' => ''],
+            ['key' => 'siaga-bantu', 'parent_key' => 'sku-root', 'section' => 'siaga', 'description' => 'Bantu', 'detail' => ''],
+            ['key' => 'siaga-tata', 'parent_key' => 'sku-root', 'section' => 'siaga', 'description' => 'Tata', 'detail' => ''],
+        ];
+
+        Livewire::test(GudepProgramPlanner::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->set('entries', $entries)
+            ->call('addChildRow', 0)
+            ->assertCount('entries', 5)
+            ->assertSet('entries.1.description', 'Mula')
+            ->assertSet('entries.2.description', 'Bantu')
+            ->assertSet('entries.3.description', 'Tata')
+            ->set('entries.4.description', 'SKK Siaga Tambahan')
+            ->set('entries.1.description', 'Mula — telah direvisi')
+            ->assertSet('entries.1.description', 'Mula — telah direvisi')
+            ->assertSet('entries.2.description', 'Bantu')
+            ->assertSet('entries.3.description', 'Tata')
+            ->assertSet('entries.4.description', 'SKK Siaga Tambahan');
+    }
+
     public function test_annual_document_template_hides_unavailable_levels_and_keeps_nested_numbering(): void
     {
         [$school, $gudep, $year] = $this->context();
