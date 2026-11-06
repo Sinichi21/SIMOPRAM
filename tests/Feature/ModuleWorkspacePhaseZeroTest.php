@@ -60,10 +60,6 @@ class ModuleWorkspacePhaseZeroTest extends TestCase
     }
     public function test_legacy_finance_route_resolves_to_the_finance_workspace(): void
     {
-        $this->app['router']->getRoutes()->match(
-            \Illuminate\Http\Request::create('/administrasi/keuangan-sarana', 'GET')
-        );
-
         $request = \Illuminate\Http\Request::create('/administrasi/keuangan-sarana', 'GET');
         $route = $this->app['router']->getRoutes()->match($request);
         $request->setRouteResolver(fn () => $route);
