@@ -47,7 +47,7 @@ final class GudepAnnualProgram
             'penegak' => ['Bantara', 'Laksana'],
             'pandega' => [],
         ] as $section => $ranks) {
-            if (! in_array($section, $available, true)) {
+            if (in_array($section, $available, true) === false) {
                 continue;
             }
             if ($ranks !== []) {
@@ -101,8 +101,9 @@ final class GudepAnnualProgram
         return $entries;
     }
 
-    /** @param array<int, array<string, mixed>> $entries
-     *  @return array<int, array<string, mixed>>
+    /**
+     * @param  array<int, array<string, mixed>>  $entries
+     * @return array<int, array<string, mixed>>
      */
     public static function numbered(array $entries, string $section): array
     {
@@ -147,8 +148,9 @@ final class GudepAnnualProgram
         return $result;
     }
 
-    /** @param array<int, array<string, mixed>> $entries
-     *  @return array{income: int, expense: int, shortfall: int, surplus: int}
+    /**
+     * @param  array<int, array<string, mixed>>  $entries
+     * @return array{income: int, expense: int, shortfall: int, surplus: int}
      */
     public static function totals(array $entries): array
     {
