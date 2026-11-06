@@ -242,6 +242,9 @@
                                 <td class="p-2">
                                     <button type="button" wire:click="preview({{ $sheet->id }})" class="text-emerald-700 underline dark:text-emerald-300">Lihat</button>
                                     <a href="{{ route('administration.programs.print', $sheet->id) }}" target="_blank" rel="noopener" class="ml-2 text-emerald-700 underline dark:text-emerald-300">Cetak A4</a>
+                                    @if (auth()->user()?->can('reports.export') && (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.development.manage')))
+                                        <button type="button" wire:click="publishProgram({{ $sheet->id }})" wire:confirm="Terbitkan PDF resmi Program Kerja ini? Perubahan isi berikutnya akan menjadi revisi dokumen." class="ml-2 font-semibold text-emerald-700 underline dark:text-emerald-300">Terbitkan PDF + QR</button>
+                                    @endif
                                     @if (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.development.manage'))
                                         <button type="button" wire:click="edit({{ $sheet->id }})" class="ml-2 text-emerald-700 underline dark:text-emerald-300">Edit</button>
                                     @endif
