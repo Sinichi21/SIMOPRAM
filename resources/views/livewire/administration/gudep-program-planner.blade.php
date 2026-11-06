@@ -92,6 +92,25 @@
                         @error('parentId')<span class="block text-xs text-red-600">{{ $message }}</span>@enderror
                     </label>
                     @if ($kind === 'weekly')
+                        <label class="text-sm font-medium">Kaitkan kegiatan SIMPRAM (opsional)
+                            <select wire:model.live="activityId" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
+                                <option value="">Belum ditautkan</option>
+                                @foreach ($activities as $activity)
+                                    <option value="{{ $activity->id }}">{{ $activity->title }} · {{ $activity->start_at?->format('d/m/Y') ?? '–' }}</option>
+                                @endforeach
+                            </select>
+                            @error('activityId')<span class="block text-xs text-red-600">{{ $message }}</span>@enderror
+                        </label>
+                        @if ($linkedActivity)
+                            <div class="rounded-xl bg-zinc-50 p-3 text-sm dark:bg-zinc-800/50" aria-label="Kegiatan terhubung dari SIMPRAM">
+                                <p class="text-xs font-semibold text-zinc-500">Data kegiatan dari SIMPRAM · terkunci</p>
+                                <p class="mt-1 font-semibold">{{ $linkedActivity->title }}</p>
+                                <p class="mt-1 text-xs text-zinc-500">{{ $linkedActivity->start_at?->format('d/m/Y H:i') ?? 'Jadwal belum ditetapkan' }} · {{ $linkedActivity->location ?: 'Lokasi belum ditentukan' }}</p>
+                                <a href="{{ route('activities.index') }}" wire:navigate class="mt-2 inline-block text-xs font-semibold text-emerald-700 dark:text-emerald-300">Kelola di Modul Kegiatan</a>
+                            </div>
+                        @endif
+                    @endif
+                    @if ($kind === 'weekly')
                         <label class="text-sm font-medium">Tanggal latihan
                             <input type="date" wire:model="scheduledFor" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
                             @error('scheduledFor')<span class="block text-xs text-red-600">{{ $message }}</span>@enderror
@@ -186,7 +205,7 @@
             <p class="mt-1 text-sm text-zinc-500">Ringkasan program tersimpan berdasarkan Gudep dan tahun ajaran, tanpa membuat ulang data anggota/satuan.</p>
             <div class="mt-4 overflow-x-auto">
                 <table class="min-w-full text-left text-sm">
-                    <thead><tr class="border-b text-zinc-500"><th class="p-2">Jenis</th><th class="p-2">Program</th><th class="p-2">Golongan</th><th class="p-2">Jumlah baris</th><th class="p-2">Aksi</th></tr></thead>
+                    <thead><tr class="border-b text-zinc-500"><th class="p-2">Jenis</th><th class="p-2">Program</th><th class="p-2">Golongan</th><th class="p-2">Jumlah baris</th><th class="p-2">Agenda terhubung</th><th class="p-2">Aksi</th></tr></thead>
                     <tbody>
                         @forelse ($sheets as $sheet)
                             <tr class="border-b border-zinc-100 dark:border-zinc-800">
@@ -195,6 +214,14 @@
                                 <td class="p-2">{{ $levels->firstWhere('id', $sheet->scout_level_id)?->name ?? 'Seluruh Gudep / –' }}</td>
                                 <td class="p-2">{{ count($sheet->entries ?? []) }}</td>
                                 <td class="p-2">
+                                    @if ($sheet->activity)
+                                        <span class="font-medium">{{ $sheet->activity->title }}</span>
+                                        <span class="block text-xs text-zinc-500">{{ $sheet->activity->start_at?->format('d/m/Y') ?? '–' }}</span>
+                                    @else
+                                        <span class="text-zinc-400">–</span>
+                                    @endif
+                                </td>
+                                <td class="p-2">
                                     <button type="button" wire:click="preview({{ $sheet->id }})" class="text-emerald-700 underline dark:text-emerald-300">Lihat</button>
                                     @if (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.development.manage'))
                                         <button type="button" wire:click="edit({{ $sheet->id }})" class="ml-2 text-emerald-700 underline dark:text-emerald-300">Edit</button>
@@ -202,7 +229,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="5" class="p-4 text-center text-zinc-500">Belum ada program kerja.</td></tr>
+                            <tr><td colspan="6" class="p-4 text-center text-zinc-500">Belum ada program kerja.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -213,6 +240,11 @@
                         <h3 class="mt-1 text-lg font-bold uppercase">{{ $previewSheet->title }}</h3>
                         <p class="text-sm">{{ $gudep->name }} · {{ $year->name }}</p>
                         <p class="text-xs text-zinc-500">{{ $previewSheet->scheduled_for?->format('d/m/Y') ?? '–' }}</p>
+                        @if ($previewSheet->activity)
+                            <p class="mt-2 text-xs text-zinc-600 dark:text-zinc-300">
+                                Agenda SIMPRAM: <strong>{{ $previewSheet->activity->title }}</strong> · {{ $previewSheet->activity->start_at?->format('d/m/Y H:i') ?? '–' }}
+                            </p>
+                        @endif
                     </div>
                     @if ($previewSheet->kind === 'annual')
                         @foreach (\App\Livewire\Administration\GudepProgramPlanner::annualSections() as $section => $heading)
