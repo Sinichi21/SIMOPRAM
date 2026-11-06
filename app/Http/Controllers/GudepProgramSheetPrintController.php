@@ -6,6 +6,8 @@ namespace App\Http\Controllers;
 
 use App\Livewire\Administration\GudepProgramPlanner;
 use App\Models\GudepProgramSheet;
+use App\Models\School;
+use App\Support\GudepDocumentLetterhead;
 use App\Support\SchoolContext;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -35,6 +37,11 @@ class GudepProgramSheetPrintController extends Controller
             'gudep' => $program->scoutGroup,
             'year' => $program->academicYear,
             'sections' => GudepProgramPlanner::annualSections(),
+            'letterhead' => GudepDocumentLetterhead::resolve(
+                School::query()->findOrFail($schoolId),
+                $program->scoutGroup,
+                $program->kind === 'annual' ? 'mabigus' : ($program->letterhead_type ?: 'mabigus')
+            ),
         ]);
     }
 }
