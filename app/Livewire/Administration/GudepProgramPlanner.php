@@ -483,6 +483,7 @@ class GudepProgramPlanner extends Component
             'title' => $sheet->title,
             'gudep_id' => $sheet->scout_group_id,
             'gudep_name' => $sheet->scoutGroup?->name,
+            'gudep_kwarcab' => $sheet->scoutGroup?->kwarcab,
             'gudep_male_number' => $sheet->scoutGroup?->male_number,
             'gudep_female_number' => $sheet->scoutGroup?->female_number,
             'year_id' => $sheet->academic_year_id,
