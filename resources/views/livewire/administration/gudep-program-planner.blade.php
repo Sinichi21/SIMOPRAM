@@ -160,6 +160,21 @@
 
             @if (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.development.manage'))
                 <form wire:submit="save" class="mt-6 space-y-5">
+                    @if ($saveNotice !== '')
+                        <div role="status" class="rounded-xl border border-emerald-400 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                            {{ $saveNotice }} Dokumen tetap terbuka agar perubahan dapat diperiksa.
+                        </div>
+                    @endif
+                    @if ($errors->any())
+                        <div role="alert" class="rounded-xl border border-red-400 bg-red-50 p-4 text-sm text-red-800 dark:bg-red-950 dark:text-red-200">
+                            <p class="font-semibold">Program belum tersimpan. Periksa {{ $errors->count() }} kesalahan berikut:</p>
+                            <ul class="mt-2 list-disc space-y-1 pl-5">
+                                @foreach ($errors->all() as $message)
+                                    <li>{{ $message }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
                     @if ($kind === 'annual')
                         <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-950/30">
                             <p class="font-semibold text-emerald-900 dark:text-emerald-200">Susunan Program Kerja Tahunan berdasarkan buku administrasi</p>
@@ -310,7 +325,10 @@
                         <textarea wire:model="notes" rows="2" class="mt-1 w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800"></textarea>
                     </label>
                     <div class="flex flex-wrap gap-2">
-                        <button type="submit" wire:loading.attr="disabled" class="rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white">Simpan {{ $editingId ? 'Perubahan' : 'Program Kerja' }}</button>
+                        <button type="submit" wire:loading.attr="disabled" wire:target="save" class="rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white">
+                            <span wire:loading.remove wire:target="save">Simpan {{ $editingId ? 'Perubahan' : 'Program Kerja' }}</span>
+                            <span wire:loading wire:target="save">Menyimpan…</span>
+                        </button>
                         @if ($editingId)<button type="button" wire:click="resetDraft" class="rounded-lg border border-zinc-300 px-4 py-2">Batal edit</button>@endif
                     </div>
                 </form>
