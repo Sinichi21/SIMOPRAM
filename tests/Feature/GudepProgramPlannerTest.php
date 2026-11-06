@@ -280,7 +280,7 @@ class GudepProgramPlannerTest extends TestCase
 
         $this->get(route('administration.programs.print', $sheet))
             ->assertOk()
-            ->assertSee('Program Kerja Tahunan')
+            ->assertSee('PROGRAM KERJA TAHUNAN')
             ->assertSee('Program Tahunan Tanpa Penggalang')
             ->assertSee('Hari Pramuka')
             ->assertSee('Latihan Sandi')
