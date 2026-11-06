@@ -9,6 +9,7 @@ use App\Models\AcademicYear;
 use App\Models\Activity;
 use App\Models\GudepFormation;
 use App\Models\GudepProgramSheet;
+use App\Models\ReportVerification;
 use App\Models\School;
 use App\Models\ScoutGroup;
 use App\Models\ScoutLevel;
@@ -16,6 +17,7 @@ use App\Models\Semester;
 use App\Models\User;
 use App\Support\SchoolContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -310,6 +312,83 @@ class GudepProgramPlannerTest extends TestCase
         app(SchoolContext::class)->set($school);
 
         $this->get(route('administration.programs.print', $sheet))->assertNotFound();
+    }
+
+    public function test_official_program_pdf_reuses_unchanged_snapshot_and_revises_changed_content(): void
+    {
+        Storage::fake('local');
+        [$school, $gudep, $year] = $this->context();
+        $sheet = GudepProgramSheet::query()->create([
+            'school_id' => $school->id,
+            'scout_group_id' => $gudep->id,
+            'academic_year_id' => $year->id,
+            'kind' => 'annual',
+            'title' => 'Program Tahunan Gudep',
+            'entries' => [
+                ['section' => 'siaga', 'description' => 'Latihan Sandi', 'quantity' => null],
+                ['section' => 'bersama', 'description' => 'Hari Pramuka', 'quantity' => 1],
+            ],
+        ]);
+
+        $publish = fn () => Livewire::test(GudepProgramPlanner::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->call('publishProgram', $sheet->id)
+            ->assertHasNoErrors();
+
+        $publish();
+        $publish();
+
+        $first = ReportVerification::query()
+            ->where('document_type', 'gudep_program_sheet')->firstOrFail();
+
+        $this->assertSame(GudepProgramSheet::class, $first->source_type);
+        $this->assertSame($sheet->id, $first->source_id);
+        $this->assertSame(1, $first->revision);
+        $this->assertSame(64, strlen($first->file_sha256));
+        $this->assertSame('program-'.$sheet->id, $first->series_key);
+        $this->assertDatabaseCount('report_verifications', 1);
+        Storage::disk('local')->assertExists($first->file_path);
+
+        $sheet->update(['title' => 'Program Tahunan Gudep Revisi']);
+
+        $publish();
+        $latest = ReportVerification::query()
+            ->where('document_type', 'gudep_program_sheet')
+            ->orderByDesc('revision')->firstOrFail();
+
+        $this->assertSame(2, $latest->revision);
+        $this->assertSame($first->id, $latest->replaces_id);
+        $this->assertSame($latest->id, $first->fresh()->superseded_by_id);
+        $this->assertNotSame($first->file_sha256, $latest->file_sha256);
+        Storage::disk('local')->assertExists($first->file_path);
+        Storage::disk('local')->assertExists($latest->file_path);
+    }
+
+    public function test_official_program_pdf_rejects_cross_gudep_id_without_issuing_document(): void
+    {
+        Storage::fake('local');
+        [$school, $gudep, $year] = $this->context();
+        $foreignGudep = ScoutGroup::query()->create([
+            'school_id' => $school->id,
+            'name' => 'Gudep Lain',
+        ]);
+        $foreignSheet = GudepProgramSheet::query()->create([
+            'school_id' => $school->id,
+            'scout_group_id' => $foreignGudep->id,
+            'academic_year_id' => $year->id,
+            'kind' => 'annual',
+            'title' => 'Program Gudep Lain',
+            'entries' => [['section' => 'bersama', 'description' => 'Latihan', 'quantity' => 1]],
+        ]);
+
+        Livewire::test(GudepProgramPlanner::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->call('publishProgram', $foreignSheet->id)
+            ->assertNotFound();
+
+        $this->assertDatabaseCount('report_verifications', 0);
     }
 
     public function test_cross_gudep_edit_is_not_permitted(): void
