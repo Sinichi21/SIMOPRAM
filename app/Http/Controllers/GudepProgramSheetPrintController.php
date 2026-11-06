@@ -23,7 +23,7 @@ class GudepProgramSheetPrintController extends Controller
 
         $program = GudepProgramSheet::query()
             ->where('school_id', $schoolId)
-            ->with(['scoutGroup', 'academicYear', 'semester', 'scoutLevel', 'activity'])
+            ->with(['scoutGroup', 'academicYear', 'semester', 'scoutLevel', 'gudepFormation', 'activity'])
             ->find($sheet);
 
         abort_unless($program !== null
@@ -40,7 +40,9 @@ class GudepProgramSheetPrintController extends Controller
             'letterhead' => GudepDocumentLetterhead::resolve(
                 School::query()->findOrFail($schoolId),
                 $program->scoutGroup,
-                $program->kind === 'annual' ? 'mabigus' : ($program->letterhead_type ?: 'mabigus')
+                $program->kind === 'annual' ? 'mabigus' : ($program->letterhead_type ?: match ($program->gudepFormation?->gender) {
+                    'putra' => 'male', 'putri' => 'female', default => 'mabigus',
+                })
             ),
         ]);
     }
