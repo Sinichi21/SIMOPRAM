@@ -185,6 +185,7 @@ class GudepProgramPlanner extends Component
     public function useBudgetSuggestion(int $index, string $category): void
     {
         $this->authorizeManage();
+        abort_unless(auth()->user()?->can('gudep.finance.view'), 403);
         abort_unless($this->kind === 'annual' && ($this->entries[$index]['section'] ?? null) === 'keuangan', 422);
         abort_unless(in_array($this->entries[$index]['finance_type'] ?? '', ['income', 'expense'], true), 422);
 
