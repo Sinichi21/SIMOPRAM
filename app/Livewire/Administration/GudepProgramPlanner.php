@@ -8,6 +8,8 @@ use App\Models\AcademicYear;
 use App\Models\Activity;
 use App\Models\GudepFormation;
 use App\Models\GudepProgramSheet;
+use App\Services\Documents\OfficialDocumentPublisher;
+use App\Services\ReportVerificationService;
 use App\Models\ScoutGroup;
 use App\Models\Semester;
 use App\Support\SchoolContext;
@@ -289,6 +291,80 @@ class GudepProgramPlanner extends Component
 
         session()->flash('status', 'Program kerja tersimpan.');
         $this->resetDraft();
+    }
+
+    public function publishProgram(
+        int $id,
+        OfficialDocumentPublisher $publisher,
+        ReportVerificationService $verifier
+    ): void {
+        $this->authorizeManage();
+        abort_unless(auth()->user()?->can('reports.export'), 403);
+
+        $sheet = GudepProgramSheet::query()->where('school_id', $this->schoolId())
+            ->where('scout_group_id', $this->selectedGudep()->id)
+            ->where('academic_year_id', $this->selectedYear()->id)
+            ->with(['scoutGroup', 'academicYear', 'semester', 'scoutLevel', 'activity'])
+            ->find($id);
+        abort_unless($sheet !== null, 404);
+
+        $activity = $sheet->activity;
+        // Never publish a document with a dangling or cross-context activity reference.
+        abort_unless($sheet->activity_id === null || (
+            $activity !== null
+            && (int) $activity->school_id === $this->schoolId()
+            && (int) $activity->academic_year_id === (int) $sheet->academic_year_id
+            && ($activity->semester_id === null || (int) $activity->semester_id === (int) $sheet->semester_id)
+        ), 409, 'Agenda tertaut tidak lagi valid.');
+
+        $snapshot = [
+            'id' => $sheet->id,
+            'kind' => $sheet->kind,
+            'title' => $sheet->title,
+            'gudep_id' => $sheet->scout_group_id,
+            'gudep_name' => $sheet->scoutGroup?->name,
+            'gudep_male_number' => $sheet->scoutGroup?->male_number,
+            'gudep_female_number' => $sheet->scoutGroup?->female_number,
+            'year_id' => $sheet->academic_year_id,
+            'year_name' => $sheet->academicYear?->name,
+            'semester_id' => $sheet->semester_id,
+            'semester_name' => $sheet->semester?->name,
+            'level_id' => $sheet->scout_level_id,
+            'level_name' => $sheet->scoutLevel?->name,
+            'parent_id' => $sheet->parent_id,
+            'scheduled_for' => $sheet->scheduled_for?->toDateString(),
+            'activity_id' => $sheet->activity_id,
+            'activity_title' => $activity?->title,
+            'activity_start_at' => $activity?->start_at?->toIso8601String(),
+            'activity_end_at' => $activity?->end_at?->toIso8601String(),
+            'activity_location' => $activity?->location,
+            'entries' => $sheet->entries ?? [],
+            'notes' => $sheet->notes,
+        ];
+
+        $document = $publisher->publishBlade(
+            schoolId: $this->schoolId(),
+            sourceType: GudepProgramSheet::class,
+            sourceId: $sheet->id,
+            documentType: 'gudep_program_sheet',
+            snapshotChecksum: $verifier->contentChecksum($snapshot),
+            filename: 'program-gudep-'.$sheet->id.'.pdf',
+            contentView: 'reports.pdf.administration.gudep-program-sheet',
+            contentData: ['snapshot' => $snapshot, 'sections' => self::annualSections()],
+            title: 'Program Kerja '.$sheet->title,
+            metadata: [
+                'academic_year' => $sheet->academicYear?->name,
+                'program_kind' => $sheet->kind,
+                'security_classification' => 'Terbatas',
+            ],
+            seriesKey: 'program-'.$sheet->id,
+        );
+
+        $this->redirectRoute(
+            'reports.published-documents.show',
+            ['code' => $document->code],
+            navigate: false
+        );
     }
 
     private function schoolId(): int
