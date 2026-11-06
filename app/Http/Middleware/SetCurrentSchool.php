@@ -263,8 +263,6 @@ class SetCurrentSchool
             session([
                 'active_school_id' => $school->id,
             ]);
-            $user->last_active_school_id = $school->id;
-            $user->save();
 
             $this->useSchoolContext(
                 $user,
@@ -317,6 +315,13 @@ class SetCurrentSchool
         $user,
         School $school
     ): void {
+        // Also migrate an already-active session into the durable preference.
+        // This writes only when the selected school actually changes.
+        if ((int) $user->last_active_school_id !== (int) $school->id) {
+            $user->last_active_school_id = $school->id;
+            $user->save();
+        }
+
         $this->schoolContext
             ->set($school);
 
