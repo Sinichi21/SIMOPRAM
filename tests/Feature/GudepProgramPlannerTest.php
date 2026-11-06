@@ -500,7 +500,7 @@ class GudepProgramPlannerTest extends TestCase
                 'description' => 'Iuran anggota', 'finance_type' => 'income',
                 'currency' => 'IDR', 'amount' => null,
             ]])
-            ->call('useBudgetSuggestion', 0, 'Iuran anggota')
+            ->call('useBudgetSuggestion', 0, 0)
             ->assertHasNoErrors()
             ->assertSet('entries.0.amount', 400000);
 
