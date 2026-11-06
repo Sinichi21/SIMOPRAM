@@ -337,6 +337,7 @@
                 </table>
             @if ($previewSheet)
                 <div class="mt-5 space-y-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700" aria-label="Pratinjau dokumen program">
+                    @if ($previewSheet->kind !== 'annual')
                     <div class="border-b border-zinc-200 pb-3 text-center dark:border-zinc-700">
                         <p class="text-xs font-semibold uppercase tracking-wide">GERAKAN PRAMUKA</p>
                         <h3 class="mt-1 text-lg font-bold uppercase">{{ $previewSheet->title }}</h3>
@@ -348,6 +349,7 @@
                             </p>
                         @endif
                     </div>
+                    @endif
                     @if ($previewSheet->kind === 'annual')
                         @include('administration.partials.annual-program-body', [
                             'entries' => $previewSheet->entries ?? [],
