@@ -58,4 +58,28 @@ class ModuleWorkspacePhaseZeroTest extends TestCase
         $this->assertFalse(ModuleWorkspace::permitted($user, $module));
         $this->assertSame([], ModuleWorkspace::accessibleLinks($user, $module));
     }
+    public function test_finance_is_a_standalone_module_without_administration_duplicate(): void
+    {
+        $finance = ModuleWorkspace::find('keuangan');
+        $administration = ModuleWorkspace::find('administrasi');
+
+        $this->assertNotNull($finance);
+        $this->assertNotNull($administration);
+        $this->assertContains('gudep.finance.view', $finance['permissions']);
+        $this->assertSame('finance.index', $finance['links'][0]['route']);
+        $this->assertNotContains('gudep.finance.view', $administration['permissions']);
+        $this->assertNotContains(
+            'administration.finance',
+            array_column($administration['links'], 'route')
+        );
+        $this->assertSame(
+            route('finance.index', absolute: false),
+            '/keuangan'
+        );
+        $this->assertSame(
+            route('administration.finance', absolute: false),
+            '/administrasi/keuangan-sarana'
+        );
+    }
+
 }
