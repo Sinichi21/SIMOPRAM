@@ -13,61 +13,51 @@ final class GudepDocumentLetterhead
 {
     public const TYPES = ['mabigus', 'male', 'female'];
 
-    /** @return array<string, mixed> */
+    /**
+     * Immutable representation of the exact values consumed by the
+     * Persuratan letterhead, not a separately invented letterhead format.
+     *
+     * @return array<string, mixed>
+     */
     public static function resolve(School $school, ScoutGroup $gudep, string $type, bool $requireNumber = false): array
     {
         if (! in_array($type, self::TYPES, true)) {
-            throw ValidationException::withMessages(['letterheadType' => 'Cakupan kop belum ditentukan.']);
+            throw ValidationException::withMessages(['letterheadType' => 'Jenis kop tidak valid.']);
         }
 
         $profile = ScoutAdministrationProfile::query()
             ->where('school_id', $school->id)->where('type', $type)->first();
 
         if ($profile !== null && ! $profile->is_active) {
-            throw ValidationException::withMessages(['letterheadType' => 'Profil administrasi untuk kop ini belum aktif.']);
+            throw ValidationException::withMessages(['letterheadType' => 'Profil Persuratan yang dipilih belum aktif.']);
         }
 
         $setting = $school->documentSetting;
-        $maleNumber = trim((string) ($gudep->male_number ?: $setting?->gudep_male_number));
-        $femaleNumber = trim((string) ($gudep->female_number ?: $setting?->gudep_female_number));
-        $number = match ($type) {
-            'male' => $maleNumber,
-            'female' => $femaleNumber,
-            default => implode(' - ', array_filter([$maleNumber, $femaleNumber],
-                fn (string $value): bool => $value !== '')),
+        // Persuratan reads Gudep numbers from SchoolDocumentSetting.
+        // Keep the same precedence and do not synthesize a new Mabigus subtitle.
+        $maleNumber = trim((string) ($setting?->gudep_male_number ?: $gudep->male_number));
+        $femaleNumber = trim((string) ($setting?->gudep_female_number ?: $gudep->female_number));
+        $required = match ($type) {
+            'male' => $maleNumber !== '',
+            'female' => $femaleNumber !== '',
+            default => $maleNumber !== '' || $femaleNumber !== '',
         };
-
-        if ($requireNumber && $number === '') {
-            throw ValidationException::withMessages(['letterheadType' => 'Nomor Gudep untuk kop yang dipilih belum tersedia.']);
+        if ($requireNumber && ! $required) {
+            throw ValidationException::withMessages(['letterheadType' => 'Nomor Gugusdepan pada pengaturan Persuratan belum tersedia.']);
         }
-
-        $number = $number ?: '–';
-
-        $city = mb_strtoupper(trim((string) ($school->city ?: $gudep->kwarcab)));
-        $address = trim((string) ($profile?->letterhead_address ?: $gudep->secretariat_address ?: $school->address));
-        $postal = trim((string) $school->postal_code);
-        if ($postal !== '' && ! str_contains($address, $postal)) {
-            $address = trim($address.' '.$postal);
-        }
-
-        $title = trim((string) ($profile?->letterhead_title ?: 'GERAKAN PRAMUKA'));
-        $category = match ($type) {
-            'male' => 'GUGUSDEPAN PUTRA',
-            'female' => 'GUGUSDEPAN PUTRI',
-            default => 'MAJELIS PEMBIMBING GUGUSDEPAN',
-        };
-
-        $subtitle = trim((string) ($profile?->letterhead_subtitle ?: $category.' '.$city.' '.$number));
 
         return [
             'type' => $type,
-            'title' => $title,
-            'subtitle' => $subtitle,
-            'category' => $category,
-            'number' => $number,
-            'school' => $school->name,
-            'address' => $address,
-            'city' => $city,
+            'title' => $profile?->letterhead_title,
+            'subtitle' => $profile?->letterhead_subtitle,
+            'address' => $profile?->letterhead_address,
+            'school_name' => $school->name,
+            'school_city' => $school->city,
+            'school_address' => $school->address,
+            'postal_code' => $school->postal_code,
+            'gudep_address' => $gudep->secretariat_address,
+            'male_number' => $maleNumber,
+            'female_number' => $femaleNumber,
         ];
     }
 }
