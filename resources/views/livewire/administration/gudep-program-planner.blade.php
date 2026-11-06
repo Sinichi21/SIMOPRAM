@@ -106,15 +106,21 @@
                         @error('scoutLevelId')<span class="block text-xs text-red-600">{{ $message }}</span>@enderror
                         @if ($levels->isEmpty())<span class="mt-1 block text-xs text-amber-700">Belum ada satuan aktif pada tahun ini. Lengkapi satuan dahulu.</span>@endif
                     </label>
-                    <label class="text-sm font-medium">Kop dokumen sesuai cakupan satuan
-                        <select wire:model.live="letterheadType" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
-                            <option value="mabigus">Kop Mabigus / Gabungan</option>
-                            <option value="male">Kop Gudep Putra</option>
-                            <option value="female">Kop Gudep Putri</option>
+                    <label class="text-sm font-medium">Satuan asal
+                        <select wire:model.live="formationId" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
+                            <option value="">Pilih satuan pada golongan ini</option>
+                            @foreach ($formations as $formation)
+                                <option value="{{ $formation->id }}">{{ $formation->name }} ({{ $formation->gender ?: 'campuran/belum ditentukan' }})</option>
+                            @endforeach
                         </select>
-                        <span class="mt-1 block text-xs text-zinc-500">Diisi otomatis dari jenis formasi aktif. Untuk formasi campuran/ambigu, tentukan berdasarkan cakupan dokumen; sistem memvalidasi.</span>
-                        @error('letterheadType')<span class="mt-1 block text-xs text-red-600">{{ $message }}</span>@enderror
+                        @error('formationId')<span class="mt-1 block text-xs text-red-600">{{ $message }}</span>@enderror
                     </label>
+                    <div class="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm dark:border-zinc-800 dark:bg-zinc-800/50">
+                        <p class="font-medium">Kop dokumen (otomatis · terkunci)</p>
+                        <p class="mt-1">{{ ['mabigus' => 'Mabigus / Gabungan', 'male' => 'Gugusdepan Putra', 'female' => 'Gugusdepan Putri'][$letterheadType] ?? '–' }}</p>
+                        <p class="mt-1 text-xs text-zinc-500">Berasal dari jenis satuan yang dipilih. Ubah jenis satuan melalui Administrasi Gudep jika datanya keliru.</p>
+                        @error('letterheadType')<span class="mt-1 block text-xs text-red-600">{{ $message }}</span>@enderror
+                    </div>
                     <label class="text-sm font-medium">Tautkan ke program induk (opsional)
                         <select wire:model="parentId" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
                             <option value="">Belum ditautkan</option>
