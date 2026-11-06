@@ -7,9 +7,7 @@ namespace App\Livewire\Administration;
 use App\Models\AcademicYear;
 use App\Models\GudepFormation;
 use App\Models\GudepProgramSheet;
-use App\Models\School;
 use App\Models\ScoutGroup;
-use App\Models\ScoutLevel;
 use App\Models\Semester;
 use App\Support\SchoolContext;
 use Illuminate\Contracts\View\View;
@@ -86,7 +84,6 @@ class GudepProgramPlanner extends Component
         $this->reset(['editingId', 'semesterId', 'scoutLevelId', 'parentId', 'scheduledFor', 'notes']);
         $this->title = '';
         $this->entries = [];
-        $this->addRow($this->kind === 'annual' ? 'siaga' : null);
     }
 
     public function addRow(?string $section = null): void
@@ -153,8 +150,8 @@ class GudepProgramPlanner extends Component
             $rules['entries.*.description'] = ['required', 'string', 'max:500'];
             $rules['entries.*.quantity'] = ['nullable', 'integer', 'min:0', 'max:999999'];
         } elseif ($this->kind === 'semester') {
-            $rules['semesterId'] = ['required', ...$rules['semesterId']];
-            $rules['scoutLevelId'] = ['required', ...$rules['scoutLevelId']];
+            $rules['semesterId'] = ['required', 'integer', Rule::exists('semesters', 'id')->where('school_id', $this->schoolId())->where('academic_year_id', $year->id)];
+            $rules['scoutLevelId'] = ['required', 'integer', Rule::exists('scout_levels', 'id')];
             $rules['entries.*.description'] = ['required', 'string', 'max:500'];
             $rules['entries.*.months'] = ['required', 'array', 'size:6'];
             $rules['entries.*.months.*'] = ['boolean'];
