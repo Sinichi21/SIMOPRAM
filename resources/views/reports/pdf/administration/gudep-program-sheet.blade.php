@@ -15,20 +15,13 @@
     @endif
 </table>
 @if ($snapshot['kind'] === 'annual')
-    @foreach ($sections as $key => $heading)
-        @php $rows = collect($snapshot['entries'])->where('section', $key)->values(); @endphp
-        <h2 style="font-size:10pt;margin:14px 0 6px;">{{ $heading }}</h2>
-        <table style="width:100%;border-collapse:collapse;font-size:8pt;" border="1" cellpadding="5">
-            <thead><tr><th width="8%">No.</th><th>Uraian Program/Kegiatan</th><th width="15%">Jumlah</th></tr></thead>
-            <tbody>
-                @forelse ($rows as $row)
-                    <tr><td style="text-align:center;">{{ $loop->iteration }}.</td><td>{{ $row['description'] ?? '–' }}</td><td style="text-align:center;">{{ $row['quantity'] ?? '–' }}</td></tr>
-                @empty
-                    <tr><td colspan="3" style="text-align:center;">–</td></tr>
-                @endforelse
-            </tbody>
-        </table>
-    @endforeach
+    @include('administration.partials.annual-program-body', [
+        'entries' => $snapshot['entries'],
+        'kwarcab' => $snapshot['gudep_kwarcab'] ?? '',
+        'maleNumber' => $snapshot['gudep_male_number'] ?? '',
+        'femaleNumber' => $snapshot['gudep_female_number'] ?? '',
+        'yearName' => $snapshot['year_name'],
+    ])
 @elseif ($snapshot['kind'] === 'semester')
     <h2 style="font-size:10pt;">Rencana Kegiatan Semester</h2>
     <table style="width:100%;border-collapse:collapse;font-size:8pt;" border="1" cellpadding="4">
