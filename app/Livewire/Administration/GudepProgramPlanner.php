@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Administration;
 
 use App\Models\AcademicYear;
+use App\Models\Activity;
 use App\Models\GudepFormation;
 use App\Models\GudepProgramSheet;
 use App\Models\ScoutGroup;
@@ -25,6 +26,8 @@ class GudepProgramPlanner extends Component
     public ?int $scoutLevelId = null;
 
     public ?int $parentId = null;
+
+    public ?int $activityId = null;
 
     public ?int $editingId = null;
 
@@ -83,7 +86,7 @@ class GudepProgramPlanner extends Component
 
     public function resetDraft(): void
     {
-        $this->reset(['editingId', 'semesterId', 'scoutLevelId', 'parentId', 'scheduledFor', 'notes']);
+        $this->reset(['editingId', 'semesterId', 'scoutLevelId', 'parentId', 'activityId', 'scheduledFor', 'notes']);
         $this->title = '';
         $this->entries = [];
     }
@@ -134,6 +137,7 @@ class GudepProgramPlanner extends Component
         $this->semesterId = $sheet->semester_id;
         $this->scoutLevelId = $sheet->scout_level_id;
         $this->parentId = $sheet->parent_id;
+        $this->activityId = $sheet->activity_id;
         $this->scheduledFor = $sheet->scheduled_for?->format('Y-m-d') ?? '';
         $this->notes = $sheet->notes ?? '';
         $this->entries = $sheet->entries ?? [];
@@ -155,6 +159,9 @@ class GudepProgramPlanner extends Component
             'parentId' => ['nullable', 'integer', Rule::exists('gudep_program_sheets', 'id')
                 ->where('school_id', $this->schoolId())->where('scout_group_id', $gudep->id)
                 ->where('academic_year_id', $year->id)],
+            'activityId' => ['nullable', 'integer', Rule::exists('activities', 'id')
+                ->where('school_id', $this->schoolId())->where('academic_year_id', $year->id)
+                ->whereNull('deleted_at')],
             'scheduledFor' => ['nullable', 'date'],
             'entries' => ['required', 'array', 'min:1', 'max:150'],
         ];
@@ -210,6 +217,24 @@ class GudepProgramPlanner extends Component
         }
 
         if ($this->kind === 'weekly') {
+            if ($this->activityId !== null) {
+                $activity = Activity::query()->where('school_id', $this->schoolId())
+                    ->where('academic_year_id', $year->id)->findOrFail($this->activityId);
+
+                // An activity assigned to another semester must never be linked here.
+                if ($activity->semester_id !== null && (int) $activity->semester_id !== (int) $this->semesterId) {
+                    $this->addError('activityId', 'Kegiatan harus berada pada semester yang dipilih.');
+
+                    return;
+                }
+
+                if ($activity->start_at !== null && $activity->start_at->toDateString() !== $this->scheduledFor) {
+                    $this->addError('activityId', 'Tanggal latihan harus sama dengan tanggal kegiatan yang ditautkan.');
+
+                    return;
+                }
+            }
+
             $semester = Semester::query()->where('school_id', $this->schoolId())
                 ->where('academic_year_id', $year->id)->findOrFail($this->semesterId);
             if ($this->scheduledFor < $semester->start_date->format('Y-m-d')
@@ -247,6 +272,7 @@ class GudepProgramPlanner extends Component
             'semester_id' => $this->kind === 'annual' ? null : $this->semesterId,
             'scout_level_id' => $this->kind === 'annual' ? null : $this->scoutLevelId,
             'parent_id' => $this->kind === 'annual' ? null : $this->parentId,
+            'activity_id' => $this->kind === 'weekly' ? $this->activityId : null,
             'scheduled_for' => $this->kind === 'weekly' ? $this->scheduledFor : null,
             'entries' => $entries,
             'notes' => $this->notes ?: null,
@@ -255,6 +281,7 @@ class GudepProgramPlanner extends Component
             $sheet->created_by = auth()->id();
         }
         $sheet->save();
+        $this->previewId = $sheet->id;
 
         session()->flash('status', 'Program kerja tersimpan.');
         $this->resetDraft();
@@ -314,13 +341,19 @@ class GudepProgramPlanner extends Component
             'semesters' => $year ? Semester::query()->where('school_id', $this->schoolId())
                 ->where('academic_year_id', $year->id)->orderBy('semester_number')->get() : collect(),
             'levels' => $levels,
+            'linkedActivity' => $this->activityId !== null && $year
+                ? Activity::query()->where('school_id', $this->schoolId())
+                    ->where('academic_year_id', $year->id)->find($this->activityId) : null,
+            'activities' => $year
+                ? Activity::query()->where('school_id', $this->schoolId())
+                    ->where('academic_year_id', $year->id)->orderBy('start_at')->get() : collect(),
             'previewSheet' => $this->previewId !== null && $gudep && $year
                 ? GudepProgramSheet::query()->where('school_id', $this->schoolId())
                     ->where('scout_group_id', $gudep->id)->where('academic_year_id', $year->id)
                     ->find($this->previewId) : null,
             'sheets' => $gudep && $year ? GudepProgramSheet::query()->where('school_id', $this->schoolId())
                 ->where('scout_group_id', $gudep->id)->where('academic_year_id', $year->id)
-                ->orderByDesc('id')->get() : collect(),
+                ->with(['activity', 'scoutLevel', 'semester'])->orderByDesc('id')->get() : collect(),
         ]);
     }
 }
