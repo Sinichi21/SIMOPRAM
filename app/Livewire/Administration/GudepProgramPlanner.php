@@ -392,28 +392,36 @@ class GudepProgramPlanner extends Component
         $this->validate($rules);
 
         if ($this->kind === 'annual') {
-            $positions = [];
+            // Subitems are appended to keep Livewire input indices stable. Resolve
+            // parent relationships independently of their positions in the array.
+            $byKey = [];
             foreach ($this->entries as $i => $entry) {
                 $key = (string) ($entry['key'] ?? 'legacy-'.$i);
-                if (isset($positions[$key])) {
+                if (isset($byKey[$key])) {
                     $this->addError('entries', 'Identitas baris program tidak boleh sama.');
 
                     return;
                 }
-                $parent = $entry['parent_key'] ?? null;
-                if ($parent !== null && $parent !== '') {
-                    if (! isset($positions[$parent])
-                        || $positions[$parent]['section'] !== $entry['section']
-                        || $positions[$parent]['depth'] >= 2) {
-                        $this->addError('entries', 'Subdaftar harus mengikuti induk pada bagian yang sama, maksimal tiga tingkat.');
+                $byKey[$key] = $entry;
+            }
+
+            foreach ($this->entries as $i => $entry) {
+                $key = (string) ($entry['key'] ?? 'legacy-'.$i);
+                $ancestor = $entry['parent_key'] ?? null;
+                $seen = [$key => true];
+                $depth = 0;
+                while ($ancestor !== null && $ancestor !== '') {
+                    if (isset($seen[$ancestor]) || ! isset($byKey[$ancestor])
+                        || $byKey[$ancestor]['section'] !== $entry['section'] || ++$depth > 2) {
+                        $this->addError('entries', 'Hierarki subbutir tidak valid: induk harus berada di bagian yang sama, tanpa siklus dan maksimal tiga tingkat.');
 
                         return;
                     }
-                    $depth = $positions[$parent]['depth'] + 1;
-                } else {
-                    $depth = 0;
+
+                    $seen[$ancestor] = true;
+                    $ancestor = $byKey[$ancestor]['parent_key'] ?? null;
                 }
-                $positions[$key] = ['section' => $entry['section'], 'depth' => $depth];
+
                 if ($entry['section'] !== 'keuangan' && ! empty($entry['finance_type'])) {
                     $this->addError('entries', 'Nominal keuangan hanya boleh ditempatkan di bagian F.');
 
