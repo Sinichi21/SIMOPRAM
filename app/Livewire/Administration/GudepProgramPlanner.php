@@ -181,7 +181,7 @@ class GudepProgramPlanner extends Component
         ]]);
     }
 
-    public function useBudgetSuggestion(int $index, string $category): void
+    public function useBudgetSuggestion(int $index, int $suggestionIndex): void
     {
         $this->authorizeManage();
         abort_unless(auth()->user()?->can('gudep.finance.view'), 403);
@@ -190,9 +190,8 @@ class GudepProgramPlanner extends Component
 
         $suggestions = $this->historicalBudgetSuggestions();
         $direction = $this->entries[$index]['finance_type'];
-        $matching = collect($suggestions)->first(fn (array $row): bool => $row['direction'] === $direction
-            && $row['category'] === $category);
-        abort_unless($matching !== null, 422);
+        $matching = $suggestions[$suggestionIndex] ?? null;
+        abort_unless($matching !== null && $matching['direction'] === $direction, 422);
 
         $this->entries[$index]['amount'] = (int) $matching['amount'];
     }
