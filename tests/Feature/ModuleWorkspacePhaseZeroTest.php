@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature;
 
 use App\Models\School;
@@ -7,6 +9,7 @@ use App\Models\SchoolUserMembership;
 use App\Models\User;
 use App\Support\ModuleWorkspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
@@ -58,9 +61,10 @@ class ModuleWorkspacePhaseZeroTest extends TestCase
         $this->assertFalse(ModuleWorkspace::permitted($user, $module));
         $this->assertSame([], ModuleWorkspace::accessibleLinks($user, $module));
     }
+
     public function test_legacy_finance_route_resolves_to_the_finance_workspace(): void
     {
-        $request = \Illuminate\Http\Request::create('/administrasi/keuangan-sarana', 'GET');
+        $request = Request::create('/administrasi/keuangan-sarana', 'GET');
         $route = $this->app['router']->getRoutes()->match($request);
         $request->setRouteResolver(fn () => $route);
 
