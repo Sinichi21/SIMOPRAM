@@ -14,7 +14,7 @@ final class GudepDocumentLetterhead
     public const TYPES = ['mabigus', 'male', 'female'];
 
     /** @return array<string, mixed> */
-    public static function resolve(School $school, ScoutGroup $gudep, string $type): array
+    public static function resolve(School $school, ScoutGroup $gudep, string $type, bool $requireNumber = false): array
     {
         if (! in_array($type, self::TYPES, true)) {
             throw ValidationException::withMessages(['letterheadType' => 'Cakupan kop belum ditentukan.']);
@@ -36,9 +36,11 @@ final class GudepDocumentLetterhead
             ], fn (string $value): bool => $value !== '')),
         };
 
-        if ($number === '') {
+        if ($requireNumber && $number === '') {
             throw ValidationException::withMessages(['letterheadType' => 'Nomor Gudep untuk kop yang dipilih belum tersedia.']);
         }
+
+        $number = $number ?: '–';
 
         $city = mb_strtoupper(trim((string) ($school->city ?: $gudep->kwarcab)));
         $address = trim((string) ($profile?->letterhead_address ?: $gudep->secretariat_address ?: $school->address));
