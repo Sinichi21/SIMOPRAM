@@ -69,9 +69,6 @@
                 <div style="margin-left:23px;text-align:justify;white-space:pre-line;">{{ $item['detail'] }}</div>
             @endif
         </div>
-        @if ($row['depth'] === 0 && $row['index'] > 0)
-            {{-- Totals are displayed in the dedicated summary, never included as editable cash transactions. --}}
-        @endif
     @empty
         <div style="margin-left:20px;">–</div>
     @endforelse
