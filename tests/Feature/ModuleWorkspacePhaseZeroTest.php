@@ -58,6 +58,21 @@ class ModuleWorkspacePhaseZeroTest extends TestCase
         $this->assertFalse(ModuleWorkspace::permitted($user, $module));
         $this->assertSame([], ModuleWorkspace::accessibleLinks($user, $module));
     }
+    public function test_legacy_finance_route_resolves_to_the_finance_workspace(): void
+    {
+        $this->app['router']->getRoutes()->match(
+            \Illuminate\Http\Request::create('/administrasi/keuangan-sarana', 'GET')
+        );
+
+        $request = \Illuminate\Http\Request::create('/administrasi/keuangan-sarana', 'GET');
+        $route = $this->app['router']->getRoutes()->match($request);
+        $request->setRouteResolver(fn () => $route);
+
+        $this->app->instance('request', $request);
+
+        $this->assertSame('keuangan', ModuleWorkspace::activeSlug());
+    }
+
     public function test_finance_is_a_standalone_module_without_administration_duplicate(): void
     {
         $finance = ModuleWorkspace::find('keuangan');
@@ -81,5 +96,4 @@ class ModuleWorkspacePhaseZeroTest extends TestCase
             '/administrasi/keuangan-sarana'
         );
     }
-
 }
