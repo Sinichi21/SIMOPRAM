@@ -143,6 +143,49 @@ class ReportVerificationService
     }
 
     /**
+     * Allocate a distinct version for the official document publisher.
+     * issueDocument() is intentionally left idempotent for legacy callers.
+     *
+     * @param  array<string, mixed>  $metadata
+     */
+    public function issueDocumentVersion(
+        int $schoolId,
+        string $documentType,
+        string $sourceType,
+        int $sourceId,
+        string $snapshotChecksum,
+        int $revision,
+        string $seriesKey = 'general',
+        ?int $replacesId = null,
+        ?string $documentNumber = null,
+        ?string $title = null,
+        array $metadata = [],
+        ?int $issuedBy = null
+    ): ReportVerification {
+        abort_unless((int) app(SchoolContext::class)->id() === $schoolId, 404);
+
+        return ReportVerification::query()->create([
+            'school_id' => $schoolId,
+            'semester_closure_id' => null,
+            'source_type' => $sourceType,
+            'source_id' => $sourceId,
+            'code' => $this->generateUniqueCode(),
+            'document_type' => $documentType,
+            'document_number' => $documentNumber,
+            'title' => $title,
+            'snapshot_checksum' => $snapshotChecksum,
+            'metadata' => $metadata,
+            'revision' => $revision,
+            'series_key' => $seriesKey,
+            'replaces_id' => $replacesId,
+            'file_disk' => 'local',
+            'issued_by' => $issuedBy,
+            'issued_at' => now(),
+            'verification_count' => 0,
+        ]);
+    }
+
+    /**
      * Terbitkan satu export laporan sebagai dokumen resmi baru.
      *
      * Berbeda dari issueDocument(), method ini sengaja selalu membuat record
@@ -735,11 +778,11 @@ class ReportVerificationService
             );
 
         if (
-            ! hash_equals(
+            hash_equals(
                 (string) $verification
                     ->file_sha256,
                 $actualHash
-            )
+            ) === false
         ) {
             throw ValidationException::withMessages([
                 'document' => 'Integritas arsip PDF tidak valid. '

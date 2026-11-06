@@ -98,15 +98,15 @@
                                 3. Verifikasi Data Siswa
                             </div>
                             <div class="mt-1 text-sm text-zinc-500">
-                                Masukkan NIS atau NISN yang sudah tercatat pada data siswa sekolah.
+                                Masukkan NTA Pramuka, atau gunakan NIS/NISN jika NTA belum tersedia.
                             </div>
                         </div>
 
                         <div class="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
                             <flux:input
                                 wire:model="student_identifier"
-                                label="NIS / NISN"
-                                placeholder="Contoh: 2101 atau 3149600001"
+                                label="NTA / NIS / NISN"
+                                placeholder="Masukkan NTA, NIS, atau NISN"
                                 autocomplete="off"
                                 required
                             />
@@ -166,7 +166,7 @@
                             </div>
                         @elseif ($student_identifier !== '')
                             <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-                                Data belum ditemukan. Periksa NIS/NISN atau hubungi admin sekolah jika data siswa belum diimpor.
+                                Data belum ditemukan. Periksa NTA/NIS/NISN atau hubungi admin sekolah jika data siswa belum diimpor.
                             </div>
                         @endif
                     @elseif ($role === 'coach')

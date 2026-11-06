@@ -71,6 +71,14 @@ class DocumentApprovalService
                 $document->approval_completed_at = now();
             }
             $document->save();
+
+            if ($document->pendingSignatoryIds() === [] && $document->replaces_id) {
+                ReportVerification::query()
+                    ->where('school_id', $schoolId)
+                    ->whereKey($document->replaces_id)
+                    ->whereNull('superseded_by_id')
+                    ->update(['superseded_by_id' => $document->id]);
+            }
         });
     }
 }

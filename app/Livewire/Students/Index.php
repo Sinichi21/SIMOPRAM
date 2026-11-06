@@ -35,6 +35,8 @@ class Index extends Component
 
     public ?int $editingId = null;
 
+    public string $nta = '';
+
     public string $nis = '';
 
     public string $nisn = '';
@@ -183,6 +185,7 @@ class Index extends Component
 
             fwrite($output, "\xEF\xBB\xBF");
             fputcsv($output, [
+                'nta',
                 'nis',
                 'nisn',
                 'nama',
@@ -199,6 +202,7 @@ class Index extends Component
                 'golongan',
             ]);
             fputcsv($output, [
+                'NTA-CONTOH-001',
                 '2026001',
                 '0012345678',
                 'Budi Santoso',
@@ -247,6 +251,15 @@ class Index extends Component
         $schoolId = $this->schoolId();
 
         return [
+            'nta' => [
+                'nullable',
+                'string',
+                'max:100',
+                Rule::unique('students', 'nta')
+                    ->where('school_id', $schoolId)
+                    ->ignore($this->editingId),
+            ],
+
             'nis' => [
                 'required',
                 'string',
@@ -440,6 +453,8 @@ class Index extends Component
         */
 
         $studentData = [
+            'nta' => filled($validated['nta']) ? trim($validated['nta']) : null,
+
             'nis' => trim(
                 $validated['nis']
             ),
@@ -790,6 +805,8 @@ class Index extends Component
         $this->editingId =
             $student->id;
 
+        $this->nta = $student->nta ?? '';
+
         $this->nis =
             $student->nis ?? '';
 
@@ -945,6 +962,7 @@ class Index extends Component
 
         $this->reset([
             'editingId',
+            'nta',
             'nis',
             'nisn',
             'name',
@@ -1079,6 +1097,11 @@ class Index extends Component
                                 $query
                                     ->where(
                                         'name',
+                                        'like',
+                                        $search
+                                    )
+                                    ->orWhere(
+                                        'nta',
                                         'like',
                                         $search
                                     )

@@ -17,8 +17,13 @@ final class ModuleWorkspace
                 'title' => 'Administrasi Gudep',
                 'description' => 'Profil Gudep, persuratan, arsip, dan dokumen terbit.',
                 'icon' => 'folder-open',
-                'permissions' => ['gudep.view', 'letters.view', 'report_verifications.view'],
+                'permissions' => ['gudep.view', 'gudep.finance.view', 'letters.view', 'report_verifications.view'],
                 'links' => [
+                    ['label' => 'Portofolio Akreditasi', 'route' => 'administration.accreditation', 'permission' => 'gudep.view'],
+                    ['label' => 'Keuangan & Sarana', 'route' => 'administration.finance', 'permission' => 'gudep.finance.view'],
+                    ['label' => 'Buku Operasional', 'route' => 'administration.operations', 'permission' => 'gudep.view'],
+                    ['label' => 'Program & Pembinaan', 'route' => 'administration.development', 'permission' => 'gudep.view'],
+                    ['label' => 'Organisasi & Buku Induk', 'route' => 'administration.organization', 'permission' => 'gudep.view'],
                     ['label' => 'Gugusdepan', 'route' => 'scout-groups.index', 'permission' => 'gudep.view'],
                     ['label' => 'Surat masuk', 'route' => 'letters.incoming', 'permission' => 'letters.view'],
                     ['label' => 'Surat keluar', 'route' => 'letters.outgoing', 'permission' => 'letters.view'],
@@ -66,7 +71,7 @@ final class ModuleWorkspace
         }
 
         $routes = [
-            'administrasi' => ['scout-groups.*', 'letters.*', 'reports.published-documents.*'],
+            'administrasi' => ['administration.*', 'scout-groups.*', 'letters.*', 'reports.published-documents.*'],
             'inventaris' => ['inventory.*'],
             'kegiatan' => ['activities.*', 'journals.*'],
             'keanggotaan' => ['students.*', 'coaches.*', 'scout-units.*'],

@@ -15,6 +15,10 @@ class ReportVerification extends Model
         'source_type',
         'code',
         'document_type',
+        'revision',
+        'series_key',
+        'replaces_id',
+        'superseded_by_id',
         'document_number',
         'title',
         'snapshot_checksum',
@@ -42,6 +46,7 @@ class ReportVerification extends Model
             'required_signatory_ids' => 'array',
             'signatory_approvals' => 'array',
             'approval_completed_at' => 'datetime',
+            'revision' => 'integer',
             'file_size' => 'integer',
             'archived_at' => 'datetime',
             'issued_at' => 'datetime',
@@ -54,6 +59,16 @@ class ReportVerification extends Model
     public function school(): BelongsTo
     {
         return $this->belongsTo(School::class);
+    }
+
+    public function replaces(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'replaces_id');
+    }
+
+    public function supersededBy(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'superseded_by_id');
     }
 
     public function closure(): BelongsTo
@@ -93,7 +108,7 @@ class ReportVerification extends Model
             return 'revoked';
         }
 
-        if ($this->closure && $this->closure->isReopened()) {
+        if ($this->superseded_by_id !== null || ($this->closure && $this->closure->isReopened())) {
             return 'superseded';
         }
 
