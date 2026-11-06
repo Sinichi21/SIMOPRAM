@@ -112,9 +112,10 @@ class GudepProgramPlanner extends Component
     public function preview(int $id): void
     {
         $this->authorizeView();
-        GudepProgramSheet::query()->where('school_id', $this->schoolId())
+        $sheet = GudepProgramSheet::query()->where('school_id', $this->schoolId())
             ->where('scout_group_id', $this->selectedGudep()->id)
-            ->where('academic_year_id', $this->selectedYear()->id)->findOrFail($id);
+            ->where('academic_year_id', $this->selectedYear()->id)->find($id);
+        abort_unless($sheet !== null, 404);
         $this->previewId = $id;
     }
 
@@ -123,7 +124,9 @@ class GudepProgramPlanner extends Component
         $this->authorizeManage();
         $sheet = GudepProgramSheet::query()->where('school_id', $this->schoolId())
             ->where('scout_group_id', $this->selectedGudep()->id)
-            ->where('academic_year_id', $this->selectedYear()->id)->findOrFail($id);
+            ->where('academic_year_id', $this->selectedYear()->id)->find($id);
+
+        abort_unless($sheet !== null, 404);
 
         $this->kind = $sheet->kind;
         $this->editingId = $sheet->id;
