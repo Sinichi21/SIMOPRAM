@@ -67,20 +67,13 @@
         </table>
 
         @if ($program->kind === 'annual')
-            @foreach ($sections as $key => $heading)
-                @php $rows = collect($program->entries ?? [])->where('section', $key)->values(); @endphp
-                <h2>{{ $heading }}</h2>
-                <table class="rows">
-                    <thead><tr><th style="width:40px">No.</th><th>Uraian Program / Kegiatan</th><th style="width:85px">Jumlah</th></tr></thead>
-                    <tbody>
-                        @forelse ($rows as $row)
-                            <tr><td class="number">{{ $loop->iteration }}.</td><td>{{ $row['description'] ?? '–' }}</td><td class="center">{{ $row['quantity'] ?? '–' }}</td></tr>
-                        @empty
-                            <tr><td colspan="3" class="center muted">–</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            @endforeach
+            @include('administration.partials.annual-program-body', [
+                'entries' => $program->entries ?? [],
+                'kwarcab' => $gudep->kwarcab,
+                'maleNumber' => $gudep->male_number,
+                'femaleNumber' => $gudep->female_number,
+                'yearName' => $year->name,
+            ])
         @elseif ($program->kind === 'semester')
             <h2>Rencana Kegiatan dalam Enam Bulan</h2>
             <table class="rows">
