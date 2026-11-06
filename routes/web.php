@@ -29,6 +29,7 @@ use App\Http\Controllers\SchoolRegistrationController;
 use App\Http\Controllers\SchoolSwitchController;
 use App\Http\Controllers\StudentDocumentController;
 use App\Http\Middleware\SetGlobalContentContext;
+use App\Livewire\Administration\GudepAccreditationPortfolio;
 use App\Livewire\Administration\GudepDevelopment;
 use App\Livewire\Administration\GudepFinance;
 use App\Livewire\Administration\GudepOperations;
@@ -254,6 +255,10 @@ Route::middleware([
             ->whereNumber('evidence')
             ->middleware(['can:gudep.finance.view', 'throttle:30,1'])
             ->name('administration.finance.evidence.download');
+
+        Route::get('/administrasi/akreditasi', GudepAccreditationPortfolio::class)
+            ->middleware('can:gudep.view')
+            ->name('administration.accreditation');
 
         Route::get('/administrasi/keuangan-sarana', GudepFinance::class)
             ->middleware('can:gudep.finance.view')
