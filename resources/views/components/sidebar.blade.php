@@ -491,65 +491,7 @@
             </flux:sidebar.nav>
 
 
-            {{-- =====================================================
-            KEGIATAN
-            ====================================================== --}}
-
-            @can('attendance_sessions.view')
-
-                <flux:sidebar.nav
-                    data-school-menu
-                    @class([
-                        'opacity-60 [&_*]:cursor-not-allowed'
-                            => ! $hasActiveSchool,
-                    ])
-                >
-
-                    <flux:sidebar.group
-                        heading="Kegiatan"
-                        expandable
-                        :expanded="
-                            request()->routeIs(
-                                'activities.*',
-                                'attendances.*',
-                                'journals.*'
-                            )
-                        "
-                        class="grid"
-                    >
-
-                        
-
-
-                        @can('attendance_sessions.view')
-
-                            <flux:sidebar.item
-                                icon="clipboard-document-check"
-                                :href="route(
-                                    'attendances.index'
-                                )"
-                                :current="
-                                    request()->routeIs(
-                                        'attendances.index',
-                                        'attendances.manage'
-                                    )
-                                "
-                                wire:navigate
-                            >
-                                Absensi
-                            </flux:sidebar.item>
-
-                        @endcan
-
-
-                        
-
-                    </flux:sidebar.group>
-
-                </flux:sidebar.nav>
-
-            @endcan
-
+            {{-- Kegiatan, absensi, jurnal, dan pengumuman berada di Modul Kegiatan & Pembinaan. --}}
 
             {{-- =====================================================
             PENILAIAN
@@ -972,63 +914,7 @@
                 </div>
             @endif
 
-            {{-- =================================================
-            KEGIATAN
-            Alur kerja harian ditempatkan paling atas setelah sekolah aktif.
-            ================================================== --}}
-
-            @canany(['attendance_sessions.view', 'announcements.view'])
-                <flux:sidebar.nav
-                    data-school-menu
-                    @class([
-                        'opacity-60 [&_*]:cursor-not-allowed' => ! $hasActiveSchool,
-                    ])
-                >
-                    <flux:sidebar.group
-                        heading="Kegiatan"
-                        expandable
-                        :expanded="request()->routeIs(
-                            'activities.*',
-                            'attendances.index',
-                            'journals.*',
-                            'announcements.index',
-                            'announcements.create',
-                            'announcements.edit'
-                        )"
-                        class="grid"
-                    >
-                        
-
-                        @can('attendance_sessions.view')
-                            <flux:sidebar.item
-                                icon="clipboard-document-check"
-                                :href="route('attendances.index')"
-                                :current="request()->routeIs('attendances.index')"
-                                wire:navigate
-                            >
-                                Absensi
-                            </flux:sidebar.item>
-                        @endcan
-
-                        
-
-                        @can('announcements.view')
-                            <flux:sidebar.item
-                                icon="megaphone"
-                                :href="route('announcements.index')"
-                                :current="request()->routeIs(
-                                    'announcements.index',
-                                    'announcements.create',
-                                    'announcements.edit'
-                                )"
-                                wire:navigate
-                            >
-                                Pengumuman
-                            </flux:sidebar.item>
-                        @endcan
-                    </flux:sidebar.group>
-                </flux:sidebar.nav>
-            @endcanany
+            {{-- Kegiatan, absensi, jurnal, dan pengumuman berada di Modul Kegiatan & Pembinaan. --}}
 
             {{-- =================================================
             PENILAIAN
