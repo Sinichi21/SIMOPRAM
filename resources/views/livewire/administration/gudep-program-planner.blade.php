@@ -194,13 +194,76 @@
                                 <td class="p-2 font-medium">{{ $sheet->title }} <span class="block text-xs font-normal text-zinc-500">{{ $sheet->scheduled_for?->format('d/m/Y') ?? '–' }}</span></td>
                                 <td class="p-2">{{ $levels->firstWhere('id', $sheet->scout_level_id)?->name ?? 'Seluruh Gudep / –' }}</td>
                                 <td class="p-2">{{ count($sheet->entries ?? []) }}</td>
-                                <td class="p-2">@if (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.development.manage'))<button type="button" wire:click="edit({{ $sheet->id }})" class="text-emerald-700 underline dark:text-emerald-300">Buka/Edit</button>@endif</td>
+                                <td class="p-2">
+                                    <button type="button" wire:click="preview({{ $sheet->id }})" class="text-emerald-700 underline dark:text-emerald-300">Lihat</button>
+                                    @if (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.development.manage'))
+                                        <button type="button" wire:click="edit({{ $sheet->id }})" class="ml-2 text-emerald-700 underline dark:text-emerald-300">Edit</button>
+                                    @endif
+                                </td>
                             </tr>
                         @empty
                             <tr><td colspan="5" class="p-4 text-center text-zinc-500">Belum ada program kerja.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
+            @if ($previewSheet)
+                <div class="mt-5 space-y-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700" aria-label="Pratinjau dokumen program">
+                    <div class="border-b border-zinc-200 pb-3 text-center dark:border-zinc-700">
+                        <p class="text-xs font-semibold uppercase tracking-wide">GERAKAN PRAMUKA</p>
+                        <h3 class="mt-1 text-lg font-bold uppercase">{{ $previewSheet->title }}</h3>
+                        <p class="text-sm">{{ $gudep->name }} · {{ $year->name }}</p>
+                        <p class="text-xs text-zinc-500">{{ $previewSheet->scheduled_for?->format('d/m/Y') ?? '–' }}</p>
+                    </div>
+                    @if ($previewSheet->kind === 'annual')
+                        @foreach (\App\Livewire\Administration\GudepProgramPlanner::annualSections() as $section => $heading)
+                            @php $rows = collect($previewSheet->entries)->filter(fn ($entry) => ($entry['section'] ?? '') === $section)->values(); @endphp
+                            <div>
+                                <p class="text-sm font-semibold">{{ $heading }}</p>
+                                @if ($rows->isEmpty())
+                                    <p class="pl-4 text-xs text-zinc-500">–</p>
+                                @else
+                                    <ol class="list-decimal space-y-1 pl-7 text-sm">
+                                        @foreach ($rows as $entry)
+                                            <li>{{ $entry['description'] }} <span class="text-zinc-500">({{ $entry['quantity'] ?? '–' }})</span></li>
+                                        @endforeach
+                                    </ol>
+                                @endif
+                            </div>
+                        @endforeach
+                    @else
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full text-left text-xs">
+                                <thead><tr class="border-b">
+                                    <th class="p-2">No.</th><th class="p-2">Kegiatan</th>
+                                    @if ($previewSheet->kind === 'semester')
+                                        @for ($month = 1; $month <= 6; $month++)<th class="p-2">{{ $month }}</th>@endfor
+                                        <th class="p-2">Jumlah</th>
+                                    @else
+                                        <th class="p-2">SKU</th><th class="p-2">SKK</th>
+                                    @endif
+                                    <th class="p-2">Ket.</th>
+                                </tr></thead>
+                                <tbody>
+                                    @foreach ($previewSheet->entries as $entry)
+                                        <tr class="border-b border-zinc-100 dark:border-zinc-800">
+                                            <td class="p-2">{{ $loop->iteration }}.</td>
+                                            <td class="p-2">{{ $entry['description'] }}</td>
+                                            @if ($previewSheet->kind === 'semester')
+                                                @foreach ($entry['months'] as $checked)<td class="p-2">{{ $checked ? '✓' : '–' }}</td>@endforeach
+                                                <td class="p-2">{{ $entry['participants'] ?? '–' }}</td>
+                                            @else
+                                                <td class="p-2">{{ $entry['sku'] ?: '–' }}</td>
+                                                <td class="p-2">{{ $entry['skk'] ?: '–' }}</td>
+                                            @endif
+                                            <td class="p-2">{{ $entry['notes'] ?: '–' }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </div>
+            @endif
             </div>
         </section>
     @endif
