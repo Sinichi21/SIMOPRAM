@@ -2,15 +2,15 @@
     {{-- Heading --}}
     <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div class="space-y-1">
-            <p class="text-xs font-semibold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">Administrasi Gugusdepan</p>
-            <h1 class="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-3xl">Keuangan & Sarana</h1>
+            <p class="text-xs font-semibold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">Modul Keuangan</p>
+            <h1 class="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-3xl">Dashboard & Buku Kas Gudep</h1>
             <p class="max-w-2xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
                 Kelola anggaran dan buku kas Gudep. Aset, stok, dan peminjaman tetap bersumber dari Inventaris SIMPRAM.
             </p>
         </div>
-        <a href="{{ route('modules.show', 'administrasi') }}" wire:navigate
+        <a href="{{ route('modules.show', 'keuangan') }}" wire:navigate
             class="inline-flex shrink-0 items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800">
-            Kembali ke Administrasi
+            Kembali ke Modul Keuangan
         </a>
     </header>
 
