@@ -112,37 +112,58 @@ final class GudepAnnualProgram
             if (($entry['section'] ?? null) !== $section) {
                 continue;
             }
+
             $items[] = [
-                'index' => $index, 'entry' => $entry,
+                'index' => $index,
+                'entry' => $entry,
                 'key' => (string) ($entry['key'] ?? 'legacy-'.$index),
             ];
         }
 
         $lookup = array_column($items, null, 'key');
-        $counts = [];
-        $result = [];
+        $children = [];
         foreach ($items as $item) {
-            $parentKey = $item['entry']['parent_key'] ?? null;
-            $parent = $parentKey && isset($lookup[$parentKey]) ? $lookup[$parentKey] : null;
-            $depth = 0;
-            if ($parent !== null) {
-                $depth = isset($lookup[$parent['entry']['parent_key'] ?? '']) ? 2 : 1;
+            $parent = (string) ($item['entry']['parent_key'] ?? '');
+            if ($parent === '' || ! isset($lookup[$parent]) || $parent === $item['key']) {
+                $parent = '';
             }
+            $children[$parent][] = $item;
+        }
 
-            $group = $depth === 0 ? 'root' : (string) $parentKey;
-            $counts[$group] = ($counts[$group] ?? 0) + 1;
-            $position = $counts[$group];
-            $marker = match (true) {
-                $depth === 0 && $section === 'sarana' => $position.')',
-                $depth === 0 && $section === 'keuangan' => $position.'.',
-                $depth === 0 && in_array($section, ['siaga', 'penggalang', 'penegak', 'pandega'], true) => chr(96 + min($position, 26)).'.',
-                $depth === 0 => $position.'.',
-                $depth === 1 && $section === 'keuangan' => chr(96 + min($position, 26)).'.',
-                $depth === 1 => $position.')',
-                default => $position.')',
-            };
+        $result = [];
+        $seen = [];
+        $visit = function (string $parent, int $depth) use (&$visit, &$result, &$seen, $children, $section): void {
+            foreach ($children[$parent] ?? [] as $position => $item) {
+                if (isset($seen[$item['key']])) {
+                    continue;
+                }
+                $seen[$item['key']] = true;
+                $number = $position + 1;
+                $marker = match (true) {
+                    $depth === 0 && $section === 'sarana' => $number.')',
+                    $depth === 0 && $section === 'keuangan' => $number.'.',
+                    $depth === 0 && in_array($section, ['siaga', 'penggalang', 'penegak', 'pandega'], true) => chr(96 + min($number, 26)).'.',
+                    $depth === 0 => $number.'.',
+                    $depth === 1 && $section === 'keuangan' => chr(96 + min($number, 26)).'.',
+                    $depth === 1 => $number.')',
+                    default => $number.')',
+                };
 
-            $result[] = $item + ['depth' => $depth, 'marker' => $marker];
+                $result[] = $item + ['depth' => $depth, 'marker' => $marker];
+                // Display children directly under their parent, but keep the
+                // original model index so editing never changes another row.
+                if ($depth < 2) {
+                    $visit($item['key'], $depth + 1);
+                }
+            }
+        };
+        $visit('', 0);
+
+        // Legacy malformed/orphan items remain visible rather than disappearing.
+        foreach ($items as $item) {
+            if (! isset($seen[$item['key']])) {
+                $result[] = $item + ['depth' => 0, 'marker' => (count($result) + 1).'.'];
+            }
         }
 
         return $result;
