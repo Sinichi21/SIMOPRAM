@@ -89,12 +89,14 @@ final class GudepAnnualProgram
             }
         }
 
-        $append('keuangan', 'Iuran anggota', null, null, 'income');
-        $append('keuangan', 'Sumbangan Mabigus', null, null, 'income');
+        $incomeParent = $append('keuangan', 'Rencana Pemasukan');
+        $append('keuangan', 'Iuran anggota', $incomeParent, null, 'income');
+        $append('keuangan', 'Sumbangan Mabigus', $incomeParent, null, 'income');
+        $expenseParent = $append('keuangan', 'Rencana Pengeluaran');
         foreach (['Biaya kegiatan Perindukan Siaga', 'Biaya kegiatan Penggalang', 'Biaya kegiatan Penegak', 'Biaya kegiatan Pandega', 'Biaya kegiatan Gugusdepan'] as $item) {
-            $append('keuangan', $item, null, null, 'expense');
+            $append('keuangan', $item, $expenseParent, null, 'expense');
         }
-        $append('keuangan', 'Usaha Dana', null, 'Sumber usaha dana (jelaskan).', 'fundraising');
+        $append('keuangan', 'Usaha Dana', null, 'Kekurangan rencana biaya diupayakan melalui usaha dana. Sumber usaha dana (jelaskan).', 'fundraising');
 
         return $entries;
     }
@@ -109,33 +111,36 @@ final class GudepAnnualProgram
             if (($entry['section'] ?? null) !== $section) {
                 continue;
             }
-            $items[] = ['index' => $index, 'entry' => $entry, 'key' => (string) ($entry['key'] ?? 'legacy-'.$index)];
+            $items[] = [
+                'index' => $index, 'entry' => $entry,
+                'key' => (string) ($entry['key'] ?? 'legacy-'.$index),
+            ];
         }
 
-        $byKey = array_column($items, null, 'key');
-        $position = [];
+        $lookup = array_column($items, null, 'key');
+        $counts = [];
         $result = [];
         foreach ($items as $item) {
-            $parent = $item['entry']['parent_key'] ?? null;
-            $rootParent = $parent && isset($byKey[$parent]) ? $parent : null;
+            $parentKey = $item['entry']['parent_key'] ?? null;
+            $parent = $parentKey && isset($lookup[$parentKey]) ? $lookup[$parentKey] : null;
             $depth = 0;
-            if ($rootParent !== null) {
-                $depth = 1;
-                $ancestor = $byKey[$rootParent]['entry']['parent_key'] ?? null;
-                if ($ancestor && isset($byKey[$ancestor]) && $ancestor !== $item['key']) {
-                    $depth = 2;
-                }
+            if ($parent !== null) {
+                $depth = isset($lookup[$parent['entry']['parent_key'] ?? '']) ? 2 : 1;
             }
-            $group = $depth === 0 ? 'root' : $rootParent;
-            $position[$group] = ($position[$group] ?? 0) + 1;
-            $n = $position[$group];
+
+            $group = $depth === 0 ? 'root' : (string) $parentKey;
+            $counts[$group] = ($counts[$group] ?? 0) + 1;
+            $position = $counts[$group];
             $marker = match (true) {
-                $depth === 0 && in_array($section, ['siaga', 'penggalang', 'penegak', 'pandega', 'keuangan'], true) => chr(96 + min($n, 26)).'.',
-                $depth === 0 && $section === 'sarana' => $n.')',
-                $depth === 0 => $n.'.',
-                $depth === 1 => $n.')',
-                default => chr(96 + min($n, 26)).'.',
+                $depth === 0 && $section === 'sarana' => $position.')',
+                $depth === 0 && $section === 'keuangan' => $position.'.',
+                $depth === 0 && in_array($section, ['siaga', 'penggalang', 'penegak', 'pandega'], true) => chr(96 + min($position, 26)).'.',
+                $depth === 0 => $position.'.',
+                $depth === 1 && $section === 'keuangan' => chr(96 + min($position, 26)).'.',
+                $depth === 1 => $position.')',
+                default => $position.')',
             };
+
             $result[] = $item + ['depth' => $depth, 'marker' => $marker];
         }
 
