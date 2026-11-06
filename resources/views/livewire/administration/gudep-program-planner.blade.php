@@ -201,32 +201,32 @@
                                 <div class="mt-3 space-y-3">
                                     @forelse ($rows as $row)
                                         @php $index = $row['index']; $item = $row['entry']; $depth = $row['depth']; @endphp
-                                        <div wire:key="annual-row-{{ $item['key'] ?? $index }}" class="rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-800/50" style="margin-left:{{ $depth * 20 }}px">
+                                        <div wire:key="annual-row-{{ $section }}-{{ $item['key'] ?? $index }}" class="rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-800/50" style="margin-left:{{ $depth * 20 }}px">
                                             <div class="flex items-start gap-2">
                                                 <span class="w-7 shrink-0 pt-2 text-sm font-semibold">{{ $row['marker'] }}</span>
                                                 <div class="min-w-0 flex-1 space-y-2">
-                                                    <input wire:model="entries.{{ $index }}.description" maxlength="500" placeholder="Uraian butir program" class="w-full rounded-lg border border-zinc-300 p-2 text-sm dark:bg-zinc-800" aria-label="Butir {{ $row['marker'] }} {{ $heading }}">
+                                                    <input wire:key="annual-description-{{ $item['key'] ?? $index }}" wire:model="entries.{{ $index }}.description" maxlength="500" placeholder="Uraian butir program" class="w-full rounded-lg border border-zinc-300 p-2 text-sm dark:bg-zinc-800" aria-label="Butir {{ $row['marker'] }} {{ $heading }}">
                                                     @error('entries.'.$index.'.description')<p class="text-xs text-red-600">{{ $message }}</p>@enderror
-                                                    <textarea wire:model="entries.{{ $index }}.detail" maxlength="1500" rows="2" placeholder="Deskripsi / pengantar subdaftar (opsional), misalnya: Berusaha untuk pencapaian SKK 10 macam meliputi..." class="w-full rounded-lg border border-zinc-300 p-2 text-sm dark:bg-zinc-800"></textarea>
+                                                    <textarea wire:key="annual-detail-{{ $item['key'] ?? $index }}" wire:model="entries.{{ $index }}.detail" maxlength="1500" rows="2" placeholder="Deskripsi / pengantar subdaftar (opsional), misalnya: Berusaha untuk pencapaian SKK 10 macam meliputi..." class="w-full rounded-lg border border-zinc-300 p-2 text-sm dark:bg-zinc-800"></textarea>
                                                     <div class="flex flex-wrap items-end gap-2">
                                                         @if ($section !== 'keuangan')
                                                             <label class="text-xs text-zinc-600 dark:text-zinc-300">Jumlah kegiatan
-                                                                <input type="number" min="0" wire:model="entries.{{ $index }}.quantity" placeholder="–" class="mt-1 block w-24 rounded-lg border border-zinc-300 p-2 text-sm dark:bg-zinc-800">
+                                                                <input type="number" min="0" wire:key="annual-quantity-{{ $item['key'] ?? $index }}" wire:model="entries.{{ $index }}.quantity" placeholder="–" class="mt-1 block w-24 rounded-lg border border-zinc-300 p-2 text-sm dark:bg-zinc-800">
                                                             </label>
                                                             <label class="text-xs text-zinc-600 dark:text-zinc-300">Satuan
-                                                                <select wire:model="entries.{{ $index }}.unit" class="mt-1 block rounded-lg border border-zinc-300 p-2 text-sm dark:bg-zinc-800">
+                                                                <select wire:key="annual-unit-{{ $item['key'] ?? $index }}" wire:model="entries.{{ $index }}.unit" class="mt-1 block rounded-lg border border-zinc-300 p-2 text-sm dark:bg-zinc-800">
                                                                     <option value="kali">kali</option><option value="buah">buah</option><option value="orang">orang</option><option value="paket">paket</option>
                                                                 </select>
                                                             </label>
                                                         @else
                                                             <label class="text-xs text-zinc-600 dark:text-zinc-300">Jenis rencana
-                                                                <select wire:model.live="entries.{{ $index }}.finance_type" class="mt-1 block rounded-lg border border-zinc-300 p-2 text-sm dark:bg-zinc-800">
+                                                                <select wire:key="annual-finance-type-{{ $item['key'] ?? $index }}" wire:model.live="entries.{{ $index }}.finance_type" class="mt-1 block rounded-lg border border-zinc-300 p-2 text-sm dark:bg-zinc-800">
                                                                     <option value="">Judul / uraian</option><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option><option value="fundraising">Usaha Dana</option>
                                                                 </select>
                                                             </label>
                                                             @if (in_array($item['finance_type'] ?? '', ['income','expense'], true))
                                                                 <label class="text-xs text-zinc-600 dark:text-zinc-300">Nilai (Rp)
-                                                                    <input type="number" min="0" step="1" wire:model="entries.{{ $index }}.amount" placeholder="–" class="mt-1 block w-44 rounded-lg border border-zinc-300 p-2 text-sm dark:bg-zinc-800">
+                                                                    <input type="number" min="0" step="1" wire:key="annual-amount-{{ $item['key'] ?? $index }}" wire:model="entries.{{ $index }}.amount" placeholder="–" class="mt-1 block w-44 rounded-lg border border-zinc-300 p-2 text-sm dark:bg-zinc-800">
                                                                 </label>
                                                                 <span class="rounded-md bg-zinc-200 px-2 py-2 text-xs dark:bg-zinc-700">IDR · Rupiah</span>
                                                                 @if ($historicalSuggestions !== [])
