@@ -28,6 +28,8 @@ class GudepProgramPlanner extends Component
 
     public ?int $editingId = null;
 
+    public ?int $previewId = null;
+
     public string $kind = 'annual';
 
     public string $title = '';
@@ -105,6 +107,15 @@ class GudepProgramPlanner extends Component
             return;
         }
         array_splice($this->entries, $index, 1);
+    }
+
+    public function preview(int $id): void
+    {
+        $this->authorizeView();
+        GudepProgramSheet::query()->where('school_id', $this->schoolId())
+            ->where('scout_group_id', $this->selectedGudep()->id)
+            ->where('academic_year_id', $this->selectedYear()->id)->findOrFail($id);
+        $this->previewId = $id;
     }
 
     public function edit(int $id): void
@@ -185,8 +196,22 @@ class GudepProgramPlanner extends Component
                 ->findOrFail($this->parentId);
             $expectedKind = $this->kind === 'semester' ? 'annual' : 'semester';
             if ($parent->kind !== $expectedKind || $parent->id === $this->editingId
-                || ($this->kind === 'weekly' && $parent->semester_id !== $this->semesterId)) {
+                || ($this->kind === 'weekly' && (
+                    $parent->semester_id !== $this->semesterId
+                    || $parent->scout_level_id !== $this->scoutLevelId
+                ))) {
                 $this->addError('parentId', 'Program induk tidak sesuai jenjang atau semester.');
+
+                return;
+            }
+        }
+
+        if ($this->kind === 'weekly') {
+            $semester = Semester::query()->where('school_id', $this->schoolId())
+                ->where('academic_year_id', $year->id)->findOrFail($this->semesterId);
+            if ($this->scheduledFor < $semester->start_date->format('Y-m-d')
+                || $this->scheduledFor > $semester->end_date->format('Y-m-d')) {
+                $this->addError('scheduledFor', 'Tanggal latihan harus berada dalam semester terpilih.');
 
                 return;
             }
@@ -286,6 +311,10 @@ class GudepProgramPlanner extends Component
             'semesters' => $year ? Semester::query()->where('school_id', $this->schoolId())
                 ->where('academic_year_id', $year->id)->orderBy('semester_number')->get() : collect(),
             'levels' => $levels,
+            'previewSheet' => $this->previewId !== null && $gudep && $year
+                ? GudepProgramSheet::query()->where('school_id', $this->schoolId())
+                    ->where('scout_group_id', $gudep->id)->where('academic_year_id', $year->id)
+                    ->find($this->previewId) : null,
             'sheets' => $gudep && $year ? GudepProgramSheet::query()->where('school_id', $this->schoolId())
                 ->where('scout_group_id', $gudep->id)->where('academic_year_id', $year->id)
                 ->orderByDesc('id')->get() : collect(),
