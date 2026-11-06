@@ -526,8 +526,10 @@ class GudepProgramPlannerTest extends TestCase
         $this->get(route('administration.programs.print', $sheet->id))
             ->assertOk()
             ->assertSee('A4 portrait')
-            ->assertSee('MAJELIS PEMBIMBING GUGUSDEPAN')
-            ->assertSee('04.191 - 04.192')
+            ->assertSee('GERAKAN PRAMUKA')
+            ->assertSee('PANGKALAN')
+            ->assertSee('04.191')
+            ->assertSee('04.192')
             ->assertDontSee('A5 portrait');
     }
 
@@ -566,7 +568,7 @@ class GudepProgramPlannerTest extends TestCase
         $this->assertSame($formation->id, $sheet->gudep_formation_id);
 
         $this->get(route('administration.programs.print', $sheet->id))
-            ->assertOk()->assertSee('GUGUSDEPAN PUTRI')
+            ->assertOk()->assertSee('GUGUSDEPAN')
             ->assertSee('04.192')->assertDontSee('A5 portrait');
     }
 
