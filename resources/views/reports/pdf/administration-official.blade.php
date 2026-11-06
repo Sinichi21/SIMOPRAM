@@ -10,6 +10,9 @@
 </head>
 <body>
     @include('reports.pdf.partials.verification-footer')
+    @if ($gudepLetterhead ?? null)
+        @include('administration.partials.gudep-document-letterhead', ['letterhead' => $gudepLetterhead])
+    @endif
     @include($contentView, $contentData)
 </body>
 </html>
