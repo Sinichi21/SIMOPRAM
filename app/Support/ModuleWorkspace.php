@@ -79,8 +79,9 @@ final class ModuleWorkspace
         }
 
         $routes = [
-            'administrasi' => ['administration.*', 'scout-groups.*', 'letters.*', 'reports.published-documents.*'],
+            // Specific finance aliases must be checked before the broad administration.* pattern.
             'keuangan' => ['finance.*', 'administration.finance*'],
+            'administrasi' => ['administration.*', 'scout-groups.*', 'letters.*', 'reports.published-documents.*'],
             'inventaris' => ['inventory.*'],
             'kegiatan' => ['activities.*', 'journals.*'],
             'keanggotaan' => ['students.*', 'coaches.*', 'scout-units.*'],
