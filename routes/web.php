@@ -10,6 +10,7 @@ use App\Http\Controllers\ComplaintController;
 use App\Http\Controllers\GudepAchievementEvidenceController;
 use App\Http\Controllers\GudepCashEvidenceController;
 use App\Http\Controllers\GudepOfficerDocumentController;
+use App\Http\Controllers\GudepProgramSheetPrintController;
 use App\Http\Controllers\InventoryAssetBatchLabelController;
 use App\Http\Controllers\InventoryAssetLabelController;
 use App\Http\Controllers\InventoryAssetVerificationController;
@@ -281,6 +282,11 @@ Route::middleware([
         Route::get('/administrasi/program-kerja', GudepProgramPlanner::class)
             ->middleware('can:gudep.view')
             ->name('administration.programs');
+
+        Route::get('/administrasi/program-kerja/{sheet}/cetak', GudepProgramSheetPrintController::class)
+            ->whereNumber('sheet')
+            ->middleware(['can:gudep.view', 'throttle:30,1'])
+            ->name('administration.programs.print');
 
         Route::get('/administrasi/organisasi', GudepOrganization::class)
             ->middleware('can:gudep.view')
