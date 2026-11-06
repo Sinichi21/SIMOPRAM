@@ -39,6 +39,8 @@ class GudepProgramPlannerTest extends TestCase
         $gudep = ScoutGroup::query()->create([
             'school_id' => $school->id,
             'name' => 'Gudep Tanpa Penggalang',
+            'male_number' => '04.191',
+            'female_number' => '04.192',
         ]);
         $year = AcademicYear::query()->create([
             'school_id' => $school->id,
@@ -505,6 +507,99 @@ class GudepProgramPlannerTest extends TestCase
             ->assertSet('entries.0.amount', 400000);
 
         $this->assertDatabaseCount('gudep_cash_entries', 2);
+        $this->assertDatabaseCount('gudep_program_sheets', 0);
+    }
+
+    public function test_annual_program_always_renders_a4_mabigus_letterhead(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+        $sheet = GudepProgramSheet::query()->create([
+            'school_id' => $school->id,
+            'scout_group_id' => $gudep->id,
+            'academic_year_id' => $year->id,
+            'kind' => 'annual',
+            'letterhead_type' => 'mabigus',
+            'title' => 'Program Tahunan',
+            'entries' => [['section' => 'bersama', 'description' => 'Hari Pramuka', 'quantity' => null]],
+        ]);
+
+        $this->get(route('administration.programs.print', $sheet->id))
+            ->assertOk()
+            ->assertSee('A4 portrait')
+            ->assertSee('MAJELIS PEMBIMBING GUGUSDEPAN')
+            ->assertSee('04.191 - 04.192')
+            ->assertDontSee('A5 portrait');
+    }
+
+    public function test_female_unit_auto_selects_female_letterhead_and_persists_formation(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+        $semester = Semester::query()->create([
+            'school_id' => $school->id, 'academic_year_id' => $year->id,
+            'name' => 'Ganjil', 'semester_number' => 1,
+            'start_date' => '2026-07-01', 'end_date' => '2026-12-31',
+            'is_active' => true,
+        ]);
+        $level = ScoutLevel::query()->firstOrCreate(['code' => 'siaga'], ['name' => 'Siaga']);
+        $formation = GudepFormation::query()->create([
+            'school_id' => $school->id, 'scout_group_id' => $gudep->id,
+            'academic_year_id' => $year->id, 'scout_level_id' => $level->id,
+            'name' => 'Perindukan Siaga Putri', 'formation_type' => 'perindukan',
+            'gender' => 'putri', 'is_active' => true,
+        ]);
+
+        Livewire::test(GudepProgramPlanner::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->set('kind', 'semester')
+            ->set('semesterId', $semester->id)
+            ->set('scoutLevelId', $level->id)
+            ->assertSet('letterheadType', 'female')
+            ->assertSet('formationId', $formation->id)
+            ->set('title', 'Program Semester Siaga Putri')
+            ->set('entries', [['description' => 'Latihan Siaga', 'months' => [true, false, false, false, false, false], 'participants' => null, 'notes' => '']])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $sheet = GudepProgramSheet::query()->firstOrFail();
+        $this->assertSame('female', $sheet->letterhead_type);
+        $this->assertSame($formation->id, $sheet->gudep_formation_id);
+
+        $this->get(route('administration.programs.print', $sheet->id))
+            ->assertOk()->assertSee('GUGUSDEPAN PUTRI')
+            ->assertSee('04.192')->assertDontSee('A5 portrait');
+    }
+
+    public function test_mismatched_unit_letterhead_is_rejected_without_saving(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+        $semester = Semester::query()->create([
+            'school_id' => $school->id, 'academic_year_id' => $year->id,
+            'name' => 'Ganjil', 'semester_number' => 1,
+            'start_date' => '2026-07-01', 'end_date' => '2026-12-31',
+            'is_active' => true,
+        ]);
+        $level = ScoutLevel::query()->firstOrCreate(['code' => 'siaga'], ['name' => 'Siaga']);
+        $formation = GudepFormation::query()->create([
+            'school_id' => $school->id, 'scout_group_id' => $gudep->id,
+            'academic_year_id' => $year->id, 'scout_level_id' => $level->id,
+            'name' => 'Perindukan Siaga Putra', 'formation_type' => 'perindukan',
+            'gender' => 'putra', 'is_active' => true,
+        ]);
+
+        Livewire::test(GudepProgramPlanner::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->set('kind', 'semester')
+            ->set('semesterId', $semester->id)
+            ->set('scoutLevelId', $level->id)
+            ->set('formationId', $formation->id)
+            ->set('letterheadType', 'female')
+            ->set('title', 'Program Salah Kop')
+            ->set('entries', [['description' => 'Latihan', 'months' => [true, false, false, false, false, false], 'participants' => null, 'notes' => '']])
+            ->call('save')
+            ->assertHasErrors(['letterheadType']);
+
         $this->assertDatabaseCount('gudep_program_sheets', 0);
     }
 
