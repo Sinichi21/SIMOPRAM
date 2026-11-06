@@ -489,7 +489,7 @@ class GudepProgramPlanner extends Component
         $this->validateLetterheadScope($sheet->scoutGroup, $sheet->academicYear, $letterheadType, $sheet->scout_level_id, $sheet->kind);
         abort_if($this->getErrorBag()->has('letterheadType'), 422, 'Jenis kop dokumen tidak sesuai formasi Gudep.');
         $school = School::query()->findOrFail($this->schoolId());
-        $letterhead = GudepDocumentLetterhead::resolve($school, $sheet->scoutGroup, $letterheadType);
+        $letterhead = GudepDocumentLetterhead::resolve($school, $sheet->scoutGroup, $letterheadType, true);
 
         $activity = $sheet->activity;
         // Never publish a document with a dangling or cross-context activity reference.
