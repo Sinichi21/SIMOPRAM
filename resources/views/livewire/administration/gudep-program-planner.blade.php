@@ -71,6 +71,12 @@
                 </label>
             </div>
 
+            <div class="mt-3 rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
+                @if ($letterheadProfile)
+                    <p class="mb-2 text-xs font-medium text-zinc-500">Pratinjau kop berdasarkan administrasi {{ $letterheadProfile['type'] === 'mabigus' ? 'Mabigus' : ($letterheadProfile['type'] === 'male' ? 'Putra' : 'Putri') }} — data dari sistem</p>
+                    @include('administration.partials.gudep-document-letterhead', ['letterhead' => $letterheadProfile])
+                @endif
+            </div>
             <div class="mt-4 grid gap-3 rounded-xl bg-zinc-50 p-4 text-sm dark:bg-zinc-800/50 sm:grid-cols-2">
                 <div>
                     <span class="block text-xs text-zinc-500">Gugusdepan (dari sistem · terkunci)</span>
@@ -93,12 +99,21 @@
                         @error('semesterId')<span class="block text-xs text-red-600">{{ $message }}</span>@enderror
                     </label>
                     <label class="text-sm font-medium">Golongan / satuan
-                        <select wire:model="scoutLevelId" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
+                        <select wire:model.live="scoutLevelId" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
                             <option value="">Pilih golongan yang tersedia</option>
                             @foreach ($levels as $level)<option value="{{ $level->id }}">{{ $level->name }}</option>@endforeach
                         </select>
                         @error('scoutLevelId')<span class="block text-xs text-red-600">{{ $message }}</span>@enderror
                         @if ($levels->isEmpty())<span class="mt-1 block text-xs text-amber-700">Belum ada satuan aktif pada tahun ini. Lengkapi satuan dahulu.</span>@endif
+                    </label>
+                    <label class="text-sm font-medium">Kop dokumen sesuai cakupan satuan
+                        <select wire:model.live="letterheadType" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
+                            <option value="mabigus">Kop Mabigus / Gabungan</option>
+                            <option value="male">Kop Gudep Putra</option>
+                            <option value="female">Kop Gudep Putri</option>
+                        </select>
+                        <span class="mt-1 block text-xs text-zinc-500">Diisi otomatis dari jenis formasi aktif. Untuk formasi campuran/ambigu, tentukan berdasarkan cakupan dokumen; sistem memvalidasi.</span>
+                        @error('letterheadType')<span class="mt-1 block text-xs text-red-600">{{ $message }}</span>@enderror
                     </label>
                     <label class="text-sm font-medium">Tautkan ke program induk (opsional)
                         <select wire:model="parentId" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
@@ -337,6 +352,9 @@
                 </table>
             @if ($previewSheet)
                 <div class="mt-5 space-y-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700" aria-label="Pratinjau dokumen program">
+                    @if ($previewLetterhead)
+                        @include('administration.partials.gudep-document-letterhead', ['letterhead' => $previewLetterhead])
+                    @endif
                     @if ($previewSheet->kind !== 'annual')
                     <div class="border-b border-zinc-200 pb-3 text-center dark:border-zinc-700">
                         <p class="text-xs font-semibold uppercase tracking-wide">GERAKAN PRAMUKA</p>
