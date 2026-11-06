@@ -1,3 +1,4 @@
+@if ($snapshot['kind'] !== 'annual')
 <h1 style="text-align:center;font-size:15pt;margin-bottom:4px;">PROGRAM KERJA {{ ['annual' => 'TAHUNAN', 'semester' => 'SEMESTER', 'weekly' => 'LATIHAN MINGGUAN'][$snapshot['kind']] ?? 'GUGUSDEPAN' }}</h1>
 <p style="text-align:center;font-size:10pt;margin-top:0;">{{ $snapshot['gudep_name'] }} — {{ $snapshot['year_name'] }}</p>
 <table style="width:100%;font-size:9pt;margin:12px 0;border-collapse:collapse;">
@@ -14,6 +15,7 @@
         <tr><td>Lokasi</td><td>: {{ $snapshot['activity_location'] ?: '–' }}</td></tr>
     @endif
 </table>
+@endif
 @if ($snapshot['kind'] === 'annual')
     @include('administration.partials.annual-program-body', [
         'entries' => $snapshot['entries'],
