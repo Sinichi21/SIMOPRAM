@@ -33,6 +33,7 @@ use App\Livewire\Administration\GudepAccreditationPortfolio;
 use App\Livewire\Administration\GudepDevelopment;
 use App\Livewire\Administration\GudepFinance;
 use App\Livewire\Administration\GudepOperations;
+use App\Livewire\Administration\GudepProgramPlanner;
 use App\Livewire\Administration\GudepOrganization;
 use App\Livewire\Auth\Register;
 use App\Livewire\Inventory\Index;
@@ -276,6 +277,10 @@ Route::middleware([
         Route::get('/administrasi/pembinaan', GudepDevelopment::class)
             ->middleware('can:gudep.view')
             ->name('administration.development');
+
+        Route::get('/administrasi/program-kerja', GudepProgramPlanner::class)
+            ->middleware('can:gudep.view')
+            ->name('administration.programs');
 
         Route::get('/administrasi/organisasi', GudepOrganization::class)
             ->middleware('can:gudep.view')
