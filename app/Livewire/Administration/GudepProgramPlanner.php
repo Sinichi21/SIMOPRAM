@@ -553,7 +553,7 @@ class GudepProgramPlanner extends Component
         abort_unless($sheet !== null, 404);
 
         $letterheadType = $sheet->kind === 'annual' ? 'mabigus' : ($sheet->letterhead_type ?: 'mabigus');
-        $this->validateLetterheadScope($sheet->scoutGroup, $sheet->academicYear, $letterheadType, $sheet->scout_level_id, $sheet->kind, $sheet->gudep_formation_id);
+        $this->validateLetterheadScope($sheet->scoutGroup, $sheet->academicYear, $letterheadType, $sheet->scout_level_id, $sheet->kind, $sheet->gudep_formation_id, false);
         abort_if($this->getErrorBag()->has('letterheadType') || $this->getErrorBag()->has('formationId'), 422, 'Jenis kop dokumen tidak sesuai formasi Gudep.');
         $school = School::query()->findOrFail($this->schoolId());
         $letterhead = GudepDocumentLetterhead::resolve($school, $sheet->scoutGroup, $letterheadType, true);
@@ -626,7 +626,8 @@ class GudepProgramPlanner extends Component
         ?string $type = null,
         ?int $levelId = null,
         ?string $kind = null,
-        ?int $formationId = null
+        ?int $formationId = null,
+        bool $useFormState = true
     ): void {
         $type ??= $this->letterheadType;
         $kind ??= $this->kind;
@@ -638,8 +639,10 @@ class GudepProgramPlanner extends Component
             return;
         }
 
-        $levelId ??= $this->scoutLevelId;
-        $formationId ??= $this->formationId;
+        $levelId ??= $useFormState ? $this->scoutLevelId : null;
+        if ($useFormState) {
+            $formationId ??= $this->formationId;
+        }
         $query = GudepFormation::query()->where('school_id', $this->schoolId())
             ->where('scout_group_id', $gudep->id)
             ->where('academic_year_id', $year->id)
