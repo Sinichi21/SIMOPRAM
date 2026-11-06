@@ -214,7 +214,7 @@
                                                                         <div class="flex flex-wrap gap-1">
                                                                             @foreach ($historicalSuggestions as $suggestion)
                                                                                 @if ($suggestion['direction'] === ($item['finance_type'] ?? null))
-                                                                                    <button type="button" wire:click="useBudgetSuggestion({{ $index }}, @js($suggestion['category']))" class="rounded-md border border-dashed border-zinc-300 px-2 py-1 text-xs dark:border-zinc-600">{{ $suggestion['category'] }} · Rp {{ number_format($suggestion['amount'], 0, ',', '.') }}</button>
+                                                                                    <button type="button" wire:click='useBudgetSuggestion({{ $index }}, @js($suggestion["category"]))' class="rounded-md border border-dashed border-zinc-300 px-2 py-1 text-xs dark:border-zinc-600">{{ $suggestion['category'] }} · Rp {{ number_format($suggestion['amount'], 0, ',', '.') }}</button>
                                                                                 @endif
                                                                             @endforeach
                                                                         </div>
