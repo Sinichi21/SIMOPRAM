@@ -37,6 +37,24 @@
             @endforeach
         </div>
 
+        <section aria-label="Status rencana program" class="grid gap-3 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900 sm:grid-cols-3">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-zinc-500">Total materi / baris</p>
+                <p class="mt-1 text-xl font-bold tabular-nums">{{ $sheets->sum(fn ($sheet) => count($sheet->entries ?? [])) }}</p>
+                <p class="text-xs text-zinc-500">Nomor urut tetap mengikuti masing-masing bagian dokumen.</p>
+            </div>
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-zinc-500">Latihan terkait agenda</p>
+                <p class="mt-1 text-xl font-bold tabular-nums">{{ $sheets->where('kind', 'weekly')->whereNotNull('activity_id')->count() }}</p>
+                <p class="text-xs text-zinc-500">Dihitung dari relasi kegiatan SIMPRAM.</p>
+            </div>
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-zinc-500">Golongan tersedia</p>
+                <p class="mt-1 text-xl font-bold tabular-nums">{{ $levels->count() }}</p>
+                <p class="text-xs text-zinc-500">{{ $levels->pluck('name')->join(', ') ?: 'Belum ada golongan aktif' }}</p>
+            </div>
+        </section>
+
         <section class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
             <h2 class="text-lg font-bold">Formulir Program Kerja</h2>
             <div class="mt-3 grid gap-3 sm:grid-cols-2">
