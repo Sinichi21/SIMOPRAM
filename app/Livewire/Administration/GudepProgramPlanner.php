@@ -8,11 +8,15 @@ use App\Models\AcademicYear;
 use App\Models\Activity;
 use App\Models\GudepFormation;
 use App\Models\GudepProgramSheet;
+use App\Models\GudepCashEntry;
+use App\Models\GudepFinanceBudget;
 use App\Services\Documents\OfficialDocumentPublisher;
 use App\Services\ReportVerificationService;
 use App\Models\ScoutGroup;
 use App\Models\Semester;
+use App\Support\GudepAnnualProgram;
 use App\Support\SchoolContext;
+use Illuminate\Support\Str;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
@@ -49,17 +53,7 @@ class GudepProgramPlanner extends Component
     /** @return array<string, string> */
     public static function annualSections(): array
     {
-        return [
-            'siaga' => 'A.1 Bidang Kegiatan dan Latihan — Siaga',
-            'penggalang' => 'A.2 Bidang Kegiatan dan Latihan — Penggalang',
-            'penegak' => 'A.3 Bidang Kegiatan dan Latihan — Penegak',
-            'pandega' => 'A.4 Bidang Kegiatan dan Latihan — Pandega',
-            'bersama' => 'B. Kegiatan Bersama Antar Satuan',
-            'dewasa' => 'C. Pendidikan Orang Dewasa',
-            'penghargaan' => 'D. Tanda Penghargaan',
-            'sarana' => 'E. Sarana dan Administrasi',
-            'keuangan' => 'F. Keuangan dan Usaha Dana',
-        ];
+        return GudepAnnualProgram::sections();
     }
 
     public function mount(): void
@@ -101,7 +95,10 @@ class GudepProgramPlanner extends Component
 
         if ($this->kind === 'annual') {
             $section = array_key_exists((string) $section, self::annualSections()) ? $section : 'bersama';
-            $this->entries[] = ['section' => $section, 'description' => '', 'quantity' => ''];
+            $this->entries[] = ['key' => (string) Str::uuid(), 'parent_key' => null,
+                'section' => $section, 'description' => '', 'detail' => '',
+                'quantity' => null, 'unit' => 'kali', 'currency' => 'IDR',
+                'finance_type' => '', 'amount' => null];
         } elseif ($this->kind === 'semester') {
             $this->entries[] = ['description' => '', 'months' => [false, false, false, false, false, false], 'participants' => '', 'notes' => ''];
         } else {
@@ -115,7 +112,125 @@ class GudepProgramPlanner extends Component
         if (! array_key_exists($index, $this->entries)) {
             return;
         }
+        if ($this->kind === 'annual') {
+            $removedKey = (string) ($this->entries[$index]['key'] ?? '');
+            $removed = [$removedKey];
+            for ($i = 0; $i < 3; $i++) {
+                foreach ($this->entries as $entry) {
+                    if (in_array($entry['parent_key'] ?? null, $removed, true)) {
+                        $removed[] = (string) ($entry['key'] ?? '');
+                    }
+                }
+            }
+            $this->entries = array_values(array_filter($this->entries,
+                fn (array $entry): bool => ! in_array((string) ($entry['key'] ?? ''), $removed, true)));
+
+            return;
+        }
         array_splice($this->entries, $index, 1);
+    }
+
+    public function loadAnnualTemplate(): void
+    {
+        $this->authorizeManage();
+        abort_unless($this->kind === 'annual', 422);
+        if ($this->entries !== []) {
+            $this->addError('entries', 'Hapus daftar yang sudah ada sebelum menggunakan contoh format tahunan.');
+
+            return;
+        }
+
+        $gudep = $this->selectedGudep();
+        $year = $this->selectedYear();
+        $levels = GudepFormation::query()->where('school_id', $this->schoolId())
+            ->where('scout_group_id', $gudep->id)->where('academic_year_id', $year->id)
+            ->where('is_active', true)->with('scoutLevel')->get()
+            ->pluck('scoutLevel.name')->filter()->all();
+
+        $this->entries = GudepAnnualProgram::template($levels);
+    }
+
+    public function addChildRow(int $parentIndex): void
+    {
+        $this->authorizeManage();
+        abort_unless($this->kind === 'annual', 422);
+        abort_unless(isset($this->entries[$parentIndex]), 422);
+
+        $parent = $this->entries[$parentIndex];
+        $section = (string) ($parent['section'] ?? '');
+        abort_unless(array_key_exists($section, self::annualSections()), 422);
+        if (count($this->entries) >= 150) {
+            $this->addError('entries', 'Maksimal 150 baris.');
+
+            return;
+        }
+
+        if (empty($this->entries[$parentIndex]['key'])) {
+            $this->entries[$parentIndex]['key'] = (string) Str::uuid();
+        }
+        $key = $this->entries[$parentIndex]['key'];
+        $this->entries[] = [
+            'key' => (string) Str::uuid(), 'parent_key' => $key,
+            'section' => $section, 'description' => '', 'detail' => '',
+            'quantity' => null, 'unit' => 'kali', 'currency' => 'IDR',
+            'finance_type' => '', 'amount' => null,
+        ];
+    }
+
+    public function useBudgetSuggestion(int $index, string $category): void
+    {
+        $this->authorizeManage();
+        abort_unless($this->kind === 'annual' && ($this->entries[$index]['section'] ?? null) === 'keuangan', 422);
+        abort_unless(in_array($this->entries[$index]['finance_type'] ?? '', ['income', 'expense'], true), 422);
+
+        $suggestions = $this->historicalBudgetSuggestions();
+        $direction = $this->entries[$index]['finance_type'];
+        $matching = collect($suggestions)->first(fn (array $row): bool => $row['direction'] === $direction
+            && $row['category'] === $category);
+        abort_unless($matching !== null, 422);
+
+        $this->entries[$index]['amount'] = (int) $matching['amount'];
+    }
+
+    /** @return array<int, array{direction:string, category:string, amount:int, source_year:string}> */
+    private function historicalBudgetSuggestions(): array
+    {
+        if ($this->scoutGroupId === null || $this->academicYearId === null) {
+            return [];
+        }
+
+        $year = $this->selectedYear();
+        $previous = AcademicYear::query()->where('school_id', $this->schoolId())
+            ->where('start_date', '<', $year->start_date)
+            ->orderByDesc('start_date')->first();
+        if ($previous === null) {
+            return [];
+        }
+
+        $entries = GudepCashEntry::query()->where('school_id', $this->schoolId())
+            ->where('scout_group_id', $this->selectedGudep()->id)
+            ->where('academic_year_id', $previous->id)
+            ->where('status', 'posted')->get();
+
+        $summary = [];
+        foreach ($entries as $entry) {
+            $direction = $entry->direction;
+            // Reversal directions cancel their original counterpart.
+            if ($entry->reversal_of_id !== null) {
+                $direction = $direction === 'income' ? 'expense' : 'income';
+                $sign = -1;
+            } else {
+                $sign = 1;
+            }
+            $key = $direction.'|'.mb_strtolower(trim((string) $entry->category));
+            $summary[$key] ??= [
+                'direction' => $direction, 'category' => trim((string) $entry->category),
+                'amount' => 0, 'source_year' => $previous->name,
+            ];
+            $summary[$key]['amount'] += $sign * (int) $entry->amount;
+        }
+
+        return array_values(array_filter($summary, fn (array $row): bool => $row['amount'] > 0));
     }
 
     public function preview(int $id): void
@@ -176,6 +291,13 @@ class GudepProgramPlanner extends Component
             $rules['entries.*.section'] = ['required', Rule::in(array_keys(self::annualSections()))];
             $rules['entries.*.description'] = ['required', 'string', 'max:500'];
             $rules['entries.*.quantity'] = ['nullable', 'integer', 'min:0', 'max:999999'];
+            $rules['entries.*.key'] = ['nullable', 'string', 'max:80'];
+            $rules['entries.*.parent_key'] = ['nullable', 'string', 'max:80'];
+            $rules['entries.*.detail'] = ['nullable', 'string', 'max:1500'];
+            $rules['entries.*.unit'] = ['nullable', Rule::in(['kali', 'buah', 'orang', 'paket'])];
+            $rules['entries.*.finance_type'] = ['nullable', Rule::in(['', 'income', 'expense', 'fundraising'])];
+            $rules['entries.*.currency'] = ['nullable', Rule::in(['IDR'])];
+            $rules['entries.*.amount'] = ['nullable', 'integer', 'min:0', 'max:999999999999'];
         } elseif ($this->kind === 'semester') {
             $rules['semesterId'] = ['required', 'integer', Rule::exists('semesters', 'id')->where('school_id', $this->schoolId())->where('academic_year_id', $year->id)];
             $rules['scoutLevelId'] = ['required', 'integer', Rule::exists('scout_levels', 'id')];
@@ -195,6 +317,37 @@ class GudepProgramPlanner extends Component
         }
 
         $this->validate($rules);
+
+        if ($this->kind === 'annual') {
+            $positions = [];
+            foreach ($this->entries as $i => $entry) {
+                $key = (string) ($entry['key'] ?? 'legacy-'.$i);
+                if (isset($positions[$key])) {
+                    $this->addError('entries', 'Identitas baris program tidak boleh sama.');
+
+                    return;
+                }
+                $parent = $entry['parent_key'] ?? null;
+                if ($parent !== null && $parent !== '') {
+                    if (! isset($positions[$parent])
+                        || $positions[$parent]['section'] !== $entry['section']
+                        || $positions[$parent]['depth'] >= 2) {
+                        $this->addError('entries', 'Subdaftar harus mengikuti induk pada bagian yang sama, maksimal tiga tingkat.');
+
+                        return;
+                    }
+                    $depth = $positions[$parent]['depth'] + 1;
+                } else {
+                    $depth = 0;
+                }
+                $positions[$key] = ['section' => $entry['section'], 'depth' => $depth];
+                if ($entry['section'] !== 'keuangan' && ! empty($entry['finance_type'])) {
+                    $this->addError('entries', 'Nominal keuangan hanya boleh ditempatkan di bagian F.');
+
+                    return;
+                }
+            }
+        }
 
         $validLevel = $this->scoutLevelId === null || GudepFormation::query()
             ->where('school_id', $this->schoolId())->where('scout_group_id', $gudep->id)
@@ -254,7 +407,14 @@ class GudepProgramPlanner extends Component
         $entries = array_map(function (array $entry): array {
             $entry['description'] = trim((string) ($entry['description'] ?? ''));
             if ($this->kind === 'annual') {
-                $entry['quantity'] = ($entry['quantity'] ?? '') === '' ? null : (int) $entry['quantity'];
+                $entry['quantity'] = ($entry['quantity'] ?? '') === '' || ($entry['quantity'] ?? null) === null
+                    ? null : (int) $entry['quantity'];
+                $entry['amount'] = ($entry['amount'] ?? '') === '' || ($entry['amount'] ?? null) === null
+                    ? null : (int) $entry['amount'];
+                $entry['detail'] = trim((string) ($entry['detail'] ?? ''));
+                $entry['key'] = (string) ($entry['key'] ?? Str::uuid());
+                $entry['parent_key'] = ($entry['parent_key'] ?? null) ?: null;
+                $entry['currency'] = 'IDR';
             } elseif ($this->kind === 'semester') {
                 $entry['participants'] = ($entry['participants'] ?? '') === '' ? null : (int) $entry['participants'];
                 $entry['months'] = array_map(fn ($v): bool => (bool) $v, $entry['months']);
@@ -421,6 +581,14 @@ class GudepProgramPlanner extends Component
             'semesters' => $year ? Semester::query()->where('school_id', $this->schoolId())
                 ->where('academic_year_id', $year->id)->orderBy('semester_number')->get() : collect(),
             'levels' => $levels,
+            'annualSections' => self::annualSections(),
+            'historicalSuggestions' => $gudep && $year && $this->kind === 'annual'
+                && (auth()->user()?->can('gudep.finance.view') ?? false)
+                ? $this->historicalBudgetSuggestions() : [],
+            'annualPreviewRows' => $this->kind === 'annual'
+                ? collect(array_keys(self::annualSections()))->mapWithKeys(fn (string $section): array => [
+                    $section => GudepAnnualProgram::numbered($this->entries, $section),
+                ])->all() : [],
             'linkedActivity' => $this->activityId !== null && $year
                 ? Activity::query()->where('school_id', $this->schoolId())
                     ->where('academic_year_id', $year->id)->find($this->activityId) : null,
