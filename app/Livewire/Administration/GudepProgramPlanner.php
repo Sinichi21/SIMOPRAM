@@ -10,10 +10,10 @@ use App\Models\GudepFormation;
 use App\Models\GudepProgramSheet;
 use App\Models\GudepCashEntry;
 use App\Models\GudepFinanceBudget;
-use App\Services\Documents\OfficialDocumentPublisher;
-use App\Services\ReportVerificationService;
 use App\Models\ScoutGroup;
 use App\Models\Semester;
+use App\Services\Documents\OfficialDocumentPublisher;
+use App\Services\ReportVerificationService;
 use App\Support\GudepAnnualProgram;
 use App\Support\SchoolContext;
 use Illuminate\Support\Str;
@@ -114,6 +114,11 @@ class GudepProgramPlanner extends Component
         }
         if ($this->kind === 'annual') {
             $removedKey = (string) ($this->entries[$index]['key'] ?? '');
+            if ($removedKey === '') {
+                array_splice($this->entries, $index, 1);
+
+                return;
+            }
             $removed = [$removedKey];
             for ($i = 0; $i < 3; $i++) {
                 foreach ($this->entries as $entry) {
@@ -169,12 +174,12 @@ class GudepProgramPlanner extends Component
             $this->entries[$parentIndex]['key'] = (string) Str::uuid();
         }
         $key = $this->entries[$parentIndex]['key'];
-        $this->entries[] = [
+        array_splice($this->entries, $parentIndex + 1, 0, [[
             'key' => (string) Str::uuid(), 'parent_key' => $key,
             'section' => $section, 'description' => '', 'detail' => '',
             'quantity' => null, 'unit' => 'kali', 'currency' => 'IDR',
             'finance_type' => '', 'amount' => null,
-        ];
+        ]]);
     }
 
     public function useBudgetSuggestion(int $index, string $category): void
