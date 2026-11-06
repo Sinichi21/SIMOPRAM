@@ -27,6 +27,36 @@ class SetCurrentSchool
         $activeSchoolId =
             session('active_school_id');
 
+        // Restore the most recently selected school after the browser session
+        // expires or a new authenticated session starts. Never trust a saved
+        // school identifier without checking current tenant access again.
+        if (! $activeSchoolId && $user->last_active_school_id) {
+            $savedId = (int) $user->last_active_school_id;
+            $savedSchool = School::query()
+                ->whereKey($savedId)
+                ->where('is_active', true)
+                ->first();
+
+            $canRestore = $savedSchool !== null && (
+                $user->isSystemAdmin()
+                || $user->schoolMemberships()
+                    ->where('school_id', $savedId)
+                    ->where('is_active', true)
+                    ->whereNull('left_at')
+                    ->exists()
+            );
+
+            if ($canRestore) {
+                session(['active_school_id' => $savedId]);
+                $activeSchoolId = $savedId;
+            } else {
+                // Deleted/inactive school or revoked membership cannot survive
+                // as a preference; never fall back to an unauthorized tenant.
+                $user->last_active_school_id = null;
+                $user->save();
+            }
+        }
+
         /*
         |--------------------------------------------------------------------------
         | SUPER ADMIN
@@ -233,6 +263,8 @@ class SetCurrentSchool
             session([
                 'active_school_id' => $school->id,
             ]);
+            $user->last_active_school_id = $school->id;
+            $user->save();
 
             $this->useSchoolContext(
                 $user,
