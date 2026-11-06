@@ -138,7 +138,7 @@
                                         <tr wire:key="semester-{{ $index }}" class="border-t border-zinc-100 dark:border-zinc-800">
                                             <td class="p-2">{{ $loop->iteration }}.</td>
                                             <td class="p-2"><input wire:model="entries.{{ $index }}.description" class="w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">@error('entries.'.$index.'.description')<span class="block text-red-600">{{ $message }}</span>@enderror</td>
-                                            @for ($month=0; $month<6; $month++)<td class="p-2 text-center"><input type="checkbox" wire:model="entries.{{ $index }}.months.{{ $month }}" aria-label="Bulan {{ $month+1 }} baris {{ $loop->parent->iteration }}"></td>@endfor
+                                            @for ($month=0; $month<6; $month++)<td class="p-2 text-center"><input type="checkbox" wire:model="entries.{{ $index }}.months.{{ $month }}" aria-label="Bulan {{ $month+1 }} baris {{ $index + 1 }}"></td>@endfor
                                             <td class="p-2"><input type="number" min="0" placeholder="–" wire:model="entries.{{ $index }}.participants" class="w-20 rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800"></td>
                                             <td class="p-2"><input wire:model="entries.{{ $index }}.notes" class="w-32 rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800"></td>
                                             <td class="p-2"><button type="button" wire:click="removeRow({{ $index }})" class="text-red-600">Hapus</button></td>
