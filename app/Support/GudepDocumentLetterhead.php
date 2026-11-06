@@ -1,0 +1,70 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Support;
+
+use App\Models\School;
+use App\Models\ScoutAdministrationProfile;
+use App\Models\ScoutGroup;
+use Illuminate\Validation\ValidationException;
+
+final class GudepDocumentLetterhead
+{
+    public const TYPES = ['mabigus', 'male', 'female'];
+
+    /** @return array<string, mixed> */
+    public static function resolve(School $school, ScoutGroup $gudep, string $type): array
+    {
+        if (! in_array($type, self::TYPES, true)) {
+            throw ValidationException::withMessages(['letterheadType' => 'Cakupan kop belum ditentukan.']);
+        }
+
+        $profile = ScoutAdministrationProfile::query()
+            ->where('school_id', $school->id)->where('type', $type)->first();
+
+        if ($profile !== null && ! $profile->is_active) {
+            throw ValidationException::withMessages(['letterheadType' => 'Profil administrasi untuk kop ini belum aktif.']);
+        }
+
+        $number = match ($type) {
+            'male' => trim((string) $gudep->male_number),
+            'female' => trim((string) $gudep->female_number),
+            default => implode(' - ', array_filter([
+                trim((string) $gudep->male_number),
+                trim((string) $gudep->female_number),
+            ], fn (string $value): bool => $value !== '')),
+        };
+
+        if ($number === '') {
+            throw ValidationException::withMessages(['letterheadType' => 'Nomor Gudep untuk kop yang dipilih belum tersedia.']);
+        }
+
+        $city = mb_strtoupper(trim((string) ($school->city ?: $gudep->kwarcab)));
+        $address = trim((string) ($profile?->letterhead_address ?: $gudep->secretariat_address ?: $school->address));
+        $postal = trim((string) $school->postal_code);
+        if ($postal !== '' && ! str_contains($address, $postal)) {
+            $address = trim($address.' '.$postal);
+        }
+
+        $title = trim((string) ($profile?->letterhead_title ?: 'GERAKAN PRAMUKA'));
+        $category = match ($type) {
+            'male' => 'GUGUSDEPAN PUTRA',
+            'female' => 'GUGUSDEPAN PUTRI',
+            default => 'MAJELIS PEMBIMBING GUGUSDEPAN',
+        };
+
+        $subtitle = trim((string) ($profile?->letterhead_subtitle ?: $category.' '.$city.' '.$number));
+
+        return [
+            'type' => $type,
+            'title' => $title,
+            'subtitle' => $subtitle,
+            'category' => $category,
+            'number' => $number,
+            'school' => $school->name,
+            'address' => $address,
+            'city' => $city,
+        ];
+    }
+}
