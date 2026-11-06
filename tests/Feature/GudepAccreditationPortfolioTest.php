@@ -233,19 +233,18 @@ class GudepAccreditationPortfolioTest extends TestCase
             'start_date' => '2026-07-01', 'end_date' => '2027-06-30', 'is_active' => true,
         ]);
 
-        $makeDocument = fn (ScoutGroup $owner, string $series, bool $revoked = false) =>
-            ReportVerification::query()->create([
-                'school_id' => $school->id,
-                'source_type' => ScoutGroup::class,
-                'source_id' => $owner->id,
-                'series_key' => $series,
-                'document_type' => 'gudep_profile',
-                'code' => bin2hex(random_bytes(24)),
-                'file_path' => 'test/gudep-profile.pdf',
-                'file_sha256' => str_repeat('a', 64),
-                'issued_at' => now(),
-                'revoked_at' => $revoked ? now() : null,
-            ]);
+        $makeDocument = fn (ScoutGroup $owner, string $series, bool $revoked = false) => ReportVerification::query()->create([
+            'school_id' => $school->id,
+            'source_type' => ScoutGroup::class,
+            'source_id' => $owner->id,
+            'series_key' => $series,
+            'document_type' => 'gudep_profile',
+            'code' => bin2hex(random_bytes(24)),
+            'file_path' => 'test/gudep-profile.pdf',
+            'file_sha256' => str_repeat('a', 64),
+            'issued_at' => now(),
+            'revoked_at' => $revoked ? now() : null,
+        ]);
 
         $valid = $makeDocument($gudep, 'year-'.$year->id);
         $foreign = $makeDocument($other, 'year-'.$year->id);
