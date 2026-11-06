@@ -9,11 +9,13 @@ use App\Models\Activity;
 use App\Models\GudepCashEntry;
 use App\Models\GudepFormation;
 use App\Models\GudepProgramSheet;
+use App\Models\School;
 use App\Models\ScoutGroup;
 use App\Models\Semester;
 use App\Services\Documents\OfficialDocumentPublisher;
 use App\Services\ReportVerificationService;
 use App\Support\GudepAnnualProgram;
+use App\Support\GudepDocumentLetterhead;
 use App\Support\SchoolContext;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
@@ -39,6 +41,8 @@ class GudepProgramPlanner extends Component
     public ?int $previewId = null;
 
     public string $kind = 'annual';
+
+    public string $letterheadType = 'mabigus';
 
     public string $title = '';
 
@@ -85,6 +89,7 @@ class GudepProgramPlanner extends Component
     {
         $this->reset(['editingId', 'semesterId', 'scoutLevelId', 'parentId', 'activityId', 'scheduledFor', 'notes']);
         $this->title = '';
+        $this->letterheadType = 'mabigus';
         $this->entries = [];
     }
 
@@ -257,6 +262,7 @@ class GudepProgramPlanner extends Component
         abort_unless($sheet !== null, 404);
 
         $this->kind = $sheet->kind;
+        $this->letterheadType = $sheet->letterhead_type ?: 'mabigus';
         $this->editingId = $sheet->id;
         $this->title = $sheet->title;
         $this->semesterId = $sheet->semester_id;
@@ -276,6 +282,7 @@ class GudepProgramPlanner extends Component
 
         $rules = [
             'kind' => ['required', Rule::in(['annual', 'semester', 'weekly'])],
+            'letterheadType' => ['required', Rule::in(GudepDocumentLetterhead::TYPES)],
             'title' => ['required', 'string', 'max:200'],
             'notes' => ['nullable', 'string', 'max:4000'],
             'semesterId' => ['nullable', 'integer', Rule::exists('semesters', 'id')
@@ -408,6 +415,11 @@ class GudepProgramPlanner extends Component
             }
         }
 
+        $this->validateLetterheadScope($gudep, $year);
+        if ($this->getErrorBag()->has('letterheadType')) {
+            return;
+        }
+
         $entries = array_map(function (array $entry): array {
             $entry['description'] = trim((string) ($entry['description'] ?? ''));
             if ($this->kind === 'annual') {
@@ -438,6 +450,7 @@ class GudepProgramPlanner extends Component
             'scout_group_id' => $gudep->id,
             'academic_year_id' => $year->id,
             'kind' => $this->kind,
+            'letterhead_type' => $this->kind === 'annual' ? 'mabigus' : $this->letterheadType,
             'title' => trim($this->title),
             'semester_id' => $this->kind === 'annual' ? null : $this->semesterId,
             'scout_level_id' => $this->kind === 'annual' ? null : $this->scoutLevelId,
@@ -472,6 +485,12 @@ class GudepProgramPlanner extends Component
             ->find($id);
         abort_unless($sheet !== null, 404);
 
+        $letterheadType = $sheet->kind === 'annual' ? 'mabigus' : ($sheet->letterhead_type ?: 'mabigus');
+        $this->validateLetterheadScope($sheet->scoutGroup, $sheet->academicYear, $letterheadType, $sheet->scout_level_id, $sheet->kind);
+        abort_if($this->getErrorBag()->has('letterheadType'), 422, 'Jenis kop dokumen tidak sesuai formasi Gudep.');
+        $school = School::query()->findOrFail($this->schoolId());
+        $letterhead = GudepDocumentLetterhead::resolve($school, $sheet->scoutGroup, $letterheadType);
+
         $activity = $sheet->activity;
         // Never publish a document with a dangling or cross-context activity reference.
         abort_unless($sheet->activity_id === null || (
@@ -484,6 +503,7 @@ class GudepProgramPlanner extends Component
         $snapshot = [
             'id' => $sheet->id,
             'kind' => $sheet->kind,
+            'letterhead' => $letterhead,
             'title' => $sheet->title,
             'gudep_id' => $sheet->scout_group_id,
             'gudep_name' => $sheet->scoutGroup?->name,
@@ -530,6 +550,50 @@ class GudepProgramPlanner extends Component
             ['code' => $document->code],
             navigate: false
         );
+    }
+
+    private function validateLetterheadScope(
+        ScoutGroup $gudep,
+        AcademicYear $year,
+        ?string $type = null,
+        ?int $levelId = null,
+        ?string $kind = null
+    ): void {
+        $type ??= $this->letterheadType;
+        $kind ??= $this->kind;
+        if ($kind === 'annual') {
+            if ($type !== 'mabigus') {
+                $this->addError('letterheadType', 'Program tahunan seluruh Gudep wajib menggunakan kop Mabigus.');
+            }
+
+            return;
+        }
+
+        $levelId ??= $this->scoutLevelId;
+        $formations = GudepFormation::query()
+            ->where('school_id', $this->schoolId())
+            ->where('scout_group_id', $gudep->id)
+            ->where('academic_year_id', $year->id)
+            ->where('scout_level_id', $levelId)
+            ->where('is_active', true)
+            ->get();
+
+        // An unspecified/campuran formation represents a joint unit, never infer a gender from its title.
+        $genders = $formations->pluck('gender')->filter()->unique()->values()->all();
+        if ($genders === ['putra'] && $type !== 'male') {
+            $this->addError('letterheadType', 'Satuan putra harus memakai kop Gudep Putra.');
+
+            return;
+        }
+        if ($genders === ['putri'] && $type !== 'female') {
+            $this->addError('letterheadType', 'Satuan putri harus memakai kop Gudep Putri.');
+
+            return;
+        }
+        if ($type === 'male' && ! in_array('putra', $genders, true)
+            || $type === 'female' && ! in_array('putri', $genders, true)) {
+            $this->addError('letterheadType', 'Jenis kop tidak sesuai formasi yang tercatat.');
+        }
     }
 
     private function schoolId(): int
@@ -586,6 +650,10 @@ class GudepProgramPlanner extends Component
             'semesters' => $year ? Semester::query()->where('school_id', $this->schoolId())
                 ->where('academic_year_id', $year->id)->orderBy('semester_number')->get() : collect(),
             'levels' => $levels,
+            'letterheadProfile' => $gudep && $year ? GudepDocumentLetterhead::resolve(
+                School::query()->findOrFail($this->schoolId()), $gudep,
+                $this->kind === 'annual' ? 'mabigus' : $this->letterheadType
+            ) : null,
             'annualSections' => self::annualSections(),
             'historicalSuggestions' => $gudep && $year && $this->kind === 'annual'
                 && (auth()->user()?->can('gudep.finance.view') ?? false)
