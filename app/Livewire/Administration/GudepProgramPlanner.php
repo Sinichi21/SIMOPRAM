@@ -80,6 +80,24 @@ class GudepProgramPlanner extends Component
         $this->resetDraft();
     }
 
+    public function updatedScoutLevelId(): void
+    {
+        $this->letterheadType = 'mabigus';
+        if ($this->scoutGroupId === null || $this->academicYearId === null || $this->scoutLevelId === null) {
+            return;
+        }
+        $genders = GudepFormation::query()->where('school_id', $this->schoolId())
+            ->where('scout_group_id', $this->selectedGudep()->id)
+            ->where('academic_year_id', $this->selectedYear()->id)
+            ->where('scout_level_id', $this->scoutLevelId)
+            ->where('is_active', true)->pluck('gender')->filter()->unique()->values()->all();
+        $this->letterheadType = match ($genders) {
+            ['putra'] => 'male',
+            ['putri'] => 'female',
+            default => 'mabigus',
+        };
+    }
+
     public function updatedKind(): void
     {
         $this->resetDraft();
@@ -654,6 +672,18 @@ class GudepProgramPlanner extends Component
                 School::query()->findOrFail($this->schoolId()), $gudep,
                 $this->kind === 'annual' ? 'mabigus' : $this->letterheadType
             ) : null,
+            'previewLetterhead' => $this->previewId !== null && $gudep && $year
+                ? GudepDocumentLetterhead::resolve(
+                    School::query()->findOrFail($this->schoolId()), $gudep,
+                    (function (): string {
+                        $program = GudepProgramSheet::query()->where('school_id', $this->schoolId())
+                            ->where('scout_group_id', $this->selectedGudep()->id)
+                            ->where('academic_year_id', $this->selectedYear()->id)
+                            ->find($this->previewId);
+
+                        return $program?->kind === 'annual' ? 'mabigus' : ($program?->letterhead_type ?: 'mabigus');
+                    })()
+                ) : null,
             'annualSections' => self::annualSections(),
             'historicalSuggestions' => $gudep && $year && $this->kind === 'annual'
                 && (auth()->user()?->can('gudep.finance.view') ?? false)
