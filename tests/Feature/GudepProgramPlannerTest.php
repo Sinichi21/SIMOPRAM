@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Livewire\Administration\GudepProgramPlanner;
 use App\Models\AcademicYear;
 use App\Models\Activity;
+use App\Models\GudepCashEntry;
 use App\Models\GudepFormation;
 use App\Models\GudepProgramSheet;
 use App\Models\ReportVerification;
@@ -455,6 +456,56 @@ class GudepProgramPlannerTest extends TestCase
         $this->assertSame(500000, GudepAnnualProgram::totals($sheet->entries)['shortfall']);
         $this->assertDatabaseCount('gudep_cash_entries', 0);
         $this->assertDatabaseCount('gudep_finance_budgets', 0);
+    }
+
+    public function test_historical_cash_suggestion_is_net_of_reversal_and_only_updates_planned_amount(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+        $previous = AcademicYear::query()->create([
+            'school_id' => $school->id,
+            'name' => '2025/2026',
+            'start_date' => '2025-07-01',
+            'end_date' => '2026-06-30',
+            'is_active' => false,
+        ]);
+        $original = GudepCashEntry::query()->create([
+            'school_id' => $school->id,
+            'scout_group_id' => $gudep->id,
+            'academic_year_id' => $previous->id,
+            'direction' => 'income',
+            'category' => 'Iuran anggota',
+            'description' => 'Penerimaan iuran',
+            'occurred_at' => '2026-01-15',
+            'amount' => 500000,
+            'status' => 'posted',
+        ]);
+        GudepCashEntry::query()->create([
+            'school_id' => $school->id,
+            'scout_group_id' => $gudep->id,
+            'academic_year_id' => $previous->id,
+            'direction' => 'expense',
+            'category' => 'Iuran anggota',
+            'description' => 'Pembalikan sebagian iuran',
+            'occurred_at' => '2026-01-16',
+            'amount' => 100000,
+            'status' => 'posted',
+            'reversal_of_id' => $original->id,
+        ]);
+
+        Livewire::test(GudepProgramPlanner::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->set('entries', [[
+                'key' => 'income-line', 'parent_key' => null, 'section' => 'keuangan',
+                'description' => 'Iuran anggota', 'finance_type' => 'income',
+                'currency' => 'IDR', 'amount' => null,
+            ]])
+            ->call('useBudgetSuggestion', 0, 'Iuran anggota')
+            ->assertHasNoErrors()
+            ->assertSet('entries.0.amount', 400000);
+
+        $this->assertDatabaseCount('gudep_cash_entries', 2);
+        $this->assertDatabaseCount('gudep_program_sheets', 0);
     }
 
     public function test_cross_gudep_edit_is_not_permitted(): void
