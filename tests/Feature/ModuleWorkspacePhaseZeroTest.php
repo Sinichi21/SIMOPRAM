@@ -73,6 +73,26 @@ class ModuleWorkspacePhaseZeroTest extends TestCase
         $this->assertSame('keuangan', ModuleWorkspace::activeSlug());
     }
 
+    public function test_module_owned_navigation_is_available_from_the_correct_workspace(): void
+    {
+        $activities = ModuleWorkspace::find('kegiatan');
+        $administration = ModuleWorkspace::find('administrasi');
+
+        $this->assertNotNull($activities);
+        $this->assertNotNull($administration);
+
+        $activityRoutes = array_column($activities['links'], 'route');
+        $administrationRoutes = array_column($administration['links'], 'route');
+
+        $this->assertContains('activities.index', $activityRoutes);
+        $this->assertContains('attendances.index', $activityRoutes);
+        $this->assertContains('journals.index', $activityRoutes);
+        $this->assertContains('announcements.index', $activityRoutes);
+        $this->assertContains('letters.incoming', $administrationRoutes);
+        $this->assertContains('letters.outgoing', $administrationRoutes);
+        $this->assertContains('letters.templates', $administrationRoutes);
+    }
+
     public function test_finance_is_a_standalone_module_without_administration_duplicate(): void
     {
         $finance = ModuleWorkspace::find('keuangan');
