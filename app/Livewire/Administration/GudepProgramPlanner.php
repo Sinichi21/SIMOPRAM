@@ -52,6 +52,8 @@ class GudepProgramPlanner extends Component
 
     public string $notes = '';
 
+    public string $saveNotice = '';
+
     /** @var array<int, array<string, mixed>> */
     public array $entries = [];
 
@@ -136,6 +138,8 @@ class GudepProgramPlanner extends Component
     {
         $this->reset(['editingId', 'semesterId', 'scoutLevelId', 'formationId', 'parentId', 'activityId', 'scheduledFor', 'notes']);
         $this->title = '';
+        $this->saveNotice = '';
+        $this->resetValidation();
         $this->letterheadType = 'mabigus';
         $this->entries = [];
     }
@@ -314,6 +318,8 @@ class GudepProgramPlanner extends Component
         $this->kind = $sheet->kind;
         $this->letterheadType = $sheet->letterhead_type ?: 'mabigus';
         $this->editingId = $sheet->id;
+        $this->saveNotice = '';
+        $this->resetValidation();
         $this->title = $sheet->title;
         $this->semesterId = $sheet->semester_id;
         $this->scoutLevelId = $sheet->scout_level_id;
@@ -328,6 +334,8 @@ class GudepProgramPlanner extends Component
     public function save(): void
     {
         $this->authorizeManage();
+        $this->saveNotice = '';
+        $this->resetValidation();
         $gudep = $this->selectedGudep();
         $year = $this->selectedYear();
 
@@ -534,10 +542,11 @@ class GudepProgramPlanner extends Component
             $sheet->created_by = auth()->id();
         }
         $sheet->save();
+        $this->editingId = $sheet->id;
         $this->previewId = $sheet->id;
-
-        session()->flash('status', 'Program kerja tersimpan.');
-        $this->resetDraft();
+        $this->entries = $entries;
+        $this->saveNotice = 'Perubahan berhasil disimpan pada '.now()->format('d/m/Y H:i:s').'.';
+        session()->flash('status', $this->saveNotice);
     }
 
     public function publishProgram(
