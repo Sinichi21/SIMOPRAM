@@ -4,7 +4,9 @@ namespace App\Services\Documents;
 
 use App\Models\ReportVerification;
 use App\Models\School;
+use App\Models\ScoutGroup;
 use App\Services\ReportVerificationService;
+use App\Support\GudepDocumentLetterhead;
 use App\Support\SchoolContext;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Closure;
@@ -56,6 +58,22 @@ final class OfficialDocumentPublisher
             ]);
         }
 
+        $letterhead = null;
+        $gudep = null;
+        if ($sourceType === ScoutGroup::class) {
+            $gudep = ScoutGroup::query()->where('school_id', $schoolId)->findOrFail($sourceId);
+        } elseif (($contentData['gudep'] ?? null) instanceof ScoutGroup) {
+            $gudep = $contentData['gudep'];
+            abort_unless((int) $gudep->school_id === $schoolId, 404);
+        }
+        if ($gudep !== null) {
+            $school = School::query()->findOrFail($schoolId);
+            $letterhead = GudepDocumentLetterhead::resolve($school, $gudep, 'mabigus');
+            // Header changes generate a new immutable document revision rather than
+            // quietly reusing a PDF containing an outdated Gudep identity.
+            $snapshotChecksum = hash('sha256', $snapshotChecksum.'|'.$this->verification->contentChecksum($letterhead));
+        }
+
         return $this->publish(
             schoolId: $schoolId,
             sourceType: $sourceType,
@@ -70,6 +88,7 @@ final class OfficialDocumentPublisher
                     'verificationQrDataUri' => $this->verification->qrDataUri($verification),
                     'contentView' => $contentView,
                     'contentData' => $contentData,
+                    'gudepLetterhead' => $letterhead,
                 ]
             )->setPaper('a4', 'portrait')->output(),
             title: $title,
