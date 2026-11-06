@@ -71,11 +71,13 @@ class GudepProgramPlanner extends Component
 
     public function updatedScoutGroupId(): void
     {
+        $this->previewId = null;
         $this->resetDraft();
     }
 
     public function updatedAcademicYearId(): void
     {
+        $this->previewId = null;
         $this->resetDraft();
     }
 
@@ -93,6 +95,8 @@ class GudepProgramPlanner extends Component
 
     public function addRow(?string $section = null): void
     {
+        $this->authorizeManage();
+
         if ($this->kind === 'annual') {
             $section = array_key_exists((string) $section, self::annualSections()) ? $section : 'bersama';
             $this->entries[] = ['section' => $section, 'description' => '', 'quantity' => ''];
