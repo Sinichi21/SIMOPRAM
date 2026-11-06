@@ -27,13 +27,14 @@ final class GudepDocumentLetterhead
             throw ValidationException::withMessages(['letterheadType' => 'Profil administrasi untuk kop ini belum aktif.']);
         }
 
+        $setting = $school->documentSetting;
+        $maleNumber = trim((string) ($gudep->male_number ?: $setting?->gudep_male_number));
+        $femaleNumber = trim((string) ($gudep->female_number ?: $setting?->gudep_female_number));
         $number = match ($type) {
-            'male' => trim((string) $gudep->male_number),
-            'female' => trim((string) $gudep->female_number),
-            default => implode(' - ', array_filter([
-                trim((string) $gudep->male_number),
-                trim((string) $gudep->female_number),
-            ], fn (string $value): bool => $value !== '')),
+            'male' => $maleNumber,
+            'female' => $femaleNumber,
+            default => implode(' - ', array_filter([$maleNumber, $femaleNumber],
+                fn (string $value): bool => $value !== '')),
         };
 
         if ($requireNumber && $number === '') {
