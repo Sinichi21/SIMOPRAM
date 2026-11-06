@@ -15,6 +15,7 @@ use App\Models\ScoutGroup;
 use App\Models\ScoutLevel;
 use App\Models\Semester;
 use App\Models\User;
+use App\Support\GudepAnnualProgram;
 use App\Support\SchoolContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -389,6 +390,71 @@ class GudepProgramPlannerTest extends TestCase
             ->assertNotFound();
 
         $this->assertDatabaseCount('report_verifications', 0);
+    }
+
+    public function test_annual_document_template_hides_unavailable_levels_and_keeps_nested_numbering(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+        $level = ScoutLevel::query()->firstOrCreate(['code' => 'siaga'], ['name' => 'Siaga']);
+        GudepFormation::query()->create([
+            'school_id' => $school->id,
+            'scout_group_id' => $gudep->id,
+            'academic_year_id' => $year->id,
+            'scout_level_id' => $level->id,
+            'name' => 'Perindukan Siaga',
+            'formation_type' => 'perindukan',
+            'is_active' => true,
+        ]);
+
+        Livewire::test(GudepProgramPlanner::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->call('loadAnnualTemplate')
+            ->set('title', 'Program Kerja Tahunan 2026-2027')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $sheet = GudepProgramSheet::query()->firstOrFail();
+        $this->assertNotEmpty(GudepAnnualProgram::numbered($sheet->entries, 'siaga'));
+        $this->assertSame([], GudepAnnualProgram::numbered($sheet->entries, 'penggalang'));
+        $this->assertSame('1)', GudepAnnualProgram::numbered($sheet->entries, 'siaga')[1]['marker']);
+
+        $this->get(route('administration.programs.print', $sheet->id))
+            ->assertOk()
+            ->assertSee('PROGRAM KERJA TAHUNAN')
+            ->assertSee('TAHUN 2026-2027')
+            ->assertSee('Pencapaian SKU')
+            ->assertSee('Mula')
+            ->assertSee('Rencana Pemasukan')
+            ->assertSee('Jumlah rencana pengeluaran')
+            ->assertDontSee('2. Penggalang');
+    }
+
+    public function test_annual_finance_is_a_plan_and_does_not_post_cash_entries(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+        $entries = GudepAnnualProgram::template([]);
+        foreach ($entries as &$entry) {
+            if ($entry['description'] === 'Iuran anggota') {
+                $entry['amount'] = 1000000;
+            } elseif ($entry['description'] === 'Biaya kegiatan Gugusdepan') {
+                $entry['amount'] = 1500000;
+            }
+        }
+        unset($entry);
+
+        Livewire::test(GudepProgramPlanner::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->set('title', 'Program Gudep Dengan Rencana Anggaran')
+            ->set('entries', $entries)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $sheet = GudepProgramSheet::query()->firstOrFail();
+        $this->assertSame(500000, GudepAnnualProgram::totals($sheet->entries)['shortfall']);
+        $this->assertDatabaseCount('gudep_cash_entries', 0);
+        $this->assertDatabaseCount('gudep_finance_budgets', 0);
     }
 
     public function test_cross_gudep_edit_is_not_permitted(): void
