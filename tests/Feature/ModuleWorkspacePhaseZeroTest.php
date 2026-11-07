@@ -93,6 +93,17 @@ class ModuleWorkspacePhaseZeroTest extends TestCase
         $this->assertContains('letters.templates', $administrationRoutes);
     }
 
+    public function test_program_planner_and_competency_tracking_have_distinct_navigation_labels(): void
+    {
+        $administration = ModuleWorkspace::find('administrasi');
+        $this->assertNotNull($administration);
+
+        $links = collect($administration['links'])->keyBy('route');
+        $this->assertSame('Program Kerja Tahunan/Semester/Mingguan', $links['administration.programs']['label']);
+        $this->assertSame('Pembinaan SKU/SKK & Prestasi', $links['administration.development']['label']);
+        $this->assertNotContains('Program & Pembinaan', array_column($administration['links'], 'label'));
+    }
+
     public function test_finance_is_a_standalone_module_without_administration_duplicate(): void
     {
         $finance = ModuleWorkspace::find('keuangan');
