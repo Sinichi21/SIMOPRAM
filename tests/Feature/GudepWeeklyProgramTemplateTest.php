@@ -170,7 +170,7 @@ class GudepWeeklyProgramTemplateTest extends TestCase
         ]);
         Livewire::test(GudepProgramPlanner::class)
             ->set('scoutGroupId', $gudep->id)->set('academicYearId', $year->id)
-            ->call('publishProgram', $sheet->id)->assertStatus(422);
+            ->call('publishProgram', $sheet->id)->assertHasErrors(['publication']);
         $this->assertDatabaseCount('report_verifications', 0);
 
         $sheet->update([
