@@ -272,6 +272,7 @@
                                                                 @endforeach
                                                             </div>
                                                         </fieldset>
+                                                        <input wire:model="entries.{{ $index }}.notes" maxlength="500" placeholder="Keterangan baris matriks (opsional)" aria-label="Keterangan baris {{ $index + 1 }}" class="w-full rounded-lg border border-zinc-300 p-2 text-sm dark:bg-zinc-800">
                                                     @endif
                                                     <textarea wire:key="annual-detail-{{ $item['key'] ?? $index }}" wire:model="entries.{{ $index }}.detail" maxlength="1500" rows="2" placeholder="Deskripsi / pengantar subdaftar (opsional), misalnya: Berusaha untuk pencapaian SKK 10 macam meliputi..." class="w-full rounded-lg border border-zinc-300 p-2 text-sm dark:bg-zinc-800"></textarea>
                                                     <div class="flex flex-wrap items-end gap-2">
