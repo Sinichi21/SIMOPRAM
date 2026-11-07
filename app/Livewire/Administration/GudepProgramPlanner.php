@@ -515,6 +515,72 @@ class GudepProgramPlanner extends Component
         $this->saveNotice = '';
     }
 
+    /**
+     * Populate a semester draft only with scheduled annual activities from
+     * its five/seven calendar months. This never creates a second annual plan.
+     */
+    public function importScheduledAnnualItems(): void
+    {
+        $this->authorizeManage();
+        abort_unless($this->kind === 'semester' && $this->parentId !== null && $this->semesterId !== null, 422);
+
+        $annual = GudepProgramSheet::query()->where('school_id', $this->schoolId())
+            ->where('scout_group_id', $this->selectedGudep()->id)
+            ->where('academic_year_id', $this->selectedYear()->id)
+            ->where('kind', 'annual')->find($this->parentId);
+        abort_unless($annual !== null && (
+            in_array($annual->letterhead_type, ['male', 'female'], true) === false
+            || $annual->letterhead_type === $this->letterheadType
+        ), 422);
+
+        $previous = collect($this->entries)->keyBy('source_key');
+        $rows = [];
+        foreach ($annual->entries ?? [] as $index => $item) {
+            if (($item['section'] ?? '') === 'keuangan'
+                || trim((string) ($item['description'] ?? '')) === '') {
+                continue;
+            }
+
+            $months = GudepProgramSemesterProjection::fromAnnual($item['months'] ?? [], $this->selectedSemester());
+            if (in_array(true, $months, true) === false) {
+                continue;
+            }
+
+            $key = (string) ($item['key'] ?? 'legacy-'.$index);
+            $existing = $previous->get($key);
+            $rows[] = [
+                'source_key' => $key,
+                'description' => trim((string) $item['description']),
+                'months' => $months,
+                'participants' => $existing['participants'] ?? null,
+                'notes' => $existing['notes'] ?? '',
+            ];
+        }
+
+        // Keep independently authored semester rows and existing annotations.
+        foreach ($this->entries as $row) {
+            if (empty($row['source_key']) && trim((string) ($row['description'] ?? '')) !== '') {
+                $rows[] = $row;
+            }
+        }
+
+        if (count($rows) > 150) {
+            $this->addError('entries', 'Maksimal 150 kegiatan dalam Program Semester.');
+
+            return;
+        }
+
+        if ($rows === []) {
+            $this->addError('entries', 'Belum ada kegiatan Tahunan yang ditandai pada bulan semester ini.');
+
+            return;
+        }
+
+        $this->entries = $rows;
+        $this->resetValidation();
+        $this->saveNotice = 'Rencana semester diperbarui dari Program Tahunan (belum disimpan).';
+    }
+
     public function preview(int $id): void
     {
         $this->authorizeView();
