@@ -1032,6 +1032,7 @@ class GudepProgramPlanner extends Component
             'year_name' => $sheet->academicYear?->name,
             'semester_id' => $sheet->semester_id,
             'semester_name' => $sheet->semester?->name,
+            'semester_month_labels' => GudepProgramSemesterProjection::monthLabels($sheet->semester),
             'level_id' => $sheet->scout_level_id,
             'gudep_formation_id' => $sheet->gudep_formation_id,
             'level_name' => $sheet->scoutLevel?->name,
