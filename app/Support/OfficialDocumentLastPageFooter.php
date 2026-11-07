@@ -9,7 +9,7 @@ use Dompdf\Dompdf;
 final class OfficialDocumentLastPageFooter
 {
     /** @param array<int, string> $copies */
-    public static function attach(Dompdf $dompdf, array $copies): void
+    public static function attach(Dompdf $dompdf, array $copies, bool $isProgram = true): void
     {
         $copies = array_values(array_slice(array_filter(array_map(
             static fn ($value): string => trim((string) $value), $copies
@@ -20,7 +20,7 @@ final class OfficialDocumentLastPageFooter
             int $pageCount,
             $canvas,
             $fontMetrics
-        ) use ($copies): void {
+        ) use ($copies, $isProgram): void {
             if ($pageNumber !== $pageCount) {
                 return;
             }
@@ -42,10 +42,13 @@ final class OfficialDocumentLastPageFooter
                 }
             }
 
-            $notes = [
+            $notes = $isProgram ? [
                 'Dokumen ini memuat snapshot program yang diterbitkan oleh SIMPRAM. Perubahan selanjutnya',
                 'pada program atau agenda tidak mengubah arsip versi ini. QR verifikasi, nomor revisi,',
                 'dan metadata penerbitan disertakan melalui sistem penerbitan dokumen.',
+            ] : [
+                'Dokumen resmi diterbitkan dan diarsipkan oleh SIMPRAM. Perubahan pada sumber data',
+                'tidak mengubah versi dokumen ini. QR dan metadata digunakan untuk verifikasi.',
             ];
             foreach ($notes as $index => $line) {
                 $canvas->text($x, $height - 105 + $index * 8.5,
