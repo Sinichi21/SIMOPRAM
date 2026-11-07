@@ -623,7 +623,7 @@
                                 <thead><tr class="border-b">
                                     <th class="p-2">No.</th><th class="p-2">Kegiatan</th>
                                     @if ($previewSheet->kind === 'semester')
-                                        @for ($month = 1; $month <= 6; $month++)<th class="p-2">{{ $month }}</th>@endfor
+                                        @foreach (\App\Support\GudepProgramSemesterProjection::monthLabels($previewSheet->semester) as $month)<th class="p-2">{{ $month }}</th>@endforeach
                                         <th class="p-2">Jumlah</th>
                                     @else
                                         <th class="p-2">SKU</th><th class="p-2">SKK</th>
@@ -636,7 +636,7 @@
                                             <td class="p-2">{{ $loop->iteration }}.</td>
                                             <td class="p-2">{{ $entry['description'] }}</td>
                                             @if ($previewSheet->kind === 'semester')
-                                                @foreach ($entry['months'] as $checked)<td class="p-2">{{ $checked ? '✓' : '–' }}</td>@endforeach
+                                                @foreach (\App\Support\GudepProgramSemesterProjection::monthLabels($previewSheet->semester) as $monthIndex => $month)<td class="p-2">{{ ($entry['months'][$monthIndex] ?? false) ? '✓' : '–' }}</td>@endforeach
                                                 <td class="p-2">{{ $entry['participants'] ?? '–' }}</td>
                                             @else
                                                 <td class="p-2">{{ $entry['sku'] ?: '–' }}</td>
