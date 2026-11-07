@@ -1,6 +1,8 @@
 @php
     $financeRows = \App\Support\GudepAnnualProgram::numbered($entries, 'keuangan');
     $financial = \App\Support\GudepAnnualProgram::totals($entries);
+    $showsIncomeSubtotal = collect($financeRows)->contains(fn (array $row): bool => $row['depth'] === 0 && ($row['entry']['description'] ?? '') === 'Rencana Pengeluaran');
+    $showsExpenseSubtotal = collect($financeRows)->contains(fn (array $row): bool => $row['depth'] === 0 && ($row['entry']['description'] ?? '') === 'Usaha Dana');
 @endphp
 <div style="font-family:'Times New Roman',Times,serif;font-size:10pt;page-break-inside:auto;">
     <div style="font-weight:bold;margin:16px 0 6px;">F. BIDANG KEUANGAN</div>
@@ -43,11 +45,15 @@
             @endforelse
         </tbody>
     </table>
-    <table style="width:100%;border-collapse:collapse;table-layout:fixed;margin-top:8px;font-size:9pt;">
+    <table style="width:100%;border-collapse:collapse;table-layout:fixed;margin-top:8px;font-size:9pt;page-break-inside:avoid;">
         <colgroup><col style="width:68%;"><col style="width:32%;"></colgroup>
         <tbody>
+            @unless ($showsIncomeSubtotal)
             <tr><td style="padding:3px 3px 3px 26px;">Jumlah rencana pemasukan</td><td style="text-align:right;white-space:nowrap;padding:3px;">Rp {{ number_format($financial['income'], 0, ',', '.') }}</td></tr>
+            @endunless
+            @unless ($showsExpenseSubtotal)
             <tr><td style="padding:3px 3px 3px 26px;">Jumlah rencana pengeluaran</td><td style="text-align:right;white-space:nowrap;padding:3px;">Rp {{ number_format($financial['expense'], 0, ',', '.') }}</td></tr>
+            @endunless
             <tr style="font-weight:bold;"><td style="padding:4px 3px 4px 26px;">Kekurangan rencana biaya / usaha dana</td><td style="text-align:right;white-space:nowrap;padding:4px 3px;">Rp {{ number_format($financial['shortfall'], 0, ',', '.') }}</td></tr>
             @if ($financial['surplus'] > 0)
                 <tr><td style="padding:3px 3px 3px 26px;">Surplus rencana</td><td style="text-align:right;white-space:nowrap;padding:3px;">Rp {{ number_format($financial['surplus'], 0, ',', '.') }}</td></tr>
