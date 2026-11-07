@@ -1,7 +1,7 @@
 @php
     $sections = \App\Support\GudepAnnualProgram::sections();
     $financial = \App\Support\GudepAnnualProgram::totals($entries);
-    $gudepLabel = trim(mb_strtoupper(($kwarcab ?? '').' '.trim(($maleNumber ?? '') . (($maleNumber ?? '') && ($femaleNumber ?? '') ? '-' : '') . ($femaleNumber ?? ''))));
+    $gudepLabel = trim(mb_strtoupper(($kwarcab ?? '').' '.($programNumber ?? trim(($maleNumber ?? '').(($maleNumber ?? '') && ($femaleNumber ?? '') ? '-' : '').($femaleNumber ?? '')))));
     $yearLabel = str_replace('/', '-', (string) ($yearName ?? '–'));
 @endphp
 <div class="annual-paper" style="font-family:Arial,Helvetica,sans-serif;font-size:10pt;color:#111;line-height:1.52;">
@@ -55,35 +55,5 @@
         @endforelse
     @endforeach
 
-    <div style="font-weight:bold;text-align:justify;margin:17px 0 7px;">F. BIDANG KEUANGAN</div>
-    @php $financeRows = \App\Support\GudepAnnualProgram::numbered($entries, 'keuangan'); @endphp
-    @forelse ($financeRows as $row)
-        @php $item = $row['entry']; $type = $item['finance_type'] ?? ''; @endphp
-        @if ($row['depth'] === 0 && ($item['description'] ?? '') === 'Rencana Pengeluaran')
-            <div style="margin-left:43px;overflow:hidden;font-weight:bold;">Jumlah Pemasukan <span style="float:right;">Rp {{ number_format($financial['income'], 0, ',', '.') }}</span></div>
-        @endif
-        @if ($row['depth'] === 0 && ($item['description'] ?? '') === 'Usaha Dana')
-            <div style="margin-left:43px;overflow:hidden;font-weight:bold;">Jumlah Pengeluaran <span style="float:right;">Rp {{ number_format($financial['expense'], 0, ',', '.') }}</span></div>
-        @endif
-        <div style="margin-left:{{ 20 + $row['depth'] * 23 }}px;text-align:justify;page-break-inside:avoid;">
-            <span style="display:inline-block;width:23px;">{{ $row['marker'] }}</span>
-            <span>{{ $item['description'] ?? '–' }}</span>
-            @if (in_array($type, ['income', 'expense'], true))
-                <span style="float:right;white-space:nowrap;">Rp {{ ($item['amount'] ?? null) === null || ($item['amount'] ?? '') === '' ? '–' : number_format((int) $item['amount'], 0, ',', '.') }}</span>
-            @endif
-            @if (filled($item['detail'] ?? null))
-                <div style="margin-left:23px;text-align:justify;white-space:pre-line;">{{ $item['detail'] }}</div>
-            @endif
-        </div>
-    @empty
-        <div style="margin-left:20px;">–</div>
-    @endforelse
-    <div style="margin:11px 0 0 43px;">
-        <div style="display:flex;justify-content:space-between;"><strong>Jumlah rencana pemasukan</strong><strong>Rp {{ number_format($financial['income'], 0, ',', '.') }}</strong></div>
-        <div style="display:flex;justify-content:space-between;"><strong>Jumlah rencana pengeluaran</strong><strong>Rp {{ number_format($financial['expense'], 0, ',', '.') }}</strong></div>
-        <div style="display:flex;justify-content:space-between;"><strong>Kekurangan rencana biaya / usaha dana</strong><strong>Rp {{ number_format($financial['shortfall'], 0, ',', '.') }}</strong></div>
-        @if ($financial['surplus'] > 0)
-            <div style="display:flex;justify-content:space-between;"><strong>Surplus rencana</strong><strong>Rp {{ number_format($financial['surplus'], 0, ',', '.') }}</strong></div>
-        @endif
-    </div>
+    @include('administration.partials.annual-program-finance', ['entries' => $entries])
 </div>
