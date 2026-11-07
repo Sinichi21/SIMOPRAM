@@ -1,5 +1,5 @@
 @include('administration.partials.gudep-document-letterhead', ['letterhead' => $snapshot['letterhead']])
-@if ($snapshot['kind'] !== 'annual')
+@if ($snapshot['kind'] === 'semester')
 <h1 style="text-align:center;font-size:15pt;margin-bottom:4px;">PROGRAM KERJA {{ ['annual' => 'TAHUNAN', 'semester' => 'SEMESTER', 'weekly' => 'LATIHAN MINGGUAN'][$snapshot['kind']] ?? 'GUGUSDEPAN' }}</h1>
 <p style="text-align:center;font-size:10pt;margin-top:0;">{{ $snapshot['gudep_name'] }} — {{ $snapshot['year_name'] }}</p>
 <table style="width:100%;font-size:9pt;margin:12px 0;border-collapse:collapse;">
@@ -42,15 +42,11 @@
         </tbody>
     </table>
 @else
-    <h2 style="font-size:10pt;">Rencana Pelaksanaan Latihan</h2>
-    <table style="width:100%;border-collapse:collapse;font-size:8pt;" border="1" cellpadding="5">
-        <thead><tr><th>No.</th><th>Materi Latihan</th><th>SKU</th><th>SKK</th><th>Ket.</th></tr></thead>
-        <tbody>
-            @foreach ($snapshot['entries'] as $row)
-                <tr><td>{{ $loop->iteration }}.</td><td>{{ $row['description'] ?? '–' }}</td><td>{{ $row['sku'] ?: '–' }}</td><td>{{ $row['skk'] ?: '–' }}</td><td>{{ $row['notes'] ?: '–' }}</td></tr>
-            @endforeach
-        </tbody>
-    </table>
+    @include('administration.partials.weekly-program-body', [
+        'weeklyRows' => $snapshot['entries'] ?? [],
+        'weeklySignatures' => $snapshot['weekly_signatures'] ?? [],
+        'weeklyDate' => $snapshot['scheduled_for'] ?? null,
+    ])
 @endif
 @if ($snapshot['notes'])
     <h2 style="font-size:10pt;">Catatan</h2>
