@@ -172,7 +172,7 @@ class GudepProgramPlanner extends Component
     public function removeRow(int $index): void
     {
         $this->authorizeManage();
-        if (! array_key_exists($index, $this->entries)) {
+        if (array_key_exists($index, $this->entries) === false) {
             return;
         }
         if ($this->kind === 'annual') {
@@ -191,7 +191,7 @@ class GudepProgramPlanner extends Component
                 }
             }
             $this->entries = array_values(array_filter($this->entries,
-                fn (array $entry): bool => ! in_array((string) ($entry['key'] ?? ''), $removed, true)));
+                fn (array $entry): bool => in_array((string) ($entry['key'] ?? ''), $removed, true) === false));
 
             return;
         }
@@ -517,7 +517,7 @@ class GudepProgramPlanner extends Component
                 $seen = [$key => true];
                 $depth = 0;
                 while ($ancestor !== null && $ancestor !== '') {
-                    if (isset($seen[$ancestor]) || ! isset($byKey[$ancestor])
+                    if (isset($seen[$ancestor]) || isset($byKey[$ancestor]) === false
                         || $byKey[$ancestor]['section'] !== $entry['section'] || ++$depth > 2) {
                         $this->addError('entries', 'Hierarki subbutir tidak valid: induk harus berada di bagian yang sama, tanpa siklus dan maksimal tiga tingkat.');
 
@@ -528,7 +528,7 @@ class GudepProgramPlanner extends Component
                     $ancestor = $byKey[$ancestor]['parent_key'] ?? null;
                 }
 
-                if ($entry['section'] !== 'keuangan' && ! empty($entry['finance_type'])) {
+                if ($entry['section'] !== 'keuangan' && empty($entry['finance_type']) === false) {
                     $this->addError('entries', 'Nominal keuangan hanya boleh ditempatkan di bagian F.');
 
                     return;
@@ -540,7 +540,7 @@ class GudepProgramPlanner extends Component
             ->where('school_id', $this->schoolId())->where('scout_group_id', $gudep->id)
             ->where('academic_year_id', $year->id)->where('scout_level_id', $this->scoutLevelId)
             ->where('is_active', true)->exists();
-        if (! $validLevel) {
+        if ($validLevel === false) {
             $this->addError('scoutLevelId', 'Golongan ini tidak tersedia pada Gudep dan tahun ajaran yang dipilih.');
 
             return;
@@ -652,7 +652,7 @@ class GudepProgramPlanner extends Component
             'entries' => $entries,
             'notes' => $this->notes ?: null,
         ]);
-        if (! $sheet->exists) {
+        if ($sheet->exists === false) {
             $sheet->created_by = auth()->id();
         }
         $sheet->save();
@@ -915,8 +915,7 @@ class GudepProgramPlanner extends Component
             'parentOptions' => $this->kind === 'semester'
                 ? $sheets->where('kind', 'annual')
                 : ($this->kind === 'weekly'
-                    ? $sheets->where('kind', 'semester')->filter(fn (GudepProgramSheet $parent): bool =>
-                        ($this->semesterId === null || (int) $parent->semester_id === (int) $this->semesterId)
+                    ? $sheets->where('kind', 'semester')->filter(fn (GudepProgramSheet $parent): bool => ($this->semesterId === null || (int) $parent->semester_id === (int) $this->semesterId)
                         && ($this->scoutLevelId === null || (int) $parent->scout_level_id === (int) $this->scoutLevelId)
                         && ($this->formationId === null || $parent->gudep_formation_id === null
                             || (int) $parent->gudep_formation_id === (int) $this->formationId))
