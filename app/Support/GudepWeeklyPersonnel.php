@@ -123,6 +123,7 @@ final class GudepWeeklyPersonnel
         return array_values(array_filter($options, static fn (array $option): bool =>
             $option['scope'] !== 'muda'
             && in_array($option['scope'], ['gudep', 'mabi', 'satuan'], true)
+            && str_contains(mb_strtolower($option['position']), 'pembina')
         ));
     }
 
