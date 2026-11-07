@@ -130,6 +130,23 @@
                         </select>
                         @error('parentId')<span class="block text-xs text-red-600">{{ $message }}</span>@enderror
                     </label>
+                    @if ($kind !== 'annual' && $parentId !== null && $parentItems->isNotEmpty())
+                        <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-900 dark:bg-emerald-950/30">
+                            <p class="text-sm font-semibold text-emerald-900 dark:text-emerald-200">Ambil butir dari program induk</p>
+                            <p class="mt-1 text-xs text-emerald-700 dark:text-emerald-300">Menambahkan satu materi ke draft ini. Tidak membuat kegiatan, jurnal, atau transaksi keuangan.</p>
+                            <div class="mt-2 flex flex-wrap items-end gap-2">
+                                <label class="min-w-0 flex-1 text-xs">Materi dari induk
+                                    <select wire:model="parentItemIndex" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 text-sm dark:bg-zinc-800">
+                                        <option value="">Pilih butir yang akan digunakan</option>
+                                        @foreach ($parentItems as $parentItem)
+                                            <option value="{{ $parentItem['index'] }}">{{ \Illuminate\Support\Str::limit($parentItem['description'], 110) }}</option>
+                                        @endforeach
+                                    </select>
+                                </label>
+                                <button type="button" wire:click="importParentItem" class="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-semibold text-white">+ Tambahkan ke draft</button>
+                            </div>
+                        </div>
+                    @endif
                     @if ($kind === 'weekly')
                         <label class="text-sm font-medium">Kaitkan kegiatan SIMPRAM (opsional)
                             <select wire:model.live="activityId" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
