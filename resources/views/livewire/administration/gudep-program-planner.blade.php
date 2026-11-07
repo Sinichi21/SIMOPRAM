@@ -5,7 +5,7 @@
             <h1 class="mt-1 text-2xl font-bold">Program Tahunan, Semester & Latihan Mingguan</h1>
             <p class="mt-2 max-w-3xl text-sm text-zinc-500">Form mengikuti kelompok dan tabel buku administrasi. Identitas Gudep dan tahun ajaran selalu diambil dari SIMPRAM; jumlah kegiatan boleh kosong (ditampilkan –).</p>
         </div>
-        <a href="{{ route('administration.development') }}" wire:navigate class="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700">Pembinaan Gudep</a>
+        <a href="{{ route('administration.development') }}" wire:navigate class="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700">Progres SKU/SKK & Prestasi</a>
     </header>
 
     @if (session('status'))
@@ -106,7 +106,7 @@
             @if ($kind !== 'annual')
                 <div class="mt-4 grid gap-3 sm:grid-cols-2">
                     <label class="text-sm font-medium">Semester
-                        <select wire:model="semesterId" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
+                        <select wire:model.live="semesterId" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
                             <option value="">Pilih semester</option>
                             @foreach ($semesters as $semester)<option value="{{ $semester->id }}">{{ $semester->name }}</option>@endforeach
                         </select>
@@ -135,8 +135,8 @@
                         <p class="mt-1 text-xs text-zinc-500">Berasal dari jenis satuan yang dipilih. Ubah jenis satuan melalui Administrasi Gudep jika datanya keliru.</p>
                         @error('letterheadType')<span class="mt-1 block text-xs text-red-600">{{ $message }}</span>@enderror
                     </div>
-                    <label class="text-sm font-medium">Tautkan ke program induk (opsional)
-                        <select wire:model="parentId" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
+                    <label class="text-sm font-medium">{{ $kind === 'semester' ? 'Sumber utama: Program Tahunan' : 'Tautkan ke Program Semester (opsional)' }}
+                        <select wire:model.live="parentId" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
                             <option value="">Belum ditautkan</option>
                             @foreach ($parentOptions as $parent)
                                 <option value="{{ $parent->id }}">{{ $parent->title }}</option>
@@ -144,6 +144,14 @@
                         </select>
                         @error('parentId')<span class="block text-xs text-red-600">{{ $message }}</span>@enderror
                     </label>
+                    @if ($kind === 'semester' && $parentId !== null)
+                        <div class="rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-sm dark:border-emerald-900 dark:bg-emerald-950/30">
+                            <p class="font-semibold">Program Semester adalah turunan Program Tahunan</p>
+                            <p class="mt-1 text-xs">Jadwal dan nama kegiatan mengikuti satu sumber Tahunan. Semester Ganjil: Agustus–Desember (5 bulan); Genap: Januari–Juli (7 bulan). Yang ditambahkan di Semester hanyalah jumlah peserta, catatan pelaksanaan, atau kegiatan khusus tambahan.</p>
+                            <button type="button" wire:click="importScheduledAnnualItems" class="mt-3 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-semibold text-white">Ambil semua kegiatan terjadwal dari Tahunan</button>
+                            @error('entries') <p class="mt-2 text-xs text-red-700">{{ $message }}</p> @enderror
+                        </div>
+                    @endif
                     @if ($kind !== 'annual' && $parentId !== null && $parentItems->isNotEmpty())
                         <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-900 dark:bg-emerald-950/30">
                             <p class="text-sm font-semibold text-emerald-900 dark:text-emerald-200">Ambil butir dari program induk</p>
@@ -224,7 +232,7 @@
                         <label class="block text-sm font-medium">Format dokumen tahunan
                             <select wire:model.live="documentLayout" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
                                 <option value="narrative">Format naratif A–F (format sekarang)</option>
-                                <option value="monthly_matrix">Format tabel bulanan 8–7 (contoh buku administrasi)</option>
+                                <option value="monthly_matrix">Tampilan matriks Tahunan (Agustus–Juli) — sumber semester</option>
                             </select>
                             <span class="mt-1 block text-xs text-zinc-500">Kedua format memakai data rencana yang sama. Untuk matriks, tandai bulan pada setiap butir kegiatan.</span>
                         </label>
@@ -337,13 +345,28 @@
                     @elseif ($kind === 'semester')
                         <section class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700">
                             <table class="min-w-full text-left text-xs">
-                                <thead class="bg-zinc-50 dark:bg-zinc-800"><tr><th class="p-3">No.</th><th class="min-w-52 p-3">Kegiatan</th>@for ($month=1; $month<=6; $month++)<th class="p-2 text-center">{{ $month }}</th>@endfor<th class="p-3">Jumlah anggota</th><th class="p-3">Ket.</th><th class="p-3"></th></tr></thead>
+                                <thead class="bg-zinc-50 dark:bg-zinc-800"><tr><th class="p-3">No.</th><th class="min-w-52 p-3">Kegiatan</th>@foreach ($semesterMonthLabels as $monthLabel)<th class="p-2 text-center">{{ $monthLabel }}</th>@endforeach<th class="p-3">Jumlah anggota</th><th class="p-3">Ket.</th><th class="p-3"></th></tr></thead>
                                 <tbody>
                                     @foreach ($entries as $index => $row)
-                                        <tr wire:key="semester-{{ $index }}" class="border-t border-zinc-100 dark:border-zinc-800">
+                                        <tr wire:key="semester-{{ $row['source_key'] ?? $index }}" class="border-t border-zinc-100 dark:border-zinc-800">
                                             <td class="p-2">{{ $loop->iteration }}.</td>
-                                            <td class="p-2"><input wire:model="entries.{{ $index }}.description" class="w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">@error('entries.'.$index.'.description')<span class="block text-red-600">{{ $message }}</span>@enderror</td>
-                                            @for ($month=0; $month<6; $month++)<td class="p-2 text-center"><input type="checkbox" wire:model="entries.{{ $index }}.months.{{ $month }}" aria-label="Bulan {{ $month+1 }} baris {{ $index + 1 }}"></td>@endfor
+                                            <td class="p-2">
+                                                @if (! empty($row['source_key']))
+                                                    <div class="font-medium">{{ $row['description'] }}</div><div class="text-[10px] text-emerald-700">Dari Program Tahunan</div>
+                                                @else
+                                                    <input wire:model="entries.{{ $index }}.description" class="w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800" aria-label="Kegiatan tambahan semester">
+                                                @endif
+                                                @error('entries.'.$index.'.description')<span class="block text-red-600">{{ $message }}</span>@enderror
+                                            </td>
+                                            @foreach ($semesterMonthLabels as $monthIndex => $monthLabel)
+                                                <td class="p-2 text-center">
+                                                    @if (! empty($row['source_key']))
+                                                        <span aria-label="Jadwal bulan {{ $monthLabel }} dari Tahunan">{{ ($row['months'][$monthIndex] ?? false) ? '✓' : '–' }}</span>
+                                                    @else
+                                                        <input type="checkbox" wire:model="entries.{{ $index }}.months.{{ $monthIndex }}" aria-label="Bulan {{ $monthLabel }} baris {{ $index + 1 }}">
+                                                    @endif
+                                                </td>
+                                            @endforeach
                                             <td class="p-2"><input type="number" min="0" placeholder="–" wire:model="entries.{{ $index }}.participants" class="w-20 rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800"></td>
                                             <td class="p-2"><input wire:model="entries.{{ $index }}.notes" class="w-32 rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800"></td>
                                             <td class="p-2"><button type="button" wire:click="removeRow({{ $index }})" class="text-red-600">Hapus</button></td>
@@ -352,7 +375,7 @@
                                 </tbody>
                             </table>
                         </section>
-                        <button type="button" wire:click="addRow" class="rounded-lg border border-emerald-600 px-3 py-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300">+ Tambah kegiatan</button>
+                        <button type="button" wire:click="addRow" class="rounded-lg border border-emerald-600 px-3 py-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300">+ Tambah kegiatan khusus Semester</button>
                     @else
                         <section class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
                             <h3 class="text-center font-bold uppercase">Program Latihan Mingguan Gugusdepan</h3>
