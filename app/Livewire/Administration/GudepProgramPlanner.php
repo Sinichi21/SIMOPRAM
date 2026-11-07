@@ -788,6 +788,7 @@ class GudepProgramPlanner extends Component
     ): void {
         $this->authorizeManage();
         abort_unless(auth()->user()?->can('reports.export'), 403);
+        $this->resetValidation();
 
         $sheet = GudepProgramSheet::query()->where('school_id', $this->schoolId())
             ->where('scout_group_id', $this->selectedGudep()->id)
@@ -860,6 +861,7 @@ class GudepProgramPlanner extends Component
             'signatures' => $signatures,
             'document_layout' => $sheet->document_layout ?: 'narrative',
             'cc_recipients' => $sheet->cc_recipients ?? [],
+            'program_date' => $sheet->updated_at?->format('d/m/Y'),
             'notes' => $sheet->notes,
         ];
 
