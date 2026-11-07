@@ -93,7 +93,9 @@
                 <div>
                     <span class="block text-xs text-zinc-500">Gugusdepan (dari sistem · terkunci)</span>
                     <span class="font-semibold">{{ $gudep->name }}</span>
-                    <p class="text-xs text-zinc-500">Putra: {{ $gudep->male_number ?: '–' }} · Putri: {{ $gudep->female_number ?: '–' }}</p>
+                    <p class="text-xs text-zinc-500">Pemilik program: {{ $letterheadType === 'male' ? 'Gudep Putra' : ($letterheadType === 'female' ? 'Gudep Putri' : 'Gabungan (data lama)') }}
+                        — {{ $letterheadType === 'male' ? ($letterheadProfile['male_number'] ?? '–') : ($letterheadType === 'female' ? ($letterheadProfile['female_number'] ?? '–') : '–') }}
+                    </p>
                 </div>
                 <div>
                     <span class="block text-xs text-zinc-500">Tahun ajaran (dari sistem · terkunci)</span>
