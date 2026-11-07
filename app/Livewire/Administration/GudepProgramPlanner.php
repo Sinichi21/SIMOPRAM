@@ -11,6 +11,7 @@ use App\Models\GudepFormation;
 use App\Models\GudepProgramSheet;
 use App\Models\School;
 use App\Models\ScoutGroup;
+use App\Models\ScoutLevel;
 use App\Models\Semester;
 use App\Services\Documents\OfficialDocumentPublisher;
 use App\Services\ReportVerificationService;
@@ -630,7 +631,7 @@ class GudepProgramPlanner extends Component
             $acknowledgers = GudepWeeklyPersonnel::acknowledgers($personnel);
             $signers = GudepWeeklyPersonnel::signers(
                 $personnel,
-                \App\Models\ScoutLevel::query()->find($this->scoutLevelId)?->name
+                ScoutLevel::query()->find($this->scoutLevelId)?->name
             );
 
             if ($this->acknowledgedByRef !== '' && GudepWeeklyPersonnel::find($acknowledgers, $this->acknowledgedByRef) === null) {
