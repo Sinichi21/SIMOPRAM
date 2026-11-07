@@ -22,7 +22,7 @@ final class ModuleWorkspace
                     ['label' => 'Portofolio Akreditasi', 'route' => 'administration.accreditation', 'permission' => 'gudep.view'],
                     ['label' => 'Buku Operasional', 'route' => 'administration.operations', 'permission' => 'gudep.view'],
                     ['label' => 'Program Kerja Tahunan/Semester/Mingguan', 'route' => 'administration.programs', 'permission' => 'gudep.view'],
-                    ['label' => 'Program & Pembinaan', 'route' => 'administration.development', 'permission' => 'gudep.view'],
+                    ['label' => 'Pembinaan SKU/SKK & Prestasi', 'route' => 'administration.development', 'permission' => 'gudep.view'],
                     ['label' => 'Organisasi & Buku Induk', 'route' => 'administration.organization', 'permission' => 'gudep.view'],
                     ['label' => 'Gugusdepan', 'route' => 'scout-groups.index', 'permission' => 'gudep.view'],
                     ['label' => 'Surat masuk', 'route' => 'letters.incoming', 'permission' => 'letters.view'],
