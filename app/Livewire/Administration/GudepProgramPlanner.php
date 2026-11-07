@@ -428,7 +428,7 @@ class GudepProgramPlanner extends Component
         };
         abort_unless($parent !== null && $parent->kind === $expectedKind, 404);
         abort_unless($this->kind !== 'semester'
-            || ! in_array($parent->letterhead_type, ['male', 'female'], true)
+            || in_array($parent->letterhead_type, ['male', 'female'], true) === false
             || $parent->letterhead_type === $this->letterheadType, 422);
 
         if ($this->kind === 'weekly') {
@@ -915,7 +915,7 @@ class GudepProgramPlanner extends Component
         $type ??= $this->letterheadType;
         $kind ??= $this->kind;
         if ($kind === 'annual') {
-            if (! in_array($type, ['male', 'female', 'mabigus'], true)) {
+            if (in_array($type, ['male', 'female', 'mabigus'], true) === false) {
                 $this->addError('letterheadType', 'Pilih Gudep Putra atau Putri untuk Program Tahunan.');
             }
 
@@ -1118,9 +1118,8 @@ class GudepProgramPlanner extends Component
                     ->values()
                 : collect(),
             'parentOptions' => $this->kind === 'semester'
-                ? $sheets->where('kind', 'annual')->filter(fn (GudepProgramSheet $parent): bool =>
-                    $parent->letterhead_type === $this->letterheadType
-                    || ! in_array($parent->letterhead_type, ['male', 'female'], true))
+                ? $sheets->where('kind', 'annual')->filter(fn (GudepProgramSheet $parent): bool => $parent->letterhead_type === $this->letterheadType
+                    || in_array($parent->letterhead_type, ['male', 'female'], true) === false)
                 : ($this->kind === 'weekly'
                     ? $sheets->where('kind', 'semester')->filter(fn (GudepProgramSheet $parent): bool => ($this->semesterId === null || (int) $parent->semester_id === (int) $this->semesterId)
                         && ($this->scoutLevelId === null || (int) $parent->scout_level_id === (int) $this->scoutLevelId)
