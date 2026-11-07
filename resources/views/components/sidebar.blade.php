@@ -68,6 +68,21 @@
             </flux:sidebar.nav>
         @endif
 
+        {{-- Modul adalah titik masuk tunggal bagi halaman yang sudah memiliki ruang kerja. --}}
+        @if (! $isStudent && ! $moduleWorkspaceActive && $hasActiveSchool)
+            <flux:sidebar.nav data-school-menu>
+                <flux:sidebar.group heading="Modul" class="grid">
+                    @foreach (\App\Support\ModuleWorkspace::all() as $slug => $module)
+                        @if (\App\Support\ModuleWorkspace::permitted($currentUser, $module))
+                            <flux:sidebar.item :icon="$module['icon']" :href="route('modules.show', $slug)" wire:navigate>
+                                {{ $module['title'] }}
+                            </flux:sidebar.item>
+                        @endif
+                    @endforeach
+                </flux:sidebar.group>
+            </flux:sidebar.nav>
+        @endif
+
         @if ($moduleWorkspaceActive)
             @include('modules.sidebar', ['workspace' => $moduleWorkspace])
         @elseif ($isStudent)
@@ -476,103 +491,7 @@
             </flux:sidebar.nav>
 
 
-            {{-- =====================================================
-            KEGIATAN
-            ====================================================== --}}
-
-            @canany([
-                'activities.view',
-                'attendance_sessions.view',
-                'journals.view'
-            ])
-
-                <flux:sidebar.nav
-                    data-school-menu
-                    @class([
-                        'opacity-60 [&_*]:cursor-not-allowed'
-                            => ! $hasActiveSchool,
-                    ])
-                >
-
-                    <flux:sidebar.group
-                        heading="Kegiatan"
-                        expandable
-                        :expanded="
-                            request()->routeIs(
-                                'activities.*',
-                                'attendances.*',
-                                'journals.*'
-                            )
-                        "
-                        class="grid"
-                    >
-
-                        @can('activities.view')
-
-                            <flux:sidebar.item
-                                icon="calendar-days"
-                                :href="route(
-                                    'activities.index'
-                                )"
-                                :current="
-                                    request()->routeIs(
-                                        'activities.*'
-                                    )
-                                "
-                                wire:navigate
-                            >
-                                Agenda & Kegiatan
-                            </flux:sidebar.item>
-
-                        @endcan
-
-
-                        @can('attendance_sessions.view')
-
-                            <flux:sidebar.item
-                                icon="clipboard-document-check"
-                                :href="route(
-                                    'attendances.index'
-                                )"
-                                :current="
-                                    request()->routeIs(
-                                        'attendances.index',
-                                        'attendances.manage'
-                                    )
-                                "
-                                wire:navigate
-                            >
-                                Absensi
-                            </flux:sidebar.item>
-
-                        @endcan
-
-
-                        @can('journals.view')
-
-                            <flux:sidebar.item
-                                icon="document-text"
-                                :href="route(
-                                    'journals.index'
-                                )"
-                                :current="
-                                    request()->routeIs(
-                                        'journals.*'
-                                    )
-                                "
-                                wire:navigate
-                            >
-                                Jurnal Kegiatan
-                            </flux:sidebar.item>
-
-                        @endcan
-
-                    </flux:sidebar.group>
-
-                </flux:sidebar.nav>
-
-            @endcanany
-
+            {{-- Kegiatan, absensi, jurnal, dan pengumuman berada di Modul Kegiatan & Pembinaan. --}}
 
             {{-- =====================================================
             PENILAIAN
@@ -704,80 +623,7 @@
             @endcanany
 
 
-            {{-- =====================================================
-            DATA BINAAN
-            ====================================================== --}}
-
-            @canany([
-                'students.view',
-                'scout_units.view'
-            ])
-
-                <flux:sidebar.nav
-                    data-school-menu
-                    @class([
-                        'opacity-60 [&_*]:cursor-not-allowed'
-                            => ! $hasActiveSchool,
-                    ])
-                >
-
-                    <flux:sidebar.group
-                        heading="Data Binaan"
-                        expandable
-                        :expanded="
-                            request()->routeIs(
-                                'students.*',
-                                'scout-units.*'
-                            )
-                        "
-                        class="grid"
-                    >
-
-                        @can('students.view')
-
-                            <flux:sidebar.item
-                                icon="users"
-                                :href="route(
-                                    'students.index'
-                                )"
-                                :current="
-                                    request()->routeIs(
-                                        'students.*'
-                                    )
-                                "
-                                wire:navigate
-                            >
-                                Siswa
-                            </flux:sidebar.item>
-
-                        @endcan
-
-
-                        @can('scout_units.view')
-
-                            <flux:sidebar.item
-                                icon="rectangle-group"
-                                :href="route(
-                                    'scout-units.index'
-                                )"
-                                :current="
-                                    request()->routeIs(
-                                        'scout-units.*'
-                                    )
-                                "
-                                wire:navigate
-                            >
-                                Regu / Barung
-                            </flux:sidebar.item>
-
-                        @endcan
-
-                    </flux:sidebar.group>
-
-                </flux:sidebar.nav>
-
-            @endcanany
-
+            {{-- Data binaan ada di Modul Keanggotaan. --}}
 
             {{-- =====================================================
             LAPORAN
@@ -1068,81 +914,7 @@
                 </div>
             @endif
 
-            {{-- =================================================
-            KEGIATAN
-            Alur kerja harian ditempatkan paling atas setelah sekolah aktif.
-            ================================================== --}}
-
-            @canany(['activities.view', 'attendance_sessions.view', 'journals.view', 'announcements.view'])
-                <flux:sidebar.nav
-                    data-school-menu
-                    @class([
-                        'opacity-60 [&_*]:cursor-not-allowed' => ! $hasActiveSchool,
-                    ])
-                >
-                    <flux:sidebar.group
-                        heading="Kegiatan"
-                        expandable
-                        :expanded="request()->routeIs(
-                            'activities.*',
-                            'attendances.index',
-                            'journals.*',
-                            'announcements.index',
-                            'announcements.create',
-                            'announcements.edit'
-                        )"
-                        class="grid"
-                    >
-                        @can('activities.view')
-                            <flux:sidebar.item
-                                icon="calendar-days"
-                                :href="route('activities.index')"
-                                :current="request()->routeIs('activities.*')"
-                                wire:navigate
-                            >
-                                Agenda / Kegiatan
-                            </flux:sidebar.item>
-                        @endcan
-
-                        @can('attendance_sessions.view')
-                            <flux:sidebar.item
-                                icon="clipboard-document-check"
-                                :href="route('attendances.index')"
-                                :current="request()->routeIs('attendances.index')"
-                                wire:navigate
-                            >
-                                Absensi
-                            </flux:sidebar.item>
-                        @endcan
-
-                        @can('journals.view')
-                            <flux:sidebar.item
-                                icon="document-text"
-                                :href="route('journals.index')"
-                                :current="request()->routeIs('journals.*')"
-                                wire:navigate
-                            >
-                                Jurnal Kegiatan
-                            </flux:sidebar.item>
-                        @endcan
-
-                        @can('announcements.view')
-                            <flux:sidebar.item
-                                icon="megaphone"
-                                :href="route('announcements.index')"
-                                :current="request()->routeIs(
-                                    'announcements.index',
-                                    'announcements.create',
-                                    'announcements.edit'
-                                )"
-                                wire:navigate
-                            >
-                                Pengumuman
-                            </flux:sidebar.item>
-                        @endcan
-                    </flux:sidebar.group>
-                </flux:sidebar.nav>
-            @endcanany
+            {{-- Kegiatan, absensi, jurnal, dan pengumuman berada di Modul Kegiatan & Pembinaan. --}}
 
             {{-- =================================================
             PENILAIAN
@@ -1237,15 +1009,7 @@
             Sebelumnya bernama Master Data.
             ================================================== --}}
 
-            @canany([
-                'academic_years.view',
-                'semesters.view',
-                'classrooms.view',
-                'students.view',
-                'coaches.view',
-                'gudep.view',
-                'scout_units.view'
-            ])
+            @canany(['academic_years.view', 'semesters.view', 'classrooms.view'])
                 <flux:sidebar.nav
                     data-school-menu
                     @class([
@@ -1299,118 +1063,18 @@
                             </flux:sidebar.item>
                         @endcan
 
-                        @can('students.view')
-                            <flux:sidebar.item
-                                icon="users"
-                                :href="route('students.index')"
-                                :current="request()->routeIs('students.*')"
-                                wire:navigate
-                            >
-                                Siswa
-                            </flux:sidebar.item>
-                        @endcan
+                        
 
-                        @can('coaches.view')
-                            <flux:sidebar.item
-                                icon="user-group"
-                                :href="route('coaches.index')"
-                                :current="request()->routeIs('coaches.*')"
-                                wire:navigate
-                            >
-                                Pembina
-                            </flux:sidebar.item>
-                        @endcan
+                        
 
-                        @can('gudep.view')
-                            <flux:sidebar.item
-                                icon="flag"
-                                :href="route('scout-groups.index')"
-                                :current="request()->routeIs('scout-groups.*')"
-                                wire:navigate
-                            >
-                                Gugus Depan
-                            </flux:sidebar.item>
-                        @endcan
+                        
 
-                        @can('scout_units.view')
-                            <flux:sidebar.item
-                                icon="rectangle-group"
-                                :href="route('scout-units.index')"
-                                :current="request()->routeIs('scout-units.*')"
-                                wire:navigate
-                            >
-                                Regu / Barung
-                            </flux:sidebar.item>
-                        @endcan
+                        
                     </flux:sidebar.group>
                 </flux:sidebar.nav>
             @endcanany
 
-            {{-- =================================================
-            PERSURATAN
-            Pengaturan Persuratan dipindahkan ke kelompok Pengaturan.
-            ================================================== --}}
-
-            @canany(['letters.view', 'report_verifications.view', 'letters.templates'])
-                <flux:sidebar.nav
-                    data-school-menu
-                    @class([
-                        'opacity-60 [&_*]:cursor-not-allowed' => ! $hasActiveSchool,
-                    ])
-                >
-                    <flux:sidebar.group
-                        heading="Persuratan"
-                        expandable
-                        :expanded="(
-                            request()->routeIs('letters.*')
-                            && ! request()->routeIs('letters.settings')
-                        ) || request()->routeIs('reports.published-documents.*')"
-                        class="grid"
-                    >
-                        @can('letters.view')
-                            <flux:sidebar.item
-                                icon="inbox-arrow-down"
-                                :href="route('letters.incoming')"
-                                :current="request()->routeIs('letters.incoming')"
-                                wire:navigate
-                            >
-                                Surat Masuk
-                            </flux:sidebar.item>
-
-                            <flux:sidebar.item
-                                icon="paper-airplane"
-                                :href="route('letters.outgoing')"
-                                :current="request()->routeIs('letters.outgoing')"
-                                wire:navigate
-                            >
-                                Surat Keluar
-                            </flux:sidebar.item>
-                        @endcan
-
-                        @can('report_verifications.view')
-                            <flux:sidebar.item
-                                icon="document-check"
-                                :href="route('reports.published-documents.index')"
-                                :current="request()->routeIs('reports.published-documents.*')"
-                                wire:navigate
-                            >
-                                Dokumen Terbit
-                            </flux:sidebar.item>
-                        @endcan
-
-                        @can('letters.templates')
-                            <flux:sidebar.item
-                                icon="document-text"
-                                :href="route('letters.templates')"
-                                :current="request()->routeIs('letters.templates')"
-                                wire:navigate
-                            >
-                                Template Surat
-                            </flux:sidebar.item>
-                        @endcan
-                    </flux:sidebar.group>
-                </flux:sidebar.nav>
-            @endcanany
+            {{-- Persuratan ada di Modul Administrasi Gudep. --}}
 
             {{-- =================================================
             LAPORAN
@@ -1774,33 +1438,7 @@
 
         @endif
         
-        @if (! $moduleWorkspaceActive)
-        {{-- Inventaris: navigasi utama menggunakan komponen sidebar yang aktif. --}}
-        @can('inventory.view')
-            <flux:sidebar.nav data-school-menu
-                @class(['opacity-60 [&_*]:cursor-not-allowed' => ! $hasActiveSchool])>
-                <flux:sidebar.group heading="Inventaris" class="grid">
-                    <flux:sidebar.item
-                        icon="archive-box"
-                        :href="route('inventory.index')"
-                        :current="request()->routeIs('inventory.*')"
-                        wire:navigate
-                    >
-                        Kelola Inventaris
-                    </flux:sidebar.item>
-                    <flux:sidebar.item
-                        icon="clipboard-document-list"
-                        :href="route('inventory.loans.index')"
-                        :current="request()->routeIs('inventory.loans.*')"
-                        wire:navigate
-                    >
-                        Peminjaman
-                    </flux:sidebar.item>
-                </flux:sidebar.group>
-            </flux:sidebar.nav>
-        @endcan
-
-        @endif
+        {{-- Modul inventaris diakses melalui Portal Modul agar tidak duplikat di sidebar utama. --}}
 
         <flux:spacer />
 

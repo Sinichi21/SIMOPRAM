@@ -21,11 +21,6 @@
                         <p class="mt-4 text-sm font-medium text-emerald-700 dark:text-emerald-400">Buka dashboard →</p>
                     </a>
                 @endforeach
-                <div class="rounded-2xl border border-dashed border-zinc-300 p-6 dark:border-zinc-700">
-                    <flux:icon name="wallet" class="size-8 text-zinc-400" />
-                    <h2 class="mt-4 text-lg font-semibold">Keuangan</h2>
-                    <p class="mt-2 text-sm text-zinc-500">Disiapkan pada fase administrasi keuangan. Belum dapat diakses.</p>
-                </div>
             </div>
         @endif
     </div>

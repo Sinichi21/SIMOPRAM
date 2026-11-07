@@ -2,15 +2,15 @@
     {{-- Heading --}}
     <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div class="space-y-1">
-            <p class="text-xs font-semibold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">Administrasi Gugusdepan</p>
-            <h1 class="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-3xl">Keuangan & Sarana</h1>
+            <p class="text-xs font-semibold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">Modul Keuangan</p>
+            <h1 class="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-3xl">Dashboard & Buku Kas Gudep</h1>
             <p class="max-w-2xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
                 Kelola anggaran dan buku kas Gudep. Aset, stok, dan peminjaman tetap bersumber dari Inventaris SIMPRAM.
             </p>
         </div>
-        <a href="{{ route('modules.show', 'administrasi') }}" wire:navigate
+        <a href="{{ route('modules.show', 'keuangan') }}" wire:navigate
             class="inline-flex shrink-0 items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800">
-            Kembali ke Administrasi
+            Kembali ke Modul Keuangan
         </a>
     </header>
 
@@ -70,6 +70,59 @@
                 <p class="text-sm font-medium text-zinc-300">Saldo berjalan</p>
                 <p class="mt-2 break-words text-2xl font-bold tabular-nums tracking-tight text-white">Rp {{ number_format($openingBalance + $income - $expense, 0, ',', '.') }}</p>
                 <p class="mt-2 text-xs text-zinc-300">Termasuk saldo awal; belum direkonsiliasi dengan kas fisik</p>
+            </div>
+        </section>
+
+        {{-- The dashboard uses all posted, reversal-adjusted expenditure, including uncategorized budgets. --}}
+        @php
+            $totalBudget = (int) $budgets->sum('allocated_amount');
+            $totalRealization = (int) $expense;
+            $budgetRemaining = $totalBudget - $totalRealization;
+            $absorption = $totalBudget > 0 ? round(($totalRealization / $totalBudget) * 100, 1) : null;
+        @endphp
+        <section aria-labelledby="finance-budget-overview" class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h2 id="finance-budget-overview" class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Ringkasan anggaran dan realisasi</h2>
+                    <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Periode {{ $year->name }} · {{ $gudep->name }} · hanya pengeluaran posted (setelah pembalikan).</p>
+                </div>
+                @if ($totalBudget <= 0)
+                    <span class="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">Anggaran belum ditetapkan</span>
+                @elseif ($budgetRemaining < 0)
+                    <span class="rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-700 dark:bg-red-950 dark:text-red-300">Melebihi anggaran</span>
+                @else
+                    <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">Dalam anggaran</span>
+                @endif
+            </div>
+            <div class="mt-4 grid gap-3 sm:grid-cols-3">
+                <div class="rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/50">
+                    <p class="text-xs text-zinc-500 dark:text-zinc-400">Total alokasi</p>
+                    <p class="mt-1 text-xl font-semibold tabular-nums">Rp {{ number_format($totalBudget, 0, ',', '.') }}</p>
+                </div>
+                <div class="rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/50">
+                    <p class="text-xs text-zinc-500 dark:text-zinc-400">Realisasi pengeluaran</p>
+                    <p class="mt-1 text-xl font-semibold tabular-nums">Rp {{ number_format($totalRealization, 0, ',', '.') }}</p>
+                </div>
+                <div class="rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/50">
+                    <p class="text-xs text-zinc-500 dark:text-zinc-400">Selisih anggaran</p>
+                    <p class="mt-1 text-xl font-semibold tabular-nums {{ $budgetRemaining < 0 ? 'text-red-600 dark:text-red-400' : '' }}">Rp {{ number_format($budgetRemaining, 0, ',', '.') }}</p>
+                </div>
+            </div>
+            <div class="mt-4">
+                <div class="mb-1 flex items-center justify-between gap-2 text-xs text-zinc-600 dark:text-zinc-300">
+                    <span>Serapan anggaran</span>
+                    <span class="font-semibold tabular-nums">{{ $absorption === null ? 'Belum tersedia' : number_format($absorption, 1, ',', '.').'%' }}</span>
+                </div>
+                <div role="progressbar" aria-label="Serapan anggaran" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $absorption === null ? 0 : min(100, max(0, $absorption)) }}" class="h-2.5 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
+                    <div class="h-full rounded-full {{ $budgetRemaining < 0 ? 'bg-red-600' : 'bg-emerald-600' }}" style="width: {{ $absorption === null ? 0 : min(100, max(0, $absorption)) }}%"></div>
+                </div>
+                <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                    @if ($totalBudget <= 0)
+                        Serapan belum dapat dihitung karena belum ada alokasi anggaran. Pengeluaran tetap ditampilkan agar tidak tersembunyi.
+                    @else
+                        Serapan dapat melebihi 100%; batang indikator dibatasi secara visual pada 100%.
+                    @endif
+                </p>
             </div>
         </section>
 
@@ -293,7 +346,7 @@
                             <tr>
                                 <td class="px-4 py-3 font-medium sm:px-6">{{ $budget->category }}</td>
                                 @php
-                                    $realized = (int) ($expenseByCategory[$budget->category] ?? 0);
+                                    $realized = (int) (collect($expenseByCategory)->first(fn ($amount, $category): bool => mb_strtolower(trim((string) $category)) === mb_strtolower(trim($budget->category)), 0));
                                     $remaining = (int) $budget->allocated_amount - $realized;
                                 @endphp
                                 <td class="whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums">Rp {{ number_format($budget->allocated_amount, 0, ',', '.') }}</td>
