@@ -108,8 +108,18 @@ final class GudepWeeklyPersonnel
     {
         $role = mb_strtolower(self::signerRole($levelName));
 
-        return array_values(array_filter($options, static fn (array $option): bool => str_contains(mb_strtolower($option['position']), $role)
-            && ($role !== 'pembina' || $option['scope'] !== 'muda')));
+        return array_values(array_filter($options, static function (array $option) use ($role): bool {
+            $position = mb_strtolower(trim($option['position']));
+
+            if ($role === 'pembina') {
+                return $option['scope'] !== 'muda' && str_starts_with($position, 'pembina');
+            }
+
+            // Youth leadership roles must come from the selected unit's
+            // membership, not an unrelated adult position or deputy.
+            return $option['scope'] === 'muda'
+                && ($position === $role || str_starts_with($position, $role.' '));
+        }));
     }
 
     /**
