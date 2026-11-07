@@ -259,8 +259,10 @@ class GudepProgramPlanner extends Component
         $year = $this->selectedYear();
         $levels = GudepFormation::query()->where('school_id', $this->schoolId())
             ->where('scout_group_id', $gudep->id)->where('academic_year_id', $year->id)
-            ->where('is_active', true)->with('scoutLevel')->get()
-            ->pluck('scoutLevel.name')->filter()->all();
+            ->where('is_active', true)
+            ->when($this->letterheadType === 'male', fn ($query) => $query->whereIn('gender', ['putra', 'campuran']))
+            ->when($this->letterheadType === 'female', fn ($query) => $query->whereIn('gender', ['putri', 'campuran']))
+            ->with('scoutLevel')->get()->pluck('scoutLevel.name')->filter()->all();
 
         $this->entries = array_map(static fn (array $item): array => $item + [
             'months' => array_fill(0, 12, false),
