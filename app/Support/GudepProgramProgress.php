@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Models\GudepProgramSheet;
 use Illuminate\Support\Collection;
 
 final class GudepProgramProgress
@@ -11,7 +12,7 @@ final class GudepProgramProgress
     /**
      * Read-only totals. Planning never creates an Activity, Journal or cash entry.
      *
-     * @param  Collection<int, \App\Models\GudepProgramSheet>  $sheets
+     * @param  Collection<int, GudepProgramSheet>  $sheets
      * @return array{annual: int, semester: int, weekly: int, linked: int, completed: int, evidenced: int}
      */
     public static function summary(Collection $sheets): array
@@ -29,7 +30,7 @@ final class GudepProgramProgress
         ];
     }
 
-    public static function evidenceLabel(\App\Models\GudepProgramSheet $sheet): string
+    public static function evidenceLabel(GudepProgramSheet $sheet): string
     {
         if ($sheet->kind !== 'weekly') {
             return 'Rencana';
