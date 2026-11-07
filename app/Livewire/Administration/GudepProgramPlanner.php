@@ -18,6 +18,7 @@ use App\Services\ReportVerificationService;
 use App\Support\GudepAnnualProgram;
 use App\Support\GudepDocumentLetterhead;
 use App\Support\GudepProgramProgress;
+use App\Support\GudepProgramSignatories;
 use App\Support\GudepWeeklyPersonnel;
 use App\Support\SchoolContext;
 use Illuminate\Contracts\View\View;
@@ -53,7 +54,12 @@ class GudepProgramPlanner extends Component
 
     public string $kind = 'annual';
 
-    public string $letterheadType = 'mabigus';
+    public string $letterheadType = 'male';
+
+    public string $documentLayout = 'narrative';
+
+    /** @var array<int, string> */
+    public array $ccRecipients = [];
 
     public string $title = '';
 
@@ -148,13 +154,31 @@ class GudepProgramPlanner extends Component
         $this->resetDraft();
     }
 
+    public function addCopyRecipient(): void
+    {
+        $this->authorizeManage();
+        if (count($this->ccRecipients) < 10) {
+            $this->ccRecipients[] = '';
+        }
+    }
+
+    public function removeCopyRecipient(int $index): void
+    {
+        $this->authorizeManage();
+        if (array_key_exists($index, $this->ccRecipients)) {
+            array_splice($this->ccRecipients, $index, 1);
+        }
+    }
+
     public function resetDraft(): void
     {
         $this->reset(['editingId', 'semesterId', 'scoutLevelId', 'formationId', 'parentId', 'parentItemIndex', 'activityId', 'scheduledFor', 'notes', 'acknowledgedByRef', 'signedByRef']);
         $this->title = '';
         $this->saveNotice = '';
         $this->resetValidation();
-        $this->letterheadType = 'mabigus';
+        $this->letterheadType = 'male';
+        $this->documentLayout = 'narrative';
+        $this->ccRecipients = [];
         $this->entries = [];
     }
 
@@ -446,6 +470,8 @@ class GudepProgramPlanner extends Component
 
         $this->kind = $sheet->kind;
         $this->letterheadType = $sheet->letterhead_type ?: 'mabigus';
+        $this->documentLayout = $sheet->document_layout ?: 'narrative';
+        $this->ccRecipients = $sheet->cc_recipients ?? [];
         $this->editingId = $sheet->id;
         $this->saveNotice = '';
         $this->resetValidation();
@@ -478,6 +504,9 @@ class GudepProgramPlanner extends Component
 
         $rules = [
             'kind' => ['required', Rule::in(['annual', 'semester', 'weekly'])],
+            'documentLayout' => ['required', Rule::in(['narrative', 'monthly_matrix'])],
+            'ccRecipients' => ['array', 'max:10'],
+            'ccRecipients.*' => ['nullable', 'string', 'max:180'],
             'letterheadType' => ['required', Rule::in(GudepDocumentLetterhead::TYPES)],
             'title' => ['required', 'string', 'max:200'],
             'notes' => ['nullable', 'string', 'max:4000'],
@@ -649,6 +678,18 @@ class GudepProgramPlanner extends Component
             return;
         }
 
+        if (in_array($this->kind, ['annual', 'semester'], true)) {
+            $personnel = $this->programPersonnelOptions();
+            if ($this->acknowledgedByRef !== '' && GudepWeeklyPersonnel::find(GudepProgramSignatories::eligible($personnel, 'kamabigus'), $this->acknowledgedByRef) === null) {
+                $this->addError('acknowledgedByRef', 'Kamabigus harus berasal dari pengurus Mabigus yang aktif.');
+                return;
+            }
+            if ($this->signedByRef !== '' && GudepWeeklyPersonnel::find(GudepProgramSignatories::eligible($personnel, 'pembina'), $this->signedByRef) === null) {
+                $this->addError('signedByRef', 'Pembina Gudep harus berasal dari pengurus yang aktif.');
+                return;
+            }
+        }
+
         if ($this->kind === 'weekly') {
             $personnel = $this->weeklyPersonnelOptions();
             $acknowledgers = GudepWeeklyPersonnel::acknowledgers($personnel);
@@ -700,15 +741,17 @@ class GudepProgramPlanner extends Component
             'scout_group_id' => $gudep->id,
             'academic_year_id' => $year->id,
             'kind' => $this->kind,
-            'letterhead_type' => $this->kind === 'annual' ? 'mabigus' : $this->letterheadType,
+            'letterhead_type' => $this->letterheadType,
             'title' => trim($this->title),
             'semester_id' => $this->kind === 'annual' ? null : $this->semesterId,
             'scout_level_id' => $this->kind === 'annual' ? null : $this->scoutLevelId,
             'gudep_formation_id' => $this->kind === 'annual' ? null : $this->formationId,
             'parent_id' => $this->kind === 'annual' ? null : $this->parentId,
             'activity_id' => $this->kind === 'weekly' ? $this->activityId : null,
-            'acknowledged_by_ref' => $this->kind === 'weekly' ? ($this->acknowledgedByRef ?: null) : null,
-            'signed_by_ref' => $this->kind === 'weekly' ? ($this->signedByRef ?: null) : null,
+            'acknowledged_by_ref' => $this->acknowledgedByRef ?: null,
+            'signed_by_ref' => $this->signedByRef ?: null,
+            'document_layout' => $this->kind === 'annual' ? $this->documentLayout : 'narrative',
+            'cc_recipients' => array_values(array_filter(array_map(trim(...), $this->ccRecipients), static fn (string $v): bool => $v !== '')),
             'scheduled_for' => $this->kind === 'weekly' ? $this->scheduledFor : null,
             'entries' => $entries,
             'notes' => $this->notes ?: null,
@@ -833,8 +876,8 @@ class GudepProgramPlanner extends Component
         $type ??= $this->letterheadType;
         $kind ??= $this->kind;
         if ($kind === 'annual') {
-            if ($type !== 'mabigus') {
-                $this->addError('letterheadType', 'Program tahunan seluruh Gudep wajib menggunakan kop Mabigus.');
+            if (! in_array($type, ['male', 'female', 'mabigus'], true)) {
+                $this->addError('letterheadType', 'Pilih Gudep Putra atau Putri untuk Program Tahunan.');
             }
 
             return;
@@ -910,6 +953,20 @@ class GudepProgramPlanner extends Component
     }
 
     /** @return array<int, array{ref: string, name: string, position: string, scope: string}> */
+    private function programPersonnelOptions(): array
+    {
+        if ($this->scoutGroupId === null || $this->academicYearId === null) {
+            return [];
+        }
+
+        return GudepWeeklyPersonnel::candidates(
+            $this->schoolId(), $this->selectedGudep()->id, $this->selectedYear()->id,
+            $this->kind === 'annual' ? null : $this->formationId,
+            $this->scheduledFor !== '' ? $this->scheduledFor : null
+        );
+    }
+
+    /** @return array<int, array{ref: string, name: string, position: string, scope: string}> */
     private function weeklyPersonnelOptions(): array
     {
         if ($this->kind !== 'weekly' || $this->scoutGroupId === null || $this->academicYearId === null) {
@@ -959,6 +1016,8 @@ class GudepProgramPlanner extends Component
         return view('livewire.administration.gudep-program-planner', [
             'gudep' => $gudep,
             'weeklyPersonnel' => $weeklyPersonnel,
+            'annualSemesterKamabigus' => GudepProgramSignatories::eligible($this->programPersonnelOptions(), 'kamabigus'),
+            'annualSemesterPembina' => GudepProgramSignatories::eligible($this->programPersonnelOptions(), 'pembina'),
             'weeklyAcknowledgers' => GudepWeeklyPersonnel::acknowledgers($weeklyPersonnel),
             'weeklySigners' => GudepWeeklyPersonnel::signers($weeklyPersonnel, $levels->firstWhere('id', $this->scoutLevelId)?->name),
             'previewSignatures' => $previewSignatures,
