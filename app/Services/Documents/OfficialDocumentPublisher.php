@@ -7,6 +7,7 @@ use App\Models\School;
 use App\Models\ScoutGroup;
 use App\Services\ReportVerificationService;
 use App\Support\GudepDocumentLetterhead;
+use App\Support\OfficialDocumentLastPageFooter;
 use App\Support\SchoolContext;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Closure;
@@ -81,16 +82,24 @@ final class OfficialDocumentPublisher
             documentType: $documentType,
             snapshotChecksum: $snapshotChecksum,
             filename: $filename,
-            renderPdf: fn (ReportVerification $verification): string => Pdf::loadView(
-                'reports.pdf.administration-official',
-                [
+            renderPdf: function (ReportVerification $verification) use ($contentView, $contentData, $letterhead): string {
+                $pdf = Pdf::loadView('reports.pdf.administration-official', [
                     'verification' => $verification,
                     'verificationQrDataUri' => $this->verification->qrDataUri($verification),
                     'contentView' => $contentView,
                     'contentData' => $contentData,
                     'gudepLetterhead' => $letterhead,
-                ]
-            )->setPaper('a4', 'portrait')->output(),
+                ])->setPaper('a4', 'portrait');
+
+                $dompdf = $pdf->getDomPDF();
+                $dompdf->render();
+                if ($contentView === 'reports.pdf.administration.gudep-program-sheet') {
+                    $copies = $contentData['snapshot']['cc_recipients'] ?? [];
+                    OfficialDocumentLastPageFooter::attach($dompdf, $copies);
+                }
+
+                return $dompdf->output();
+            },
             title: $title,
             documentNumber: $documentNumber,
             metadata: $metadata,
