@@ -337,17 +337,42 @@
             @endif
         </section>
 
+        <section class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900" aria-label="Realisasi program Gudep">
+            <h2 class="text-lg font-bold">Rencana dan Pelaksanaan Program</h2>
+            <p class="mt-1 text-sm text-zinc-500">Dihitung dari program serta kegiatan dan jurnal asli yang tertaut. Rencana tidak otomatis dianggap terlaksana.</p>
+            <div class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-6">
+                @foreach ([
+                    ['Tahunan', $programProgress['annual']],
+                    ['Semester', $programProgress['semester']],
+                    ['Mingguan', $programProgress['weekly']],
+                    ['Tertaut kegiatan', $programProgress['linked']],
+                    ['Agenda selesai', $programProgress['completed']],
+                    ['Selesai + jurnal', $programProgress['evidenced']],
+                ] as [$label, $value])
+                    <div class="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800/50">
+                        <p class="text-xs text-zinc-500">{{ $label }}</p>
+                        <p class="mt-1 text-xl font-bold tabular-nums">{{ $value }}</p>
+                    </div>
+                @endforeach
+            </div>
+        </section>
+
         <section class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
             <h2 class="text-lg font-bold">Dashboard Daftar Program</h2>
             <p class="mt-1 text-sm text-zinc-500">Ringkasan program tersimpan berdasarkan Gudep dan tahun ajaran, tanpa membuat ulang data anggota/satuan.</p>
             <div class="mt-4 overflow-x-auto">
                 <table class="min-w-full text-left text-sm">
-                    <thead><tr class="border-b text-zinc-500"><th class="p-2">Jenis</th><th class="p-2">Program</th><th class="p-2">Golongan</th><th class="p-2">Jumlah baris</th><th class="p-2">Agenda terhubung</th><th class="p-2">Aksi</th></tr></thead>
+                    <thead><tr class="border-b text-zinc-500"><th class="p-2">Jenis</th><th class="p-2">Program</th><th class="p-2">Golongan</th><th class="p-2">Jumlah baris</th><th class="p-2">Agenda terhubung</th><th class="p-2">Status pelaksanaan</th><th class="p-2">Aksi</th></tr></thead>
                     <tbody>
                         @forelse ($sheets as $sheet)
                             <tr class="border-b border-zinc-100 dark:border-zinc-800">
                                 <td class="p-2">{{ ['annual' => 'Tahunan', 'semester' => 'Semester', 'weekly' => 'Mingguan'][$sheet->kind] ?? $sheet->kind }}</td>
-                                <td class="p-2 font-medium">{{ $sheet->title }} <span class="block text-xs font-normal text-zinc-500">{{ $sheet->scheduled_for?->format('d/m/Y') ?? '–' }}</span></td>
+                                <td class="p-2 font-medium">{{ $sheet->title }}
+                                    <span class="block text-xs font-normal text-zinc-500">{{ $sheet->scheduled_for?->format('d/m/Y') ?? '–' }}</span>
+                                    @if ($sheet->parent)
+                                        <span class="block text-xs font-normal text-zinc-500">Induk: {{ $sheet->parent->title }}</span>
+                                    @endif
+                                </td>
                                 <td class="p-2">{{ $levels->firstWhere('id', $sheet->scout_level_id)?->name ?? 'Seluruh Gudep / –' }}</td>
                                 <td class="p-2">{{ count($sheet->entries ?? []) }}</td>
                                 <td class="p-2">
@@ -358,6 +383,7 @@
                                         <span class="text-zinc-400">–</span>
                                     @endif
                                 </td>
+                                <td class="p-2 text-xs text-zinc-600 dark:text-zinc-300">{{ \App\Support\GudepProgramProgress::evidenceLabel($sheet) }}</td>
                                 <td class="p-2">
                                     <button type="button" wire:click="preview({{ $sheet->id }})" class="text-emerald-700 underline dark:text-emerald-300">Lihat</button>
                                     <a href="{{ route('administration.programs.print', $sheet->id) }}" target="_blank" rel="noopener" class="ml-2 text-emerald-700 underline dark:text-emerald-300">Cetak A4</a>
@@ -366,11 +392,16 @@
                                     @endif
                                     @if (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.development.manage'))
                                         <button type="button" wire:click="edit({{ $sheet->id }})" class="ml-2 text-emerald-700 underline dark:text-emerald-300">Edit</button>
+                                        @if (in_array($sheet->kind, ['annual', 'semester'], true))
+                                            <button type="button" wire:click="prepareChild({{ $sheet->id }})" class="ml-2 font-semibold text-emerald-700 underline dark:text-emerald-300">
+                                                {{ $sheet->kind === 'annual' ? 'Susun Semester' : 'Susun Mingguan' }}
+                                            </button>
+                                        @endif
                                     @endif
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="6" class="p-4 text-center text-zinc-500">Belum ada program kerja.</td></tr>
+                            <tr><td colspan="7" class="p-4 text-center text-zinc-500">Belum ada program kerja.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
