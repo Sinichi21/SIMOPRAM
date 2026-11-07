@@ -65,6 +65,18 @@
                         <option value="weekly">Program Latihan Mingguan</option>
                     </select>
                 </label>
+                @if ($kind === 'annual')
+                    <label class="text-sm font-medium">Program milik Gugusdepan
+                        <select wire:model.live="letterheadType" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
+                            <option value="male">Gudep Putra ({{ $gudep->male_number ?: 'nomor belum diatur' }})</option>
+                            <option value="female">Gudep Putri ({{ $gudep->female_number ?: 'nomor belum diatur' }})</option>
+                            @if ($editingId && $letterheadType === 'mabigus')
+                                <option value="mabigus">Data lama — Gabungan (ubah ke Putra/Putri untuk revisi)</option>
+                            @endif
+                        </select>
+                        <span class="mt-1 block text-xs text-zinc-500">Program Tahunan diterbitkan per Gudep Putra atau Putri, bukan atas nama Mabigus.</span>
+                    </label>
+                @endif
                 <label class="text-sm font-medium">Judul program
                     <input wire:model="title" maxlength="200" placeholder="Contoh: Program Kerja Gudep 2026/2027" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
                     @error('title')<span class="block text-xs text-red-600">{{ $message }}</span>@enderror
@@ -203,10 +215,17 @@
                         <div class="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
                             <div class="text-center font-semibold uppercase">
                                 <p>PROGRAM KERJA TAHUNAN</p>
-                                <p>GUGUS DEPAN {{ mb_strtoupper(trim(($gudep->kwarcab ?: '').' '.($gudep->male_number ?: '–').'-'.($gudep->female_number ?: '–'))) }}</p>
+                                <p>GUGUS DEPAN {{ mb_strtoupper(trim(($gudep->kwarcab ?: '').' '.($letterheadType === 'female' ? ($gudep->female_number ?: '–') : ($letterheadType === 'male' ? ($gudep->male_number ?: '–') : (($gudep->male_number ?: '–').'-'.($gudep->female_number ?: '–')))))) }}</p>
                                 <p>TAHUN {{ str_replace('/', '-', $year->name) }}</p>
                             </div>
                         </div>
+                        <label class="block text-sm font-medium">Format dokumen tahunan
+                            <select wire:model.live="documentLayout" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
+                                <option value="narrative">Format naratif A–F (format sekarang)</option>
+                                <option value="monthly_matrix">Format tabel bulanan 8–7 (contoh buku administrasi)</option>
+                            </select>
+                            <span class="mt-1 block text-xs text-zinc-500">Kedua format memakai data rencana yang sama. Untuk matriks, tandai bulan pada setiap butir kegiatan.</span>
+                        </label>
                         @foreach ($annualSections as $section => $heading)
                             @php
                                 $rows = $annualPreviewRows[$section] ?? [];
@@ -239,6 +258,19 @@
                                                 <div class="min-w-0 flex-1 space-y-2">
                                                     <input wire:key="annual-description-{{ $item['key'] ?? $index }}" wire:model="entries.{{ $index }}.description" maxlength="500" placeholder="Uraian butir program" class="w-full rounded-lg border border-zinc-300 p-2 text-sm dark:bg-zinc-800" aria-label="Butir {{ $row['marker'] }} {{ $heading }}">
                                                     @error('entries.'.$index.'.description')<p class="text-xs text-red-600">{{ $message }}</p>@enderror
+                                                    @if ($documentLayout === 'monthly_matrix')
+                                                        <fieldset class="rounded-md border border-zinc-300 p-2 dark:border-zinc-600">
+                                                            <legend class="text-xs font-semibold">Bulan pelaksanaan (Agustus–Juli)</legend>
+                                                            <div class="flex flex-wrap gap-2">
+                                                                @foreach ([8,9,10,11,12,1,2,3,4,5,6,7] as $monthIndex => $month)
+                                                                    <label class="flex items-center gap-1 text-xs">
+                                                                        <input type="checkbox" wire:model="entries.{{ $index }}.months.{{ $monthIndex }}" class="rounded">
+                                                                        {{ $month }}
+                                                                    </label>
+                                                                @endforeach
+                                                            </div>
+                                                        </fieldset>
+                                                    @endif
                                                     <textarea wire:key="annual-detail-{{ $item['key'] ?? $index }}" wire:model="entries.{{ $index }}.detail" maxlength="1500" rows="2" placeholder="Deskripsi / pengantar subdaftar (opsional), misalnya: Berusaha untuk pencapaian SKK 10 macam meliputi..." class="w-full rounded-lg border border-zinc-300 p-2 text-sm dark:bg-zinc-800"></textarea>
                                                     <div class="flex flex-wrap items-end gap-2">
                                                         @if ($section !== 'keuangan')
@@ -398,6 +430,48 @@
                         </section>
                     @endif
                     @error('entries')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
+                    @if ($kind === 'annual' || $kind === 'semester')
+                        <section class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+                            <h3 class="font-semibold">Pengesahan Program Kerja</h3>
+                            <p class="mt-1 text-xs text-zinc-500">Penandatangan wajib berasal dari daftar pengurus SIMPRAM dan harus disimpan sebelum menerbitkan PDF.</p>
+                            <div class="mt-3 grid gap-3 md:grid-cols-2">
+                                <label class="text-sm font-medium">Mengetahui — Ketua Mabigus
+                                    <select wire:model="acknowledgedByRef" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
+                                        <option value="">Pilih Ketua Mabigus</option>
+                                        @foreach ($annualSemesterKamabigus as $option)
+                                            <option value="{{ $option['ref'] }}">{{ $option['name'] }} — {{ $option['position'] }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('acknowledgedByRef')<span class="block text-xs text-red-600">{{ $message }}</span>@enderror
+                                </label>
+                                <label class="text-sm font-medium">Pelaksana — Pembina Gugusdepan
+                                    <select wire:model="signedByRef" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
+                                        <option value="">Pilih Pembina Gudep</option>
+                                        @foreach ($annualSemesterPembina as $option)
+                                            <option value="{{ $option['ref'] }}">{{ $option['name'] }} — {{ $option['position'] }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('signedByRef')<span class="block text-xs text-red-600">{{ $message }}</span>@enderror
+                                </label>
+                            </div>
+                        </section>
+                    @endif
+                    <section class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+                        <div class="flex items-center justify-between">
+                            <h3 class="font-semibold">Tembusan dokumen</h3>
+                            <button type="button" wire:click="addCopyRecipient" class="rounded border px-3 py-1 text-xs">+ Tembusan</button>
+                        </div>
+                        <p class="mt-1 text-xs text-zinc-500">Opsional, maksimal 4 penerima. Ditampilkan pada bagian bawah halaman terakhir PDF resmi, sebelum catatan arsip dan QR verifikasi.</p>
+                        <div class="mt-2 space-y-2">
+                            @foreach ($ccRecipients as $index => $recipient)
+                                <div class="flex items-center gap-2" wire:key="program-cc-{{ $index }}">
+                                    <span class="text-xs">{{ $index + 1 }}.</span>
+                                    <input wire:model="ccRecipients.{{ $index }}" maxlength="180" placeholder="Contoh: Ketua Kwartir Ranting" class="w-full rounded-lg border border-zinc-300 p-2 text-sm dark:bg-zinc-800">
+                                    <button type="button" wire:click="removeCopyRecipient({{ $index }})" class="text-xs text-red-600">Hapus</button>
+                                </div>
+                            @endforeach
+                        </div>
+                    </section>
                     <label class="block text-sm font-medium">Catatan tambahan
                         <textarea wire:model="notes" rows="2" class="mt-1 w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800"></textarea>
                     </label>
@@ -436,6 +510,9 @@
 
         <section class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
             <h2 class="text-lg font-bold">Dashboard Daftar Program</h2>
+            @error('publication')
+                <div role="alert" class="mt-3 rounded-lg border border-red-400 bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-200">{{ $message }}</div>
+            @enderror
             <p class="mt-1 text-sm text-zinc-500">Ringkasan program tersimpan berdasarkan Gudep dan tahun ajaran, tanpa membuat ulang data anggota/satuan.</p>
             <div class="mt-4 overflow-x-auto">
                 <table class="min-w-full text-left text-sm">
@@ -500,12 +577,13 @@
                     </div>
                     @endif
                     @if ($previewSheet->kind === 'annual')
-                        @include('administration.partials.annual-program-body', [
+                        @include($previewSheet->document_layout === 'monthly_matrix' ? 'administration.partials.annual-program-matrix' : 'administration.partials.annual-program-body', [
                             'entries' => $previewSheet->entries ?? [],
                             'kwarcab' => $gudep->kwarcab,
                             'maleNumber' => $gudep->male_number,
                             'femaleNumber' => $gudep->female_number,
                             'yearName' => $year->name,
+                            'programNumber' => $previewSheet->letterhead_type === 'female' ? ($gudep->female_number ?: '–') : ($previewSheet->letterhead_type === 'male' ? ($gudep->male_number ?: '–') : (($gudep->male_number ?: '–').'-'.($gudep->female_number ?: '–'))),
                         ])
                     @elseif ($previewSheet->kind === 'weekly')
                         @include('administration.partials.weekly-program-body', [
@@ -544,6 +622,12 @@
                                 </tbody>
                             </table>
                         </div>
+                    @endif
+                    @if ($previewSheet->kind !== 'weekly')
+                        @include('administration.partials.program-signatures', [
+                            'programSignatures' => $previewSignatures ?? [],
+                            'programDate' => 'Tanggal: ........................',
+                        ])
                     @endif
                 </div>
             @endif
