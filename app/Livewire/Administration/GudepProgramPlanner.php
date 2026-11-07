@@ -16,6 +16,7 @@ use App\Services\Documents\OfficialDocumentPublisher;
 use App\Services\ReportVerificationService;
 use App\Support\GudepAnnualProgram;
 use App\Support\GudepDocumentLetterhead;
+use App\Support\GudepProgramProgress;
 use App\Support\SchoolContext;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
@@ -294,6 +295,48 @@ class GudepProgramPlanner extends Component
         }
 
         return array_values(array_filter($summary, fn (array $row): bool => $row['amount'] > 0));
+    }
+
+    /**
+     * Open a new unsaved child plan using the saved program as its source.
+     * Existing activity, attendance and journal records are never duplicated.
+     */
+    public function prepareChild(int $id): void
+    {
+        $this->authorizeManage();
+
+        $parent = GudepProgramSheet::query()
+            ->where('school_id', $this->schoolId())
+            ->where('scout_group_id', $this->selectedGudep()->id)
+            ->where('academic_year_id', $this->selectedYear()->id)
+            ->find($id);
+        abort_unless($parent !== null && in_array($parent->kind, ['annual', 'semester'], true), 404);
+
+        $childKind = $parent->kind === 'annual' ? 'semester' : 'weekly';
+
+        $this->resetDraft();
+        $this->kind = $childKind;
+        $this->parentId = $parent->id;
+        $this->title = ($childKind === 'semester' ? 'Program Semester' : 'Program Latihan Mingguan')
+            .' — '.$parent->title;
+
+        if ($childKind === 'weekly') {
+            // A weekly program is scoped to the same semester and formation
+            // as its parent, never inferred from the title.
+            $this->semesterId = $parent->semester_id;
+            $this->scoutLevelId = $parent->scout_level_id;
+            $this->formationId = $parent->gudep_formation_id;
+            $this->letterheadType = $parent->letterhead_type ?: 'mabigus';
+        }
+
+        $this->entries = $childKind === 'semester'
+            ? [[
+                'description' => '', 'months' => [false, false, false, false, false, false],
+                'participants' => null, 'notes' => '',
+            ]]
+            : [['description' => '', 'sku' => '', 'skk' => '', 'notes' => '']];
+
+        $this->saveNotice = '';
     }
 
     public function preview(int $id): void
@@ -740,6 +783,13 @@ class GudepProgramPlanner extends Component
                 ->pluck('scoutLevel')->filter()->unique('id')->values()
             : collect();
 
+        $sheets = $gudep && $year
+            ? GudepProgramSheet::query()->where('school_id', $this->schoolId())
+                ->where('scout_group_id', $gudep->id)->where('academic_year_id', $year->id)
+                ->with(['activity.journal', 'scoutLevel', 'semester', 'parent'])
+                ->orderByDesc('id')->get()
+            : collect();
+
         return view('livewire.administration.gudep-program-planner', [
             'gudep' => $gudep,
             'year' => $year,
@@ -787,9 +837,8 @@ class GudepProgramPlanner extends Component
                 ? GudepProgramSheet::query()->where('school_id', $this->schoolId())
                     ->where('scout_group_id', $gudep->id)->where('academic_year_id', $year->id)
                     ->find($this->previewId) : null,
-            'sheets' => $gudep && $year ? GudepProgramSheet::query()->where('school_id', $this->schoolId())
-                ->where('scout_group_id', $gudep->id)->where('academic_year_id', $year->id)
-                ->with(['activity', 'scoutLevel', 'semester'])->orderByDesc('id')->get() : collect(),
+            'sheets' => $sheets,
+            'programProgress' => GudepProgramProgress::summary($sheets),
         ]);
     }
 }
