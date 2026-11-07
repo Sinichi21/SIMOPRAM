@@ -315,10 +315,15 @@ class GudepProgramPlanner extends Component
         $childKind = $parent->kind === 'annual' ? 'semester' : 'weekly';
 
         $this->resetDraft();
+        $this->previewId = null;
         $this->kind = $childKind;
         $this->parentId = $parent->id;
-        $this->title = ($childKind === 'semester' ? 'Program Semester' : 'Program Latihan Mingguan')
-            .' — '.$parent->title;
+        $this->title = Str::limit(
+            ($childKind === 'semester' ? 'Program Semester' : 'Program Latihan Mingguan')
+                .' — '.$parent->title,
+            200,
+            ''
+        );
 
         if ($childKind === 'weekly') {
             // A weekly program is scoped to the same semester and formation
@@ -838,6 +843,15 @@ class GudepProgramPlanner extends Component
                     ->where('scout_group_id', $gudep->id)->where('academic_year_id', $year->id)
                     ->find($this->previewId) : null,
             'sheets' => $sheets,
+            'parentOptions' => $this->kind === 'semester'
+                ? $sheets->where('kind', 'annual')
+                : ($this->kind === 'weekly'
+                    ? $sheets->where('kind', 'semester')->filter(fn (GudepProgramSheet $parent): bool =>
+                        ($this->semesterId === null || (int) $parent->semester_id === (int) $this->semesterId)
+                        && ($this->scoutLevelId === null || (int) $parent->scout_level_id === (int) $this->scoutLevelId)
+                        && ($this->formationId === null || $parent->gudep_formation_id === null
+                            || (int) $parent->gudep_formation_id === (int) $this->formationId))
+                    : collect()),
             'programProgress' => GudepProgramProgress::summary($sheets),
         ]);
     }
