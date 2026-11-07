@@ -8,6 +8,7 @@ use App\Livewire\Administration\GudepProgramPlanner;
 use App\Models\GudepProgramSheet;
 use App\Models\School;
 use App\Support\GudepDocumentLetterhead;
+use App\Support\GudepWeeklyPersonnel;
 use App\Support\SchoolContext;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -32,11 +33,21 @@ class GudepProgramSheetPrintController extends Controller
             && $program->academicYear !== null
             && (int) $program->academicYear->school_id === (int) $schoolId, 404);
 
+        $weeklySignatures = null;
+        if ($program->kind === 'weekly') {
+            $options = GudepWeeklyPersonnel::candidates(
+                $schoolId, $program->scout_group_id, $program->academic_year_id,
+                $program->gudep_formation_id, $program->scheduled_for?->toDateString()
+            );
+            $weeklySignatures = GudepWeeklyPersonnel::snapshot($program, $options);
+        }
+
         return view('administration.program-sheet-print', [
             'program' => $program,
             'gudep' => $program->scoutGroup,
             'year' => $program->academicYear,
             'sections' => GudepProgramPlanner::annualSections(),
+            'weeklySignatures' => $weeklySignatures,
             'letterhead' => GudepDocumentLetterhead::resolve(
                 School::query()->findOrFail($schoolId),
                 $program->scoutGroup,
