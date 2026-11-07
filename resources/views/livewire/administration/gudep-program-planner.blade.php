@@ -341,7 +341,7 @@
                                     </thead>
                                     <tbody>
                                         @foreach ($entries as $index => $row)
-                                            <tr wire:key="weekly-{{ $index }}">
+                                            <tr wire:key="weekly-{{ $row['key'] ?? $index }}">
                                                 <td class="border p-2">{{ $loop->iteration }}</td>
                                                 @foreach ([
                                                     'time' => 'Waktu (mis. 15.00–15.15)',
