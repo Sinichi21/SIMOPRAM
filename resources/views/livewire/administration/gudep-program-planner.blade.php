@@ -124,7 +124,7 @@
                     <label class="text-sm font-medium">Tautkan ke program induk (opsional)
                         <select wire:model="parentId" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
                             <option value="">Belum ditautkan</option>
-                            @foreach ($sheets->where('kind', $kind === 'semester' ? 'annual' : 'semester') as $parent)
+                            @foreach ($parentOptions as $parent)
                                 <option value="{{ $parent->id }}">{{ $parent->title }}</option>
                             @endforeach
                         </select>
