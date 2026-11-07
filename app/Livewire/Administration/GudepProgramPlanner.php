@@ -19,6 +19,7 @@ use App\Support\GudepAnnualProgram;
 use App\Support\GudepDocumentLetterhead;
 use App\Support\GudepProgramProgress;
 use App\Support\GudepProgramSignatories;
+use App\Support\GudepProgramSemesterProjection;
 use App\Support\GudepWeeklyPersonnel;
 use App\Support\SchoolContext;
 use Illuminate\Contracts\View\View;
@@ -131,6 +132,49 @@ class GudepProgramPlanner extends Component
         $this->parentItemIndex = null;
     }
 
+    public function updatedSemesterId(): void
+    {
+        if ($this->kind === 'semester' && $this->editingId === null) {
+            $this->entries = array_map(fn (array $row): array => [
+                ...$row,
+                'months' => array_slice(array_pad($row['months'] ?? [], count($this->semesterMonths()), false), 0, count($this->semesterMonths())),
+            ], $this->entries);
+        }
+    }
+
+    private function selectedSemester(): ?Semester
+    {
+        if ($this->semesterId === null) {
+            return null;
+        }
+
+        return Semester::query()->where('school_id', $this->schoolId())
+            ->where('academic_year_id', $this->selectedYear()->id)
+            ->find($this->semesterId);
+    }
+
+    /** @return array<int, int> */
+    private function semesterMonths(): array
+    {
+        $semester = $this->semesterId === null ? null : Semester::query()
+            ->where('school_id', $this->schoolId())
+            ->where('academic_year_id', $this->selectedYear()->id)
+            ->find($this->semesterId);
+
+        return GudepProgramSemesterProjection::months($semester);
+    }
+
+    /** @return array<int, string> */
+    private function semesterMonthLabels(): array
+    {
+        $semester = $this->semesterId === null ? null : Semester::query()
+            ->where('school_id', $this->schoolId())
+            ->where('academic_year_id', $this->selectedYear()->id)
+            ->find($this->semesterId);
+
+        return GudepProgramSemesterProjection::monthLabels($semester);
+    }
+
     public function updatedFormationId(): void
     {
         if ($this->formationId === null) {
@@ -210,7 +254,7 @@ class GudepProgramPlanner extends Component
                 'quantity' => null, 'unit' => 'kali', 'currency' => 'IDR',
                 'finance_type' => '', 'amount' => null, 'months' => array_fill(0, 12, false)];
         } elseif ($this->kind === 'semester') {
-            $this->entries[] = ['description' => '', 'months' => [false, false, false, false, false, false], 'participants' => '', 'notes' => ''];
+            $this->entries[] = ['description' => '', 'months' => array_fill(0, count($this->semesterMonths()), false), 'participants' => '', 'notes' => ''];
         } else {
             $this->entries[] = self::weeklyEntry();
         }
@@ -399,7 +443,7 @@ class GudepProgramPlanner extends Component
 
         $this->entries = $childKind === 'semester'
             ? [[
-                'description' => '', 'months' => [false, false, false, false, false, false],
+                'description' => '', 'months' => array_fill(0, count($this->semesterMonths()), false),
                 'participants' => null, 'notes' => '',
             ]]
             : [self::weeklyEntry()];
@@ -449,14 +493,24 @@ class GudepProgramPlanner extends Component
         }
 
         $description = trim((string) $item['description']);
-        $this->entries[] = $this->kind === 'semester'
-            ? [
+        if ($this->kind === 'semester') {
+            $sourceKey = (string) ($item['key'] ?? 'legacy-'.$this->parentItemIndex);
+            if (collect($this->entries)->contains(fn (array $row): bool => ($row['source_key'] ?? '') === $sourceKey)) {
+                $this->addError('parentItemIndex', 'Butir program tahunan ini sudah masuk ke Program Semester.');
+
+                return;
+            }
+
+            $this->entries[] = [
+                'source_key' => $sourceKey,
                 'description' => $description,
-                'months' => [false, false, false, false, false, false],
+                'months' => GudepProgramSemesterProjection::fromAnnual($item['months'] ?? [], $this->selectedSemester()),
                 'participants' => null,
                 'notes' => '',
-            ]
-            : self::weeklyEntry($description);
+            ];
+        } else {
+            $this->entries[] = self::weeklyEntry($description);
+        }
         $this->parentItemIndex = null;
         $this->saveNotice = '';
     }
@@ -498,6 +552,20 @@ class GudepProgramPlanner extends Component
         $this->scheduledFor = $sheet->scheduled_for?->format('Y-m-d') ?? '';
         $this->notes = $sheet->notes ?? '';
         $this->entries = $sheet->entries ?? [];
+        if ($sheet->kind === 'semester' && $sheet->parent_id !== null) {
+            $annual = GudepProgramSheet::query()->where('school_id', $this->schoolId())
+                ->where('scout_group_id', $sheet->scout_group_id)
+                ->where('academic_year_id', $sheet->academic_year_id)
+                ->where('kind', 'annual')->find($sheet->parent_id);
+            if ($annual !== null) {
+                $this->entries = array_map(
+                    static fn (array $row): array => GudepProgramSemesterProjection::synchronizeRow(
+                        $row, $annual->entries ?? [], $sheet->semester
+                    ) ?? $row,
+                    $this->entries
+                );
+            }
+        }
         if ($sheet->kind === 'annual') {
             $this->entries = array_map(static fn (array $item): array => $item + [
                 'months' => array_fill(0, 12, false),
@@ -563,7 +631,8 @@ class GudepProgramPlanner extends Component
             $rules['semesterId'] = ['required', 'integer', Rule::exists('semesters', 'id')->where('school_id', $this->schoolId())->where('academic_year_id', $year->id)];
             $rules['scoutLevelId'] = ['required', 'integer', Rule::exists('scout_levels', 'id')];
             $rules['entries.*.description'] = ['required', 'string', 'max:500'];
-            $rules['entries.*.months'] = ['required', 'array', 'size:6'];
+            $rules['entries.*.months'] = ['required', 'array', 'size:'.count($this->semesterMonths())];
+            $rules['entries.*.source_key'] = ['nullable', 'string', 'max:80'];
             $rules['entries.*.months.*'] = ['boolean'];
             $rules['entries.*.participants'] = ['nullable', 'integer', 'min:0', 'max:999999'];
             $rules['entries.*.notes'] = ['nullable', 'string', 'max:500'];
@@ -580,6 +649,16 @@ class GudepProgramPlanner extends Component
             $rules['entries.*.sku'] = ['nullable', 'string', 'max:150'];
             $rules['entries.*.skk'] = ['nullable', 'string', 'max:150'];
             $rules['entries.*.notes'] = ['nullable', 'string', 'max:500'];
+        }
+
+        if ($this->kind === 'semester') {
+            $expectedCount = count($this->semesterMonths());
+            $this->entries = array_map(static function (array $row) use ($expectedCount): array {
+                // Older drafts stored six slots irrespective of actual semester length.
+                $row['months'] = array_slice(array_pad($row['months'] ?? [], $expectedCount, false), 0, $expectedCount);
+
+                return $row;
+            }, $this->entries);
         }
 
         $this->validate($rules);
@@ -650,6 +729,32 @@ class GudepProgramPlanner extends Component
                 $this->addError('parentId', 'Program induk tidak sesuai jenjang atau semester.');
 
                 return;
+            }
+        }
+
+        if ($this->kind === 'semester' && $this->parentId !== null) {
+            $annual = GudepProgramSheet::query()->where('school_id', $this->schoolId())
+                ->where('scout_group_id', $gudep->id)->where('academic_year_id', $year->id)
+                ->where('kind', 'annual')->findOrFail($this->parentId);
+            $keyList = [];
+            foreach ($this->entries as $index => $row) {
+                if (empty($row['source_key'])) {
+                    continue;
+                }
+                $key = (string) $row['source_key'];
+                if (in_array($key, $keyList, true)) {
+                    $this->addError('entries', 'Satu butir tahunan tidak boleh dihubungkan dua kali.');
+
+                    return;
+                }
+                $keyList[] = $key;
+                $synced = GudepProgramSemesterProjection::synchronizeRow($row, $annual->entries ?? [], $this->selectedSemester());
+                if ($synced === null) {
+                    $this->addError('entries.'.$index.'.description', 'Butir tahunan tidak tersedia lagi; pilih ulang sumbernya.');
+
+                    return;
+                }
+                $this->entries[$index] = $synced;
             }
         }
 
@@ -1128,6 +1233,7 @@ class GudepProgramPlanner extends Component
                         && ($this->formationId === null || $parent->gudep_formation_id === null
                             || (int) $parent->gudep_formation_id === (int) $this->formationId))
                     : collect()),
+            'semesterMonthLabels' => $this->kind === 'semester' && $gudep && $year ? $this->semesterMonthLabels() : [],
             'programProgress' => GudepProgramProgress::summary($sheets),
         ]);
     }
