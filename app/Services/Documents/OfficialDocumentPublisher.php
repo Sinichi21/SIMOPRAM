@@ -75,6 +75,18 @@ final class OfficialDocumentPublisher
             $snapshotChecksum = hash('sha256', $snapshotChecksum.'|'.$this->verification->contentChecksum($letterhead));
         }
 
+        $copies = $contentView === 'reports.pdf.administration.gudep-program-sheet'
+            ? ($contentData['snapshot']['cc_recipients'] ?? [])
+            : ($metadata['cc_recipients'] ?? $contentData['cc_recipients'] ?? []);
+        if (! is_array($copies) || count($copies) > 4) {
+            throw ValidationException::withMessages(['cc_recipients' => 'Tembusan dokumen maksimal empat penerima.']);
+        }
+        if ($copies !== [] && $contentView !== 'reports.pdf.administration.gudep-program-sheet') {
+            // A changed distribution list must issue a new immutable revision
+            // even when the underlying report body has not changed.
+            $snapshotChecksum = hash('sha256', $snapshotChecksum.'|'.$this->verification->contentChecksum($copies));
+        }
+
         return $this->publish(
             schoolId: $schoolId,
             sourceType: $sourceType,
