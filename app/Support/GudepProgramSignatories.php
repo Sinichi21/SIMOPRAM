@@ -13,7 +13,7 @@ final class GudepProgramSignatories
      */
     public static function eligible(array $personnel, string $role, ?string $kind = null): array
     {
-        return array_values(array_filter($personnel, static function (array $candidate) use ($role, $kind): bool {
+        return array_values(array_filter($personnel, static function (array $candidate) use ($role, $kind, $personnel): bool {
             $position = mb_strtolower(trim($candidate['position']));
             $scope = $candidate['scope'];
 
