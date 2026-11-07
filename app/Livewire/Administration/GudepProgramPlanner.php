@@ -158,6 +158,23 @@ class GudepProgramPlanner extends Component
         $this->entries = [];
     }
 
+    /** @return array<string, string> */
+    private static function weeklyEntry(string $description = ''): array
+    {
+        return [
+            'key' => (string) Str::uuid(),
+            'time' => '',
+            'description' => $description,
+            'target' => '',
+            'sku' => '',
+            'skk' => '',
+            'equipment' => '',
+            'officer' => '',
+            'interlude' => '',
+            'notes' => '',
+        ];
+    }
+
     public function addRow(?string $section = null): void
     {
         $this->authorizeManage();
@@ -171,7 +188,7 @@ class GudepProgramPlanner extends Component
         } elseif ($this->kind === 'semester') {
             $this->entries[] = ['description' => '', 'months' => [false, false, false, false, false, false], 'participants' => '', 'notes' => ''];
         } else {
-            $this->entries[] = ['description' => '', 'time' => '', 'target' => '', 'sku' => '', 'skk' => '', 'equipment' => '', 'officer' => '', 'interlude' => '', 'notes' => ''];
+            $this->entries[] = self::weeklyEntry();
         }
     }
 
@@ -352,7 +369,7 @@ class GudepProgramPlanner extends Component
                 'description' => '', 'months' => [false, false, false, false, false, false],
                 'participants' => null, 'notes' => '',
             ]]
-            : [['description' => '', 'sku' => '', 'skk' => '', 'notes' => '']];
+            : [self::weeklyEntry()];
 
         $this->saveNotice = '';
     }
@@ -403,7 +420,7 @@ class GudepProgramPlanner extends Component
                 'participants' => null,
                 'notes' => '',
             ]
-            : ['description' => $description, 'sku' => '', 'skk' => '', 'notes' => ''];
+            : self::weeklyEntry($description);
         $this->parentItemIndex = null;
         $this->saveNotice = '';
     }
@@ -443,6 +460,12 @@ class GudepProgramPlanner extends Component
         $this->scheduledFor = $sheet->scheduled_for?->format('Y-m-d') ?? '';
         $this->notes = $sheet->notes ?? '';
         $this->entries = $sheet->entries ?? [];
+        if ($sheet->kind === 'weekly') {
+            $this->entries = array_map(
+                fn (array $row): array => array_replace(self::weeklyEntry(), $row),
+                $this->entries
+            );
+        }
     }
 
     public function save(): void
