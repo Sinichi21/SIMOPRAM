@@ -68,8 +68,11 @@ final class GudepProgramSignatories
 
             return match ($role) {
                 'kamabigus' => $scope === 'mabi'
-                    && (str_contains($position, 'kamabigus')
-                        || str_contains($position, 'ketua mabigus')
+                    && ($position === 'ketua'
+                        || str_contains($position, 'kamabigus')
+                        || str_contains($position, 'ka mabigus')
+                        || str_contains($position, 'ka. mabigus')
+                        || str_contains($position, 'ketua mabi')
                         || str_contains($position, 'ketua majelis pembimbing')),
                 'pembina' => in_array($scope, ['gudep', 'satuan'], true)
                     && str_contains($position, 'pembina'),
