@@ -134,12 +134,26 @@ class GudepProgramPlanner extends Component
 
     public function updatedSemesterId(): void
     {
-        if ($this->kind === 'semester' && $this->editingId === null) {
-            $this->entries = array_map(fn (array $row): array => [
-                ...$row,
-                'months' => array_slice(array_pad($row['months'] ?? [], count($this->semesterMonths()), false), 0, count($this->semesterMonths())),
-            ], $this->entries);
+        if ($this->kind !== 'semester' || $this->semesterId === null) {
+            return;
         }
+
+        $semester = $this->selectedSemester();
+        $annual = $this->parentId === null ? null : GudepProgramSheet::query()
+            ->where('school_id', $this->schoolId())
+            ->where('scout_group_id', $this->selectedGudep()->id)
+            ->where('academic_year_id', $this->selectedYear()->id)
+            ->where('kind', 'annual')->find($this->parentId);
+        $count = count(GudepProgramSemesterProjection::months($semester));
+        $this->entries = array_map(static function (array $row) use ($annual, $semester, $count): array {
+            if ($annual !== null && empty($row['source_key']) === false) {
+                return GudepProgramSemesterProjection::synchronizeRow($row, $annual->entries ?? [], $semester) ?? $row;
+            }
+
+            $row['months'] = array_slice(array_pad($row['months'] ?? [], $count, false), 0, $count);
+
+            return $row;
+        }, $this->entries);
     }
 
     private function selectedSemester(): ?Semester
