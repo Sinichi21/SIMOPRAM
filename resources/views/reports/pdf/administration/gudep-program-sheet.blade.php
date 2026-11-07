@@ -16,14 +16,14 @@
         <table style="width:100%;table-layout:fixed;border-collapse:collapse;font-size:8pt;" border="1" cellpadding="4">
             <thead><tr style="background-color:#eee;">
                 <th style="width:5%;">No.</th><th style="width:34%;">Kegiatan</th>
-                @for ($month=1; $month<=6; $month++)<th style="width:5%;">{{ $month }}</th>@endfor
+                @foreach ($snapshot['semester_month_labels'] ?? ['Agu','Sep','Okt','Nov','Des'] as $month)<th style="width:5%;">{{ $month }}</th>@endforeach
                 <th style="width:14%;">Jumlah Anggota</th><th style="width:17%;">Ket.</th>
             </tr></thead>
             <tbody>
                 @foreach ($snapshot['entries'] as $row)
                     <tr style="page-break-inside:avoid;">
                         <td>{{ $loop->iteration }}.</td><td>{{ $row['description'] ?? '–' }}</td>
-                        @for ($month=0; $month<6; $month++)<td style="text-align:center;">{{ ($row['months'][$month] ?? false) ? 'X' : '–' }}</td>@endfor
+                        @foreach ($snapshot['semester_month_labels'] ?? ['Agu','Sep','Okt','Nov','Des'] as $monthIndex => $month)<td style="text-align:center;">{{ ($row['months'][$monthIndex] ?? false) ? 'X' : '–' }}</td>@endforeach
                         <td style="text-align:center;">{{ $row['participants'] ?? '–' }}</td>
                         <td>{{ $row['notes'] ?? '–' }}</td>
                     </tr>
