@@ -705,10 +705,12 @@ class GudepProgramPlanner extends Component
             $personnel = $this->programPersonnelOptions();
             if ($this->acknowledgedByRef !== '' && GudepWeeklyPersonnel::find(GudepProgramSignatories::eligible($personnel, 'kamabigus'), $this->acknowledgedByRef) === null) {
                 $this->addError('acknowledgedByRef', 'Kamabigus harus berasal dari pengurus Mabigus yang aktif.');
+
                 return;
             }
             if ($this->signedByRef !== '' && GudepWeeklyPersonnel::find(GudepProgramSignatories::eligible($personnel, 'pembina'), $this->signedByRef) === null) {
                 $this->addError('signedByRef', 'Pembina Gudep harus berasal dari pengurus yang aktif.');
+
                 return;
             }
         }
