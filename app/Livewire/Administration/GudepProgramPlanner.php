@@ -782,7 +782,7 @@ class GudepProgramPlanner extends Component
             ->find($id);
         abort_unless($sheet !== null, 404);
 
-        $letterheadType = $sheet->kind === 'annual' ? 'mabigus' : ($sheet->letterhead_type ?: 'mabigus');
+        $letterheadType = $sheet->letterhead_type ?: 'mabigus';
         $this->validateLetterheadScope($sheet->scoutGroup, $sheet->academicYear, $letterheadType, $sheet->scout_level_id, $sheet->kind, $sheet->gudep_formation_id, false);
         abort_if($this->getErrorBag()->has('letterheadType') || $this->getErrorBag()->has('formationId'), 422, 'Jenis kop dokumen tidak sesuai formasi Gudep.');
         $school = School::query()->findOrFail($this->schoolId());
@@ -797,17 +797,19 @@ class GudepProgramPlanner extends Component
             && ($activity->semester_id === null || (int) $activity->semester_id === (int) $sheet->semester_id)
         ), 409, 'Agenda tertaut tidak lagi valid.');
 
-        $weeklySignatures = null;
-        if ($sheet->kind === 'weekly') {
-            $personnel = GudepWeeklyPersonnel::candidates(
-                $this->schoolId(), $sheet->scout_group_id, $sheet->academic_year_id,
-                $sheet->gudep_formation_id, $sheet->scheduled_for?->toDateString()
-            );
-            $weeklySignatures = GudepWeeklyPersonnel::snapshot($sheet, $personnel);
-            abort_unless($weeklySignatures['acknowledger'] !== null && $weeklySignatures['signer'] !== null
-                && GudepWeeklyPersonnel::find(GudepWeeklyPersonnel::acknowledgers($personnel), $sheet->acknowledged_by_ref) !== null
-                && GudepWeeklyPersonnel::find(GudepWeeklyPersonnel::signers($personnel, $sheet->scoutLevel?->name), $sheet->signed_by_ref) !== null,
-                422, 'Pilih Pembina Gudep dan penandatangan satuan sesuai data pengurus sebelum menerbitkan PDF.');
+        $personnel = GudepWeeklyPersonnel::candidates(
+            $this->schoolId(), $sheet->scout_group_id, $sheet->academic_year_id,
+            $sheet->kind === 'annual' ? null : $sheet->gudep_formation_id,
+            $sheet->scheduled_for?->toDateString()
+        );
+        $signatures = GudepProgramSignatories::snapshot($sheet, $personnel);
+
+        if ($signatures['acknowledger'] === null || $signatures['signer'] === null) {
+            $this->addError('publication', $sheet->kind === 'weekly'
+                ? 'Penerbitan mingguan memerlukan Pembina Gudep dan pemimpin satuan sesuai golongan (Pratama/Pradana/Ketua Racana). Pilih penandatangan pada formulir, simpan, lalu terbitkan kembali.'
+                : 'Penerbitan memerlukan Ketua Mabigus dan Pembina Gudep aktif. Pilih keduanya pada formulir, simpan, lalu terbitkan kembali.');
+
+            return;
         }
 
         $snapshot = [
@@ -835,7 +837,10 @@ class GudepProgramPlanner extends Component
             'activity_end_at' => $activity?->end_at?->toIso8601String(),
             'activity_location' => $activity?->location,
             'entries' => $sheet->entries ?? [],
-            'weekly_signatures' => $weeklySignatures,
+            'weekly_signatures' => $sheet->kind === 'weekly' ? $signatures : null,
+            'signatures' => $signatures,
+            'document_layout' => $sheet->document_layout ?: 'narrative',
+            'cc_recipients' => $sheet->cc_recipients ?? [],
             'notes' => $sheet->notes,
         ];
 
