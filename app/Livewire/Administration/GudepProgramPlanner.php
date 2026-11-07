@@ -818,10 +818,11 @@ class GudepProgramPlanner extends Component
             && ($activity->semester_id === null || (int) $activity->semester_id === (int) $sheet->semester_id)
         ), 409, 'Agenda tertaut tidak lagi valid.');
 
-        $personnel = GudepWeeklyPersonnel::candidates(
+        $personnel = GudepProgramSignatories::candidates(
             $this->schoolId(), $sheet->scout_group_id, $sheet->academic_year_id,
             $sheet->kind === 'annual' ? null : $sheet->gudep_formation_id,
-            $sheet->scheduled_for?->toDateString()
+            $sheet->scheduled_for?->toDateString(),
+            $sheet->kind, $letterheadType
         );
         $signatures = GudepProgramSignatories::snapshot($sheet, $personnel);
 
@@ -991,10 +992,11 @@ class GudepProgramPlanner extends Component
             return [];
         }
 
-        return GudepWeeklyPersonnel::candidates(
+        return GudepProgramSignatories::candidates(
             $this->schoolId(), $this->selectedGudep()->id, $this->selectedYear()->id,
             $this->kind === 'annual' ? null : $this->formationId,
-            $this->scheduledFor !== '' ? $this->scheduledFor : null
+            $this->scheduledFor !== '' ? $this->scheduledFor : null,
+            $this->kind, $this->letterheadType
         );
     }
 
@@ -1039,10 +1041,11 @@ class GudepProgramPlanner extends Component
         $previewSignatures = $previewSheet !== null
             ? GudepProgramSignatories::snapshot(
                 $previewSheet,
-                GudepWeeklyPersonnel::candidates(
+                GudepProgramSignatories::candidates(
                     $this->schoolId(), $gudep->id, $year->id,
                     $previewSheet->kind === 'annual' ? null : $previewSheet->gudep_formation_id,
-                    $previewSheet->scheduled_for?->toDateString()
+                    $previewSheet->scheduled_for?->toDateString(),
+                    $previewSheet->kind, $previewSheet->letterhead_type ?: 'mabigus'
                 )
             ) : null;
 
