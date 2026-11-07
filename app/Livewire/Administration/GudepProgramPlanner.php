@@ -374,6 +374,7 @@ class GudepProgramPlanner extends Component
         $this->previewId = null;
         $this->kind = $childKind;
         $this->parentId = $parent->id;
+        $this->letterheadType = $parent->letterhead_type ?: 'male';
         $this->title = Str::limit(
             ($childKind === 'semester' ? 'Program Semester' : 'Program Latihan Mingguan')
                 .' — '.$parent->title,
@@ -835,6 +836,11 @@ class GudepProgramPlanner extends Component
             'gudep_kwarcab' => $sheet->scoutGroup?->kwarcab,
             'gudep_male_number' => $sheet->scoutGroup?->male_number,
             'gudep_female_number' => $sheet->scoutGroup?->female_number,
+            'gudep_program_number' => match ($letterheadType) {
+                'male' => $letterhead['male_number'],
+                'female' => $letterhead['female_number'],
+                default => trim($letterhead['male_number'].' - '.$letterhead['female_number']),
+            },
             'year_id' => $sheet->academic_year_id,
             'year_name' => $sheet->academicYear?->name,
             'semester_id' => $sheet->semester_id,
@@ -1022,12 +1028,13 @@ class GudepProgramPlanner extends Component
                 ->where('scout_group_id', $gudep->id)->where('academic_year_id', $year->id)
                 ->with('scoutLevel')->find($this->previewId)
             : null;
-        $previewSignatures = $previewSheet !== null && $previewSheet->kind === 'weekly'
-            ? GudepWeeklyPersonnel::snapshot(
+        $previewSignatures = $previewSheet !== null
+            ? GudepProgramSignatories::snapshot(
                 $previewSheet,
                 GudepWeeklyPersonnel::candidates(
                     $this->schoolId(), $gudep->id, $year->id,
-                    $previewSheet->gudep_formation_id, $previewSheet->scheduled_for?->toDateString()
+                    $previewSheet->kind === 'annual' ? null : $previewSheet->gudep_formation_id,
+                    $previewSheet->scheduled_for?->toDateString()
                 )
             ) : null;
 
