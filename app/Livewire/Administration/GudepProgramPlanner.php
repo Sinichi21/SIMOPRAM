@@ -37,6 +37,8 @@ class GudepProgramPlanner extends Component
 
     public ?int $parentId = null;
 
+    public ?int $parentItemIndex = null;
+
     public ?int $activityId = null;
 
     public ?int $editingId = null;
@@ -112,6 +114,11 @@ class GudepProgramPlanner extends Component
         }
     }
 
+    public function updatedParentId(): void
+    {
+        $this->parentItemIndex = null;
+    }
+
     public function updatedFormationId(): void
     {
         if ($this->formationId === null) {
@@ -137,7 +144,7 @@ class GudepProgramPlanner extends Component
 
     public function resetDraft(): void
     {
-        $this->reset(['editingId', 'semesterId', 'scoutLevelId', 'formationId', 'parentId', 'activityId', 'scheduledFor', 'notes']);
+        $this->reset(['editingId', 'semesterId', 'scoutLevelId', 'formationId', 'parentId', 'parentItemIndex', 'activityId', 'scheduledFor', 'notes']);
         $this->title = '';
         $this->saveNotice = '';
         $this->resetValidation();
@@ -341,6 +348,57 @@ class GudepProgramPlanner extends Component
             ]]
             : [['description' => '', 'sku' => '', 'skk' => '', 'notes' => '']];
 
+        $this->saveNotice = '';
+    }
+
+    /**
+     * Bring one selected planning item forward. This only updates the current
+     * form draft; it never inserts an Activity or changes the parent program.
+     */
+    public function importParentItem(): void
+    {
+        $this->authorizeManage();
+        abort_unless($this->parentId !== null && $this->parentItemIndex !== null, 422);
+
+        $parent = GudepProgramSheet::query()
+            ->where('school_id', $this->schoolId())
+            ->where('scout_group_id', $this->selectedGudep()->id)
+            ->where('academic_year_id', $this->selectedYear()->id)
+            ->find($this->parentId);
+        $expectedKind = match ($this->kind) {
+            'semester' => 'annual',
+            'weekly' => 'semester',
+            default => null,
+        };
+        abort_unless($parent !== null && $parent->kind === $expectedKind, 404);
+
+        if ($this->kind === 'weekly') {
+            abort_unless((int) $parent->semester_id === (int) $this->semesterId
+                && (int) $parent->scout_level_id === (int) $this->scoutLevelId
+                && ($parent->gudep_formation_id === null
+                    || (int) $parent->gudep_formation_id === (int) $this->formationId), 422);
+        }
+
+        $item = ($parent->entries ?? [])[$this->parentItemIndex] ?? null;
+        abort_unless(is_array($item)
+            && trim((string) ($item['description'] ?? '')) !== ''
+            && ($parent->kind !== 'annual' || ($item['section'] ?? '') !== 'keuangan'), 422);
+        if (count($this->entries) >= 150) {
+            $this->addError('entries', 'Maksimal 150 baris.');
+
+            return;
+        }
+
+        $description = trim((string) $item['description']);
+        $this->entries[] = $this->kind === 'semester'
+            ? [
+                'description' => $description,
+                'months' => [false, false, false, false, false, false],
+                'participants' => null,
+                'notes' => '',
+            ]
+            : ['description' => $description, 'sku' => '', 'skk' => '', 'notes' => ''];
+        $this->parentItemIndex = null;
         $this->saveNotice = '';
     }
 
@@ -843,6 +901,17 @@ class GudepProgramPlanner extends Component
                     ->where('scout_group_id', $gudep->id)->where('academic_year_id', $year->id)
                     ->find($this->previewId) : null,
             'sheets' => $sheets,
+            'parentItems' => $gudep && $year && $this->parentId !== null
+                ? collect(($sheets->firstWhere('id', $this->parentId)?->entries) ?? [])
+                    ->map(fn (array $entry, int $index): array => [
+                        'index' => $index,
+                        'description' => (string) ($entry['description'] ?? ''),
+                        'section' => (string) ($entry['section'] ?? ''),
+                    ])
+                    ->filter(fn (array $item): bool => $item['description'] !== ''
+                        && ($this->kind !== 'semester' || $item['section'] !== 'keuangan'))
+                    ->values()
+                : collect(),
             'parentOptions' => $this->kind === 'semester'
                 ? $sheets->where('kind', 'annual')
                 : ($this->kind === 'weekly'
