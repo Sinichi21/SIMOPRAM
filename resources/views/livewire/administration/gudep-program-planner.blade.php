@@ -467,7 +467,7 @@
                         <p class="mt-1 text-xs text-zinc-500">Opsional, maksimal 4 penerima. Ditampilkan pada bagian bawah halaman terakhir PDF resmi, sebelum catatan arsip dan QR verifikasi.</p>
                         <div class="mt-2 space-y-2">
                             @foreach ($ccRecipients as $index => $recipient)
-                                <div class="flex items-center gap-2" wire:key="program-cc-{{ $index }}">
+                                <div class="flex items-center gap-2" wire:key="program-cc-{{ count($ccRecipients) }}-{{ $index }}">
                                     <span class="text-xs">{{ $index + 1 }}.</span>
                                     <input wire:model="ccRecipients.{{ $index }}" maxlength="180" placeholder="Contoh: Ketua Kwartir Ranting" class="w-full rounded-lg border border-zinc-300 p-2 text-sm dark:bg-zinc-800">
                                     <button type="button" wire:click="removeCopyRecipient({{ $index }})" class="text-xs text-red-600">Hapus</button>
