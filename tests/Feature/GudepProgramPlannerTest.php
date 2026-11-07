@@ -9,6 +9,7 @@ use App\Models\AcademicYear;
 use App\Models\Activity;
 use App\Models\GudepCashEntry;
 use App\Models\GudepFormation;
+use App\Models\GudepOfficer;
 use App\Models\GudepProgramSheet;
 use App\Models\ReportVerification;
 use App\Models\School;
@@ -323,11 +324,26 @@ class GudepProgramPlannerTest extends TestCase
     {
         Storage::fake('local');
         [$school, $gudep, $year] = $this->context();
+        $kamabigus = GudepOfficer::query()->create([
+            'school_id' => $school->id, 'scout_group_id' => $gudep->id,
+            'scope' => 'mabi', 'position' => 'Ketua Mabigus',
+            'person_name' => 'Ketua Mabigus Contoh', 'started_at' => '2026-07-01',
+        ]);
+        $pembina = GudepOfficer::query()->create([
+            'school_id' => $school->id, 'scout_group_id' => $gudep->id,
+            'scope' => 'gudep', 'position' => 'Pembina Gugusdepan',
+            'person_name' => 'Pembina Gudep Contoh', 'started_at' => '2026-07-01',
+        ]);
         $sheet = GudepProgramSheet::query()->create([
             'school_id' => $school->id,
             'scout_group_id' => $gudep->id,
             'academic_year_id' => $year->id,
             'kind' => 'annual',
+            'letterhead_type' => 'male',
+            'acknowledged_by_ref' => 'officer:'.$kamabigus->id,
+            'signed_by_ref' => 'officer:'.$pembina->id,
+            'document_layout' => 'narrative',
+            'cc_recipients' => ['Ketua Kwartir Ranting'],
             'title' => 'Program Tahunan Gudep',
             'entries' => [
                 ['section' => 'siaga', 'description' => 'Latihan Sandi', 'quantity' => null],
