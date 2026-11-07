@@ -42,7 +42,7 @@
     </div>
     <main class="sheet">
         @include('administration.partials.gudep-document-letterhead', ['letterhead' => $letterhead])
-        @if ($program->kind !== 'annual')
+        @if ($program->kind === 'semester')
         <header class="header">
             <p class="center" style="margin:0;font-size:12px;font-weight:bold">GERAKAN PRAMUKA</p>
             <h1>{{ ['annual' => 'Program Kerja Tahunan', 'semester' => 'Program Kerja Semester', 'weekly' => 'Program Latihan Mingguan'][$program->kind] ?? 'Program Kerja' }}</h1>
@@ -101,21 +101,11 @@
             </table>
             <p class="muted" style="font-size:10px">Kolom bulan 1–6 mengikuti urutan bulan semester yang dipilih.</p>
         @else
-            <h2>Rencana Pelaksanaan Latihan</h2>
-            <table class="rows">
-                <thead><tr><th style="width:32px">No.</th><th>Materi / Uraian Latihan</th><th>SKU</th><th>SKK</th><th>Keterangan</th></tr></thead>
-                <tbody>
-                    @foreach ($program->entries ?? [] as $entry)
-                        <tr>
-                            <td class="number">{{ $loop->iteration }}.</td>
-                            <td>{{ $entry['description'] ?? '–' }}</td>
-                            <td>{{ $entry['sku'] ?: '–' }}</td>
-                            <td>{{ $entry['skk'] ?: '–' }}</td>
-                            <td>{{ $entry['notes'] ?: '–' }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
+            @include('administration.partials.weekly-program-body', [
+                'weeklyRows' => $program->entries ?? [],
+                'weeklySignatures' => $weeklySignatures ?? [],
+                'weeklyDate' => $program->scheduled_for?->format('d/m/Y'),
+            ])
         @endif
 
         @if ($program->notes)
@@ -123,10 +113,12 @@
             <p class="note">{{ $program->notes }}</p>
         @endif
 
+        @if ($program->kind !== 'weekly')
         <div class="signatures">
             <div><p>Mengetahui,</p><p>Ketua Gugusdepan</p><div class="signature-line"></div><p>{{ $gudep->head_coach_name ?: '(Nama / tanda tangan)' }}</p></div>
             <div><p>Disusun oleh,</p><p>Penanggung Jawab Program</p><div class="signature-line"></div><p>(Nama / tanda tangan)</p></div>
         </div>
+        @endif
         <p class="draft">Cetak dari SIMPRAM — pratinjau kerja, belum diterbitkan atau ditandatangani secara digital.</p>
     </main>
 </body>
