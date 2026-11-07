@@ -82,20 +82,24 @@ final class OfficialDocumentPublisher
             documentType: $documentType,
             snapshotChecksum: $snapshotChecksum,
             filename: $filename,
-            renderPdf: function (ReportVerification $verification) use ($contentView, $contentData, $letterhead): string {
+            renderPdf: function (ReportVerification $verification) use ($contentView, $contentData, $letterhead, $metadata): string {
+                $isProgram = $contentView === 'reports.pdf.administration.gudep-program-sheet';
+                $copies = $isProgram ? ($contentData['snapshot']['cc_recipients'] ?? [])
+                    : ($metadata['cc_recipients'] ?? $contentData['cc_recipients'] ?? []);
+                $reserveFooter = $isProgram || $copies !== [];
                 $pdf = Pdf::loadView('reports.pdf.administration-official', [
                     'verification' => $verification,
                     'verificationQrDataUri' => $this->verification->qrDataUri($verification),
                     'contentView' => $contentView,
                     'contentData' => $contentData,
                     'gudepLetterhead' => $letterhead,
+                    'reserveLastPageFooter' => $reserveFooter,
                 ])->setPaper('a4', 'portrait');
 
                 $dompdf = $pdf->getDomPDF();
                 $dompdf->render();
-                if ($contentView === 'reports.pdf.administration.gudep-program-sheet') {
-                    $copies = $contentData['snapshot']['cc_recipients'] ?? [];
-                    OfficialDocumentLastPageFooter::attach($dompdf, $copies);
+                if ($reserveFooter) {
+                    OfficialDocumentLastPageFooter::attach($dompdf, $copies, $isProgram);
                 }
 
                 return $dompdf->output();
