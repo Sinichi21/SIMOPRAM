@@ -493,6 +493,87 @@ class GudepProgramPlannerTest extends TestCase
         $this->assertDatabaseCount('gudep_program_sheets', 0);
     }
 
+    public function test_semester_ganjil_imports_only_august_to_december_rows_from_annual_source(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+        $semester = Semester::query()->create([
+            'school_id' => $school->id, 'academic_year_id' => $year->id,
+            'name' => 'Ganjil', 'semester_number' => 1,
+            'start_date' => '2026-07-01', 'end_date' => '2026-12-31', 'is_active' => true,
+        ]);
+        $level = ScoutLevel::query()->firstOrCreate(['code' => 'siaga'], ['name' => 'Siaga']);
+        GudepFormation::query()->create([
+            'school_id' => $school->id, 'scout_group_id' => $gudep->id,
+            'academic_year_id' => $year->id, 'scout_level_id' => $level->id,
+            'name' => 'Siaga Putra', 'formation_type' => 'perindukan',
+            'gender' => 'putra', 'is_active' => true,
+        ]);
+        $a = array_fill(0, 12, false);
+        $a[0] = true;
+        $b = array_fill(0, 12, false);
+        $b[5] = true;
+        $parent = GudepProgramSheet::query()->create([
+            'school_id' => $school->id, 'scout_group_id' => $gudep->id,
+            'academic_year_id' => $year->id, 'kind' => 'annual', 'letterhead_type' => 'male',
+            'title' => 'Tahunan Putra', 'entries' => [
+                ['key' => 'august-row', 'section' => 'siaga', 'description' => 'Pesta Siaga', 'months' => $a],
+                ['key' => 'january-row', 'section' => 'siaga', 'description' => 'Bakti Masyarakat', 'months' => $b],
+            ],
+        ]);
+        Livewire::test(GudepProgramPlanner::class)
+            ->set('scoutGroupId', $gudep->id)->set('academicYearId', $year->id)
+            ->set('kind', 'semester')->set('semesterId', $semester->id)
+            ->set('scoutLevelId', $level->id)->set('parentId', $parent->id)
+            ->call('importScheduledAnnualItems')
+            ->assertHasNoErrors()
+            ->assertCount('entries', 1)
+            ->assertSet('entries.0.source_key', 'august-row')
+            ->assertSet('entries.0.description', 'Pesta Siaga')
+            ->assertSet('entries.0.months', [true, false, false, false, false])
+            ->set('title', 'Semester Ganjil')
+            ->call('save')->assertHasNoErrors();
+
+        $child = GudepProgramSheet::query()->where('kind', 'semester')->firstOrFail();
+        $this->assertSame($parent->id, $child->parent_id);
+        $this->assertSame('august-row', $child->entries[0]['source_key']);
+        $this->assertCount(5, $child->entries[0]['months']);
+        $this->assertDatabaseCount('gudep_program_sheets', 2);
+        $this->assertDatabaseCount('activities', 0);
+    }
+
+    public function test_semester_genap_imports_january_through_july_and_keeps_annotations_on_resync(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+        $semester = Semester::query()->create([
+            'school_id' => $school->id, 'academic_year_id' => $year->id,
+            'name' => 'Genap', 'semester_number' => 2,
+            'start_date' => '2027-01-01', 'end_date' => '2027-07-31', 'is_active' => true,
+        ]);
+        $months = array_fill(0, 12, false);
+        $months[5] = true;
+        $months[11] = true;
+        $parent = GudepProgramSheet::query()->create([
+            'school_id' => $school->id, 'scout_group_id' => $gudep->id,
+            'academic_year_id' => $year->id, 'kind' => 'annual', 'letterhead_type' => 'male',
+            'title' => 'Tahunan', 'entries' => [
+                ['key' => 'january', 'section' => 'bersama', 'description' => 'Bakti', 'months' => $months],
+            ],
+        ]);
+        Livewire::test(GudepProgramPlanner::class)
+            ->set('scoutGroupId', $gudep->id)->set('academicYearId', $year->id)
+            ->set('kind', 'semester')->set('semesterId', $semester->id)
+            ->set('parentId', $parent->id)
+            ->call('importScheduledAnnualItems')
+            ->assertHasNoErrors()
+            ->assertSet('entries.0.months', [true, false, false, false, false, false, true])
+            ->set('entries.0.notes', 'Pembina hadir')
+            ->set('entries.0.participants', 28)
+            ->call('importScheduledAnnualItems')
+            ->assertSet('entries.0.notes', 'Pembina hadir')
+            ->assertSet('entries.0.participants', 28);
+        $this->assertDatabaseCount('gudep_program_sheets', 1);
+    }
+
     public function test_annual_plan_opens_unsaved_semester_child_without_copying_records(): void
     {
         [$school, $gudep, $year] = $this->context();
