@@ -9,6 +9,7 @@ use App\Models\AcademicYear;
 use App\Models\GudepFormation;
 use App\Models\GudepOfficer;
 use App\Models\GudepProgramSheet;
+use App\Models\ReportVerification;
 use App\Models\School;
 use App\Models\ScoutGroup;
 use App\Models\ScoutLevel;
@@ -20,6 +21,7 @@ use App\Models\User;
 use App\Support\GudepWeeklyPersonnel;
 use App\Support\SchoolContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -152,6 +154,38 @@ class GudepWeeklyProgramTemplateTest extends TestCase
             ->call('save')->assertHasErrors(['signedByRef']);
 
         $this->assertDatabaseCount('gudep_program_sheets', 0);
+    }
+
+    public function test_weekly_pdf_publication_requires_verified_signers_and_archives_a4(): void
+    {
+        Storage::fake('local');
+        [$school, $gudep, $year, $semester, $level, $formation, $pembina, $pratama] = $this->setupPersonnel();
+        $sheet = GudepProgramSheet::query()->create([
+            'school_id' => $school->id, 'scout_group_id' => $gudep->id,
+            'academic_year_id' => $year->id, 'semester_id' => $semester->id,
+            'scout_level_id' => $level->id, 'gudep_formation_id' => $formation->id,
+            'letterhead_type' => 'female', 'kind' => 'weekly', 'title' => 'Latihan Penggalang',
+            'scheduled_for' => '2026-08-07',
+            'entries' => [['description' => 'Morse', 'time' => '15.00–15.30', 'sku' => '', 'skk' => '', 'notes' => '']],
+        ]);
+        Livewire::test(GudepProgramPlanner::class)
+            ->set('scoutGroupId', $gudep->id)->set('academicYearId', $year->id)
+            ->call('publishProgram', $sheet->id)->assertStatus(422);
+        $this->assertDatabaseCount('report_verifications', 0);
+
+        $sheet->update([
+            'acknowledged_by_ref' => 'officer:'.$pembina->id,
+            'signed_by_ref' => 'member:'.$pratama->id,
+        ]);
+
+        Livewire::test(GudepProgramPlanner::class)
+            ->set('scoutGroupId', $gudep->id)->set('academicYearId', $year->id)
+            ->call('publishProgram', $sheet->id)->assertHasNoErrors();
+
+        $document = ReportVerification::query()
+            ->where('document_type', 'gudep_program_sheet')->firstOrFail();
+        $this->assertTrue($document->hasArchivedPdf());
+        Storage::disk('local')->assertExists($document->file_path);
     }
 
     public function test_legacy_weekly_draft_still_renders_when_new_columns_missing(): void
