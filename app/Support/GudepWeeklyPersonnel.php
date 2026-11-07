@@ -108,10 +108,8 @@ final class GudepWeeklyPersonnel
     {
         $role = mb_strtolower(self::signerRole($levelName));
 
-        return array_values(array_filter($options, static fn (array $option): bool =>
-            str_contains(mb_strtolower($option['position']), $role)
-            && ($role !== 'pembina' || $option['scope'] !== 'muda')
-        ));
+        return array_values(array_filter($options, static fn (array $option): bool => str_contains(mb_strtolower($option['position']), $role)
+            && ($role !== 'pembina' || $option['scope'] !== 'muda')));
     }
 
     /**
@@ -120,11 +118,9 @@ final class GudepWeeklyPersonnel
      */
     public static function acknowledgers(array $options): array
     {
-        return array_values(array_filter($options, static fn (array $option): bool =>
-            $option['scope'] !== 'muda'
+        return array_values(array_filter($options, static fn (array $option): bool => $option['scope'] !== 'muda'
             && in_array($option['scope'], ['gudep', 'mabi', 'satuan'], true)
-            && str_contains(mb_strtolower($option['position']), 'pembina')
-        ));
+            && str_contains(mb_strtolower($option['position']), 'pembina')));
     }
 
     /**
