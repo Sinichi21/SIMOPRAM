@@ -497,7 +497,12 @@ class GudepProgramPlannerTest extends TestCase
             ->assertSet('parentId', $annual->id)
             ->assertSet('editingId', null)
             ->assertSet('title', 'Program Semester — Program Tahunan 2026')
-            ->assertCount('entries', 1);
+            ->assertCount('entries', 1)
+            ->set('parentItemIndex', 0)
+            ->call('importParentItem')
+            ->assertHasNoErrors()
+            ->assertCount('entries', 2)
+            ->assertSet('entries.1.description', 'SKU Siaga');
 
         $this->assertDatabaseCount('gudep_program_sheets', 1);
         $this->assertDatabaseCount('activities', 0);
@@ -549,7 +554,12 @@ class GudepProgramPlannerTest extends TestCase
             ->assertSet('scoutLevelId', $level->id)
             ->assertSet('formationId', $formation->id)
             ->assertSet('letterheadType', 'female')
-            ->assertSet('editingId', null);
+            ->assertSet('editingId', null)
+            ->set('parentItemIndex', 0)
+            ->call('importParentItem')
+            ->assertHasNoErrors()
+            ->assertCount('entries', 2)
+            ->assertSet('entries.1.description', 'Tali-temali');
 
         $this->assertDatabaseCount('gudep_program_sheets', 1);
         $this->assertDatabaseCount('activities', 0);
