@@ -7,7 +7,6 @@ namespace App\Support;
 use App\Models\GudepOfficer;
 use App\Models\GudepProgramSheet;
 use App\Models\ScoutUnitMember;
-use Illuminate\Support\Carbon;
 
 final class GudepWeeklyPersonnel
 {
@@ -68,7 +67,7 @@ final class GudepWeeklyPersonnel
             ->with('student')->get();
 
         foreach ($memberships as $membership) {
-            if ($membership->student === null || $membership->student->status !== 'active') {
+            if ($membership->student === null || ($membership->student->status !== 'active' && $membership->student->status !== 'aktif')) {
                 continue;
             }
             $options[] = [
