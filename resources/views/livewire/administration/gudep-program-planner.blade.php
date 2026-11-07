@@ -215,7 +215,7 @@
                         <div class="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
                             <div class="text-center font-semibold uppercase">
                                 <p>PROGRAM KERJA TAHUNAN</p>
-                                <p>GUGUS DEPAN {{ mb_strtoupper(trim(($gudep->kwarcab ?: '').' '.($letterheadType === 'female' ? ($gudep->female_number ?: '–') : ($letterheadType === 'male' ? ($gudep->male_number ?: '–') : (($gudep->male_number ?: '–').'-'.($gudep->female_number ?: '–')))))) }}</p>
+                                <p>GUGUS DEPAN {{ mb_strtoupper(trim(($gudep->kwarcab ?: '').' '.($letterheadType === 'female' ? ($letterheadProfile['female_number'] ?? '–') : ($letterheadType === 'male' ? ($letterheadProfile['male_number'] ?? '–') : (($letterheadProfile['male_number'] ?? '–').'-'.($letterheadProfile['female_number'] ?? '–')))))) }}</p>
                                 <p>TAHUN {{ str_replace('/', '-', $year->name) }}</p>
                             </div>
                         </div>
@@ -583,7 +583,7 @@
                             'maleNumber' => $gudep->male_number,
                             'femaleNumber' => $gudep->female_number,
                             'yearName' => $year->name,
-                            'programNumber' => $previewSheet->letterhead_type === 'female' ? ($gudep->female_number ?: '–') : ($previewSheet->letterhead_type === 'male' ? ($gudep->male_number ?: '–') : (($gudep->male_number ?: '–').'-'.($gudep->female_number ?: '–'))),
+                            'programNumber' => $previewSheet->letterhead_type === 'female' ? ($previewLetterhead['female_number'] ?? '–') : ($previewSheet->letterhead_type === 'male' ? ($previewLetterhead['male_number'] ?? '–') : (($previewLetterhead['male_number'] ?? '–').'-'.($previewLetterhead['female_number'] ?? '–'))),
                         ])
                     @elseif ($previewSheet->kind === 'weekly')
                         @include('administration.partials.weekly-program-body', [
