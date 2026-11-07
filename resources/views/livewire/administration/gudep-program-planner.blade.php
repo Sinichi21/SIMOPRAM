@@ -319,23 +319,83 @@
                         </section>
                         <button type="button" wire:click="addRow" class="rounded-lg border border-emerald-600 px-3 py-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300">+ Tambah kegiatan</button>
                     @else
-                        <section class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700">
-                            <table class="min-w-full text-left text-sm">
-                                <thead class="bg-zinc-50 dark:bg-zinc-800"><tr><th class="p-3">No.</th><th class="p-3">Uraian latihan</th><th class="p-3">SKU</th><th class="p-3">SKK</th><th class="p-3">Keterangan</th><th class="p-3"></th></tr></thead>
-                                <tbody>
-                                    @foreach ($entries as $index => $row)
-                                        <tr wire:key="weekly-{{ $index }}" class="border-t border-zinc-100 dark:border-zinc-800">
-                                            <td class="p-2">{{ $loop->iteration }}.</td>
-                                            @foreach (['description', 'sku', 'skk', 'notes'] as $field)
-                                                <td class="p-2"><input wire:model="entries.{{ $index }}.{{ $field }}" placeholder="{{ $field === 'description' ? 'Materi latihan' : '–' }}" class="min-w-28 w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800"></td>
-                                            @endforeach
-                                            <td class="p-2"><button type="button" wire:click="removeRow({{ $index }})" class="text-red-600">Hapus</button></td>
+                        <section class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+                            <h3 class="text-center font-bold uppercase">Program Latihan Mingguan Gugusdepan</h3>
+                            <p class="mt-2 text-sm text-zinc-500">Susunan kolom mengikuti buku administrasi. Gulir tabel secara horizontal pada layar sempit; hasil cetak menggunakan A4.</p>
+                            <div class="mt-3 overflow-x-auto">
+                                <table class="w-full min-w-[1100px] border-collapse text-left text-xs">
+                                    <thead class="bg-zinc-50 dark:bg-zinc-800">
+                                        <tr>
+                                            <th rowspan="2" class="border p-2">No</th>
+                                            <th rowspan="2" class="border p-2">Waktu</th>
+                                            <th rowspan="2" class="border p-2">Kegiatan</th>
+                                            <th rowspan="2" class="border p-2">Sasaran</th>
+                                            <th colspan="2" class="border p-2 text-center">Pencapaian</th>
+                                            <th rowspan="2" class="border p-2">Alat</th>
+                                            <th rowspan="2" class="border p-2">Petugas</th>
+                                            <th rowspan="2" class="border p-2">Acara Selingan</th>
+                                            <th rowspan="2" class="border p-2">KET</th>
+                                            <th rowspan="2" class="border p-2">Aksi</th>
                                         </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+                                        <tr><th class="border p-2">SKU</th><th class="border p-2">SKK</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($entries as $index => $row)
+                                            <tr wire:key="weekly-{{ $index }}">
+                                                <td class="border p-2">{{ $loop->iteration }}</td>
+                                                @foreach ([
+                                                    'time' => 'Waktu (mis. 15.00–15.15)',
+                                                    'description' => 'Kegiatan',
+                                                    'target' => 'Sasaran',
+                                                    'sku' => 'SKU',
+                                                    'skk' => 'SKK',
+                                                    'equipment' => 'Alat',
+                                                    'officer' => 'Petugas',
+                                                    'interlude' => 'Acara selingan',
+                                                    'notes' => 'Keterangan',
+                                                ] as $field => $placeholder)
+                                                    <td class="border p-1 align-top">
+                                                        <input wire:model="entries.{{ $index }}.{{ $field }}" placeholder="{{ $placeholder }}" aria-label="{{ $placeholder }} baris {{ $index + 1 }}" class="w-full min-w-24 rounded-md border border-zinc-300 p-2 dark:bg-zinc-800">
+                                                    </td>
+                                                @endforeach
+                                                <td class="border p-2">
+                                                    <button type="button" wire:click="removeRow({{ $index }})" class="text-red-600">Hapus</button>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button type="button" wire:click="addRow" class="mt-3 rounded-lg border border-emerald-600 px-3 py-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300">+ Tambah segmen latihan</button>
                         </section>
-                        <button type="button" wire:click="addRow" class="rounded-lg border border-emerald-600 px-3 py-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300">+ Tambah materi</button>
+                        <section class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+                            <h3 class="font-semibold">Penandatangan dan persetujuan</h3>
+                            <p class="mt-1 text-xs text-zinc-500">Menggunakan data pengurus dan anggota yang tercatat dalam SIMPRAM. Tidak membuat data personel baru.</p>
+                            <div class="mt-3 grid gap-3 md:grid-cols-2">
+                                <label class="text-sm font-medium">Mengetahui — Pembina Gugus Depan
+                                    <select wire:model="acknowledgedByRef" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
+                                        <option value="">Pilih pembina/pengurus Gudep</option>
+                                        @foreach ($weeklyAcknowledgers as $option)
+                                            <option value="{{ $option['ref'] }}">{{ $option['name'] }} — {{ $option['position'] }} ({{ $option['scope'] }})</option>
+                                        @endforeach
+                                    </select>
+                                    @error('acknowledgedByRef')<span class="block text-xs text-red-600">{{ $message }}</span>@enderror
+                                </label>
+                                <label class="text-sm font-medium">Penandatangan — {{ \App\Support\GudepWeeklyPersonnel::signerRole($levels->firstWhere('id', $scoutLevelId)?->name) }}
+                                    <select wire:model="signedByRef" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
+                                        <option value="">Pilih sesuai jabatan satuan</option>
+                                        @foreach ($weeklySigners as $option)
+                                            <option value="{{ $option['ref'] }}">{{ $option['name'] }} — {{ $option['position'] }} ({{ $option['scope'] }})</option>
+                                        @endforeach
+                                    </select>
+                                    @error('signedByRef')<span class="block text-xs text-red-600">{{ $message }}</span>@enderror
+                                </label>
+                            </div>
+                            <p class="mt-3 text-xs text-zinc-500">Siaga: Pembina · Penggalang: Pratama · Penegak: Pradana · Pandega: Ketua Racana. Dokumen kerja boleh disimpan tanpa penandatangan, tetapi PDF resmi memerlukan keduanya.</p>
+                            @if ($weeklySigners === [])
+                                <p class="mt-2 text-xs text-amber-700">Belum ada pengurus dengan jabatan yang sesuai pada formasi dan periode ini. Lengkapi kepengurusan atau posisi anggota muda terlebih dahulu.</p>
+                            @endif
+                        </section>
                     @endif
                     @error('entries')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
                     <label class="block text-sm font-medium">Catatan tambahan
@@ -447,6 +507,12 @@
                             'maleNumber' => $gudep->male_number,
                             'femaleNumber' => $gudep->female_number,
                             'yearName' => $year->name,
+                        ])
+                    @elseif ($previewSheet->kind === 'weekly')
+                        @include('administration.partials.weekly-program-body', [
+                            'weeklyRows' => $previewSheet->entries ?? [],
+                            'weeklySignatures' => $previewSignatures ?? [],
+                            'weeklyDate' => $previewSheet->scheduled_for?->format('d/m/Y'),
                         ])
                     @else
                         <div class="overflow-x-auto">
