@@ -487,7 +487,7 @@
                     @if ($previewLetterhead)
                         @include('administration.partials.gudep-document-letterhead', ['letterhead' => $previewLetterhead])
                     @endif
-                    @if ($previewSheet->kind !== 'annual')
+                    @if ($previewSheet->kind === 'semester')
                     <div class="border-b border-zinc-200 pb-3 text-center dark:border-zinc-700">
                         <p class="text-xs font-semibold uppercase tracking-wide">GERAKAN PRAMUKA</p>
                         <h3 class="mt-1 text-lg font-bold uppercase">{{ $previewSheet->title }}</h3>
