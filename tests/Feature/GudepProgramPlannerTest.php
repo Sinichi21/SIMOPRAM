@@ -477,6 +477,109 @@ class GudepProgramPlannerTest extends TestCase
         $this->assertDatabaseCount('gudep_program_sheets', 0);
     }
 
+    public function test_annual_plan_opens_unsaved_semester_child_without_copying_records(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+        $annual = GudepProgramSheet::query()->create([
+            'school_id' => $school->id,
+            'scout_group_id' => $gudep->id,
+            'academic_year_id' => $year->id,
+            'kind' => 'annual',
+            'title' => 'Program Tahunan 2026',
+            'entries' => [['section' => 'siaga', 'description' => 'SKU Siaga', 'quantity' => 1]],
+        ]);
+
+        Livewire::test(GudepProgramPlanner::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->call('prepareChild', $annual->id)
+            ->assertSet('kind', 'semester')
+            ->assertSet('parentId', $annual->id)
+            ->assertSet('editingId', null)
+            ->assertSet('title', 'Program Semester — Program Tahunan 2026')
+            ->assertCount('entries', 1);
+
+        $this->assertDatabaseCount('gudep_program_sheets', 1);
+        $this->assertDatabaseCount('activities', 0);
+    }
+
+    public function test_semester_plan_prepares_weekly_child_with_same_unit_scope(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+        $semester = Semester::query()->create([
+            'school_id' => $school->id,
+            'academic_year_id' => $year->id,
+            'name' => 'Ganjil',
+            'semester_number' => 1,
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-12-31',
+            'is_active' => true,
+        ]);
+        $level = ScoutLevel::query()->firstOrCreate(['code' => 'siaga'], ['name' => 'Siaga']);
+        $formation = GudepFormation::query()->create([
+            'school_id' => $school->id,
+            'scout_group_id' => $gudep->id,
+            'academic_year_id' => $year->id,
+            'scout_level_id' => $level->id,
+            'name' => 'Perindukan Siaga Putri',
+            'gender' => 'putri',
+            'formation_type' => 'perindukan',
+            'is_active' => true,
+        ]);
+        $parent = GudepProgramSheet::query()->create([
+            'school_id' => $school->id,
+            'scout_group_id' => $gudep->id,
+            'academic_year_id' => $year->id,
+            'semester_id' => $semester->id,
+            'scout_level_id' => $level->id,
+            'gudep_formation_id' => $formation->id,
+            'letterhead_type' => 'female',
+            'kind' => 'semester',
+            'title' => 'Semester Siaga Putri',
+            'entries' => [['description' => 'Tali-temali', 'months' => [true, false, false, false, false, false], 'notes' => '']],
+        ]);
+
+        Livewire::test(GudepProgramPlanner::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->call('prepareChild', $parent->id)
+            ->assertSet('kind', 'weekly')
+            ->assertSet('parentId', $parent->id)
+            ->assertSet('semesterId', $semester->id)
+            ->assertSet('scoutLevelId', $level->id)
+            ->assertSet('formationId', $formation->id)
+            ->assertSet('letterheadType', 'female')
+            ->assertSet('editingId', null);
+
+        $this->assertDatabaseCount('gudep_program_sheets', 1);
+        $this->assertDatabaseCount('activities', 0);
+    }
+
+    public function test_preparing_child_plan_cannot_reference_another_gudep(): void
+    {
+        [$school, $gudep, $year] = $this->context();
+        $other = ScoutGroup::query()->create([
+            'school_id' => $school->id,
+            'name' => 'Gudep Lain',
+        ]);
+        $parent = GudepProgramSheet::query()->create([
+            'school_id' => $school->id,
+            'scout_group_id' => $other->id,
+            'academic_year_id' => $year->id,
+            'kind' => 'annual',
+            'title' => 'Program Gudep Lain',
+            'entries' => [['section' => 'bersama', 'description' => 'Kegiatan', 'quantity' => null]],
+        ]);
+
+        Livewire::test(GudepProgramPlanner::class)
+            ->set('scoutGroupId', $gudep->id)
+            ->set('academicYearId', $year->id)
+            ->call('prepareChild', $parent->id)
+            ->assertNotFound();
+
+        $this->assertDatabaseCount('gudep_program_sheets', 1);
+    }
+
     public function test_added_subitem_does_not_change_existing_mula_bantu_tata_inputs(): void
     {
         [$school, $gudep, $year] = $this->context();
