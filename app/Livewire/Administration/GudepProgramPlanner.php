@@ -17,6 +17,7 @@ use App\Services\ReportVerificationService;
 use App\Support\GudepAnnualProgram;
 use App\Support\GudepDocumentLetterhead;
 use App\Support\GudepProgramProgress;
+use App\Support\GudepWeeklyPersonnel;
 use App\Support\SchoolContext;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
@@ -40,6 +41,10 @@ class GudepProgramPlanner extends Component
     public ?int $parentItemIndex = null;
 
     public ?int $activityId = null;
+
+    public string $acknowledgedByRef = '';
+
+    public string $signedByRef = '';
 
     public ?int $editingId = null;
 
@@ -144,7 +149,7 @@ class GudepProgramPlanner extends Component
 
     public function resetDraft(): void
     {
-        $this->reset(['editingId', 'semesterId', 'scoutLevelId', 'formationId', 'parentId', 'parentItemIndex', 'activityId', 'scheduledFor', 'notes']);
+        $this->reset(['editingId', 'semesterId', 'scoutLevelId', 'formationId', 'parentId', 'parentItemIndex', 'activityId', 'scheduledFor', 'notes', 'acknowledgedByRef', 'signedByRef']);
         $this->title = '';
         $this->saveNotice = '';
         $this->resetValidation();
@@ -165,7 +170,7 @@ class GudepProgramPlanner extends Component
         } elseif ($this->kind === 'semester') {
             $this->entries[] = ['description' => '', 'months' => [false, false, false, false, false, false], 'participants' => '', 'notes' => ''];
         } else {
-            $this->entries[] = ['description' => '', 'sku' => '', 'skk' => '', 'notes' => ''];
+            $this->entries[] = ['description' => '', 'time' => '', 'target' => '', 'sku' => '', 'skk' => '', 'equipment' => '', 'officer' => '', 'interlude' => '', 'notes' => ''];
         }
     }
 
@@ -432,6 +437,8 @@ class GudepProgramPlanner extends Component
         $this->formationId = $sheet->gudep_formation_id;
         $this->parentId = $sheet->parent_id;
         $this->activityId = $sheet->activity_id;
+        $this->acknowledgedByRef = $sheet->acknowledged_by_ref ?? '';
+        $this->signedByRef = $sheet->signed_by_ref ?? '';
         $this->scheduledFor = $sheet->scheduled_for?->format('Y-m-d') ?? '';
         $this->notes = $sheet->notes ?? '';
         $this->entries = $sheet->entries ?? [];
@@ -463,6 +470,8 @@ class GudepProgramPlanner extends Component
                 ->where('school_id', $this->schoolId())->where('academic_year_id', $year->id)
                 ->whereNull('deleted_at')],
             'scheduledFor' => ['nullable', 'date'],
+            'acknowledgedByRef' => ['nullable', 'string', 'max:64'],
+            'signedByRef' => ['nullable', 'string', 'max:64'],
             'entries' => ['required', 'array', 'min:1', 'max:150'],
         ];
 
@@ -490,6 +499,11 @@ class GudepProgramPlanner extends Component
             $rules['scoutLevelId'] = ['required', ...$rules['scoutLevelId']];
             $rules['scheduledFor'] = ['required', 'date'];
             $rules['entries.*.description'] = ['required', 'string', 'max:500'];
+            $rules['entries.*.time'] = ['nullable', 'string', 'max:80'];
+            $rules['entries.*.target'] = ['nullable', 'string', 'max:500'];
+            $rules['entries.*.equipment'] = ['nullable', 'string', 'max:500'];
+            $rules['entries.*.officer'] = ['nullable', 'string', 'max:500'];
+            $rules['entries.*.interlude'] = ['nullable', 'string', 'max:500'];
             $rules['entries.*.sku'] = ['nullable', 'string', 'max:150'];
             $rules['entries.*.skk'] = ['nullable', 'string', 'max:150'];
             $rules['entries.*.notes'] = ['nullable', 'string', 'max:500'];
@@ -611,6 +625,27 @@ class GudepProgramPlanner extends Component
             return;
         }
 
+        if ($this->kind === 'weekly') {
+            $personnel = $this->weeklyPersonnelOptions();
+            $acknowledgers = GudepWeeklyPersonnel::acknowledgers($personnel);
+            $signers = GudepWeeklyPersonnel::signers(
+                $personnel,
+                \App\Models\ScoutLevel::query()->find($this->scoutLevelId)?->name
+            );
+
+            if ($this->acknowledgedByRef !== '' && GudepWeeklyPersonnel::find($acknowledgers, $this->acknowledgedByRef) === null) {
+                $this->addError('acknowledgedByRef', 'Pengurus yang mengetahui harus berasal dari data pengurus Gudep yang aktif.');
+
+                return;
+            }
+
+            if ($this->signedByRef !== '' && GudepWeeklyPersonnel::find($signers, $this->signedByRef) === null) {
+                $this->addError('signedByRef', 'Penandatangan harus sesuai jenjang dan jabatan satuan yang aktif.');
+
+                return;
+            }
+        }
+
         $entries = array_map(function (array $entry): array {
             $entry['description'] = trim((string) ($entry['description'] ?? ''));
             if ($this->kind === 'annual') {
@@ -648,6 +683,8 @@ class GudepProgramPlanner extends Component
             'gudep_formation_id' => $this->kind === 'annual' ? null : $this->formationId,
             'parent_id' => $this->kind === 'annual' ? null : $this->parentId,
             'activity_id' => $this->kind === 'weekly' ? $this->activityId : null,
+            'acknowledged_by_ref' => $this->kind === 'weekly' ? ($this->acknowledgedByRef ?: null) : null,
+            'signed_by_ref' => $this->kind === 'weekly' ? ($this->signedByRef ?: null) : null,
             'scheduled_for' => $this->kind === 'weekly' ? $this->scheduledFor : null,
             'entries' => $entries,
             'notes' => $this->notes ?: null,
@@ -693,6 +730,19 @@ class GudepProgramPlanner extends Component
             && ($activity->semester_id === null || (int) $activity->semester_id === (int) $sheet->semester_id)
         ), 409, 'Agenda tertaut tidak lagi valid.');
 
+        $weeklySignatures = null;
+        if ($sheet->kind === 'weekly') {
+            $personnel = GudepWeeklyPersonnel::candidates(
+                $this->schoolId(), $sheet->scout_group_id, $sheet->academic_year_id,
+                $sheet->gudep_formation_id, $sheet->scheduled_for?->toDateString()
+            );
+            $weeklySignatures = GudepWeeklyPersonnel::snapshot($sheet, $personnel);
+            abort_unless($weeklySignatures['acknowledger'] !== null && $weeklySignatures['signer'] !== null
+                && GudepWeeklyPersonnel::find(GudepWeeklyPersonnel::acknowledgers($personnel), $sheet->acknowledged_by_ref) !== null
+                && GudepWeeklyPersonnel::find(GudepWeeklyPersonnel::signers($personnel, $sheet->scoutLevel?->name), $sheet->signed_by_ref) !== null,
+                422, 'Pilih Pembina Gudep dan penandatangan satuan sesuai data pengurus sebelum menerbitkan PDF.');
+        }
+
         $snapshot = [
             'id' => $sheet->id,
             'kind' => $sheet->kind,
@@ -718,6 +768,7 @@ class GudepProgramPlanner extends Component
             'activity_end_at' => $activity?->end_at?->toIso8601String(),
             'activity_location' => $activity?->location,
             'entries' => $sheet->entries ?? [],
+            'weekly_signatures' => $weeklySignatures,
             'notes' => $sheet->notes,
         ];
 
@@ -834,6 +885,19 @@ class GudepProgramPlanner extends Component
         abort_unless(auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.development.manage'), 403);
     }
 
+    /** @return array<int, array{ref: string, name: string, position: string, scope: string}> */
+    private function weeklyPersonnelOptions(): array
+    {
+        if ($this->kind !== 'weekly' || $this->scoutGroupId === null || $this->academicYearId === null) {
+            return [];
+        }
+
+        return GudepWeeklyPersonnel::candidates(
+            $this->schoolId(), $this->selectedGudep()->id, $this->selectedYear()->id,
+            $this->formationId, $this->scheduledFor !== '' ? $this->scheduledFor : null
+        );
+    }
+
     public function render(): View
     {
         $this->authorizeView();
@@ -853,8 +917,27 @@ class GudepProgramPlanner extends Component
                 ->orderByDesc('id')->get()
             : collect();
 
+        $weeklyPersonnel = $this->weeklyPersonnelOptions();
+        $previewSheet = $this->previewId !== null && $gudep && $year
+            ? GudepProgramSheet::query()->where('school_id', $this->schoolId())
+                ->where('scout_group_id', $gudep->id)->where('academic_year_id', $year->id)
+                ->with('scoutLevel')->find($this->previewId)
+            : null;
+        $previewSignatures = $previewSheet !== null && $previewSheet->kind === 'weekly'
+            ? GudepWeeklyPersonnel::snapshot(
+                $previewSheet,
+                GudepWeeklyPersonnel::candidates(
+                    $this->schoolId(), $gudep->id, $year->id,
+                    $previewSheet->gudep_formation_id, $previewSheet->scheduled_for?->toDateString()
+                )
+            ) : null;
+
         return view('livewire.administration.gudep-program-planner', [
             'gudep' => $gudep,
+            'weeklyPersonnel' => $weeklyPersonnel,
+            'weeklyAcknowledgers' => GudepWeeklyPersonnel::acknowledgers($weeklyPersonnel),
+            'weeklySigners' => GudepWeeklyPersonnel::signers($weeklyPersonnel, $levels->firstWhere('id', $this->scoutLevelId)?->name),
+            'previewSignatures' => $previewSignatures,
             'year' => $year,
             'gudepOptions' => ScoutGroup::query()->where('school_id', $this->schoolId())->orderBy('name')->get(),
             'years' => AcademicYear::query()->where('school_id', $this->schoolId())->orderByDesc('start_date')->get(),
@@ -896,10 +979,7 @@ class GudepProgramPlanner extends Component
             'activities' => $year
                 ? Activity::query()->where('school_id', $this->schoolId())
                     ->where('academic_year_id', $year->id)->orderBy('start_at')->get() : collect(),
-            'previewSheet' => $this->previewId !== null && $gudep && $year
-                ? GudepProgramSheet::query()->where('school_id', $this->schoolId())
-                    ->where('scout_group_id', $gudep->id)->where('academic_year_id', $year->id)
-                    ->find($this->previewId) : null,
+            'previewSheet' => $previewSheet,
             'sheets' => $sheets,
             'parentItems' => $gudep && $year && $this->parentId !== null
                 ? collect(($sheets->firstWhere('id', $this->parentId)?->entries) ?? [])
