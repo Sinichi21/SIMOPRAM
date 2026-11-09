@@ -39,6 +39,7 @@
         'maleNumber' => $snapshot['gudep_male_number'] ?? '',
         'femaleNumber' => $snapshot['gudep_female_number'] ?? '',
         'programNumber' => $snapshot['gudep_program_number'] ?? '–',
+        'formationName' => $snapshot['formation_name'] ?? null,
         'yearName' => $snapshot['year_name'],
     ])
 @else
