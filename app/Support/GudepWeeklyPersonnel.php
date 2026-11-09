@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Models\DocumentSignatoryProfile;
 use App\Models\GudepOfficer;
 use App\Models\GudepProgramSheet;
 use App\Models\ScoutUnitMember;
@@ -34,7 +35,11 @@ final class GudepWeeklyPersonnel
             ->where('scout_group_id', $gudepId)
             ->whereDate('started_at', '<=', $asOf)
             ->where(fn ($query) => $query->whereNull('ended_at')->orWhereDate('ended_at', '>=', $asOf))
-            ->orderBy('scope')->orderBy('position')->get();
+            ->with('coach')->orderBy('scope')->orderBy('position')->get();
+        $userIds = $officers->pluck('coach.user_id')->filter()->unique()->values();
+        $profiles = DocumentSignatoryProfile::query()->where('school_id', $schoolId)
+            ->where('is_active', true)->whereIn('user_id', $userIds)
+            ->get()->keyBy('user_id');
 
         $options = [];
         foreach ($officers as $officer) {
@@ -42,11 +47,18 @@ final class GudepWeeklyPersonnel
                 && (int) $officer->gudep_formation_id !== (int) $formationId) {
                 continue;
             }
+            $coach = $officer->coach;
+            $profile = $coach?->user_id ? $profiles->get($coach->user_id) : null;
+            $profileType = strtoupper(trim((string) ($profile?->identifier_type ?? '')));
+            $profileNumber = trim((string) ($profile?->identifier_number ?? ''));
+            $nta = $profileType === 'NTA' ? $profileNumber : '';
+            $nip = $profileType === 'NIP' ? $profileNumber : trim((string) $coach?->nip);
             $options[] = [
                 'ref' => 'officer:'.$officer->id,
                 'name' => (string) $officer->person_name,
                 'position' => (string) $officer->position,
                 'scope' => (string) $officer->scope,
+                'identity' => $nta !== '' ? 'NTA. '.$nta : ($nip !== '' ? 'NIP. '.$nip : ''),
             ];
         }
 
@@ -75,6 +87,8 @@ final class GudepWeeklyPersonnel
                 'name' => (string) $membership->student->name,
                 'position' => (string) ($membership->position ?: 'Anggota Muda'),
                 'scope' => 'muda',
+                'identity' => filled($membership->student->nta)
+                    ? 'NTA. '.trim((string) $membership->student->nta) : '',
             ];
         }
 
