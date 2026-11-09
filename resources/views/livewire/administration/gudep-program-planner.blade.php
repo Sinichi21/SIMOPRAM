@@ -609,6 +609,7 @@
                             'maleNumber' => $gudep->male_number,
                             'femaleNumber' => $gudep->female_number,
                             'yearName' => $year->name,
+                            'formationName' => $previewAnnualFormationName ?? null,
                             'programNumber' => $previewSheet->letterhead_type === 'female' ? ($previewLetterhead['female_number'] ?? '–') : ($previewSheet->letterhead_type === 'male' ? ($previewLetterhead['male_number'] ?? '–') : (($previewLetterhead['male_number'] ?? '–').'-'.($previewLetterhead['female_number'] ?? '–'))),
                         ])
                     @elseif ($previewSheet->kind === 'weekly')
