@@ -1,4 +1,3 @@
-@include('administration.partials.gudep-document-letterhead', ['letterhead' => $snapshot['letterhead']])
 @if ($snapshot['kind'] === 'semester')
     <div style="font-family:'Times New Roman',Times,serif;">
         <h1 style="text-align:center;font-size:14pt;margin:13px 0 4px;">PROGRAM KERJA SEMESTER</h1>
