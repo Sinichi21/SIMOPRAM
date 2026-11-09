@@ -470,9 +470,9 @@
                                     </select>
                                     @error('acknowledgedByRef')<span class="block text-xs text-red-600">{{ $message }}</span>@enderror
                                 </label>
-                                <label class="text-sm font-medium">Pelaksana — Pembina Gugusdepan
+                                <label class="text-sm font-medium">Penandatangan — Ketua/Pembina Gugusdepan
                                     <select wire:model="signedByRef" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
-                                        <option value="">Pilih Pembina Gudep</option>
+                                        <option value="">Pilih Ketua/Pembina Gudep</option>
                                         @foreach ($annualSemesterPembina as $option)
                                             <option value="{{ $option['ref'] }}">{{ $option['name'] }} — {{ $option['position'] }}</option>
                                         @endforeach
