@@ -85,8 +85,13 @@ final class GudepProgramSignatories
                         || str_contains($position, 'ka. mabigus')
                         || str_contains($position, 'ketua mabi')
                         || str_contains($position, 'ketua majelis pembimbing')),
-                'pembina' => in_array($scope, ['gudep', 'satuan'], true)
-                    && str_contains($position, 'pembina'),
+                'pembina' => (in_array($scope, ['gudep', 'satuan'], true)
+                    && str_contains($position, 'pembina'))
+                    || ($scope === 'gudep' && (
+                        $position === 'ketua'
+                        || str_contains($position, 'ketua gugus')
+                        || str_contains($position, 'ketua gudep')
+                    )),
                 'pelaksana' => in_array($candidate, GudepWeeklyPersonnel::signers(
                     $personnel, $kind
                 ), true),
