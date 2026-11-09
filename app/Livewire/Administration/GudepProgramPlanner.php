@@ -1063,7 +1063,8 @@ class GudepProgramPlanner extends Component
             'document_layout' => $sheet->document_layout ?: 'narrative',
             'cc_recipients' => $sheet->cc_recipients ?? [],
             'program_date' => $sheet->updated_at?->format('d/m/Y'),
-            'signing_city' => $school->city ?? '',
+            'signing_city' => $school->city ?: ($sheet->scoutGroup?->kwarcab ?? ''),
+            'formation_name' => $this->annualFormationName($sheet),
             'notes' => $sheet->notes,
         ];
 
@@ -1180,6 +1181,22 @@ class GudepProgramPlanner extends Component
         abort_unless(auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.development.manage'), 403);
     }
 
+    private function annualFormationName(GudepProgramSheet $sheet): ?string
+    {
+        if ($sheet->kind !== 'annual' || in_array($sheet->letterhead_type, ['male', 'female'], true) === false) {
+            return null;
+        }
+
+        $gender = $sheet->letterhead_type === 'male' ? 'putra' : 'putri';
+        $names = GudepFormation::query()->where('school_id', $this->schoolId())
+            ->where('scout_group_id', $sheet->scout_group_id)
+            ->where('academic_year_id', $sheet->academic_year_id)
+            ->where('gender', $gender)->where('is_active', true)
+            ->pluck('name')->unique()->values();
+
+        return $names->count() === 1 ? (string) $names->first() : null;
+    }
+
     /** @return array<int, array{ref: string, name: string, position: string, scope: string}> */
     private function programPersonnelOptions(): array
     {
@@ -1246,13 +1263,14 @@ class GudepProgramPlanner extends Component
 
         return view('livewire.administration.gudep-program-planner', [
             'gudep' => $gudep,
-            'signingCity' => School::query()->find($this->schoolId())?->city ?? '',
+            'signingCity' => School::query()->find($this->schoolId())?->city ?: ($gudep?->kwarcab ?? ''),
             'weeklyPersonnel' => $weeklyPersonnel,
             'annualSemesterKamabigus' => GudepProgramSignatories::eligible($this->programPersonnelOptions(), 'kamabigus'),
             'annualSemesterPembina' => GudepProgramSignatories::eligible($this->programPersonnelOptions(), 'pembina'),
             'weeklyAcknowledgers' => GudepWeeklyPersonnel::acknowledgers($weeklyPersonnel),
             'weeklySigners' => GudepWeeklyPersonnel::signers($weeklyPersonnel, $levels->firstWhere('id', $this->scoutLevelId)?->name),
             'previewSignatures' => $previewSignatures,
+            'previewAnnualFormationName' => $previewSheet !== null ? $this->annualFormationName($previewSheet) : null,
             'year' => $year,
             'gudepOptions' => ScoutGroup::query()->where('school_id', $this->schoolId())->orderBy('name')->get(),
             'years' => AcademicYear::query()->where('school_id', $this->schoolId())->orderByDesc('start_date')->get(),
