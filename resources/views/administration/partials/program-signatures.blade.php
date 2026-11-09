@@ -2,21 +2,38 @@
     $programSignatures = $programSignatures ?? [];
     $ack = $programSignatures['acknowledger'] ?? null;
     $sign = $programSignatures['signer'] ?? null;
+    $city = trim((string) ($programCity ?? ''));
+    $number = trim((string) ($programNumber ?? ''));
+    $identityLeft = trim((string) ($ack['identity'] ?? ''));
+    $identityRight = trim((string) ($sign['identity'] ?? ''));
 @endphp
-<table style="width:100%;margin-top:24px;border:0;border-collapse:collapse;page-break-inside:avoid;font-family:'Times New Roman',Times,serif;font-size:10pt;" cellpadding="3">
-    <tr>
-        <td style="width:50%;border:0;vertical-align:top;text-align:left;">
-            Mengetahui,<div>{{ $programSignatures['acknowledger_role'] ?? 'Ketua Majelis Pembimbing Gugusdepan' }},</div>
-            <div style="height:55px;"></div>
-            <strong><u>{{ $ack['name'] ?? '(Nama belum ditentukan)' }}</u></strong>
-            <div style="font-size:8pt;">{{ $ack['position'] ?? '–' }}</div>
-        </td>
-        <td style="width:50%;border:0;vertical-align:top;text-align:left;">
-            {{ $programDate ?? '...........................' }}
-            <div>{{ $programSignatures['signer_role'] ?? 'Pembina Gugusdepan' }},</div>
-            <div style="height:55px;"></div>
-            <strong><u>{{ $sign['name'] ?? '(Nama belum ditentukan)' }}</u></strong>
-            <div style="font-size:8pt;">{{ $sign['position'] ?? '–' }}</div>
-        </td>
-    </tr>
-</table>
+{{-- Keep both names, roles, optional NTA/NIP and dates together on one page.
+     The wrapper and table row both prevent page fragmentation in Dompdf. --}}
+<div style="page-break-inside:avoid;break-inside:avoid;width:100%;margin-top:20px;font-family:'Times New Roman',Times,serif;font-size:10pt;">
+    <table style="width:100%;table-layout:fixed;border-collapse:collapse;page-break-inside:avoid;" cellpadding="2">
+        <tbody>
+            <tr style="page-break-inside:avoid;">
+                <td style="width:50%;vertical-align:top;border:0;padding-right:15px;">
+                    <div>Mengetahui,</div>
+                    <div>Majelis Pembimbing Gugusdepan</div>
+                    <div>Ketua,</div>
+                    <div style="height:58px;"></div>
+                    <div><strong><u>{{ $ack['name'] ?? '(Nama belum ditentukan)' }}</u></strong></div>
+                    @if ($identityLeft !== '')
+                        <div style="font-size:8pt;">{{ $identityLeft }}</div>
+                    @endif
+                </td>
+                <td style="width:50%;vertical-align:top;border:0;padding-left:15px;">
+                    <div>{{ $city !== '' ? $city : '................' }}, {{ $programDate ?? '........................' }}</div>
+                    <div>Gugusdepan {{ trim($city.' '.$number) ?: '................' }}</div>
+                    <div>Ketua,</div>
+                    <div style="height:58px;"></div>
+                    <div><strong><u>{{ $sign['name'] ?? '(Nama belum ditentukan)' }}</u></strong></div>
+                    @if ($identityRight !== '')
+                        <div style="font-size:8pt;">{{ $identityRight }}</div>
+                    @endif
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
