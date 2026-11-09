@@ -652,7 +652,13 @@
                     @if ($previewSheet->kind !== 'weekly')
                         @include('administration.partials.program-signatures', [
                             'programSignatures' => $previewSignatures ?? [],
-                            'programDate' => 'Tanggal: ........................',
+                            'programDate' => '........................',
+                            'programCity' => $signingCity ?? '',
+                            'programNumber' => $previewSheet->letterhead_type === 'female'
+                                ? ($previewLetterhead['female_number'] ?? '–')
+                                : ($previewSheet->letterhead_type === 'male'
+                                    ? ($previewLetterhead['male_number'] ?? '–')
+                                    : (($previewLetterhead['male_number'] ?? '–').'-'.($previewLetterhead['female_number'] ?? '–'))),
                         ])
                     @endif
                 </div>
