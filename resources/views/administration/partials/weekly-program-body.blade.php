@@ -53,6 +53,9 @@
                 <div>Pembina Gugus Depan,</div>
                 <div style="height:48px;"></div>
                 <div>( {{ $acknowledger['name'] ?? '....................................' }} )</div>
+                @if (filled($acknowledger['identity'] ?? null))
+                    <div style="font-size:8pt;">{{ $acknowledger['identity'] }}</div>
+                @endif
                 <div style="font-size:8pt;">{{ $acknowledger['position'] ?? 'Pembina Gugus Depan' }}</div>
             </td>
             <td style="width:50%;vertical-align:top;">
@@ -60,6 +63,9 @@
                 <div>{{ $signerRole }},</div>
                 <div style="height:48px;"></div>
                 <div>( {{ $signer['name'] ?? '....................................' }} )</div>
+                @if (filled($signer['identity'] ?? null))
+                    <div style="font-size:8pt;">{{ $signer['identity'] }}</div>
+                @endif
                 <div style="font-size:8pt;">{{ $signer['position'] ?? $signerRole }}</div>
             </td>
         </tr>
