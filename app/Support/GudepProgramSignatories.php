@@ -6,6 +6,7 @@ namespace App\Support;
 
 use App\Models\GudepFormation;
 use App\Models\GudepOfficer;
+use App\Models\DocumentSignatoryProfile;
 use App\Models\GudepProgramSheet;
 
 final class GudepProgramSignatories
@@ -42,15 +43,25 @@ final class GudepProgramSignatories
             ->whereIn('gudep_formation_id', $formations)
             ->whereDate('started_at', '<=', $asOf)
             ->where(fn ($query) => $query->whereNull('ended_at')->orWhereDate('ended_at', '>=', $asOf))
-            ->get();
+            ->with('coach')->get();
+        $profiles = DocumentSignatoryProfile::query()->where('school_id', $schoolId)
+            ->where('is_active', true)
+            ->whereIn('user_id', $officers->pluck('coach.user_id')->filter()->unique())
+            ->get()->keyBy('user_id');
         $known = array_column($options, null, 'ref');
         foreach ($officers as $officer) {
             $ref = 'officer:'.$officer->id;
+            $profile = $officer->coach?->user_id ? $profiles->get($officer->coach->user_id) : null;
+            $profileType = strtoupper(trim((string) ($profile?->identifier_type ?? '')));
+            $profileNumber = trim((string) ($profile?->identifier_number ?? ''));
+            $nta = $profileType === 'NTA' ? $profileNumber : '';
+            $nip = $profileType === 'NIP' ? $profileNumber : trim((string) $officer->coach?->nip);
             $known[$ref] = [
                 'ref' => $ref,
                 'name' => (string) $officer->person_name,
                 'position' => (string) $officer->position,
                 'scope' => (string) $officer->scope,
+                'identity' => $nta !== '' ? 'NTA. '.$nta : ($nip !== '' ? 'NIP. '.$nip : ''),
             ];
         }
 
