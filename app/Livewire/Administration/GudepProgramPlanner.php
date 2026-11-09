@@ -1063,6 +1063,7 @@ class GudepProgramPlanner extends Component
             'document_layout' => $sheet->document_layout ?: 'narrative',
             'cc_recipients' => $sheet->cc_recipients ?? [],
             'program_date' => $sheet->updated_at?->format('d/m/Y'),
+            'signing_city' => $school->city ?? '',
             'notes' => $sheet->notes,
         ];
 
@@ -1245,6 +1246,7 @@ class GudepProgramPlanner extends Component
 
         return view('livewire.administration.gudep-program-planner', [
             'gudep' => $gudep,
+            'signingCity' => School::query()->find($this->schoolId())?->city ?? '',
             'weeklyPersonnel' => $weeklyPersonnel,
             'annualSemesterKamabigus' => GudepProgramSignatories::eligible($this->programPersonnelOptions(), 'kamabigus'),
             'annualSemesterPembina' => GudepProgramSignatories::eligible($this->programPersonnelOptions(), 'pembina'),
