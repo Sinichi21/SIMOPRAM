@@ -52,7 +52,7 @@
         <table class="metadata">
             <tr><td>Judul</td><td>: {{ $program->title }}</td></tr>
             <tr><td>Gugusdepan</td><td>: {{ $gudep->name }}</td></tr>
-            <tr><td>Nomor Gudep</td><td>: Putra {{ $gudep->male_number ?: '–' }} / Putri {{ $gudep->female_number ?: '–' }}</td></tr>
+            <tr><td>Nomor Gudep</td><td>: {{ $programNumber ?: '–' }}</td></tr>
             <tr><td>Tahun Ajaran</td><td>: {{ $year->name }}</td></tr>
             @if ($program->kind !== 'annual')
                 <tr><td>Semester</td><td>: {{ $program->semester?->name ?? '–' }}</td></tr>
@@ -71,18 +71,19 @@
         @endif
 
         @if ($program->kind === 'annual')
-            @include('administration.partials.annual-program-body', [
+            @include($program->document_layout === 'monthly_matrix' ? 'administration.partials.annual-program-matrix' : 'administration.partials.annual-program-body', [
                 'entries' => $program->entries ?? [],
                 'kwarcab' => $gudep->kwarcab,
                 'maleNumber' => $gudep->male_number,
                 'femaleNumber' => $gudep->female_number,
                 'yearName' => $year->name,
+                'programNumber' => $programNumber,
             ])
         @elseif ($program->kind === 'semester')
-            <h2>Rencana Kegiatan dalam Enam Bulan</h2>
+            <h2>Rencana Kegiatan Semester</h2>
             <table class="rows">
                 <thead><tr><th style="width:29px">No.</th><th>Uraian Kegiatan</th>
-                    @for ($month = 1; $month <= 6; $month++)<th style="width:25px">{{ $month }}</th>@endfor
+                    @foreach (\App\Support\GudepProgramSemesterProjection::monthLabels($program->semester) as $month)<th style="width:25px">{{ $month }}</th>@endforeach
                     <th style="width:45px">Anggota</th><th>Ket.</th>
                 </tr></thead>
                 <tbody>
@@ -90,16 +91,16 @@
                         <tr>
                             <td class="number">{{ $loop->iteration }}.</td>
                             <td>{{ $entry['description'] ?? '–' }}</td>
-                            @for ($month = 0; $month < 6; $month++)
-                                <td class="center">{{ ($entry['months'][$month] ?? false) ? '✓' : '–' }}</td>
-                            @endfor
+                            @foreach (\App\Support\GudepProgramSemesterProjection::monthLabels($program->semester) as $monthIndex => $month)
+                                <td class="center">{{ ($entry['months'][$monthIndex] ?? false) ? '✓' : '–' }}</td>
+                            @endforeach
                             <td class="center">{{ $entry['participants'] ?? '–' }}</td>
                             <td>{{ $entry['notes'] ?: '–' }}</td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
-            <p class="muted" style="font-size:10px">Kolom bulan 1–6 mengikuti urutan bulan semester yang dipilih.</p>
+            <p class="muted" style="font-size:10px">Ganjil Agustus–Desember; Genap Januari–Juli, mengikuti Program Tahunan.</p>
         @else
             @include('administration.partials.weekly-program-body', [
                 'weeklyRows' => $program->entries ?? [],
@@ -114,10 +115,12 @@
         @endif
 
         @if ($program->kind !== 'weekly')
-        <div class="signatures">
-            <div><p>Mengetahui,</p><p>Ketua Gugusdepan</p><div class="signature-line"></div><p>{{ $gudep->head_coach_name ?: '(Nama / tanda tangan)' }}</p></div>
-            <div><p>Disusun oleh,</p><p>Penanggung Jawab Program</p><div class="signature-line"></div><p>(Nama / tanda tangan)</p></div>
-        </div>
+        @include('administration.partials.program-signatures', [
+            'programSignatures' => $programSignatures ?? [],
+            'programCity' => $programCity ?? '',
+            'programNumber' => $programNumber ?? '',
+            'programDate' => $program->updated_at?->format('d/m/Y'),
+        ])
         @endif
         <p class="draft">Cetak dari SIMPRAM — pratinjau kerja, belum diterbitkan atau ditandatangani secara digital.</p>
     </main>
