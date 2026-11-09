@@ -6,6 +6,9 @@
     $number = trim((string) ($programNumber ?? ''));
     $identityLeft = trim((string) ($ack['identity'] ?? ''));
     $identityRight = trim((string) ($sign['identity'] ?? ''));
+    $signPosition = mb_strtolower(trim((string) ($sign['position'] ?? '')));
+    $rightTitle = str_contains($signPosition, 'pembina') && ! str_contains($signPosition, 'ketua')
+        ? 'Pembina,' : 'Ketua,';
 @endphp
 {{-- Keep both names, roles, optional NTA/NIP and dates together on one page.
      The wrapper and table row both prevent page fragmentation in Dompdf. --}}
@@ -26,7 +29,7 @@
                 <td style="width:50%;vertical-align:top;border:0;padding-left:15px;">
                     <div>{{ $city !== '' ? $city : '................' }}, {{ $programDate ?? '........................' }}</div>
                     <div>Gugusdepan {{ trim($city.' '.$number) ?: '................' }}</div>
-                    <div>Ketua,</div>
+                    <div>{{ $rightTitle }}</div>
                     <div style="height:58px;"></div>
                     <div><strong><u>{{ $sign['name'] ?? '(Nama belum ditentukan)' }}</u></strong></div>
                     @if ($identityRight !== '')
