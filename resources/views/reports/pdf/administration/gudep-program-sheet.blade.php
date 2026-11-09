@@ -61,6 +61,8 @@
     @include('administration.partials.program-signatures', [
         'programSignatures' => $snapshot['signatures'] ?? [],
         'programDate' => $snapshot['program_date'] ?? '',
+        'programCity' => $snapshot['signing_city'] ?? '',
+        'programNumber' => $snapshot['gudep_program_number'] ?? '',
     ])
 @endif
 {{-- The tembusan and archival disclaimer are drawn at the bottom of the LAST PDF
