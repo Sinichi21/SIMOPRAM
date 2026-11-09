@@ -1,72 +1,177 @@
 @php
-    $months = [8,9,10,11,12,1,2,3,4,5,6,7];
-    $sections = \App\Support\GudepAnnualProgram::sections();
-    $labels = [
-        'siaga' => 'I. KEGIATAN DAN LATIHAN PESERTA DIDIK — SIAGA',
-        'penggalang' => 'I. KEGIATAN DAN LATIHAN PESERTA DIDIK — PENGGALANG',
-        'penegak' => 'I. KEGIATAN DAN LATIHAN PESERTA DIDIK — PENEGAK',
-        'pandega' => 'I. KEGIATAN DAN LATIHAN PESERTA DIDIK — PANDEGA',
-        'bersama' => 'II. BIDANG KEGIATAN BERSAMA ANTAR SATUAN',
-        'dewasa' => 'III. BIDANG PENDIDIKAN ORANG DEWASA',
-        'penghargaan' => 'IV. BIDANG TANDA PENGHARGAAN',
-        'sarana' => 'V. BIDANG SARANA DAN ADMINISTRASI',
-        'keuangan' => 'VI. BIDANG KEUANGAN',
+    $months = [8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6, 7];
+    $groups = [
+        'siaga' => 'Siaga',
+        'penggalang' => 'Penggalang',
+        'penegak' => 'Penegak',
+        'pandega' => 'Pandega',
     ];
+    $sections = [
+        'bersama' => ['II', 'BIDANG KEGIATAN BERSAMA ANTAR SATUAN DALAM GUGUSDEPAN/ANTAR GUDEP'],
+        'dewasa' => ['III', 'BIDANG PENDIDIKAN ORANG DEWASA'],
+        'penghargaan' => ['IV', 'BIDANG TANDA PENGHARGAAN'],
+        'sarana' => ['V', 'BIDANG SARANA DAN ADMINISTRASI'],
+    ];
+    $money = \App\Support\GudepAnnualProgram::totals($entries);
+    $financialRows = \App\Support\GudepAnnualProgram::numbered($entries, 'keuangan');
+    $financialGroups = ['income' => [], 'expense' => [], 'fundraising' => []];
+    foreach ($financialRows as $financialRow) {
+        $financeType = $financialRow['entry']['finance_type'] ?? '';
+        if (isset($financialGroups[$financeType])) {
+            $financialGroups[$financeType][] = $financialRow;
+        }
+    }
 @endphp
-<section style="font-family:'Times New Roman',Times,serif;font-size:9pt;">
-    <div style="font-weight:bold;text-align:center;font-size:12pt;margin:14px 0 3px;">PROGRAM KERJA TAHUNAN</div>
-    <div style="font-weight:bold;text-align:center;font-size:10pt;">GUGUSDEPAN {{ $programNumber ?? '–' }}</div>
-    <div style="text-align:center;font-size:9pt;margin-bottom:12px;">TAHUN ANGGARAN: {{ $yearName ?? '–' }}</div>
-    <table border="1" cellpadding="3" style="border-collapse:collapse;width:100%;table-layout:fixed;font-size:7.3pt;">
+<section style="font-family:'Times New Roman',Times,serif;font-size:8.5pt;">
+    <div style="text-align:center;font-size:12pt;font-weight:bold;margin:13px 0 2px;">PROGRAM KERJA TAHUNAN</div>
+    <div style="text-align:center;font-size:10pt;font-weight:bold;">GUGUSDEPAN {{ mb_strtoupper(trim(($kwarcab ?? '').' '.($programNumber ?? '–'))) }}</div>
+    @if (filled($formationName ?? null))
+        <div style="text-align:center;font-size:9pt;font-weight:bold;">{{ mb_strtoupper($formationName) }}</div>
+    @endif
+    <p style="margin:12px 0 11px;font-size:9pt;font-weight:bold;">TAHUN ANGGARAN : {{ $yearName ?? '–' }}</p>
+    <table border="1" cellpadding="2" style="width:100%;table-layout:fixed;border-collapse:collapse;font-size:7pt;line-height:1.16;">
+        <colgroup>
+            <col style="width:4%;">
+            <col style="width:37%;">
+            @foreach ($months as $month)
+                <col style="width:2.75%;">
+            @endforeach
+            <col style="width:13%;">
+            <col style="width:13%;">
+        </colgroup>
         <thead style="display:table-header-group;">
-            <tr style="background-color:#e5e5e5;">
-                <th rowspan="2" style="width:5%;">NO</th>
-                <th rowspan="2" style="width:34%;">BIDANG KEGIATAN</th>
-                <th colspan="12" style="width:36%;">B U L A N</th>
-                <th rowspan="2" style="width:12%;">JUMLAH</th>
-                <th rowspan="2" style="width:13%;">KETERANGAN</th>
+            <tr style="background:#d5d5d5;font-weight:bold;">
+                <th rowspan="2">NO</th>
+                <th rowspan="2">BIDANG KEGIATAN</th>
+                <th colspan="12" style="text-align:center;letter-spacing:1px;">B U L A N</th>
+                <th rowspan="2" style="text-align:center;">JUMLAH<br>S/G/T/D *)</th>
+                <th rowspan="2">KETERANGAN</th>
             </tr>
-            <tr style="background-color:#eee;">
+            <tr style="background:#e8e8e8;">
                 @foreach ($months as $month)
-                    <th style="width:3%;">{{ $month }}</th>
+                    <th style="text-align:center;">{{ $month }}</th>
                 @endforeach
             </tr>
         </thead>
         <tbody>
-            @foreach (array_keys($labels) as $section)
+            @php
+                $hasYouth = collect($entries)->contains(fn (array $entry): bool => in_array($entry['section'] ?? '', array_keys($groups), true));
+            @endphp
+            @if ($hasYouth)
+                <tr style="page-break-inside:avoid;background:#dedede;font-weight:bold;">
+                    <td style="text-align:center;">I</td>
+                    <td>KEGIATAN DAN LATIHAN PESERTA DIDIK</td>
+                    <td colspan="14"></td>
+                </tr>
+                @foreach ($groups as $section => $group)
+                    @php $rows = \App\Support\GudepAnnualProgram::numbered($entries, $section); @endphp
+                    @if ($rows !== [])
+                        <tr style="page-break-inside:avoid;">
+                            <td></td>
+                            <td style="font-weight:bold;">{{ $loop->iteration }}. {{ $group }}</td>
+                            <td colspan="14"></td>
+                        </tr>
+                        @foreach ($rows as $row)
+                            @php $item = $row['entry']; @endphp
+                            <tr style="page-break-inside:avoid;">
+                                <td></td>
+                                <td style="padding-left:{{ 6 + $row['depth'] * 11 }}px;">
+                                    {{ $row['marker'] }} {{ $item['description'] ?? '–' }}
+                                    @if (filled($item['detail'] ?? null))
+                                        <div style="font-size:6.7pt;">{{ $item['detail'] }}</div>
+                                    @endif
+                                </td>
+                                @foreach ($months as $monthIndex => $month)
+                                    <td style="text-align:center;">{{ ($item['months'][$monthIndex] ?? false) ? 'X' : '' }}</td>
+                                @endforeach
+                                <td style="text-align:center;">{{ ($item['quantity'] ?? null) === null ? '' : $item['quantity'] }}</td>
+                                <td>{{ $item['notes'] ?? '' }}</td>
+                            </tr>
+                        @endforeach
+                    @endif
+                @endforeach
+            @endif
+            @foreach ($sections as $section => [$numeral, $heading])
                 @php $rows = \App\Support\GudepAnnualProgram::numbered($entries, $section); @endphp
                 @if ($rows !== [])
-                    <tr style="page-break-inside:avoid;background-color:#f3f3f3;font-weight:bold;">
-                        <td style="text-align:center;">{{ $section === 'bersama' ? 'II' : ($section === 'dewasa' ? 'III' : ($section === 'penghargaan' ? 'IV' : ($section === 'sarana' ? 'V' : ($section === 'keuangan' ? 'VI' : 'I')))) }}</td>
-                        <td>{{ $labels[$section] }}</td>
+                    <tr style="page-break-inside:avoid;background:#dedede;font-weight:bold;">
+                        <td style="text-align:center;">{{ $numeral }}</td>
+                        <td>{{ $heading }}</td>
                         <td colspan="14"></td>
                     </tr>
                     @foreach ($rows as $row)
                         @php $item = $row['entry']; @endphp
                         <tr style="page-break-inside:avoid;">
                             <td></td>
-                            <td style="padding-left:{{ 4 + $row['depth'] * 9 }}px;">
+                            <td style="padding-left:{{ 6 + $row['depth'] * 11 }}px;">
                                 {{ $row['marker'] }} {{ $item['description'] ?? '–' }}
                                 @if (filled($item['detail'] ?? null))
-                                    <div style="font-size:7pt;">{{ $item['detail'] }}</div>
+                                    <div style="font-size:6.7pt;">{{ $item['detail'] }}</div>
                                 @endif
                             </td>
                             @foreach ($months as $monthIndex => $month)
                                 <td style="text-align:center;">{{ ($item['months'][$monthIndex] ?? false) ? 'X' : '' }}</td>
                             @endforeach
-                            <td style="text-align:right;">
-                                @if (($item['finance_type'] ?? '') === 'income' || ($item['finance_type'] ?? '') === 'expense')
-                                    Rp {{ number_format((int) ($item['amount'] ?? 0), 0, ',', '.') }}
-                                @elseif (($item['quantity'] ?? null) !== null)
-                                    {{ $item['quantity'] }} {{ $item['unit'] ?? 'kali' }}
-                                @endif
-                            </td>
+                            <td style="text-align:center;">{{ ($item['quantity'] ?? null) === null ? '' : $item['quantity'] }}</td>
                             <td>{{ $item['notes'] ?? '' }}</td>
                         </tr>
                     @endforeach
                 @endif
             @endforeach
+
+            {{-- Bidang VI occupies the very same table footprint. All twelve month
+                 columns are merged into the description, not rendered as a calendar. --}}
+            <tr style="background:#d5d5d5;font-weight:bold;page-break-inside:avoid;">
+                <td style="text-align:center;">VI</td>
+                <td colspan="13">BIDANG KEUANGAN</td>
+                <td style="text-align:center;">JUMLAH<br>(Rp,-)</td>
+                <td>KETERANGAN</td>
+            </tr>
+            @foreach ([
+                ['title' => '1. Rencana Pemasukan', 'type' => 'income', 'total' => $money['income'], 'color' => '#e3eddc'],
+                ['title' => '2. Rencana Pengeluaran', 'type' => 'expense', 'total' => $money['expense'], 'color' => '#fae0c9'],
+            ] as $group)
+                <tr style="background:#ececec;page-break-inside:avoid;">
+                    <td></td><td colspan="14">{{ $group['title'] }}</td><td></td>
+                </tr>
+                @foreach ($financialGroups[$group['type']] as $row)
+                    @php $item = $row['entry']; @endphp
+                    <tr style="page-break-inside:avoid;">
+                        <td></td>
+                        <td colspan="13" style="padding-left:18px;">{{ $row['marker'] }} {{ $item['description'] ?? '' }}</td>
+                        <td style="text-align:right;white-space:nowrap;">{{ ($item['amount'] ?? null) === null ? '–' : number_format((int) $item['amount'], 0, ',', '.') }}</td>
+                        <td>{{ $item['notes'] ?? '' }}</td>
+                    </tr>
+                @endforeach
+                <tr style="page-break-inside:avoid;font-weight:bold;background:{{ $group['color'] }};">
+                    <td></td><td colspan="13" style="padding-left:18px;">Jumlah</td>
+                    <td style="text-align:right;white-space:nowrap;">{{ number_format($group['total'], 0, ',', '.') }}</td>
+                    <td></td>
+                </tr>
+            @endforeach
+            <tr style="page-break-inside:avoid;font-weight:bold;background:#f1d9d9;">
+                <td></td><td colspan="13" style="padding-left:18px;">Selisih RKAG (Rencana Pemasukan - Rencana Pengeluaran)</td>
+                <td style="text-align:right;white-space:nowrap;">{{ number_format($money['expense'] - $money['income'], 0, ',', '.') }}</td>
+                <td></td>
+            </tr>
+            <tr style="page-break-inside:avoid;background:#ececec;">
+                <td></td><td colspan="14">3. Usaha Dana</td><td></td>
+            </tr>
+            @foreach ($financialGroups['fundraising'] as $row)
+                <tr style="page-break-inside:avoid;">
+                    <td></td><td colspan="14" style="padding-left:18px;">{{ $row['entry']['description'] ?? 'Usaha Dana' }}
+                        @if (filled($row['entry']['detail'] ?? null))
+                            <div>{{ $row['entry']['detail'] }}</div>
+                        @endif
+                    </td>
+                    <td>{{ $row['entry']['notes'] ?? '' }}</td>
+                </tr>
+            @endforeach
+            <tr style="page-break-inside:avoid;">
+                <td></td><td colspan="14" style="padding-left:18px;">
+                    Kekurangan rencana biaya sebesar Rp {{ number_format($money['shortfall'], 0, ',', '.') }} diupayakan melalui Usaha Dana.
+                </td><td></td>
+            </tr>
         </tbody>
     </table>
-    @include('administration.partials.annual-program-finance', ['entries' => $entries])
 </section>
