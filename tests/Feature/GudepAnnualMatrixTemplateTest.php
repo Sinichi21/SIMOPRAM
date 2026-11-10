@@ -61,7 +61,28 @@ class GudepAnnualMatrixTemplateTest extends TestCase
         $this->assertStringContainsString('Selisih RKAG', $rendered);
         $this->assertStringNotContainsString('F. BIDANG KEUANGAN', $rendered);
         $this->assertSame(1, substr_count($rendered, '<table border="1"'));
-        $this->assertSame(12, substr_count($rendered, '<col style="width:2.75%;">'));
+        $this->assertSame(12, substr_count($rendered, '<col style="width:2.5%;">'));
+    }
+
+    public function test_matrix_fundraising_contains_shortfall_only_once_and_preserves_actual_activity(): void
+    {
+        $entries = [
+            ['key' => 'income', 'section' => 'keuangan', 'parent_key' => null, 'description' => 'Rencana Pemasukan'],
+            ['key' => 'i1', 'section' => 'keuangan', 'parent_key' => 'income', 'description' => 'Iuran anggota', 'finance_type' => 'income', 'amount' => 8648000],
+            ['key' => 'expense', 'section' => 'keuangan', 'parent_key' => null, 'description' => 'Rencana Pengeluaran'],
+            ['key' => 'e1', 'section' => 'keuangan', 'parent_key' => 'expense', 'description' => 'Biaya kegiatan', 'finance_type' => 'expense', 'amount' => 10000000],
+            ['key' => 'fundraiser', 'section' => 'keuangan', 'parent_key' => null, 'description' => 'Usaha Dana', 'finance_type' => 'fundraising',
+                'detail' => 'Kekurangan rencana biaya sebesar Rp. 1.352.000 diupayakan dengan mengadakan Usaha Dana. Sumber usaha dana dari kegiatan Bazar Ceria.'],
+        ];
+        $html = view('administration.partials.annual-program-matrix', [
+            'entries' => $entries, 'programNumber' => '04.487', 'kwarcab' => 'Denpasar',
+            'yearName' => '2026/2027',
+        ])->render();
+
+        $this->assertSame(1, substr_count($html, '3. Usaha Dana'));
+        $this->assertSame(1, substr_count($html, 'Kekurangan rencana biaya sebesar Rp 1.352.000'));
+        $this->assertStringContainsString('kegiatan Bazar Ceria', $html);
+        $this->assertStringNotContainsString('Usaha Dana.', $html);
     }
 
     public function test_signature_block_keeps_two_signers_together_and_shows_only_existing_identifier(): void
