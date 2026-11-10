@@ -125,6 +125,13 @@ class GudepProgramPublicationRevisionTest extends TestCase
             ->where('document_type', 'gudep_program_sheet')->firstOrFail();
         $this->assertTrue($document->hasArchivedPdf());
         Storage::disk('local')->assertExists($document->file_path);
+        $bytes = Storage::disk('local')->get($document->file_path);
+        $this->assertStringStartsWith('%PDF-', $bytes);
+        // A4 landscape has a width of 841.89pt and height of 595.28pt.
+        $this->assertMatchesRegularExpression(
+            '/\\/MediaBox\\s*\\[\\s*0(?:\\.0+)?\\s+0(?:\\.0+)?\\s+84[01](?:\\.\\d+)?\\s+59[45](?:\\.\\d+)?\\s*\\]/',
+            $bytes
+        );
 
         Livewire::test(GudepProgramPlanner::class)
             ->set('scoutGroupId', $gudep->id)->set('academicYearId', $year->id)
