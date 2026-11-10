@@ -25,18 +25,18 @@ final class OfficialDocumentLastPageFooter
                 return;
             }
 
-            $height = $canvas->get_height();
+            $positions = OfficialDocumentFooterLayout::positions($canvas->get_height());
             $textFont = $fontMetrics->getFont('DejaVu Sans', 'normal');
             $boldFont = $fontMetrics->getFont('DejaVu Sans', 'bold');
             $italicFont = $fontMetrics->getFont('DejaVu Sans', 'italic');
             $x = 48;
 
             if ($copies !== []) {
-                $canvas->text($x, $height - 164, 'Tembusan:', $boldFont, 7.8, [0.23, 0.23, 0.26]);
+                $canvas->text($x, $positions['copies_title'], 'Tembusan:', $boldFont, 7.8, [0.23, 0.23, 0.26]);
                 foreach ($copies as $index => $recipient) {
                     // Long display names are bounded in the input to keep the
                     // archive footer within the A4 page.
-                    $canvas->text($x + 8, $height - 153 + $index * 10,
+                    $canvas->text($x + 8, $positions['copies_first'] + $index * $positions['copies_step'],
                         ($index + 1).'. '.mb_strimwidth($recipient, 0, 95, '…'),
                         $textFont, 7.4, [0.25, 0.25, 0.27]);
                 }
@@ -51,7 +51,7 @@ final class OfficialDocumentLastPageFooter
                 'tidak mengubah versi dokumen ini. QR dan metadata digunakan untuk verifikasi.',
             ];
             foreach ($notes as $index => $line) {
-                $canvas->text($x, $height - 105 + $index * 8.5,
+                $canvas->text($x, $positions['notice_first'] + $index * $positions['notice_step'],
                     $line, $italicFont, 6.4, [0.36, 0.36, 0.39]);
             }
         });
