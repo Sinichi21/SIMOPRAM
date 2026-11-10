@@ -6,7 +6,6 @@ namespace App\Livewire\Administration;
 
 use App\Models\AcademicYear;
 use App\Models\Activity;
-use App\Models\GudepCashEntry;
 use App\Models\GudepFormation;
 use App\Models\GudepProgramSheet;
 use App\Models\School;
@@ -17,6 +16,7 @@ use App\Services\Documents\OfficialDocumentPublisher;
 use App\Services\ReportVerificationService;
 use App\Support\GudepAnnualProgram;
 use App\Support\GudepDocumentLetterhead;
+use App\Support\GudepHistoricalBudgetSuggestions;
 use App\Support\GudepProgramProgress;
 use App\Support\GudepProgramSemesterProjection;
 use App\Support\GudepProgramSignatories;
@@ -391,30 +391,9 @@ class GudepProgramPlanner extends Component
             return [];
         }
 
-        $entries = GudepCashEntry::query()->where('school_id', $this->schoolId())
-            ->where('scout_group_id', $this->selectedGudep()->id)
-            ->where('academic_year_id', $previous->id)
-            ->where('status', 'posted')->get();
-
-        $summary = [];
-        foreach ($entries as $entry) {
-            $direction = $entry->direction;
-            // Reversal directions cancel their original counterpart.
-            if ($entry->reversal_of_id !== null) {
-                $direction = $direction === 'income' ? 'expense' : 'income';
-                $sign = -1;
-            } else {
-                $sign = 1;
-            }
-            $key = $direction.'|'.mb_strtolower(trim((string) $entry->category));
-            $summary[$key] ??= [
-                'direction' => $direction, 'category' => trim((string) $entry->category),
-                'amount' => 0, 'source_year' => $previous->name,
-            ];
-            $summary[$key]['amount'] += $sign * (int) $entry->amount;
-        }
-
-        return array_values(array_filter($summary, fn (array $row): bool => $row['amount'] > 0));
+        return GudepHistoricalBudgetSuggestions::forYear(
+            $this->schoolId(), $this->selectedGudep()->id, $previous->id
+        );
     }
 
     /**
