@@ -59,6 +59,7 @@ class GudepAnnualMatrixTemplateTest extends TestCase
         $this->assertStringContainsString('7.968.000', $rendered);
         $this->assertStringContainsString('14.000.000', $rendered);
         $this->assertStringContainsString('Selisih RKAG', $rendered);
+        $this->assertStringContainsString('>-6.032.000</td>', $rendered);
         $this->assertStringNotContainsString('F. BIDANG KEUANGAN', $rendered);
         $this->assertSame(1, substr_count($rendered, '<table border="1"'));
         $this->assertSame(12, substr_count($rendered, '<col style="width:2.5%;">'));
