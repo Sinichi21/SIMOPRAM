@@ -12,68 +12,55 @@ use Illuminate\Support\Str;
 final class GudepHistoricalBudgetSuggestions
 {
     /**
-     * Read-only reference from one completed/selected accounting year.
-     * Posted expenses count positively and posted income reversals subtract.
-     * No transactions or budgets are created, updated or automatically copied.
+     * Read-only previous-year suggestions using posted ledger entries only.
+     * Each reversal reduces the corresponding original transaction direction.
+     * No draft/production record is changed by generating a suggestion.
      *
-     * @return array<int, array{category: string, actual_expense: int, posted_entries: int, reversals: int}>
+     * @return array<int, array{direction: string, category: string, amount: int, source_year: string}>
      */
     public static function forYear(int $schoolId, int $gudepId, int $historicalYearId): array
     {
         abort_unless(ScoutGroup::query()->where('school_id', $schoolId)->whereKey($gudepId)->exists(), 404);
-        abort_unless(AcademicYear::query()->where('school_id', $schoolId)->whereKey($historicalYearId)->exists(), 404);
+        $year = AcademicYear::query()->where('school_id', $schoolId)->findOrFail($historicalYearId);
 
         $entries = GudepCashEntry::query()
             ->where('school_id', $schoolId)
             ->where('scout_group_id', $gudepId)
             ->where('academic_year_id', $historicalYearId)
             ->where('status', 'posted')
-            ->where(function ($query): void {
-                $query->where(function ($expense): void {
-                    $expense->where('direction', 'expense')->whereNull('reversal_of_id');
-                })->orWhere(function ($reversal): void {
-                    $reversal->where('direction', 'income')->whereNotNull('reversal_of_id');
-                });
-            })
             ->orderBy('id')
             ->get(['category', 'amount', 'direction', 'reversal_of_id']);
 
         $totals = [];
         foreach ($entries as $entry) {
             $category = trim((string) $entry->category);
-            if ($category === '') {
+            if ($category === '' || ! in_array($entry->direction, ['income', 'expense'], true)) {
                 continue;
             }
 
-            $key = Str::lower($category);
+            // A reversed expense is posted as income and should subtract
+            // from historical expenses, not become new operating income.
+            $direction = $entry->reversal_of_id !== null
+                ? ($entry->direction === 'income' ? 'expense' : 'income')
+                : $entry->direction;
+            $key = $direction.'|'.Str::lower($category);
             if (! isset($totals[$key])) {
                 $totals[$key] = [
+                    'direction' => $direction,
                     'category' => $category,
-                    'actual_expense' => 0,
-                    'posted_entries' => 0,
-                    'reversals' => 0,
+                    'amount' => 0,
+                    'source_year' => (string) $year->name,
                 ];
             }
 
-            if ($entry->reversal_of_id !== null) {
-                $totals[$key]['actual_expense'] -= (int) $entry->amount;
-                $totals[$key]['reversals']++;
-            } else {
-                $totals[$key]['actual_expense'] += (int) $entry->amount;
-                $totals[$key]['posted_entries']++;
-            }
+            $totals[$key]['amount'] += ($entry->reversal_of_id !== null ? -1 : 1) * (int) $entry->amount;
         }
-
-        // Treat categories with wholly reversed expenses as zero historical
-        // realization; report the reversal count for inspection, never as a
-        // negative suggested new budget.
-        foreach ($totals as &$row) {
-            $row['actual_expense'] = max(0, $row['actual_expense']);
-        }
-        unset($row);
 
         ksort($totals);
 
-        return array_values($totals);
+        return array_values(array_filter(
+            $totals,
+            static fn (array $row): bool => $row['amount'] > 0
+        ));
     }
 }
