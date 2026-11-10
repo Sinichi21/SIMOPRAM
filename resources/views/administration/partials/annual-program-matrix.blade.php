@@ -29,15 +29,15 @@
         <div style="text-align:center;font-size:9pt;font-weight:bold;">{{ mb_strtoupper($formationName) }}</div>
     @endif
     <p style="margin:12px 0 11px;font-size:9pt;font-weight:bold;">TAHUN ANGGARAN : {{ $yearName ?? '–' }}</p>
-    <table border="1" cellpadding="2" style="width:100%;table-layout:fixed;border-collapse:collapse;font-size:7pt;line-height:1.16;">
+    <table border="1" cellpadding="2" style="width:100%;table-layout:fixed;border-collapse:collapse;font-size:8.2pt;line-height:1.22;">
         <colgroup>
             <col style="width:4%;">
-            <col style="width:37%;">
+            <col style="width:43%;">
             @foreach ($months as $month)
-                <col style="width:2.75%;">
+                <col style="width:2.5%;">
             @endforeach
-            <col style="width:13%;">
-            <col style="width:13%;">
+            <col style="width:12%;">
+            <col style="width:11%;">
         </colgroup>
         <thead style="display:table-header-group;">
             <tr style="background:#d5d5d5;font-weight:bold;">
@@ -154,23 +154,41 @@
                 <td style="text-align:right;white-space:nowrap;">{{ number_format($money['expense'] - $money['income'], 0, ',', '.') }}</td>
                 <td></td>
             </tr>
-            <tr style="page-break-inside:avoid;background:#ececec;">
-                <td></td><td colspan="14">3. Usaha Dana</td><td></td>
+            @php
+                // The original form stores an 'Usaha Dana' title and explanatory
+                // sentences separately. Show one concise computed summary and
+                // retain only the actual fundraising method entered by users.
+                $fundraisingDetails = [];
+                foreach ($financialGroups['fundraising'] as $row) {
+                    $item = $row['entry'];
+                    foreach ([(string) ($item['description'] ?? ''), (string) ($item['detail'] ?? ''), (string) ($item['notes'] ?? '')] as $part) {
+                        $part = trim($part);
+                        if ($part === '' || preg_match('/^usaha dana\\.?$/iu', $part)
+                            || preg_match('/^kekurangan rencana biaya/i', $part)
+                            || preg_match('/^kekurangan biaya/i', $part)
+                            || preg_match('/^diupayakan melalui usaha dana/i', $part)) {
+                            continue;
+                        }
+                        $fundraisingDetails[] = $part;
+                    }
+                }
+                $fundraisingDetails = array_values(array_unique($fundraisingDetails));
+            @endphp
+            <tr style="page-break-inside:avoid;background:#ececec;font-weight:bold;">
+                <td></td><td colspan="15">3. Usaha Dana</td>
             </tr>
-            @foreach ($financialGroups['fundraising'] as $row)
-                <tr style="page-break-inside:avoid;">
-                    <td></td><td colspan="14" style="padding-left:18px;">{{ $row['entry']['description'] ?? 'Usaha Dana' }}
-                        @if (filled($row['entry']['detail'] ?? null))
-                            <div>{{ $row['entry']['detail'] }}</div>
-                        @endif
-                    </td>
-                    <td>{{ $row['entry']['notes'] ?? '' }}</td>
-                </tr>
-            @endforeach
             <tr style="page-break-inside:avoid;">
-                <td></td><td colspan="14" style="padding-left:18px;">
-                    Kekurangan rencana biaya sebesar Rp {{ number_format($money['shortfall'], 0, ',', '.') }} diupayakan melalui Usaha Dana.
-                </td><td></td>
+                <td></td>
+                <td colspan="15" style="padding:5px 9px 6px 18px;line-height:1.35;">
+                    @if ($money['shortfall'] > 0)
+                        Kekurangan rencana biaya sebesar Rp {{ number_format($money['shortfall'], 0, ',', '.') }} diupayakan melalui usaha dana.
+                    @else
+                        Tidak terdapat kekurangan rencana biaya.
+                    @endif
+                    @if ($fundraisingDetails !== [])
+                        <div style="margin-top:3px;">{{ implode('; ', $fundraisingDetails) }}</div>
+                    @endif
+                </td>
             </tr>
         </tbody>
     </table>
