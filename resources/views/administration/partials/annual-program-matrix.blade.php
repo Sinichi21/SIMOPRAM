@@ -151,7 +151,7 @@
             @endforeach
             <tr style="page-break-inside:avoid;font-weight:bold;background:#f1d9d9;">
                 <td></td><td colspan="13" style="padding-left:18px;">Selisih RKAG (Rencana Pemasukan - Rencana Pengeluaran)</td>
-                <td style="text-align:right;white-space:nowrap;">{{ number_format($money['expense'] - $money['income'], 0, ',', '.') }}</td>
+                <td style="text-align:right;white-space:nowrap;">{{ number_format($money['income'] - $money['expense'], 0, ',', '.') }}</td>
                 <td></td>
             </tr>
             @php
