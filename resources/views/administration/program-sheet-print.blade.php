@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $program->title }} — {{ $gudep->name }}</title>
     <style>
-        @page { size: A4 portrait; margin: 16mm 14mm; }
+        @page { size: A4 {{ $program->kind === 'annual' && $program->document_layout === 'monthly_matrix' ? 'landscape' : 'portrait' }}; margin: 14mm; }
         * { box-sizing: border-box; }
         body { margin: 0; color: #171717; font-family: Arial, Helvetica, sans-serif; font-size: 11px; line-height: 1.5; }
-        .sheet { max-width: 210mm; margin: 0 auto; padding: 18px; }
+        .sheet { max-width: {{ $program->kind === 'annual' && $program->document_layout === 'monthly_matrix' ? '297mm' : '210mm' }}; margin: 0 auto; padding: 18px; }
         h1 { margin: 3px 0; font-size: 17px; text-align: center; text-transform: uppercase; }
         h2 { margin: 20px 0 7px; font-size: 12px; }
         .center { text-align: center; }
