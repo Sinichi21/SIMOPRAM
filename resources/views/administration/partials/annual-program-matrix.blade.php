@@ -163,6 +163,13 @@
                     $item = $row['entry'];
                     foreach ([(string) ($item['description'] ?? ''), (string) ($item['detail'] ?? ''), (string) ($item['notes'] ?? '')] as $part) {
                         $part = trim($part);
+                        // Preserve the named activity even when a legacy
+                        // paragraph begins with the redundant shortage sentence.
+                        if (preg_match('/sumber usaha dana (?:dari|melalui) (.+)$/iu', $part, $detailMatch)) {
+                            $part = trim($detailMatch[1]);
+                        } elseif (preg_match('/dengan mengadakan (.+)$/iu', $part, $detailMatch)) {
+                            $part = trim($detailMatch[1]);
+                        }
                         if ($part === '' || preg_match('/^usaha dana\\.?$/iu', $part)
                             || preg_match('/^kekurangan rencana biaya/i', $part)
                             || preg_match('/^kekurangan biaya/i', $part)
