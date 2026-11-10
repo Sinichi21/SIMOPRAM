@@ -9,6 +9,7 @@ use App\Models\GudepCashEntry;
 use App\Models\School;
 use App\Models\ScoutGroup;
 use App\Support\GudepHistoricalBudgetSuggestions;
+use App\Support\SchoolContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
@@ -20,6 +21,8 @@ class GudepHistoricalBudgetSuggestionsTest extends TestCase
     public function test_only_posted_entries_from_selected_school_gudep_and_year_are_suggested(): void
     {
         $school = School::factory()->create();
+        app(SchoolContext::class)->set($school);
+        setPermissionsTeamId($school->id);
         $otherSchool = School::factory()->create();
         $gudep = ScoutGroup::query()->create(['school_id' => $school->id, 'name' => 'Gudep Utama']);
         $anotherGudep = ScoutGroup::query()->create(['school_id' => $school->id, 'name' => 'Gudep Lain']);
@@ -77,6 +80,8 @@ class GudepHistoricalBudgetSuggestionsTest extends TestCase
     public function test_fully_reversed_expense_does_not_generate_negative_recommendation(): void
     {
         $school = School::factory()->create();
+        app(SchoolContext::class)->set($school);
+        setPermissionsTeamId($school->id);
         $gudep = ScoutGroup::query()->create(['school_id' => $school->id, 'name' => 'Gudep Utama']);
         $year = AcademicYear::query()->create([
             'school_id' => $school->id, 'name' => '2025/2026',
