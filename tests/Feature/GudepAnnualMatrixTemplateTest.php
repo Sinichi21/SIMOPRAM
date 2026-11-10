@@ -86,6 +86,26 @@ class GudepAnnualMatrixTemplateTest extends TestCase
         $this->assertStringNotContainsString('Usaha Dana.', $html);
     }
 
+    public function test_matrix_shows_positive_rkag_surplus_and_does_not_invent_shortfall(): void
+    {
+        $entries = [
+            ['key' => 'i', 'section' => 'keuangan', 'parent_key' => null, 'description' => 'Rencana Pemasukan'],
+            ['key' => 'i-1', 'section' => 'keuangan', 'parent_key' => 'i', 'description' => 'Iuran', 'finance_type' => 'income', 'amount' => 12000000],
+            ['key' => 'e', 'section' => 'keuangan', 'parent_key' => null, 'description' => 'Rencana Pengeluaran'],
+            ['key' => 'e-1', 'section' => 'keuangan', 'parent_key' => 'e', 'description' => 'Peralatan', 'finance_type' => 'expense', 'amount' => 7000000],
+        ];
+
+        $html = view('administration.partials.annual-program-matrix', [
+            'entries' => $entries, 'programNumber' => '04.237',
+            'kwarcab' => 'Denpasar', 'yearName' => '2026/2027',
+        ])->render();
+
+        $this->assertStringContainsString('Selisih RKAG (Rencana Pemasukan - Rencana Pengeluaran)', $html);
+        $this->assertStringContainsString('>5.000.000</td>', $html);
+        $this->assertStringContainsString('Tidak terdapat kekurangan rencana biaya.', $html);
+        $this->assertStringNotContainsString('Kekurangan rencana biaya sebesar Rp', $html);
+    }
+
     public function test_official_letterhead_uses_existing_persuratan_renderer_and_putra_number(): void
     {
         $html = view('administration.partials.gudep-document-letterhead', [
