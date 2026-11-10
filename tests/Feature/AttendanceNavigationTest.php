@@ -19,7 +19,8 @@ test('super admin can open the attendance activity selector', function () {
         ->withSession(['active_school_id' => $school->id])
         ->get(route('attendances.index'))
         ->assertOk()
-        ->assertSee('Agenda / Kegiatan')
+        ->assertSee('Agenda kegiatan')
+        ->assertSee(route('activities.index'), false)
         ->assertSee('Absensi')
         ->assertSee('Pilih kegiatan yang akan dikelola absensinya.');
 });

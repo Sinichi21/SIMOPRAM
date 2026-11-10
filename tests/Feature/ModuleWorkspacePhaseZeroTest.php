@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature;
 
 use App\Models\School;
@@ -7,6 +9,7 @@ use App\Models\SchoolUserMembership;
 use App\Models\User;
 use App\Support\ModuleWorkspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
@@ -57,5 +60,71 @@ class ModuleWorkspacePhaseZeroTest extends TestCase
         $this->assertNotNull($module);
         $this->assertFalse(ModuleWorkspace::permitted($user, $module));
         $this->assertSame([], ModuleWorkspace::accessibleLinks($user, $module));
+    }
+
+    public function test_legacy_finance_route_resolves_to_the_finance_workspace(): void
+    {
+        $request = Request::create('/administrasi/keuangan-sarana', 'GET');
+        $route = $this->app['router']->getRoutes()->match($request);
+        $request->setRouteResolver(fn () => $route);
+
+        $this->app->instance('request', $request);
+
+        $this->assertSame('keuangan', ModuleWorkspace::activeSlug());
+    }
+
+    public function test_module_owned_navigation_is_available_from_the_correct_workspace(): void
+    {
+        $activities = ModuleWorkspace::find('kegiatan');
+        $administration = ModuleWorkspace::find('administrasi');
+
+        $this->assertNotNull($activities);
+        $this->assertNotNull($administration);
+
+        $activityRoutes = array_column($activities['links'], 'route');
+        $administrationRoutes = array_column($administration['links'], 'route');
+
+        $this->assertContains('activities.index', $activityRoutes);
+        $this->assertContains('attendances.index', $activityRoutes);
+        $this->assertContains('journals.index', $activityRoutes);
+        $this->assertContains('announcements.index', $activityRoutes);
+        $this->assertContains('letters.incoming', $administrationRoutes);
+        $this->assertContains('letters.outgoing', $administrationRoutes);
+        $this->assertContains('letters.templates', $administrationRoutes);
+    }
+
+    public function test_program_planner_and_competency_tracking_have_distinct_navigation_labels(): void
+    {
+        $administration = ModuleWorkspace::find('administrasi');
+        $this->assertNotNull($administration);
+
+        $links = collect($administration['links'])->keyBy('route');
+        $this->assertSame('Program Kerja Tahunan/Semester/Mingguan', $links['administration.programs']['label']);
+        $this->assertSame('Pembinaan SKU/SKK & Prestasi', $links['administration.development']['label']);
+        $this->assertNotContains('Program & Pembinaan', array_column($administration['links'], 'label'));
+    }
+
+    public function test_finance_is_a_standalone_module_without_administration_duplicate(): void
+    {
+        $finance = ModuleWorkspace::find('keuangan');
+        $administration = ModuleWorkspace::find('administrasi');
+
+        $this->assertNotNull($finance);
+        $this->assertNotNull($administration);
+        $this->assertContains('gudep.finance.view', $finance['permissions']);
+        $this->assertSame('finance.index', $finance['links'][0]['route']);
+        $this->assertNotContains('gudep.finance.view', $administration['permissions']);
+        $this->assertNotContains(
+            'administration.finance',
+            array_column($administration['links'], 'route')
+        );
+        $this->assertSame(
+            route('finance.index', absolute: false),
+            '/keuangan'
+        );
+        $this->assertSame(
+            route('administration.finance', absolute: false),
+            '/administrasi/keuangan-sarana'
+        );
     }
 }

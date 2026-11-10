@@ -9,6 +9,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | {lang,app/Services}/** | .ai/rules/langapp-services.md |
 | app/{Models,Livewire}/** | .ai/rules/models-livewire.md |
 | app/{Models,Services,Livewire,Providers,Http}/** | .ai/rules/models-services-livewire-providers-http.md |
+| resources/views/administration/partials/annual-program-matrix.blade.php | .ai/rules/partials.md |
 | resources/** | .ai/rules/resources.md |
 | app/Livewire/SchoolRegistrations/** | .ai/rules/school-registrations.md |
 | app/{Services,Http,Livewire}/** | .ai/rules/services-http-livewire.md |

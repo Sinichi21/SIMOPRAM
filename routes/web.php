@@ -10,6 +10,7 @@ use App\Http\Controllers\ComplaintController;
 use App\Http\Controllers\GudepAchievementEvidenceController;
 use App\Http\Controllers\GudepCashEvidenceController;
 use App\Http\Controllers\GudepOfficerDocumentController;
+use App\Http\Controllers\GudepProgramSheetPrintController;
 use App\Http\Controllers\InventoryAssetBatchLabelController;
 use App\Http\Controllers\InventoryAssetLabelController;
 use App\Http\Controllers\InventoryAssetVerificationController;
@@ -34,6 +35,7 @@ use App\Livewire\Administration\GudepDevelopment;
 use App\Livewire\Administration\GudepFinance;
 use App\Livewire\Administration\GudepOperations;
 use App\Livewire\Administration\GudepOrganization;
+use App\Livewire\Administration\GudepProgramPlanner;
 use App\Livewire\Auth\Register;
 use App\Livewire\Inventory\Index;
 use App\Livewire\Inventory\Loans;
@@ -260,6 +262,11 @@ Route::middleware([
             ->middleware('can:gudep.view')
             ->name('administration.accreditation');
 
+        // v2: standalone finance workspace, preserving the legacy URL for old links.
+        Route::get('/keuangan', GudepFinance::class)
+            ->middleware('can:gudep.finance.view')
+            ->name('finance.index');
+
         Route::get('/administrasi/keuangan-sarana', GudepFinance::class)
             ->middleware('can:gudep.finance.view')
             ->name('administration.finance');
@@ -271,6 +278,15 @@ Route::middleware([
         Route::get('/administrasi/pembinaan', GudepDevelopment::class)
             ->middleware('can:gudep.view')
             ->name('administration.development');
+
+        Route::get('/administrasi/program-kerja', GudepProgramPlanner::class)
+            ->middleware('can:gudep.view')
+            ->name('administration.programs');
+
+        Route::get('/administrasi/program-kerja/{sheet}/cetak', GudepProgramSheetPrintController::class)
+            ->whereNumber('sheet')
+            ->middleware(['can:gudep.view', 'throttle:30,1'])
+            ->name('administration.programs.print');
 
         Route::get('/administrasi/organisasi', GudepOrganization::class)
             ->middleware('can:gudep.view')

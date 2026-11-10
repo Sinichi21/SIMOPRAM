@@ -17,17 +17,27 @@ final class ModuleWorkspace
                 'title' => 'Administrasi Gudep',
                 'description' => 'Profil Gudep, persuratan, arsip, dan dokumen terbit.',
                 'icon' => 'folder-open',
-                'permissions' => ['gudep.view', 'gudep.finance.view', 'letters.view', 'report_verifications.view'],
+                'permissions' => ['gudep.view', 'letters.view', 'letters.templates', 'report_verifications.view'],
                 'links' => [
                     ['label' => 'Portofolio Akreditasi', 'route' => 'administration.accreditation', 'permission' => 'gudep.view'],
-                    ['label' => 'Keuangan & Sarana', 'route' => 'administration.finance', 'permission' => 'gudep.finance.view'],
                     ['label' => 'Buku Operasional', 'route' => 'administration.operations', 'permission' => 'gudep.view'],
-                    ['label' => 'Program & Pembinaan', 'route' => 'administration.development', 'permission' => 'gudep.view'],
+                    ['label' => 'Program Kerja Tahunan/Semester/Mingguan', 'route' => 'administration.programs', 'permission' => 'gudep.view'],
+                    ['label' => 'Pembinaan SKU/SKK & Prestasi', 'route' => 'administration.development', 'permission' => 'gudep.view'],
                     ['label' => 'Organisasi & Buku Induk', 'route' => 'administration.organization', 'permission' => 'gudep.view'],
                     ['label' => 'Gugusdepan', 'route' => 'scout-groups.index', 'permission' => 'gudep.view'],
                     ['label' => 'Surat masuk', 'route' => 'letters.incoming', 'permission' => 'letters.view'],
                     ['label' => 'Surat keluar', 'route' => 'letters.outgoing', 'permission' => 'letters.view'],
+                    ['label' => 'Template Surat', 'route' => 'letters.templates', 'permission' => 'letters.templates'],
                     ['label' => 'Dokumen terbit', 'route' => 'reports.published-documents.index', 'permission' => 'report_verifications.view'],
+                ],
+            ],
+            'keuangan' => [
+                'title' => 'Keuangan',
+                'description' => 'Anggaran, buku kas, penerimaan terkait inventaris, dan rekonsiliasi Gudep.',
+                'icon' => 'wallet',
+                'permissions' => ['gudep.finance.view'],
+                'links' => [
+                    ['label' => 'Dashboard & Buku Kas', 'route' => 'finance.index', 'permission' => 'gudep.finance.view'],
                 ],
             ],
             'inventaris' => [
@@ -44,10 +54,12 @@ final class ModuleWorkspace
                 'title' => 'Kegiatan & Pembinaan',
                 'description' => 'Agenda, jurnal, dan dokumentasi kegiatan.',
                 'icon' => 'calendar-days',
-                'permissions' => ['activities.view', 'journals.view'],
+                'permissions' => ['activities.view', 'attendance_sessions.view', 'journals.view', 'announcements.view'],
                 'links' => [
                     ['label' => 'Agenda kegiatan', 'route' => 'activities.index', 'permission' => 'activities.view'],
+                    ['label' => 'Absensi', 'route' => 'attendances.index', 'permission' => 'attendance_sessions.view'],
                     ['label' => 'Jurnal kegiatan', 'route' => 'journals.index', 'permission' => 'journals.view'],
+                    ['label' => 'Pengumuman', 'route' => 'announcements.index', 'permission' => 'announcements.view'],
                 ],
             ],
             'keanggotaan' => [
@@ -71,9 +83,11 @@ final class ModuleWorkspace
         }
 
         $routes = [
+            // Specific finance aliases must be checked before the broad administration.* pattern.
+            'keuangan' => ['finance.*', 'administration.finance*'],
             'administrasi' => ['administration.*', 'scout-groups.*', 'letters.*', 'reports.published-documents.*'],
             'inventaris' => ['inventory.*'],
-            'kegiatan' => ['activities.*', 'journals.*'],
+            'kegiatan' => ['activities.*', 'attendances.*', 'journals.*', 'announcements.index', 'announcements.create', 'announcements.edit'],
             'keanggotaan' => ['students.*', 'coaches.*', 'scout-units.*'],
         ];
 

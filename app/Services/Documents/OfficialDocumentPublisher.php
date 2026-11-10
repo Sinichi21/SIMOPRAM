@@ -4,7 +4,10 @@ namespace App\Services\Documents;
 
 use App\Models\ReportVerification;
 use App\Models\School;
+use App\Models\ScoutGroup;
 use App\Services\ReportVerificationService;
+use App\Support\GudepDocumentLetterhead;
+use App\Support\OfficialDocumentLastPageFooter;
 use App\Support\SchoolContext;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Closure;
@@ -56,6 +59,44 @@ final class OfficialDocumentPublisher
             ]);
         }
 
+        $letterhead = null;
+        $gudep = null;
+        if ($sourceType === ScoutGroup::class) {
+            $gudep = ScoutGroup::query()->where('school_id', $schoolId)->findOrFail($sourceId);
+        } elseif (($contentData['gudep'] ?? null) instanceof ScoutGroup) {
+            $gudep = $contentData['gudep'];
+            abort_unless((int) $gudep->school_id === $schoolId, 404);
+        }
+        if ($contentView === 'reports.pdf.administration.gudep-program-sheet') {
+            // The issued program uses its immutable, Persuratan-derived
+            // Putra/Putri letterhead snapshot. Do not fall back to Mabigus.
+            $letterhead = $contentData['snapshot']['letterhead'] ?? null;
+            if (! is_array($letterhead) || ! in_array($letterhead['type'] ?? '', GudepDocumentLetterhead::TYPES, true)) {
+                throw ValidationException::withMessages([
+                    'letterhead' => 'Kop Persuratan program tidak tersedia atau tidak valid.',
+                ]);
+            }
+            $snapshotChecksum = hash('sha256', $snapshotChecksum.'|'.$this->verification->contentChecksum($letterhead));
+        } elseif ($gudep !== null) {
+            $school = School::query()->findOrFail($schoolId);
+            $letterhead = GudepDocumentLetterhead::resolve($school, $gudep, 'mabigus');
+            // Header changes generate a new immutable document revision rather than
+            // quietly reusing a PDF containing an outdated Gudep identity.
+            $snapshotChecksum = hash('sha256', $snapshotChecksum.'|'.$this->verification->contentChecksum($letterhead));
+        }
+
+        $copies = $contentView === 'reports.pdf.administration.gudep-program-sheet'
+            ? ($contentData['snapshot']['cc_recipients'] ?? [])
+            : ($metadata['cc_recipients'] ?? $contentData['cc_recipients'] ?? []);
+        if (! is_array($copies) || count($copies) > 4) {
+            throw ValidationException::withMessages(['cc_recipients' => 'Tembusan dokumen maksimal empat penerima.']);
+        }
+        if ($copies !== [] && $contentView !== 'reports.pdf.administration.gudep-program-sheet') {
+            // A changed distribution list must issue a new immutable revision
+            // even when the underlying report body has not changed.
+            $snapshotChecksum = hash('sha256', $snapshotChecksum.'|'.$this->verification->contentChecksum($copies));
+        }
+
         return $this->publish(
             schoolId: $schoolId,
             sourceType: $sourceType,
@@ -63,15 +104,34 @@ final class OfficialDocumentPublisher
             documentType: $documentType,
             snapshotChecksum: $snapshotChecksum,
             filename: $filename,
-            renderPdf: fn (ReportVerification $verification): string => Pdf::loadView(
-                'reports.pdf.administration-official',
-                [
+            renderPdf: function (ReportVerification $verification) use ($contentView, $contentData, $letterhead, $metadata): string {
+                $isProgram = $contentView === 'reports.pdf.administration.gudep-program-sheet';
+                $copies = $isProgram ? ($contentData['snapshot']['cc_recipients'] ?? [])
+                    : ($metadata['cc_recipients'] ?? $contentData['cc_recipients'] ?? []);
+                $reserveFooter = $isProgram || $copies !== [];
+                $isLandscape = $isProgram
+                    && ($contentData['snapshot']['kind'] ?? null) === 'annual'
+                    && ($contentData['snapshot']['document_layout'] ?? 'narrative') === 'monthly_matrix';
+                $hasCopies = $copies !== [];
+                $pdf = Pdf::loadView('reports.pdf.administration-official', [
                     'verification' => $verification,
                     'verificationQrDataUri' => $this->verification->qrDataUri($verification),
                     'contentView' => $contentView,
                     'contentData' => $contentData,
-                ]
-            )->setPaper('a4', 'portrait')->output(),
+                    'gudepLetterhead' => $letterhead,
+                    'reserveLastPageFooter' => $reserveFooter,
+                    'hasCopies' => $hasCopies,
+                    'paperOrientation' => $isLandscape ? 'landscape' : 'portrait',
+                ])->setPaper('a4', $isLandscape ? 'landscape' : 'portrait');
+
+                $dompdf = $pdf->getDomPDF();
+                $dompdf->render();
+                if ($reserveFooter) {
+                    OfficialDocumentLastPageFooter::attach($dompdf, $copies, $isProgram);
+                }
+
+                return $dompdf->output();
+            },
             title: $title,
             documentNumber: $documentNumber,
             metadata: $metadata,
