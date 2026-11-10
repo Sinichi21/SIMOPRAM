@@ -85,6 +85,30 @@ class GudepAnnualMatrixTemplateTest extends TestCase
         $this->assertStringNotContainsString('Usaha Dana.', $html);
     }
 
+    public function test_official_letterhead_uses_existing_persuratan_renderer_and_putra_number(): void
+    {
+        $html = view('administration.partials.gudep-document-letterhead', [
+            'letterhead' => [
+                'type' => 'male',
+                'title' => 'GERAKAN PRAMUKA',
+                'subtitle' => '',
+                'address' => 'Jalan Contoh, Denpasar',
+                'school_name' => 'SD 21 Pemecutan',
+                'school_city' => 'Denpasar',
+                'school_address' => 'Jalan Contoh',
+                'postal_code' => '80100',
+                'gudep_address' => 'Jalan Contoh',
+                'male_number' => '04.487',
+                'female_number' => '04.488',
+            ],
+        ])->render();
+
+        $this->assertStringContainsString('GERAKAN PRAMUKA', $html);
+        $this->assertStringContainsString('GUGUSDEPAN DENPASAR 04.487', $html);
+        $this->assertStringContainsString('PANGKALAN SD 21 PEMECUTAN', $html);
+        $this->assertStringNotContainsString('GUGUSDEPAN DENPASAR 04.488', $html);
+    }
+
     public function test_signature_block_keeps_two_signers_together_and_shows_only_existing_identifier(): void
     {
         $html = view('administration.partials.program-signatures', [
