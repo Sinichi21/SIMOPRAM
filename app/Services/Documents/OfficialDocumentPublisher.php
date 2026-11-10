@@ -67,7 +67,17 @@ final class OfficialDocumentPublisher
             $gudep = $contentData['gudep'];
             abort_unless((int) $gudep->school_id === $schoolId, 404);
         }
-        if ($gudep !== null) {
+        if ($contentView === 'reports.pdf.administration.gudep-program-sheet') {
+            // The issued program uses its immutable, Persuratan-derived
+            // Putra/Putri letterhead snapshot. Do not fall back to Mabigus.
+            $letterhead = $contentData['snapshot']['letterhead'] ?? null;
+            if (! is_array($letterhead) || ! in_array($letterhead['type'] ?? '', GudepDocumentLetterhead::TYPES, true)) {
+                throw ValidationException::withMessages([
+                    'letterhead' => 'Kop Persuratan program tidak tersedia atau tidak valid.',
+                ]);
+            }
+            $snapshotChecksum = hash('sha256', $snapshotChecksum.'|'.$this->verification->contentChecksum($letterhead));
+        } elseif ($gudep !== null) {
             $school = School::query()->findOrFail($schoolId);
             $letterhead = GudepDocumentLetterhead::resolve($school, $gudep, 'mabigus');
             // Header changes generate a new immutable document revision rather than
@@ -99,6 +109,10 @@ final class OfficialDocumentPublisher
                 $copies = $isProgram ? ($contentData['snapshot']['cc_recipients'] ?? [])
                     : ($metadata['cc_recipients'] ?? $contentData['cc_recipients'] ?? []);
                 $reserveFooter = $isProgram || $copies !== [];
+                $isLandscape = $isProgram
+                    && ($contentData['snapshot']['kind'] ?? null) === 'annual'
+                    && ($contentData['snapshot']['document_layout'] ?? 'narrative') === 'monthly_matrix';
+                $hasCopies = $copies !== [];
                 $pdf = Pdf::loadView('reports.pdf.administration-official', [
                     'verification' => $verification,
                     'verificationQrDataUri' => $this->verification->qrDataUri($verification),
@@ -106,7 +120,9 @@ final class OfficialDocumentPublisher
                     'contentData' => $contentData,
                     'gudepLetterhead' => $letterhead,
                     'reserveLastPageFooter' => $reserveFooter,
-                ])->setPaper('a4', 'portrait');
+                    'hasCopies' => $hasCopies,
+                    'paperOrientation' => $isLandscape ? 'landscape' : 'portrait',
+                ])->setPaper('a4', $isLandscape ? 'landscape' : 'portrait');
 
                 $dompdf = $pdf->getDomPDF();
                 $dompdf->render();
