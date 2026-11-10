@@ -21,6 +21,10 @@
             $financialGroups[$financeType][] = $financialRow;
         }
     }
+    $youthRows = [];
+    foreach ($groups as $section => $group) {
+        $youthRows[$section] = \App\Support\GudepAnnualProgram::numbered($entries, $section);
+    }
 @endphp
 <section style="font-family:'Times New Roman',Times,serif;font-size:8.5pt;">
     <div style="text-align:center;font-size:12pt;font-weight:bold;margin:13px 0 2px;">PROGRAM KERJA TAHUNAN</div>
@@ -40,16 +44,22 @@
             <col style="width:11%;">
         </colgroup>
         <thead style="display:table-header-group;">
+            {{-- Dompdf fixes column widths from unmerged cells in the first row. --}}
+            <tr aria-hidden="true" style="font-size:0;line-height:0;">
+                @foreach ([4, 43, ...array_fill(0, 12, 2.5), 12, 11] as $columnWidth)
+                    <td style="width:{{ $columnWidth }}%;height:0;padding:0;border:0;"></td>
+                @endforeach
+            </tr>
             <tr style="background:#d5d5d5;font-weight:bold;">
-                <th rowspan="2">NO</th>
-                <th rowspan="2">BIDANG KEGIATAN</th>
-                <th colspan="12" style="text-align:center;letter-spacing:1px;">B U L A N</th>
-                <th rowspan="2" style="text-align:center;">JUMLAH<br>S/G/T/D *)</th>
-                <th rowspan="2">KETERANGAN</th>
+                <th rowspan="2" style="width:4%;">NO</th>
+                <th rowspan="2" style="width:43%;">BIDANG KEGIATAN</th>
+                <th colspan="12" style="width:30%;text-align:center;">BULAN</th>
+                <th rowspan="2" style="width:12%;text-align:center;">JUMLAH<br>S/G/T/D *)</th>
+                <th rowspan="2" style="width:11%;">KETERANGAN</th>
             </tr>
             <tr style="background:#e8e8e8;">
                 @foreach ($months as $month)
-                    <th style="text-align:center;">{{ $month }}</th>
+                    <th style="width:2.5%;text-align:center;padding:2px 0;">{{ $month }}</th>
                 @endforeach
             </tr>
         </thead>
@@ -59,22 +69,23 @@
             @endphp
             @if ($hasYouth)
                 <tr style="page-break-inside:avoid;background:#dedede;font-weight:bold;">
-                    <td style="text-align:center;">I</td>
+                    {{-- Keep a real number cell on each row: Dompdf cannot carry rowspans across pages. --}}
+                    <td style="text-align:center;vertical-align:top;border-bottom:0;background:#fff;">I</td>
                     <td>KEGIATAN DAN LATIHAN PESERTA DIDIK</td>
                     <td colspan="14"></td>
                 </tr>
                 @foreach ($groups as $section => $group)
-                    @php $rows = \App\Support\GudepAnnualProgram::numbered($entries, $section); @endphp
+                    @php $rows = $youthRows[$section]; @endphp
                     @if ($rows !== [])
                         <tr style="page-break-inside:avoid;">
-                            <td></td>
+                            <td style="border-top:0;border-bottom:0;"></td>
                             <td style="font-weight:bold;">{{ $loop->iteration }}. {{ $group }}</td>
                             <td colspan="14"></td>
                         </tr>
                         @foreach ($rows as $row)
                             @php $item = $row['entry']; @endphp
                             <tr style="page-break-inside:avoid;">
-                                <td></td>
+                                <td style="border-top:0;border-bottom:0;"></td>
                                 <td style="padding-left:{{ 6 + $row['depth'] * 11 }}px;">
                                     {{ $row['marker'] }} {{ $item['description'] ?? '–' }}
                                     @if (filled($item['detail'] ?? null))
@@ -95,14 +106,14 @@
                 @php $rows = \App\Support\GudepAnnualProgram::numbered($entries, $section); @endphp
                 @if ($rows !== [])
                     <tr style="page-break-inside:avoid;background:#dedede;font-weight:bold;">
-                        <td style="text-align:center;">{{ $numeral }}</td>
+                        <td style="text-align:center;vertical-align:top;border-bottom:0;background:#fff;">{{ $numeral }}</td>
                         <td>{{ $heading }}</td>
                         <td colspan="14"></td>
                     </tr>
                     @foreach ($rows as $row)
                         @php $item = $row['entry']; @endphp
                         <tr style="page-break-inside:avoid;">
-                            <td></td>
+                            <td style="border-top:0;border-bottom:0;"></td>
                             <td style="padding-left:{{ 6 + $row['depth'] * 11 }}px;">
                                 {{ $row['marker'] }} {{ $item['description'] ?? '–' }}
                                 @if (filled($item['detail'] ?? null))
@@ -119,38 +130,51 @@
                 @endif
             @endforeach
 
-            {{-- Bidang VI occupies the very same table footprint. All twelve month
-                 columns are merged into the description, not rendered as a calendar. --}}
+        </tbody>
+    </table>
+    {{-- Separate repeating headers so financial continuation pages never show months. --}}
+    <table border="1" cellpadding="2" style="width:100%;table-layout:fixed;border-collapse:collapse;font-size:8.2pt;line-height:1.22;margin-top:-1px;">
+        <thead style="display:table-header-group;">
+            <tr aria-hidden="true" style="font-size:0;line-height:0;">
+                @foreach ([4, 43, ...array_fill(0, 12, 2.5), 12, 11] as $columnWidth)
+                    <td style="width:{{ $columnWidth }}%;height:0;padding:0;border:0;"></td>
+                @endforeach
+            </tr>
             <tr style="background:#d5d5d5;font-weight:bold;page-break-inside:avoid;">
-                <td style="text-align:center;">VI</td>
+                <td style="text-align:center;vertical-align:top;border-bottom:0;background:#fff;">VI</td>
                 <td colspan="13">BIDANG KEUANGAN</td>
                 <td style="text-align:center;">JUMLAH<br>(Rp,-)</td>
                 <td>KETERANGAN</td>
             </tr>
+        </thead>
+        <tbody>
             @foreach ([
                 ['title' => '1. Rencana Pemasukan', 'type' => 'income', 'total' => $money['income'], 'color' => '#e3eddc'],
                 ['title' => '2. Rencana Pengeluaran', 'type' => 'expense', 'total' => $money['expense'], 'color' => '#fae0c9'],
             ] as $group)
                 <tr style="background:#ececec;page-break-inside:avoid;">
-                    <td></td><td colspan="14">{{ $group['title'] }}</td><td></td>
+                    <td style="border-top:0;border-bottom:0;background:#fff;"></td>
+                    <td colspan="14">{{ $group['title'] }}</td><td></td>
                 </tr>
                 @foreach ($financialGroups[$group['type']] as $row)
                     @php $item = $row['entry']; @endphp
                     <tr style="page-break-inside:avoid;">
-                        <td></td>
+                        <td style="border-top:0;border-bottom:0;"></td>
                         <td colspan="13" style="padding-left:18px;">{{ $row['marker'] }} {{ $item['description'] ?? '' }}</td>
                         <td style="text-align:right;white-space:nowrap;">{{ ($item['amount'] ?? null) === null ? '–' : number_format((int) $item['amount'], 0, ',', '.') }}</td>
                         <td>{{ $item['notes'] ?? '' }}</td>
                     </tr>
                 @endforeach
                 <tr style="page-break-inside:avoid;font-weight:bold;background:{{ $group['color'] }};">
-                    <td></td><td colspan="13" style="padding-left:18px;">Jumlah</td>
+                    <td style="border-top:0;border-bottom:0;background:#fff;"></td>
+                    <td colspan="13" style="padding-left:18px;">Jumlah</td>
                     <td style="text-align:right;white-space:nowrap;">{{ number_format($group['total'], 0, ',', '.') }}</td>
                     <td></td>
                 </tr>
             @endforeach
             <tr style="page-break-inside:avoid;font-weight:bold;background:#f1d9d9;">
-                <td></td><td colspan="13" style="padding-left:18px;">Selisih RKAG (Rencana Pemasukan - Rencana Pengeluaran)</td>
+                <td style="border-top:0;border-bottom:0;background:#fff;"></td>
+                <td colspan="13" style="padding-left:18px;">Selisih RKAG (Rencana Pemasukan - Rencana Pengeluaran)</td>
                 <td style="text-align:right;white-space:nowrap;">{{ number_format($money['income'] - $money['expense'], 0, ',', '.') }}</td>
                 <td></td>
             </tr>
@@ -182,10 +206,11 @@
                 $fundraisingDetails = array_values(array_unique($fundraisingDetails));
             @endphp
             <tr style="page-break-inside:avoid;background:#ececec;font-weight:bold;">
-                <td></td><td colspan="15">3. Usaha Dana</td>
+                <td style="border-top:0;border-bottom:0;background:#fff;"></td>
+                <td colspan="15">3. Usaha Dana</td>
             </tr>
             <tr style="page-break-inside:avoid;">
-                <td></td>
+                <td style="border-top:0;"></td>
                 <td colspan="15" style="padding:5px 9px 6px 18px;line-height:1.35;">
                     @if ($money['shortfall'] > 0)
                         Kekurangan rencana biaya sebesar Rp {{ number_format($money['shortfall'], 0, ',', '.') }} diupayakan melalui usaha dana.
@@ -193,7 +218,7 @@
                         Tidak terdapat kekurangan rencana biaya.
                     @endif
                     @if ($fundraisingDetails !== [])
-                        <div style="margin-top:3px;">{{ implode('; ', $fundraisingDetails) }}</div>
+                        {{ implode('; ', $fundraisingDetails) }}
                     @endif
                 </td>
             </tr>

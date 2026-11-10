@@ -4,11 +4,101 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use Dompdf\Dompdf;
+use Dompdf\FrameDecorator\Table;
 use Tests\TestCase;
 
 class GudepAnnualMatrixTemplateTest extends TestCase
 {
-    public function test_annual_matrix_matches_reference_with_finance_in_same_table_and_no_month_cells_for_section_six(): void
+    public function test_merged_number_does_not_drop_activities_when_matrix_spans_pages(): void
+    {
+        $entries = [];
+        for ($index = 1; $index <= 70; $index++) {
+            $entries[] = ['key' => 'activity-'.$index, 'section' => 'siaga', 'description' => 'Kegiatan unik '.$index];
+        }
+        for ($index = 1; $index <= 40; $index++) {
+            $entries[] = ['key' => 'expense-'.$index, 'section' => 'keuangan', 'finance_type' => 'expense', 'amount' => 1000, 'description' => 'Biaya unik '.$index];
+        }
+        $html = view('administration.partials.annual-program-matrix', ['entries' => $entries])->render();
+        $pdf = new Dompdf;
+        $text = '';
+        $pageText = [];
+        $activityPositions = [];
+        $pdf->setCallbacks([[
+            'event' => 'end_frame',
+            'f' => function ($frame, $canvas) use (&$text, &$pageText, &$activityPositions): void {
+                if ($frame->get_node()->nodeName === '#text') {
+                    $text .= $frame->get_node()->textContent.' ';
+                    $page = $canvas->get_page_number();
+                    $pageText[$page] = ($pageText[$page] ?? '').$frame->get_node()->textContent.' ';
+                    if (str_contains($frame->get_node()->textContent, 'Kegiatan unik') || str_contains($frame->get_node()->textContent, 'Biaya unik')) {
+                        $cell = $frame->get_parent();
+                        while ($cell !== null && $cell->get_node()->nodeName !== 'td') {
+                            $cell = $cell->get_parent();
+                        }
+                        if ($cell !== null) {
+                            $activityPositions[] = $cell->get_position()['x'];
+                        }
+                    }
+                }
+            },
+        ]]);
+        $pdf->setPaper('a4', 'landscape');
+        $pdf->loadHtml('<!doctype html><html><head><meta charset="utf-8"></head><body>'.$html.'</body></html>');
+
+        $pdf->render();
+
+        $this->assertGreaterThan(1, $pdf->getCanvas()->get_page_count());
+        foreach ($entries as $entry) {
+            $this->assertStringContainsString($entry['description'].' ', $text);
+        }
+        $this->assertStringContainsString('Kekurangan rencana biaya sebesar Rp 40.000', $text);
+        $this->assertCount(110, $activityPositions);
+        foreach ($activityPositions as $position) {
+            $this->assertEqualsWithDelta($activityPositions[0], $position, 0.1);
+        }
+        $lastPageText = $pageText[array_key_last($pageText)];
+        $this->assertStringContainsString('BIDANG KEUANGAN', $lastPageText);
+        $this->assertStringContainsString('(Rp,-)', $lastPageText);
+        $this->assertStringNotContainsString('BULAN', $lastPageText);
+        $this->assertStringNotContainsString('S/G/T/D', $lastPageText);
+    }
+
+    public function test_rendered_pdf_keeps_month_columns_equal_and_description_wide(): void
+    {
+        $html = view('administration.partials.annual-program-matrix', [
+            'entries' => [['key' => 'a', 'section' => 'siaga', 'description' => str_repeat('Latihan peserta didik ', 12), 'notes' => str_repeat('Keterangan ', 10)]],
+            'programNumber' => '04.237', 'yearName' => '2026/2027',
+        ])->render();
+        $pdf = new Dompdf;
+        $columns = [];
+        $pdf->setCallbacks([[
+            'event' => 'end_frame',
+            'f' => function ($frame) use (&$columns): void {
+                while ($frame !== null) {
+                    $table = $frame instanceof Table ? $frame : $frame->get_decorator();
+                    if ($table instanceof Table) {
+                        $columns = $table->get_cellmap()->get_columns();
+                        break;
+                    }
+                    $frame = $frame->get_parent();
+                }
+            },
+        ]]);
+        $pdf->setPaper('a4', 'landscape');
+        $pdf->loadHtml('<!doctype html><html><head><meta charset="utf-8"></head><body>'.$html.'</body></html>');
+
+        $pdf->render();
+
+        $columns = array_values(array_filter($columns, fn (array $column): bool => $column['used-width'] !== null));
+        $this->assertCount(16, $columns);
+        $totalWidth = array_sum(array_column($columns, 'used-width'));
+        foreach ([4, 43, ...array_fill(0, 12, 2.5), 12, 11] as $index => $percent) {
+            $this->assertEqualsWithDelta($percent, $columns[$index]['used-width'] / $totalWidth * 100, 0.2);
+        }
+    }
+
+    public function test_annual_matrix_keeps_finance_aligned_with_separate_repeating_header(): void
     {
         $entries = [
             [
@@ -61,8 +151,17 @@ class GudepAnnualMatrixTemplateTest extends TestCase
         $this->assertStringContainsString('Selisih RKAG', $rendered);
         $this->assertStringContainsString('>-6.032.000</td>', $rendered);
         $this->assertStringNotContainsString('F. BIDANG KEUANGAN', $rendered);
-        $this->assertSame(1, substr_count($rendered, '<table border="1"'));
+        $this->assertSame(2, substr_count($rendered, '<table border="1"'));
         $this->assertSame(12, substr_count($rendered, '<col style="width:2.5%;">'));
+        $document = new \DOMDocument;
+        @$document->loadHTML('<?xml encoding="UTF-8">'.$rendered);
+        $xpath = new \DOMXPath($document);
+        foreach (['I', 'II', 'V', 'VI'] as $numeral) {
+            $cell = $xpath->query('//tr/td[normalize-space(.)="'.$numeral.'"]')->item(0);
+            $this->assertNotNull($cell);
+            $this->assertFalse($cell->hasAttribute('rowspan'));
+            $this->assertStringContainsString('border-bottom:0', $cell->getAttribute('style'));
+        }
     }
 
     public function test_matrix_fundraising_contains_shortfall_only_once_and_preserves_actual_activity(): void
@@ -84,6 +183,13 @@ class GudepAnnualMatrixTemplateTest extends TestCase
         $this->assertSame(1, substr_count($html, 'Kekurangan rencana biaya sebesar Rp 1.352.000'));
         $this->assertStringContainsString('kegiatan Bazar Ceria', $html);
         $this->assertStringNotContainsString('Usaha Dana.', $html);
+        $document = new \DOMDocument;
+        @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
+        $xpath = new \DOMXPath($document);
+        $fundraisingCell = $xpath->query('//td[contains(., "Kekurangan rencana biaya sebesar Rp")]')->item(0);
+        $this->assertNotNull($fundraisingCell);
+        $this->assertSame('15', $fundraisingCell->getAttribute('colspan'));
+        $this->assertSame(0, $fundraisingCell->getElementsByTagName('div')->length);
     }
 
     public function test_matrix_shows_positive_rkag_surplus_and_does_not_invent_shortfall(): void
@@ -145,7 +251,8 @@ class GudepAnnualMatrixTemplateTest extends TestCase
         $this->assertStringContainsString('page-break-inside:avoid', $html);
         $this->assertStringContainsString('Majelis Pembimbing Gugusdepan', $html);
         $this->assertStringContainsString('Gugusdepan Denpasar 04.237', $html);
-        $this->assertStringContainsString('Denpasar, 09/11/2026', $html);
+        $this->assertStringContainsString('Denpasar, 9 November 2026', $html);
+        $this->assertStringNotContainsString('09/11/2026', $html);
         $this->assertStringContainsString('NIP. 198001012006041001', $html);
         $this->assertStringContainsString('NTA. 12345678', $html);
         $this->assertSame(2, substr_count($html, 'Ketua,'));

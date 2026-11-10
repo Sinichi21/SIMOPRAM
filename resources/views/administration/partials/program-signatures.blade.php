@@ -4,6 +4,10 @@
     $sign = $programSignatures['signer'] ?? null;
     $city = trim((string) ($programCity ?? ''));
     $number = trim((string) ($programNumber ?? ''));
+    $date = trim((string) ($programDate ?? ''));
+    if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $date)) {
+        $date = \Carbon\CarbonImmutable::createFromFormat('!d/m/Y', $date)->locale('id')->translatedFormat('j F Y');
+    }
     $identityLeft = trim((string) ($ack['identity'] ?? ''));
     $identityRight = trim((string) ($sign['identity'] ?? ''));
     $signPosition = mb_strtolower(trim((string) ($sign['position'] ?? '')));
@@ -16,7 +20,7 @@
     <table style="width:100%;table-layout:fixed;border-collapse:collapse;page-break-inside:avoid;" cellpadding="2">
         <tbody>
             <tr style="page-break-inside:avoid;">
-                <td style="width:50%;vertical-align:top;border:0;padding-right:15px;">
+                <td style="width:50%;vertical-align:top;border:0;padding:0 15px 0 0;">
                     <div>Mengetahui,</div>
                     <div>Majelis Pembimbing Gugusdepan</div>
                     <div>Ketua,</div>
@@ -26,8 +30,8 @@
                         <div style="font-size:8pt;">{{ $identityLeft }}</div>
                     @endif
                 </td>
-                <td style="width:50%;vertical-align:top;border:0;padding-left:15px;">
-                    <div>{{ $city !== '' ? $city : '................' }}, {{ $programDate ?? '........................' }}</div>
+                <td style="width:50%;vertical-align:top;border:0;padding:0 0 0 15px;">
+                    <div>{{ $city !== '' ? $city : '................' }}, {{ $date !== '' ? $date : '........................' }}</div>
                     <div>Gugusdepan {{ trim($city.' '.$number) ?: '................' }}</div>
                     <div>{{ $rightTitle }}</div>
                     <div style="height:58px;"></div>
