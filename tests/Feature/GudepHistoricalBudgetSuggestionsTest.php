@@ -60,11 +60,11 @@ class GudepHistoricalBudgetSuggestionsTest extends TestCase
 
         $this->assertCount(2, $suggestions);
         $this->assertSame([
-            'direction' => 'income', 'category' => 'Iuran', 'amount' => 300000,
+            'direction' => 'expense', 'category' => 'PERSAMI', 'amount' => 1750000,
             'source_year' => '2025/2026',
         ], $suggestions[0]);
         $this->assertSame([
-            'direction' => 'expense', 'category' => 'PERSAMI', 'amount' => 1750000,
+            'direction' => 'income', 'category' => 'Iuran', 'amount' => 300000,
             'source_year' => '2025/2026',
         ], $suggestions[1]);
         $this->assertSame($before, GudepCashEntry::query()->count());
