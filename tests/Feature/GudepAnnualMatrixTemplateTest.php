@@ -21,6 +21,10 @@ class GudepAnnualMatrixTemplateTest extends TestCase
                 'description' => 'Bakti masyarakat', 'quantity' => 83,
             ],
             [
+                'key' => 'sarana-row', 'section' => 'sarana', 'parent_key' => null,
+                'description' => 'Perlengkapan Gugusdepan', 'quantity' => 8,
+            ],
+            [
                 'key' => 'c', 'section' => 'keuangan', 'parent_key' => null,
                 'description' => 'Rencana Pemasukan',
             ],
