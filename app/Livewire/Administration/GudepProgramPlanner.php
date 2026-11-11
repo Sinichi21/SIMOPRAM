@@ -21,6 +21,7 @@ use App\Support\GudepProgramProgress;
 use App\Support\GudepProgramSemesterProjection;
 use App\Support\GudepProgramSignatories;
 use App\Support\GudepRkagActualComparison;
+use App\Support\GudepRkagApproval;
 use App\Support\GudepRkagCalculator;
 use App\Support\GudepWeeklyPersonnel;
 use App\Support\SchoolContext;
@@ -71,6 +72,10 @@ class GudepProgramPlanner extends Component
     public string $notes = '';
 
     public string $saveNotice = '';
+
+    public string $rkagApprovalNotes = '';
+
+    public string $rkagApprovalNotice = '';
 
     /** @var array<int, array<string, mixed>> */
     public array $entries = [];
@@ -620,6 +625,44 @@ class GudepProgramPlanner extends Component
             ->where('academic_year_id', $this->selectedYear()->id)->find($id);
         abort_unless($sheet !== null, 404);
         $this->previewId = $id;
+    }
+
+    public function submitRkag(int $sheetId): void
+    {
+        $this->changeRkagStatus($sheetId, 'submit');
+    }
+
+    public function approveRkag(int $sheetId): void
+    {
+        $this->changeRkagStatus($sheetId, 'approve');
+    }
+
+    public function rejectRkag(int $sheetId): void
+    {
+        $this->changeRkagStatus($sheetId, 'reject');
+    }
+
+    private function changeRkagStatus(int $sheetId, string $action): void
+    {
+        $this->authorizeView();
+        $this->resetValidation();
+        $this->rkagApprovalNotice = '';
+
+        $sheet = GudepProgramSheet::query()
+            ->where('school_id', $this->schoolId())
+            ->where('scout_group_id', $this->selectedGudep()->id)
+            ->where('academic_year_id', $this->selectedYear()->id)
+            ->where('kind', 'annual')
+            ->findOrFail($sheetId);
+
+        GudepRkagApproval::transition($sheet, auth()->user(), $action, $this->rkagApprovalNotes);
+        $this->rkagApprovalNotes = '';
+        $this->previewId = $sheet->id;
+        $this->rkagApprovalNotice = match ($action) {
+            'submit' => 'RKAG berhasil diajukan dan menunggu peninjauan.',
+            'approve' => 'RKAG disetujui untuk snapshot saat ini.',
+            'reject' => 'RKAG ditolak, alasan tersimpan di riwayat keputusan.',
+        };
     }
 
     public function edit(int $id): void
@@ -1376,6 +1419,12 @@ class GudepProgramPlanner extends Component
                 ? Activity::query()->where('school_id', $this->schoolId())
                     ->where('academic_year_id', $year->id)->orderBy('start_at')->get() : collect(),
             'previewSheet' => $previewSheet,
+            'rkagApprovalState' => $previewSheet !== null && $previewSheet->kind === 'annual'
+                ? GudepRkagApproval::state($previewSheet) : null,
+            'rkagApprovalHistory' => $previewSheet !== null && $previewSheet->kind === 'annual'
+                ? \App\Models\GudepRkagDecision::query()->where('school_id', $this->schoolId())
+                    ->where('gudep_program_sheet_id', $previewSheet->id)
+                    ->with('actor')->orderByDesc('id')->limit(15)->get() : collect(),
             'sheets' => $sheets,
             'parentItems' => $gudep && $year && $this->parentId !== null
                 ? collect(($sheets->firstWhere('id', $this->parentId)?->entries) ?? [])
