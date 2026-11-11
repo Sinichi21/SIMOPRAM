@@ -92,9 +92,10 @@ final class GudepRkagApproval
                 ->where('kind', 'annual')
                 ->lockForUpdate()->findOrFail($sheet->id);
 
-            $financial = array_filter($locked->entries ?? [], static fn (array $row): bool =>
-                ($row['section'] ?? '') === 'keuangan'
-                && in_array($row['finance_type'] ?? '', ['income', 'expense'], true)
+            $financial = array_filter(
+                $locked->entries ?? [],
+                static fn (array $row): bool => ($row['section'] ?? '') === 'keuangan'
+                    && in_array($row['finance_type'] ?? '', ['income', 'expense'], true)
             );
             if ($financial === []) {
                 throw ValidationException::withMessages(['rkagApproval' => 'Program Tahunan belum memiliki rencana pemasukan atau pengeluaran.']);
