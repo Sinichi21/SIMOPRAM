@@ -103,12 +103,51 @@ class GudepRkagApprovalTest extends TestCase
         $this->assertDatabaseCount('gudep_rkag_decisions', 4);
     }
 
-    public function test_nonannual_document_and_unrelated_school_cannot_be_approved(): void
+    public function test_nonannual_document_cannot_be_submitted(): void
     {
         [$sheet, $author] = $this->context();
         $sheet->update(['kind' => 'weekly']);
 
         $this->expectException(HttpException::class);
         GudepRkagApproval::transition($sheet, $author, 'submit');
+    }
+
+    public function test_rejection_requires_reason_and_does_not_replace_submitted_event(): void
+    {
+        [$sheet, $author, $reviewer] = $this->context();
+        GudepRkagApproval::transition($sheet, $author, 'submit');
+
+        try {
+            GudepRkagApproval::transition($sheet, $reviewer, 'reject', '  ');
+            $this->fail('Rejection without a reason must not be recorded.');
+        } catch (ValidationException) {
+            $this->assertSame('submitted', GudepRkagApproval::state($sheet)['status']);
+            $this->assertDatabaseCount('gudep_rkag_decisions', 1);
+        }
+
+        GudepRkagApproval::transition($sheet, $reviewer, 'reject', 'Rincian perlu diperbaiki');
+        $this->assertDatabaseCount('gudep_rkag_decisions', 2);
+        $this->assertSame('Rincian perlu diperbaiki', GudepRkagDecision::query()->latest('id')->firstOrFail()->notes);
+    }
+
+    public function test_active_school_context_must_match_document_school(): void
+    {
+        [$sheet, $author] = $this->context();
+        $otherSchool = School::factory()->create();
+        app(SchoolContext::class)->set($otherSchool);
+        setPermissionsTeamId($otherSchool->id);
+
+        $this->expectException(HttpException::class);
+        GudepRkagApproval::transition($sheet, $author, 'submit');
+    }
+
+    public function test_nonfinancial_changes_do_not_invalidate_finance_approval(): void
+    {
+        [$sheet, $author, $reviewer] = $this->context();
+        GudepRkagApproval::transition($sheet, $author, 'submit');
+        GudepRkagApproval::transition($sheet, $reviewer, 'approve');
+
+        $sheet->update(['title' => 'Perbaikan Judul Program']);
+        $this->assertSame('approved', GudepRkagApproval::state($sheet->fresh())['status']);
     }
 }
