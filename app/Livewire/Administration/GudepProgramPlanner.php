@@ -20,6 +20,7 @@ use App\Support\GudepHistoricalBudgetSuggestions;
 use App\Support\GudepProgramProgress;
 use App\Support\GudepProgramSemesterProjection;
 use App\Support\GudepProgramSignatories;
+use App\Support\GudepRkagCalculator;
 use App\Support\GudepWeeklyPersonnel;
 use App\Support\SchoolContext;
 use Illuminate\Contracts\View\View;
@@ -361,6 +362,36 @@ class GudepProgramPlanner extends Component
         ];
     }
 
+    public function addRkagLine(int $index): void
+    {
+        $this->authorizeManage();
+        abort_unless($this->kind === 'annual'
+            && ($this->entries[$index]['section'] ?? null) === 'keuangan'
+            && in_array($this->entries[$index]['finance_type'] ?? '', ['income', 'expense'], true), 422);
+
+        $lines = $this->entries[$index]['rkag_lines'] ?? [];
+        if (count($lines) >= 30) {
+            $this->addError('entries.'.$index.'.rkag_lines', 'Maksimal 30 rincian anggaran.');
+
+            return;
+        }
+
+        $this->entries[$index]['rkag_lines'][] = [
+            'description' => '', 'volume' => 1, 'unit' => 'buah', 'unit_price' => 0,
+        ];
+    }
+
+    public function removeRkagLine(int $index, int $lineIndex): void
+    {
+        $this->authorizeManage();
+        abort_unless($this->kind === 'annual'
+            && ($this->entries[$index]['section'] ?? null) === 'keuangan'
+            && in_array($this->entries[$index]['finance_type'] ?? '', ['income', 'expense'], true), 422);
+        abort_unless(isset($this->entries[$index]['rkag_lines'][$lineIndex]), 422);
+
+        array_splice($this->entries[$index]['rkag_lines'], $lineIndex, 1);
+    }
+
     public function useBudgetSuggestion(int $index, int $suggestionIndex): void
     {
         $this->authorizeManage();
@@ -683,6 +714,11 @@ class GudepProgramPlanner extends Component
             $rules['entries.*.finance_type'] = ['nullable', Rule::in(['', 'income', 'expense', 'fundraising'])];
             $rules['entries.*.currency'] = ['nullable', Rule::in(['IDR'])];
             $rules['entries.*.amount'] = ['nullable', 'integer', 'min:0', 'max:999999999999'];
+            $rules['entries.*.rkag_lines'] = ['nullable', 'array', 'max:30'];
+            $rules['entries.*.rkag_lines.*.description'] = ['required', 'string', 'max:200'];
+            $rules['entries.*.rkag_lines.*.volume'] = ['required', 'integer', 'min:1', 'max:999999'];
+            $rules['entries.*.rkag_lines.*.unit'] = ['required', 'string', 'max:30'];
+            $rules['entries.*.rkag_lines.*.unit_price'] = ['required', 'integer', 'min:0', 'max:999999999999'];
             $rules['entries.*.months'] = ['nullable', 'array', 'size:12'];
             $rules['entries.*.months.*'] = ['boolean'];
             $rules['entries.*.notes'] = ['nullable', 'string', 'max:500'];
@@ -721,6 +757,35 @@ class GudepProgramPlanner extends Component
         }
 
         $this->validate($rules);
+
+        if ($this->kind === 'annual') {
+            foreach ($this->entries as $index => $entry) {
+                $lines = $entry['rkag_lines'] ?? [];
+                if ($lines === []) {
+                    continue;
+                }
+
+                if (($entry['section'] ?? '') !== 'keuangan'
+                    || in_array($entry['finance_type'] ?? '', ['income', 'expense'], true) === false) {
+                    $this->addError('entries.'.$index.'.rkag_lines', 'Rincian RKAG hanya dapat digunakan pada pemasukan/pengeluaran.');
+
+                    return;
+                }
+
+                try {
+                    $calculation = GudepRkagCalculator::calculate($lines);
+                } catch (\InvalidArgumentException $exception) {
+                    $this->addError('entries.'.$index.'.rkag_lines', $exception->getMessage());
+
+                    return;
+                }
+
+                // Recalculate on the server: never trust an amount submitted
+                // independently from the line-item breakdown.
+                $this->entries[$index]['rkag_lines'] = $calculation['lines'];
+                $this->entries[$index]['amount'] = $calculation['total'];
+            }
+        }
 
         if ($this->kind === 'annual') {
             // Subitems are appended to keep Livewire input indices stable. Resolve
