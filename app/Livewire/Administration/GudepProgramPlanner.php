@@ -378,6 +378,7 @@ class GudepProgramPlanner extends Component
 
         $this->entries[$index]['rkag_lines'][] = [
             'description' => '', 'volume' => 1, 'unit' => 'buah', 'unit_price' => 0,
+            'funding_source' => '', 'ceiling' => null,
         ];
     }
 
@@ -724,6 +725,8 @@ class GudepProgramPlanner extends Component
             $rules['entries.*.rkag_lines.*.volume'] = ['required', 'integer', 'min:1', 'max:999999'];
             $rules['entries.*.rkag_lines.*.unit'] = ['required', 'string', 'max:30'];
             $rules['entries.*.rkag_lines.*.unit_price'] = ['required', 'integer', 'min:0', 'max:999999999999'];
+            $rules['entries.*.rkag_lines.*.funding_source'] = ['nullable', 'string', 'max:120'];
+            $rules['entries.*.rkag_lines.*.ceiling'] = ['nullable', 'integer', 'min:0', 'max:999999999999'];
             $rules['entries.*.months'] = ['nullable', 'array', 'size:12'];
             $rules['entries.*.months.*'] = ['boolean'];
             $rules['entries.*.notes'] = ['nullable', 'string', 'max:500'];
