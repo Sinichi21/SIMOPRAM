@@ -54,7 +54,8 @@ class GudepRkagAnnualProgramTest extends TestCase
                 'finance_type' => 'expense', 'currency' => 'IDR',
                 'amount' => 999999999, // Never trust a client-side total.
                 'rkag_lines' => [
-                    ['description' => 'Konsumsi', 'volume' => 25, 'unit' => 'orang', 'unit_price' => 15000],
+                    ['description' => 'Konsumsi', 'volume' => 25, 'unit' => 'orang', 'unit_price' => 15000,
+                        'funding_source' => 'Iuran anggota', 'ceiling' => 350000],
                     ['description' => 'Tali', 'volume' => 3, 'unit' => 'buah', 'unit_price' => 12000],
                 ],
             ]])
@@ -63,6 +64,9 @@ class GudepRkagAnnualProgramTest extends TestCase
         $sheet = GudepProgramSheet::query()->firstOrFail();
         $this->assertSame(411000, $sheet->entries[0]['amount']);
         $this->assertSame(375000, $sheet->entries[0]['rkag_lines'][0]['subtotal']);
+        $this->assertSame('Iuran anggota', $sheet->entries[0]['rkag_lines'][0]['funding_source']);
+        $this->assertSame(350000, $sheet->entries[0]['rkag_lines'][0]['ceiling']);
+        $this->assertSame(25000, $sheet->entries[0]['rkag_lines'][0]['over_ceiling']);
         $this->assertSame(36000, $sheet->entries[0]['rkag_lines'][1]['subtotal']);
         $this->assertDatabaseCount('gudep_cash_entries', 0);
         $this->assertDatabaseCount('gudep_finance_budgets', 0);
