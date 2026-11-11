@@ -19,6 +19,27 @@
                         @if (filled($item['detail'] ?? null))
                             <div style="margin-left:21px;white-space:pre-line;font-size:9pt;">{{ $item['detail'] }}</div>
                         @endif
+                        @if (! empty($item['rkag_lines']))
+                            <div style="margin:4px 0 2px 21px;font-size:8pt;">
+                                @foreach ($item['rkag_lines'] as $line)
+                                    <div style="page-break-inside:avoid;">
+                                        {{ $line['description'] ?? '' }} —
+                                        {{ number_format((int) ($line['volume'] ?? 0), 0, ',', '.') }}
+                                        {{ $line['unit'] ?? '' }} × Rp {{ number_format((int) ($line['unit_price'] ?? 0), 0, ',', '.') }}
+                                        = Rp {{ number_format((int) ($line['subtotal'] ?? 0), 0, ',', '.') }}
+                                            @if (filled($line['funding_source'] ?? null))
+                                                (Sumber: {{ $line['funding_source'] }})
+                                            @endif
+                                            @if (($line['ceiling'] ?? null) !== null)
+                                                — Pagu Rp {{ number_format((int) $line['ceiling'], 0, ',', '.') }}
+                                                @if (($line['over_ceiling'] ?? 0) > 0)
+                                                    (Melebihi pagu Rp {{ number_format((int) $line['over_ceiling'], 0, ',', '.') }})
+                                                @endif
+                                            @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
                     </td>
                     <td style="text-align:right;vertical-align:top;white-space:nowrap;padding:3px;">
                         @if (in_array($type, ['income', 'expense'], true))

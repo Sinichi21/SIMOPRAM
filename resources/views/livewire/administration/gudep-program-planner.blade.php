@@ -301,9 +301,49 @@
                                                             </label>
                                                             @if (in_array($item['finance_type'] ?? '', ['income','expense'], true))
                                                                 <label class="text-xs text-zinc-600 dark:text-zinc-300">Nilai (Rp)
-                                                                    <input type="number" min="0" step="1" wire:key="annual-amount-{{ $item['key'] ?? $index }}" wire:model="entries.{{ $index }}.amount" placeholder="–" class="mt-1 block w-44 rounded-lg border border-zinc-300 p-2 text-sm dark:bg-zinc-800">
+                                                                    <input type="number" min="0" step="1" wire:key="annual-amount-{{ $item['key'] ?? $index }}" wire:model="entries.{{ $index }}.amount" @disabled(! empty($item['rkag_lines'])) placeholder="–" class="mt-1 block w-44 rounded-lg border border-zinc-300 p-2 text-sm dark:bg-zinc-800">
+                                                                    @if (! empty($item['rkag_lines']))
+                                                                        <span class="block text-[10px] text-emerald-700">Dihitung otomatis dari rincian saat disimpan.</span>
+                                                                    @endif
                                                                 </label>
                                                                 <span class="rounded-md bg-zinc-200 px-2 py-2 text-xs dark:bg-zinc-700">IDR · Rupiah</span>
+                                                                <div class="w-full rounded-lg border border-zinc-300 p-3 dark:border-zinc-700">
+                                                                    <div class="flex items-center justify-between gap-2">
+                                                                        <span class="text-xs font-semibold">Rincian RKAG — volume × harga satuan</span>
+                                                                        <button type="button" wire:click="addRkagLine({{ $index }})" class="rounded border px-2 py-1 text-xs">+ Tambah rincian</button>
+                                                                    </div>
+                                                                    @foreach (($item['rkag_lines'] ?? []) as $lineIndex => $line)
+                                                                        <div class="mt-2 grid gap-2 md:grid-cols-12" wire:key="rkag-{{ $item['key'] ?? $index }}-{{ $lineIndex }}">
+                                                                            <label class="text-xs md:col-span-4">Uraian
+                                                                                <input wire:model="entries.{{ $index }}.rkag_lines.{{ $lineIndex }}.description" maxlength="200" placeholder="Contoh: Konsumsi Persami" class="mt-1 w-full rounded border p-2 dark:bg-zinc-800">
+                                                                            </label>
+                                                                            <label class="text-xs md:col-span-2">Volume
+                                                                                <input type="number" min="1" max="999999" wire:model="entries.{{ $index }}.rkag_lines.{{ $lineIndex }}.volume" class="mt-1 w-full rounded border p-2 dark:bg-zinc-800">
+                                                                            </label>
+                                                                            <label class="text-xs md:col-span-2">Satuan
+                                                                                <input wire:model="entries.{{ $index }}.rkag_lines.{{ $lineIndex }}.unit" maxlength="30" placeholder="orang" class="mt-1 w-full rounded border p-2 dark:bg-zinc-800">
+                                                                            </label>
+                                                                            <label class="text-xs md:col-span-3">Harga satuan (Rp)
+                                                                                <input type="number" min="0" wire:model="entries.{{ $index }}.rkag_lines.{{ $lineIndex }}.unit_price" class="mt-1 w-full rounded border p-2 dark:bg-zinc-800">
+                                                                            </label>
+                                                                            <label class="text-xs md:col-span-5">Sumber dana (opsional)
+                                                                                <input wire:model="entries.{{ $index }}.rkag_lines.{{ $lineIndex }}.funding_source" maxlength="120" placeholder="Contoh: Iuran anggota / Bantuan Mabigus" class="mt-1 w-full rounded border p-2 dark:bg-zinc-800">
+                                                                            </label>
+                                                                            <label class="text-xs md:col-span-5">Pagu per rincian (Rp, opsional)
+                                                                                <input type="number" min="0" wire:model="entries.{{ $index }}.rkag_lines.{{ $lineIndex }}.ceiling" placeholder="Belum ditetapkan" class="mt-1 w-full rounded border p-2 dark:bg-zinc-800">
+                                                                            </label>
+                                                                            <div class="self-end text-xs text-zinc-500 md:col-span-2">Pagu bersifat referensi, bukan persetujuan atau posting kas.</div>
+                                                                            <button type="button" wire:click="removeRkagLine({{ $index }}, {{ $lineIndex }})" class="self-end rounded border border-red-300 p-2 text-xs text-red-600 md:col-span-1">Hapus</button>
+                                                                            @error('entries.'.$index.'.rkag_lines.'.$lineIndex.'.description')<p class="text-xs text-red-600 md:col-span-12">{{ $message }}</p>@enderror
+                                                                            @error('entries.'.$index.'.rkag_lines.'.$lineIndex.'.volume')<p class="text-xs text-red-600 md:col-span-12">{{ $message }}</p>@enderror
+                                                                            @error('entries.'.$index.'.rkag_lines.'.$lineIndex.'.unit_price')<p class="text-xs text-red-600 md:col-span-12">{{ $message }}</p>@enderror
+                                                                            @error('entries.'.$index.'.rkag_lines.'.$lineIndex.'.funding_source')<p class="text-xs text-red-600 md:col-span-12">{{ $message }}</p>@enderror
+                                                                            @error('entries.'.$index.'.rkag_lines.'.$lineIndex.'.ceiling')<p class="text-xs text-red-600 md:col-span-12">{{ $message }}</p>@enderror
+                                                                        </div>
+                                                                    @endforeach
+                                                                    @error('entries.'.$index.'.rkag_lines')<p class="mt-2 text-xs text-red-600">{{ $message }}</p>@enderror
+                                                                    <p class="mt-2 text-xs text-zinc-500">Jika ada rincian, nominal pada butir ini otomatis dihitung saat Simpan. Tanpa rincian, nominal manual tetap digunakan seperti sebelumnya.</p>
+                                                                </div>
                                                                 @if ($historicalSuggestions !== [])
                                                                     <div class="w-full">
                                                                         <p class="mb-1 text-xs text-zinc-500">Saran dari buku kas tahun sebelumnya (klik untuk mengisi angka):</p>
@@ -584,6 +624,141 @@
                         @endforelse
                     </tbody>
                 </table>
+            @if ($previewSheet && $previewSheet->kind === 'annual' && $rkagApprovalState)
+                <section class="mt-5 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700" aria-label="Persetujuan RKAG">
+                    <h3 class="font-semibold">Persetujuan Rencana Kegiatan dan Anggaran Gugusdepan</h3>
+                    <p class="mt-1 text-sm">Status: <strong>{{ ['draft' => 'Draft', 'submitted' => 'Diajukan', 'approved' => 'Disetujui', 'rejected' => 'Ditolak', 'stale' => 'Perlu pengajuan ulang setelah revisi RKAG'][$rkagApprovalState['status']] ?? 'Draft' }}</strong></p>
+                    <p class="mt-1 text-xs text-zinc-500">Keputusan berlaku pada isi keuangan yang diajukan. Jika RKAG diedit, persetujuan sebelumnya tidak berlaku untuk versi yang baru. Pengaju dan penyetuju harus berbeda. Tidak ada transaksi kas atau anggaran resmi yang diposting secara otomatis.</p>
+                    @if ($rkagApprovalNotice !== '')<p role="status" class="mt-2 text-sm text-emerald-700">{{ $rkagApprovalNotice }}</p>@endif
+                    @error('rkagApproval')<p role="alert" class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
+                    @error('rkagApprovalNotes')<p role="alert" class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
+                    <label class="mt-3 block text-sm">Catatan atau alasan penolakan
+                        <textarea wire:model="rkagApprovalNotes" maxlength="1000" rows="2" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800" placeholder="Keterangan pengajuan/keputusan; wajib untuk penolakan"></textarea>
+                    </label>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        @if (in_array($rkagApprovalState['status'], ['draft', 'rejected', 'stale'], true) && (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage')))
+                            <button type="button" wire:click="submitRkag({{ $previewSheet->id }})" class="rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white">Ajukan RKAG</button>
+                        @endif
+                        @if ($rkagApprovalState['status'] === 'submitted' && auth()->user()?->can('gudep.finance.manage') && (int) ($rkagApprovalState['last']?->actor_id ?? 0) !== (int) auth()->id())
+                            <button type="button" wire:click="approveRkag({{ $previewSheet->id }})" class="rounded-lg border border-emerald-700 px-3 py-2 text-sm">Setujui RKAG</button>
+                            <button type="button" wire:click="rejectRkag({{ $previewSheet->id }})" class="rounded-lg border border-red-600 px-3 py-2 text-sm text-red-600">Tolak RKAG</button>
+                        @endif
+                    </div>
+                    @if ($rkagApprovalHistory->isNotEmpty())
+                        <h4 class="mt-4 text-sm font-semibold">Riwayat keputusan</h4>
+                        <div class="mt-2 overflow-x-auto">
+                            <table class="min-w-full text-left text-xs">
+                                <thead><tr class="border-b"><th class="p-2">Tanggal</th><th class="p-2">Aksi</th><th class="p-2">Pengurus</th><th class="p-2">Catatan</th></tr></thead>
+                                <tbody>
+                                    @foreach ($rkagApprovalHistory as $decision)
+                                        <tr class="border-b border-zinc-100 dark:border-zinc-800">
+                                            <td class="p-2">{{ $decision->created_at?->format('d/m/Y H:i') }}</td>
+                                            <td class="p-2">{{ ['submit' => 'Diajukan', 'approve' => 'Disetujui', 'reject' => 'Ditolak'][$decision->action] ?? $decision->action }}</td>
+                                            <td class="p-2">{{ $decision->actor?->name ?? 'Pengurus tidak tersedia' }}</td>
+                                            <td class="p-2">{{ $decision->notes ?: '–' }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </section>
+            @endif
+            @if ($previewSheet && $previewSheet->kind === 'annual'
+                && (auth()->user()?->can('gudep.finance.view') ?? false))
+                <section class="mt-5 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700" aria-label="Penautan transaksi kas ke rincian RKAG">
+                    <h3 class="font-semibold">Penautan bukti realisasi ke rincian RKAG</h3>
+                    <p class="mt-1 text-xs text-zinc-500">
+                        Transaksi kas harus sudah diposting, berasal dari Gudep dan tahun ajaran yang sama, dan cocok jenis pemasukan/pengeluarannya.
+                        Penautan menyimpan referensi audit saja; tidak mengubah nominal, bukti, atau status buku kas.
+                    </p>
+                    @if ($rkagLinkNotice !== '')
+                        <p role="status" class="mt-2 text-sm text-emerald-700">{{ $rkagLinkNotice }}</p>
+                    @endif
+                    @error('rkagLink')
+                        <p role="alert" class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                    @if ($rkagApprovalState['status'] === 'approved'
+                        && auth()->user()?->can('gudep.finance.manage')
+                        && $rkagLinkOptions->isNotEmpty() && $rkagUnlinkedCash->isNotEmpty())
+                        <div class="mt-3 grid gap-3 md:grid-cols-3">
+                            <label class="text-xs">Transaksi kas terposting
+                                <select wire:model="rkagCashEntryId" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
+                                    <option value="">Pilih transaksi</option>
+                                    @foreach ($rkagUnlinkedCash as $entry)
+                                        <option value="{{ $entry->id }}">{{ $entry->direction === 'expense' ? 'Pengeluaran' : 'Pemasukan' }} · {{ $entry->category }} · Rp {{ number_format($entry->amount, 0, ',', '.') }} · #{{ $entry->id }}</option>
+                                    @endforeach
+                                </select>
+                                @error('rkagCashEntryId')<span class="mt-1 block text-red-600">{{ $message }}</span>@enderror
+                            </label>
+                            <label class="text-xs">Pos RKAG
+                                <select wire:model.live="rkagProgramEntryKey" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
+                                    <option value="">Pilih pos</option>
+                                    @foreach ($rkagLinkOptions->unique('key') as $option)
+                                        <option value="{{ $option['key'] }}">{{ $option['direction'] === 'expense' ? 'Pengeluaran' : 'Pemasukan' }} · {{ $option['description'] }}</option>
+                                    @endforeach
+                                </select>
+                                @error('rkagProgramEntryKey')<span class="mt-1 block text-red-600">{{ $message }}</span>@enderror
+                            </label>
+                            <label class="text-xs">Rincian RKAG
+                                <select wire:model="rkagLineIndex" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
+                                    <option value="">Pilih rincian pada pos</option>
+                                    @foreach ($rkagLinkOptions->where('key', $rkagProgramEntryKey) as $option)
+                                        <option value="{{ $option['line_index'] }}">{{ $option['description'] }}</option>
+                                    @endforeach
+                                </select>
+                                @error('rkagLineIndex')<span class="mt-1 block text-red-600">{{ $message }}</span>@enderror
+                            </label>
+                        </div>
+                        <button type="button" wire:click="linkPostedCashToRkag({{ $previewSheet->id }})"
+                            class="mt-3 rounded-lg border border-emerald-600 px-3 py-2 text-sm font-semibold text-emerald-700">
+                            Tautkan transaksi ke rincian
+                        </button>
+                    @elseif ($rkagApprovalState['status'] !== 'approved')
+                        <p class="mt-2 text-xs text-amber-700">Penautan baru hanya tersedia setelah RKAG disetujui dan belum direvisi.</p>
+                    @endif
+                    @if ($rkagLinkedCash->isNotEmpty())
+                        <h4 class="mt-4 text-sm font-semibold">Riwayat penautan</h4>
+                        <div class="mt-2 overflow-x-auto">
+                            <table class="min-w-full text-left text-xs">
+                                <thead><tr class="border-b"><th class="p-2">Transaksi</th><th class="p-2">Rincian RKAG</th><th class="p-2">Nominal</th><th class="p-2">Tanggal tautan</th></tr></thead>
+                                <tbody>
+                                @foreach ($rkagLinkedCash as $link)
+                                    <tr class="border-b border-zinc-100 dark:border-zinc-800">
+                                        <td class="p-2">#{{ $link->gudep_cash_entry_id }} · {{ $link->cashEntry?->category ?? 'Tidak tersedia' }}</td>
+                                        <td class="p-2">{{ $link->program_entry_key }} / rincian {{ $link->rkag_line_index + 1 }}</td>
+                                        <td class="p-2">Rp {{ number_format($link->cashEntry?->amount ?? 0, 0, ',', '.') }}</td>
+                                        <td class="p-2">{{ $link->created_at?->format('d/m/Y H:i') }}</td>
+                                    </tr>
+                                @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </section>
+            @endif
+            @if ($previewSheet && $previewSheet->kind === 'annual' && ($rkagActualComparison ?? []) !== [])
+                <section class="mt-5 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700" aria-label="Rekonsiliasi RKAG berdasarkan kategori">
+                    <h3 class="font-semibold">Perbandingan RKAG dan realisasi buku kas</h3>
+                    <p class="mt-1 text-xs text-zinc-500">Hanya memakai transaksi kas yang sudah diposting pada tahun ajaran ini dan kategori yang namanya cocok persis (tanpa membedakan huruf besar-kecil). Ini perbandingan tingkat kategori, bukan bukti bahwa transaksi tertentu berasal dari rincian RKAG.</p>
+                    <div class="mt-3 overflow-x-auto">
+                        <table class="min-w-full text-left text-sm">
+                            <thead><tr class="border-b text-zinc-500"><th class="p-2">Jenis / kategori</th><th class="p-2 text-right">Rencana</th><th class="p-2 text-right">Realisasi terposting</th><th class="p-2 text-right">Sisa rencana</th><th class="p-2">Pencocokan</th></tr></thead>
+                            <tbody>
+                                @foreach ($rkagActualComparison as $comparison)
+                                    <tr class="border-b border-zinc-100 dark:border-zinc-800">
+                                        <td class="p-2">{{ $comparison['direction'] === 'expense' ? 'Pengeluaran' : 'Pemasukan' }} · {{ $comparison['category'] }}</td>
+                                        <td class="p-2 text-right">Rp {{ number_format($comparison['planned'], 0, ',', '.') }}</td>
+                                        <td class="p-2 text-right">Rp {{ number_format($comparison['actual'], 0, ',', '.') }}</td>
+                                        <td class="p-2 text-right">Rp {{ number_format($comparison['variance'], 0, ',', '.') }}</td>
+                                        <td class="p-2">{{ $comparison['matched'] ? 'Kategori cocok' : 'Belum ada kategori kas cocok' }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            @endif
             @if ($previewSheet)
                 <div class="mt-5 space-y-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700" aria-label="Pratinjau dokumen program">
                     @if ($previewLetterhead)

@@ -160,7 +160,30 @@
                     @php $item = $row['entry']; @endphp
                     <tr style="page-break-inside:avoid;">
                         <td style="border-top:0;border-bottom:0;"></td>
-                        <td colspan="13" style="padding-left:18px;">{{ $row['marker'] }} {{ $item['description'] ?? '' }}</td>
+                        <td colspan="13" style="padding-left:18px;">
+                            {{ $row['marker'] }} {{ $item['description'] ?? '' }}
+                            @if (! empty($item['rkag_lines']))
+                                <div style="font-size:7.2pt;padding:3px 0 2px 12px;">
+                                    @foreach ($item['rkag_lines'] as $line)
+                                        <div style="page-break-inside:avoid;">
+                                            {{ $line['description'] ?? '' }}:
+                                            {{ number_format((int) ($line['volume'] ?? 0), 0, ',', '.') }}
+                                            {{ $line['unit'] ?? '' }} × Rp {{ number_format((int) ($line['unit_price'] ?? 0), 0, ',', '.') }}
+                                            = Rp {{ number_format((int) ($line['subtotal'] ?? 0), 0, ',', '.') }}
+                                            @if (filled($line['funding_source'] ?? null))
+                                                (Sumber: {{ $line['funding_source'] }})
+                                            @endif
+                                            @if (($line['ceiling'] ?? null) !== null)
+                                                — Pagu Rp {{ number_format((int) $line['ceiling'], 0, ',', '.') }}
+                                                @if (($line['over_ceiling'] ?? 0) > 0)
+                                                    (Melebihi pagu Rp {{ number_format((int) $line['over_ceiling'], 0, ',', '.') }})
+                                                @endif
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </td>
                         <td style="text-align:right;white-space:nowrap;">{{ ($item['amount'] ?? null) === null ? '–' : number_format((int) $item['amount'], 0, ',', '.') }}</td>
                         <td>{{ $item['notes'] ?? '' }}</td>
                     </tr>
