@@ -664,6 +664,79 @@
                     @endif
                 </section>
             @endif
+            @if ($previewSheet && $previewSheet->kind === 'annual'
+                && (auth()->user()?->can('gudep.finance.view') ?? false))
+                <section class="mt-5 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700" aria-label="Penautan transaksi kas ke rincian RKAG">
+                    <h3 class="font-semibold">Penautan bukti realisasi ke rincian RKAG</h3>
+                    <p class="mt-1 text-xs text-zinc-500">
+                        Transaksi kas harus sudah diposting, berasal dari Gudep dan tahun ajaran yang sama, dan cocok jenis pemasukan/pengeluarannya.
+                        Penautan menyimpan referensi audit saja; tidak mengubah nominal, bukti, atau status buku kas.
+                    </p>
+                    @if ($rkagLinkNotice !== '')
+                        <p role="status" class="mt-2 text-sm text-emerald-700">{{ $rkagLinkNotice }}</p>
+                    @endif
+                    @error('rkagLink')
+                        <p role="alert" class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                    @if ($rkagApprovalState['status'] === 'approved'
+                        && auth()->user()?->can('gudep.finance.manage')
+                        && $rkagLinkOptions->isNotEmpty() && $rkagUnlinkedCash->isNotEmpty())
+                        <div class="mt-3 grid gap-3 md:grid-cols-3">
+                            <label class="text-xs">Transaksi kas terposting
+                                <select wire:model="rkagCashEntryId" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
+                                    <option value="">Pilih transaksi</option>
+                                    @foreach ($rkagUnlinkedCash as $entry)
+                                        <option value="{{ $entry->id }}">{{ $entry->direction === 'expense' ? 'Pengeluaran' : 'Pemasukan' }} · {{ $entry->category }} · Rp {{ number_format($entry->amount, 0, ',', '.') }} · #{{ $entry->id }}</option>
+                                    @endforeach
+                                </select>
+                                @error('rkagCashEntryId')<span class="mt-1 block text-red-600">{{ $message }}</span>@enderror
+                            </label>
+                            <label class="text-xs">Pos RKAG
+                                <select wire:model="rkagProgramEntryKey" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
+                                    <option value="">Pilih pos</option>
+                                    @foreach ($rkagLinkOptions->unique('key') as $option)
+                                        <option value="{{ $option['key'] }}">{{ $option['direction'] === 'expense' ? 'Pengeluaran' : 'Pemasukan' }} · {{ $option['description'] }}</option>
+                                    @endforeach
+                                </select>
+                                @error('rkagProgramEntryKey')<span class="mt-1 block text-red-600">{{ $message }}</span>@enderror
+                            </label>
+                            <label class="text-xs">Rincian RKAG
+                                <select wire:model="rkagLineIndex" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
+                                    <option value="">Pilih rincian pada pos</option>
+                                    @foreach ($rkagLinkOptions->where('key', $rkagProgramEntryKey) as $option)
+                                        <option value="{{ $option['line_index'] }}">{{ $option['description'] }}</option>
+                                    @endforeach
+                                </select>
+                                @error('rkagLineIndex')<span class="mt-1 block text-red-600">{{ $message }}</span>@enderror
+                            </label>
+                        </div>
+                        <button type="button" wire:click="linkPostedCashToRkag({{ $previewSheet->id }})"
+                            class="mt-3 rounded-lg border border-emerald-600 px-3 py-2 text-sm font-semibold text-emerald-700">
+                            Tautkan transaksi ke rincian
+                        </button>
+                    @elseif ($rkagApprovalState['status'] !== 'approved')
+                        <p class="mt-2 text-xs text-amber-700">Penautan baru hanya tersedia setelah RKAG disetujui dan belum direvisi.</p>
+                    @endif
+                    @if ($rkagLinkedCash->isNotEmpty())
+                        <h4 class="mt-4 text-sm font-semibold">Riwayat penautan</h4>
+                        <div class="mt-2 overflow-x-auto">
+                            <table class="min-w-full text-left text-xs">
+                                <thead><tr class="border-b"><th class="p-2">Transaksi</th><th class="p-2">Rincian RKAG</th><th class="p-2">Nominal</th><th class="p-2">Tanggal tautan</th></tr></thead>
+                                <tbody>
+                                @foreach ($rkagLinkedCash as $link)
+                                    <tr class="border-b border-zinc-100 dark:border-zinc-800">
+                                        <td class="p-2">#{{ $link->gudep_cash_entry_id }} · {{ $link->cashEntry?->category ?? 'Tidak tersedia' }}</td>
+                                        <td class="p-2">{{ $link->program_entry_key }} / rincian {{ $link->rkag_line_index + 1 }}</td>
+                                        <td class="p-2">Rp {{ number_format($link->cashEntry?->amount ?? 0, 0, ',', '.') }}</td>
+                                        <td class="p-2">{{ $link->created_at?->format('d/m/Y H:i') }}</td>
+                                    </tr>
+                                @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </section>
+            @endif
             @if ($previewSheet && $previewSheet->kind === 'annual' && ($rkagActualComparison ?? []) !== [])
                 <section class="mt-5 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700" aria-label="Rekonsiliasi RKAG berdasarkan kategori">
                     <h3 class="font-semibold">Perbandingan RKAG dan realisasi buku kas</h3>
