@@ -170,6 +170,15 @@
                                             {{ number_format((int) ($line['volume'] ?? 0), 0, ',', '.') }}
                                             {{ $line['unit'] ?? '' }} × Rp {{ number_format((int) ($line['unit_price'] ?? 0), 0, ',', '.') }}
                                             = Rp {{ number_format((int) ($line['subtotal'] ?? 0), 0, ',', '.') }}
+                                            @if (filled($line['funding_source'] ?? null))
+                                                (Sumber: {{ $line['funding_source'] }})
+                                            @endif
+                                            @if (($line['ceiling'] ?? null) !== null)
+                                                — Pagu Rp {{ number_format((int) $line['ceiling'], 0, ',', '.') }}
+                                                @if (($line['over_ceiling'] ?? 0) > 0)
+                                                    (Melebihi pagu Rp {{ number_format((int) $line['over_ceiling'], 0, ',', '.') }})
+                                                @endif
+                                            @endif
                                         </div>
                                     @endforeach
                                 </div>
