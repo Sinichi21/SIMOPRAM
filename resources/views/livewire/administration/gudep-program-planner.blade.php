@@ -326,10 +326,19 @@
                                                                             <label class="text-xs md:col-span-3">Harga satuan (Rp)
                                                                                 <input type="number" min="0" wire:model="entries.{{ $index }}.rkag_lines.{{ $lineIndex }}.unit_price" class="mt-1 w-full rounded border p-2 dark:bg-zinc-800">
                                                                             </label>
+                                                                            <label class="text-xs md:col-span-5">Sumber dana (opsional)
+                                                                                <input wire:model="entries.{{ $index }}.rkag_lines.{{ $lineIndex }}.funding_source" maxlength="120" placeholder="Contoh: Iuran anggota / Bantuan Mabigus" class="mt-1 w-full rounded border p-2 dark:bg-zinc-800">
+                                                                            </label>
+                                                                            <label class="text-xs md:col-span-5">Pagu per rincian (Rp, opsional)
+                                                                                <input type="number" min="0" wire:model="entries.{{ $index }}.rkag_lines.{{ $lineIndex }}.ceiling" placeholder="Belum ditetapkan" class="mt-1 w-full rounded border p-2 dark:bg-zinc-800">
+                                                                            </label>
+                                                                            <div class="self-end text-xs text-zinc-500 md:col-span-2">Pagu bersifat referensi, bukan persetujuan atau posting kas.</div>
                                                                             <button type="button" wire:click="removeRkagLine({{ $index }}, {{ $lineIndex }})" class="self-end rounded border border-red-300 p-2 text-xs text-red-600 md:col-span-1">Hapus</button>
                                                                             @error('entries.'.$index.'.rkag_lines.'.$lineIndex.'.description')<p class="text-xs text-red-600 md:col-span-12">{{ $message }}</p>@enderror
                                                                             @error('entries.'.$index.'.rkag_lines.'.$lineIndex.'.volume')<p class="text-xs text-red-600 md:col-span-12">{{ $message }}</p>@enderror
                                                                             @error('entries.'.$index.'.rkag_lines.'.$lineIndex.'.unit_price')<p class="text-xs text-red-600 md:col-span-12">{{ $message }}</p>@enderror
+                                                                            @error('entries.'.$index.'.rkag_lines.'.$lineIndex.'.funding_source')<p class="text-xs text-red-600 md:col-span-12">{{ $message }}</p>@enderror
+                                                                            @error('entries.'.$index.'.rkag_lines.'.$lineIndex.'.ceiling')<p class="text-xs text-red-600 md:col-span-12">{{ $message }}</p>@enderror
                                                                         </div>
                                                                     @endforeach
                                                                     @error('entries.'.$index.'.rkag_lines')<p class="mt-2 text-xs text-red-600">{{ $message }}</p>@enderror
