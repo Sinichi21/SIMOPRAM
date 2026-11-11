@@ -6,8 +6,10 @@ namespace App\Livewire\Administration;
 
 use App\Models\AcademicYear;
 use App\Models\Activity;
+use App\Models\GudepCashEntry;
 use App\Models\GudepFormation;
 use App\Models\GudepProgramSheet;
+use App\Models\GudepRkagCashLink;
 use App\Models\GudepRkagDecision;
 use App\Models\School;
 use App\Models\ScoutGroup;
@@ -24,6 +26,7 @@ use App\Support\GudepProgramSignatories;
 use App\Support\GudepRkagActualComparison;
 use App\Support\GudepRkagApproval;
 use App\Support\GudepRkagCalculator;
+use App\Support\GudepRkagCashLinker;
 use App\Support\GudepWeeklyPersonnel;
 use App\Support\SchoolContext;
 use Illuminate\Contracts\View\View;
@@ -77,6 +80,14 @@ class GudepProgramPlanner extends Component
     public string $rkagApprovalNotes = '';
 
     public string $rkagApprovalNotice = '';
+
+    public ?int $rkagCashEntryId = null;
+
+    public string $rkagProgramEntryKey = '';
+
+    public ?int $rkagLineIndex = null;
+
+    public string $rkagLinkNotice = '';
 
     /** @var array<int, array<string, mixed>> */
     public array $entries = [];
@@ -664,6 +675,42 @@ class GudepProgramPlanner extends Component
             'approve' => 'RKAG disetujui untuk snapshot saat ini.',
             'reject' => 'RKAG ditolak, alasan tersimpan di riwayat keputusan.',
         };
+    }
+
+    public function linkPostedCashToRkag(int $sheetId): void
+    {
+        $this->authorizeView();
+        abort_unless(auth()->user()?->can('gudep.finance.manage'), 403);
+        $this->resetValidation();
+        $this->rkagLinkNotice = '';
+
+        $this->validate([
+            'rkagCashEntryId' => ['required', 'integer'],
+            'rkagProgramEntryKey' => ['required', 'string', 'max:80'],
+            'rkagLineIndex' => ['required', 'integer', 'min:0', 'max:29'],
+        ]);
+
+        $sheet = GudepProgramSheet::query()
+            ->where('school_id', $this->schoolId())
+            ->where('scout_group_id', $this->selectedGudep()->id)
+            ->where('academic_year_id', $this->selectedYear()->id)
+            ->where('kind', 'annual')
+            ->findOrFail($sheetId);
+        $entry = GudepCashEntry::query()
+            ->where('school_id', $this->schoolId())
+            ->where('scout_group_id', $sheet->scout_group_id)
+            ->where('academic_year_id', $sheet->academic_year_id)
+            ->findOrFail($this->rkagCashEntryId);
+
+        GudepRkagCashLinker::link(
+            $sheet, $entry, auth()->user(),
+            $this->rkagProgramEntryKey, $this->rkagLineIndex
+        );
+        $this->rkagCashEntryId = null;
+        $this->rkagProgramEntryKey = '';
+        $this->rkagLineIndex = null;
+        $this->previewId = $sheet->id;
+        $this->rkagLinkNotice = 'Transaksi terposting berhasil ditautkan ke rincian RKAG tanpa perubahan buku kas.';
     }
 
     public function edit(int $id): void
@@ -1422,6 +1469,33 @@ class GudepProgramPlanner extends Component
             'previewSheet' => $previewSheet,
             'rkagApprovalState' => $previewSheet !== null && $previewSheet->kind === 'annual'
                 ? GudepRkagApproval::state($previewSheet) : null,
+            'rkagLinkOptions' => $previewSheet !== null && $previewSheet->kind === 'annual'
+                ? collect($previewSheet->entries ?? [])->filter(fn (array $row): bool => ($row['section'] ?? '') === 'keuangan'
+                    && in_array($row['finance_type'] ?? '', ['income', 'expense'], true)
+                    && filled($row['key'] ?? null)
+                    && ! empty($row['rkag_lines']))->flatMap(static fn (array $row): array => array_map(
+                        static fn (array $line, int $index): array => [
+                            'key' => $row['key'],
+                            'line_index' => $index,
+                            'description' => ($row['description'] ?? 'RKAG').' / '.($line['description'] ?? 'Rincian'),
+                            'direction' => $row['finance_type'],
+                        ],
+                        $row['rkag_lines'], array_keys($row['rkag_lines'])
+                    ))->values() : collect(),
+            'rkagLinkedCash' => $previewSheet !== null && $previewSheet->kind === 'annual'
+                && (auth()->user()?->can('gudep.finance.view') ?? false)
+                ? GudepRkagCashLink::query()->where('school_id', $this->schoolId())
+                    ->where('gudep_program_sheet_id', $previewSheet->id)
+                    ->with('cashEntry')->orderByDesc('id')->limit(100)->get() : collect(),
+            'rkagUnlinkedCash' => $previewSheet !== null && $previewSheet->kind === 'annual'
+                && (auth()->user()?->can('gudep.finance.manage') ?? false)
+                ? GudepCashEntry::query()->where('school_id', $this->schoolId())
+                    ->where('scout_group_id', $previewSheet->scout_group_id)
+                    ->where('academic_year_id', $previewSheet->academic_year_id)
+                    ->where('status', 'posted')->whereNull('reversal_of_id')
+                    ->whereNotIn('id', GudepRkagCashLink::query()->where('school_id', $this->schoolId())
+                        ->select('gudep_cash_entry_id'))
+                    ->orderByDesc('id')->limit(100)->get() : collect(),
             'rkagApprovalHistory' => $previewSheet !== null && $previewSheet->kind === 'annual'
                 ? GudepRkagDecision::query()->where('school_id', $this->schoolId())
                     ->where('gudep_program_sheet_id', $previewSheet->id)
