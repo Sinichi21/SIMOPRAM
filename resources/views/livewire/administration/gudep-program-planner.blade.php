@@ -624,6 +624,28 @@
                         @endforelse
                     </tbody>
                 </table>
+            @if ($previewSheet && $previewSheet->kind === 'annual' && ($rkagActualComparison ?? []) !== [])
+                <section class="mt-5 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700" aria-label="Rekonsiliasi RKAG berdasarkan kategori">
+                    <h3 class="font-semibold">Perbandingan RKAG dan realisasi buku kas</h3>
+                    <p class="mt-1 text-xs text-zinc-500">Hanya memakai transaksi kas yang sudah diposting pada tahun ajaran ini dan kategori yang namanya cocok persis (tanpa membedakan huruf besar-kecil). Ini perbandingan tingkat kategori, bukan bukti bahwa transaksi tertentu berasal dari rincian RKAG.</p>
+                    <div class="mt-3 overflow-x-auto">
+                        <table class="min-w-full text-left text-sm">
+                            <thead><tr class="border-b text-zinc-500"><th class="p-2">Jenis / kategori</th><th class="p-2 text-right">Rencana</th><th class="p-2 text-right">Realisasi terposting</th><th class="p-2 text-right">Sisa rencana</th><th class="p-2">Pencocokan</th></tr></thead>
+                            <tbody>
+                                @foreach ($rkagActualComparison as $comparison)
+                                    <tr class="border-b border-zinc-100 dark:border-zinc-800">
+                                        <td class="p-2">{{ $comparison['direction'] === 'expense' ? 'Pengeluaran' : 'Pemasukan' }} · {{ $comparison['category'] }}</td>
+                                        <td class="p-2 text-right">Rp {{ number_format($comparison['planned'], 0, ',', '.') }}</td>
+                                        <td class="p-2 text-right">Rp {{ number_format($comparison['actual'], 0, ',', '.') }}</td>
+                                        <td class="p-2 text-right">Rp {{ number_format($comparison['variance'], 0, ',', '.') }}</td>
+                                        <td class="p-2">{{ $comparison['matched'] ? 'Kategori cocok' : 'Belum ada kategori kas cocok' }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            @endif
             @if ($previewSheet)
                 <div class="mt-5 space-y-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700" aria-label="Pratinjau dokumen program">
                     @if ($previewLetterhead)
