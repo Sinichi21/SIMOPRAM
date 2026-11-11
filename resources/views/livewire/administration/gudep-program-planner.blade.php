@@ -624,6 +624,46 @@
                         @endforelse
                     </tbody>
                 </table>
+            @if ($previewSheet && $previewSheet->kind === 'annual' && $rkagApprovalState)
+                <section class="mt-5 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700" aria-label="Persetujuan RKAG">
+                    <h3 class="font-semibold">Persetujuan Rencana Kegiatan dan Anggaran Gugusdepan</h3>
+                    <p class="mt-1 text-sm">Status: <strong>{{ ['draft' => 'Draft', 'submitted' => 'Diajukan', 'approved' => 'Disetujui', 'rejected' => 'Ditolak', 'stale' => 'Perlu pengajuan ulang setelah revisi RKAG'][$rkagApprovalState['status']] ?? 'Draft' }}</strong></p>
+                    <p class="mt-1 text-xs text-zinc-500">Keputusan berlaku pada isi keuangan yang diajukan. Jika RKAG diedit, persetujuan sebelumnya tidak berlaku untuk versi yang baru. Pengaju dan penyetuju harus berbeda. Tidak ada transaksi kas atau anggaran resmi yang diposting secara otomatis.</p>
+                    @if ($rkagApprovalNotice !== '')<p role="status" class="mt-2 text-sm text-emerald-700">{{ $rkagApprovalNotice }}</p>@endif
+                    @error('rkagApproval')<p role="alert" class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
+                    @error('rkagApprovalNotes')<p role="alert" class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
+                    <label class="mt-3 block text-sm">Catatan atau alasan penolakan
+                        <textarea wire:model="rkagApprovalNotes" maxlength="1000" rows="2" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800" placeholder="Keterangan pengajuan/keputusan; wajib untuk penolakan"></textarea>
+                    </label>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        @if (in_array($rkagApprovalState['status'], ['draft', 'rejected', 'stale'], true) && (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage')))
+                            <button type="button" wire:click="submitRkag({{ $previewSheet->id }})" class="rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white">Ajukan RKAG</button>
+                        @endif
+                        @if ($rkagApprovalState['status'] === 'submitted' && auth()->user()?->can('gudep.finance.manage'))
+                            <button type="button" wire:click="approveRkag({{ $previewSheet->id }})" class="rounded-lg border border-emerald-700 px-3 py-2 text-sm">Setujui RKAG</button>
+                            <button type="button" wire:click="rejectRkag({{ $previewSheet->id }})" class="rounded-lg border border-red-600 px-3 py-2 text-sm text-red-600">Tolak RKAG</button>
+                        @endif
+                    </div>
+                    @if ($rkagApprovalHistory->isNotEmpty())
+                        <h4 class="mt-4 text-sm font-semibold">Riwayat keputusan</h4>
+                        <div class="mt-2 overflow-x-auto">
+                            <table class="min-w-full text-left text-xs">
+                                <thead><tr class="border-b"><th class="p-2">Tanggal</th><th class="p-2">Aksi</th><th class="p-2">Pengurus</th><th class="p-2">Catatan</th></tr></thead>
+                                <tbody>
+                                    @foreach ($rkagApprovalHistory as $decision)
+                                        <tr class="border-b border-zinc-100 dark:border-zinc-800">
+                                            <td class="p-2">{{ $decision->created_at?->format('d/m/Y H:i') }}</td>
+                                            <td class="p-2">{{ ['submit' => 'Diajukan', 'approve' => 'Disetujui', 'reject' => 'Ditolak'][$decision->action] ?? $decision->action }}</td>
+                                            <td class="p-2">{{ $decision->actor?->name ?? 'Pengurus tidak tersedia' }}</td>
+                                            <td class="p-2">{{ $decision->notes ?: '–' }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </section>
+            @endif
             @if ($previewSheet && $previewSheet->kind === 'annual' && ($rkagActualComparison ?? []) !== [])
                 <section class="mt-5 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700" aria-label="Rekonsiliasi RKAG berdasarkan kategori">
                     <h3 class="font-semibold">Perbandingan RKAG dan realisasi buku kas</h3>
