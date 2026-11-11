@@ -692,7 +692,7 @@
                                 @error('rkagCashEntryId')<span class="mt-1 block text-red-600">{{ $message }}</span>@enderror
                             </label>
                             <label class="text-xs">Pos RKAG
-                                <select wire:model="rkagProgramEntryKey" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
+                                <select wire:model.live="rkagProgramEntryKey" class="mt-1 block w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
                                     <option value="">Pilih pos</option>
                                     @foreach ($rkagLinkOptions->unique('key') as $option)
                                         <option value="{{ $option['key'] }}">{{ $option['direction'] === 'expense' ? 'Pengeluaran' : 'Pemasukan' }} · {{ $option['description'] }}</option>
