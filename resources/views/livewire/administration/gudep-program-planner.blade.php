@@ -639,7 +639,7 @@
                         @if (in_array($rkagApprovalState['status'], ['draft', 'rejected', 'stale'], true) && (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.finance.manage')))
                             <button type="button" wire:click="submitRkag({{ $previewSheet->id }})" class="rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white">Ajukan RKAG</button>
                         @endif
-                        @if ($rkagApprovalState['status'] === 'submitted' && auth()->user()?->can('gudep.finance.manage'))
+                        @if ($rkagApprovalState['status'] === 'submitted' && auth()->user()?->can('gudep.finance.manage') && (int) ($rkagApprovalState['last']?->actor_id ?? 0) !== (int) auth()->id())
                             <button type="button" wire:click="approveRkag({{ $previewSheet->id }})" class="rounded-lg border border-emerald-700 px-3 py-2 text-sm">Setujui RKAG</button>
                             <button type="button" wire:click="rejectRkag({{ $previewSheet->id }})" class="rounded-lg border border-red-600 px-3 py-2 text-sm text-red-600">Tolak RKAG</button>
                         @endif
