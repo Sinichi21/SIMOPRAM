@@ -301,9 +301,40 @@
                                                             </label>
                                                             @if (in_array($item['finance_type'] ?? '', ['income','expense'], true))
                                                                 <label class="text-xs text-zinc-600 dark:text-zinc-300">Nilai (Rp)
-                                                                    <input type="number" min="0" step="1" wire:key="annual-amount-{{ $item['key'] ?? $index }}" wire:model="entries.{{ $index }}.amount" placeholder="–" class="mt-1 block w-44 rounded-lg border border-zinc-300 p-2 text-sm dark:bg-zinc-800">
+                                                                    <input type="number" min="0" step="1" wire:key="annual-amount-{{ $item['key'] ?? $index }}" wire:model="entries.{{ $index }}.amount" @disabled(! empty($item['rkag_lines'])) placeholder="–" class="mt-1 block w-44 rounded-lg border border-zinc-300 p-2 text-sm dark:bg-zinc-800">
+                                                                    @if (! empty($item['rkag_lines']))
+                                                                        <span class="block text-[10px] text-emerald-700">Dihitung otomatis dari rincian saat disimpan.</span>
+                                                                    @endif
                                                                 </label>
                                                                 <span class="rounded-md bg-zinc-200 px-2 py-2 text-xs dark:bg-zinc-700">IDR · Rupiah</span>
+                                                                <div class="w-full rounded-lg border border-zinc-300 p-3 dark:border-zinc-700">
+                                                                    <div class="flex items-center justify-between gap-2">
+                                                                        <span class="text-xs font-semibold">Rincian RKAG — volume × harga satuan</span>
+                                                                        <button type="button" wire:click="addRkagLine({{ $index }})" class="rounded border px-2 py-1 text-xs">+ Tambah rincian</button>
+                                                                    </div>
+                                                                    @foreach (($item['rkag_lines'] ?? []) as $lineIndex => $line)
+                                                                        <div class="mt-2 grid gap-2 md:grid-cols-12" wire:key="rkag-{{ $item['key'] ?? $index }}-{{ $lineIndex }}">
+                                                                            <label class="text-xs md:col-span-4">Uraian
+                                                                                <input wire:model="entries.{{ $index }}.rkag_lines.{{ $lineIndex }}.description" maxlength="200" placeholder="Contoh: Konsumsi Persami" class="mt-1 w-full rounded border p-2 dark:bg-zinc-800">
+                                                                            </label>
+                                                                            <label class="text-xs md:col-span-2">Volume
+                                                                                <input type="number" min="1" max="999999" wire:model="entries.{{ $index }}.rkag_lines.{{ $lineIndex }}.volume" class="mt-1 w-full rounded border p-2 dark:bg-zinc-800">
+                                                                            </label>
+                                                                            <label class="text-xs md:col-span-2">Satuan
+                                                                                <input wire:model="entries.{{ $index }}.rkag_lines.{{ $lineIndex }}.unit" maxlength="30" placeholder="orang" class="mt-1 w-full rounded border p-2 dark:bg-zinc-800">
+                                                                            </label>
+                                                                            <label class="text-xs md:col-span-3">Harga satuan (Rp)
+                                                                                <input type="number" min="0" wire:model="entries.{{ $index }}.rkag_lines.{{ $lineIndex }}.unit_price" class="mt-1 w-full rounded border p-2 dark:bg-zinc-800">
+                                                                            </label>
+                                                                            <button type="button" wire:click="removeRkagLine({{ $index }}, {{ $lineIndex }})" class="self-end rounded border border-red-300 p-2 text-xs text-red-600 md:col-span-1">Hapus</button>
+                                                                            @error('entries.'.$index.'.rkag_lines.'.$lineIndex.'.description')<p class="text-xs text-red-600 md:col-span-12">{{ $message }}</p>@enderror
+                                                                            @error('entries.'.$index.'.rkag_lines.'.$lineIndex.'.volume')<p class="text-xs text-red-600 md:col-span-12">{{ $message }}</p>@enderror
+                                                                            @error('entries.'.$index.'.rkag_lines.'.$lineIndex.'.unit_price')<p class="text-xs text-red-600 md:col-span-12">{{ $message }}</p>@enderror
+                                                                        </div>
+                                                                    @endforeach
+                                                                    @error('entries.'.$index.'.rkag_lines')<p class="mt-2 text-xs text-red-600">{{ $message }}</p>@enderror
+                                                                    <p class="mt-2 text-xs text-zinc-500">Jika ada rincian, nominal pada butir ini otomatis dihitung saat Simpan. Tanpa rincian, nominal manual tetap digunakan seperti sebelumnya.</p>
+                                                                </div>
                                                                 @if ($historicalSuggestions !== [])
                                                                     <div class="w-full">
                                                                         <p class="mb-1 text-xs text-zinc-500">Saran dari buku kas tahun sebelumnya (klik untuk mengisi angka):</p>
