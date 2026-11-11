@@ -398,6 +398,11 @@ class GudepProgramPlanner extends Component
         abort_unless(auth()->user()?->can('gudep.finance.view'), 403);
         abort_unless($this->kind === 'annual' && ($this->entries[$index]['section'] ?? null) === 'keuangan', 422);
         abort_unless(in_array($this->entries[$index]['finance_type'] ?? '', ['income', 'expense'], true), 422);
+        if (($this->entries[$index]['rkag_lines'] ?? []) !== []) {
+            $this->addError('entries.'.$index.'.rkag_lines', 'Hapus rincian RKAG lebih dahulu sebelum mengambil nominal historis.');
+
+            return;
+        }
 
         $suggestions = $this->historicalBudgetSuggestions();
         $direction = $this->entries[$index]['finance_type'];
