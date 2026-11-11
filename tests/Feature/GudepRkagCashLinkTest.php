@@ -106,6 +106,39 @@ class GudepRkagCashLinkTest extends TestCase
         GudepRkagCashLinker::link($sheet, $entry, $reviewer, 'persami', 0);
     }
 
+    public function test_transaction_from_other_gudep_cannot_link_to_approved_rkag(): void
+    {
+        [$sheet, $entry, $author, $reviewer] = $this->context();
+        GudepRkagApproval::transition($sheet, $author, 'submit');
+        GudepRkagApproval::transition($sheet, $reviewer, 'approve');
+
+        $other = ScoutGroup::query()->create(['name' => 'Gudep Berbeda']);
+        $entry->update(['scout_group_id' => $other->id]);
+
+        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+        GudepRkagCashLinker::link($sheet, $entry, $reviewer, 'persami', 0);
+    }
+
+    public function test_reversal_transaction_must_not_be_linked_as_a_new_expense(): void
+    {
+        [$sheet, $entry, $author, $reviewer] = $this->context();
+        GudepRkagApproval::transition($sheet, $author, 'submit');
+        GudepRkagApproval::transition($sheet, $reviewer, 'approve');
+
+        $reversal = GudepCashEntry::query()->create([
+            'school_id' => $sheet->school_id,
+            'scout_group_id' => $sheet->scout_group_id,
+            'academic_year_id' => $sheet->academic_year_id,
+            'category' => 'Persami', 'direction' => 'income',
+            'amount' => 250000, 'occurred_at' => '2026-11-11',
+            'status' => 'posted', 'description' => 'Pembalikan Konsumsi',
+            'reversal_of_id' => $entry->id,
+        ]);
+
+        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+        GudepRkagCashLinker::link($sheet, $reversal, $reviewer, 'persami', 0);
+    }
+
     public function test_revised_rkag_requires_new_approval_before_cash_link(): void
     {
         [$sheet, $entry, $author, $reviewer] = $this->context();
