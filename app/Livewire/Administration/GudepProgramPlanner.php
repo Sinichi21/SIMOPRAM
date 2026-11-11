@@ -1478,7 +1478,7 @@ class GudepProgramPlanner extends Component
                 ? collect($previewSheet->entries ?? [])->filter(fn (array $row): bool => ($row['section'] ?? '') === 'keuangan'
                     && in_array($row['finance_type'] ?? '', ['income', 'expense'], true)
                     && filled($row['key'] ?? null)
-                    && ! empty($row['rkag_lines']))->flatMap(static fn (array $row): array => array_map(
+                    && empty($row['rkag_lines']) === false)->flatMap(static fn (array $row): array => array_map(
                         static fn (array $line, int $index): array => [
                             'key' => $row['key'],
                             'line_index' => $index,
