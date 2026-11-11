@@ -68,6 +68,7 @@ final class GudepRkagApproval
     public static function transition(GudepProgramSheet $sheet, User $actor, string $action, string $notes = ''): GudepRkagDecision
     {
         abort_unless((int) app(SchoolContext::class)->id() === (int) $sheet->school_id, 403);
+        abort_unless($sheet->kind === 'annual', 404);
 
         if (! in_array($action, ['submit', 'approve', 'reject'], true)) {
             throw ValidationException::withMessages(['rkagApproval' => 'Aksi RKAG tidak valid.']);
