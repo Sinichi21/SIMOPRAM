@@ -20,6 +20,7 @@ use App\Support\GudepHistoricalBudgetSuggestions;
 use App\Support\GudepProgramProgress;
 use App\Support\GudepProgramSemesterProjection;
 use App\Support\GudepProgramSignatories;
+use App\Support\GudepRkagActualComparison;
 use App\Support\GudepRkagCalculator;
 use App\Support\GudepWeeklyPersonnel;
 use App\Support\SchoolContext;
@@ -1350,6 +1351,16 @@ class GudepProgramPlanner extends Component
                         return $program?->letterhead_type ?: 'mabigus';
                     })()
                 ) : null,
+            'rkagActualComparison' => $previewSheet !== null
+                && $previewSheet->kind === 'annual'
+                && $gudep !== null && $year !== null
+                && (auth()->user()?->can('gudep.finance.view') ?? false)
+                ? GudepRkagActualComparison::compare(
+                    $previewSheet->entries ?? [],
+                    GudepHistoricalBudgetSuggestions::forYear(
+                        $this->schoolId(), $gudep->id, $year->id
+                    )
+                ) : [],
             'annualSections' => self::annualSections(),
             'historicalSuggestions' => $gudep && $year && $this->kind === 'annual'
                 && (auth()->user()?->can('gudep.finance.view') ?? false)
