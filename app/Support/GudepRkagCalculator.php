@@ -10,7 +10,7 @@ final class GudepRkagCalculator
 {
     /**
      * @param  array<int, array<string, mixed>>  $lines
-     * @return array{lines: array<int, array{description: string, volume: int, unit: string, unit_price: int, subtotal: int}>, total: int}
+     * @return array{lines: array<int, array{description: string, volume: int, unit: string, unit_price: int, funding_source: string, ceiling: ?int, subtotal: int, over_ceiling: int}>, total: int}
      */
     public static function calculate(array $lines): array
     {
@@ -26,6 +26,9 @@ final class GudepRkagCalculator
             $unit = trim((string) ($line['unit'] ?? ''));
             $volume = $line['volume'] ?? null;
             $price = $line['unit_price'] ?? null;
+            $fundingSource = trim((string) ($line['funding_source'] ?? ''));
+            $ceilingRaw = $line['ceiling'] ?? null;
+            $ceiling = $ceilingRaw === '' || $ceilingRaw === null ? null : $ceilingRaw;
 
             if ($description === '' || $unit === '' || ! is_numeric($volume) || ! is_numeric($price)
                 || filter_var($volume, FILTER_VALIDATE_INT) === false
@@ -37,7 +40,11 @@ final class GudepRkagCalculator
             $price = (int) $price;
 
             if ($volume < 1 || $volume > 999999 || $price < 0 || $price > 999999999999
-                || mb_strlen($description) > 200 || mb_strlen($unit) > 30) {
+                || mb_strlen($description) > 200 || mb_strlen($unit) > 30
+                || mb_strlen($fundingSource) > 120 || ($ceiling !== null && (
+                    filter_var($ceiling, FILTER_VALIDATE_INT) === false
+                    || (int) $ceiling < 0 || (int) $ceiling > 999999999999
+                ))) {
                 throw new InvalidArgumentException('Rincian anggaran melewati batas volume, harga, atau panjang teks.');
             }
 
@@ -51,7 +58,10 @@ final class GudepRkagCalculator
                 'volume' => $volume,
                 'unit' => $unit,
                 'unit_price' => $price,
+                'funding_source' => $fundingSource,
+                'ceiling' => $ceiling === null ? null : (int) $ceiling,
                 'subtotal' => $subtotal,
+                'over_ceiling' => $ceiling === null ? 0 : max(0, $subtotal - (int) $ceiling),
             ];
             $total += $subtotal;
         }
