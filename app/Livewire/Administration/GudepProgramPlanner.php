@@ -8,6 +8,7 @@ use App\Models\AcademicYear;
 use App\Models\Activity;
 use App\Models\GudepFormation;
 use App\Models\GudepProgramSheet;
+use App\Models\GudepRkagDecision;
 use App\Models\School;
 use App\Models\ScoutGroup;
 use App\Models\ScoutLevel;
@@ -1422,7 +1423,7 @@ class GudepProgramPlanner extends Component
             'rkagApprovalState' => $previewSheet !== null && $previewSheet->kind === 'annual'
                 ? GudepRkagApproval::state($previewSheet) : null,
             'rkagApprovalHistory' => $previewSheet !== null && $previewSheet->kind === 'annual'
-                ? \App\Models\GudepRkagDecision::query()->where('school_id', $this->schoolId())
+                ? GudepRkagDecision::query()->where('school_id', $this->schoolId())
                     ->where('gudep_program_sheet_id', $previewSheet->id)
                     ->with('actor')->orderByDesc('id')->limit(15)->get() : collect(),
             'sheets' => $sheets,
