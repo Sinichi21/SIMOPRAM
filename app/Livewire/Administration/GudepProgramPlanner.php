@@ -151,6 +151,11 @@ class GudepProgramPlanner extends Component
         $this->parentItemIndex = null;
     }
 
+    public function updatedRkagProgramEntryKey(): void
+    {
+        $this->rkagLineIndex = null;
+    }
+
     public function updatedSemesterId(): void
     {
         if ($this->kind !== 'semester' || $this->semesterId === null) {
