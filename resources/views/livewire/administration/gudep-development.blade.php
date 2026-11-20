@@ -2,8 +2,8 @@
     <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
             <p class="text-sm font-medium text-emerald-700">Administrasi Gudep · Pembinaan</p>
-            <h1 class="mt-1 text-2xl font-bold">Program, SKU/SKK, Prestasi & Jurnal</h1>
-            <p class="mt-1 text-sm text-zinc-500">Program kerja dan hasil pembinaan per Gudep/tahun ajaran. Agenda dan jurnal tetap menggunakan modul Kegiatan SIMPRAM.</p>
+            <h1 class="mt-1 text-2xl font-bold">Pembinaan SKU/SKK, Prestasi & Jurnal</h1>
+            <p class="mt-1 text-sm text-zinc-500">Pemantauan capaian SKU/SKK dan prestasi. Perencanaan Tahunan–Semester–Mingguan dikelola di menu Program Kerja; agenda dan jurnal menggunakan modul Kegiatan.</p>
         </div>
         <a href="{{ route('modules.show', 'administrasi') }}" wire:navigate class="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700">Kembali ke Portal</a>
     </div>
@@ -31,71 +31,15 @@
         </div>
     </section>
     @if ($gudep && $year)
-        <div class="grid gap-3 sm:grid-cols-3">
-            <div class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700"><p class="text-xs text-zinc-500">Program kerja</p><p class="mt-1 text-2xl font-bold">{{ $programs->count() }}</p></div>
+        <div class="grid gap-3 sm:grid-cols-2">
+            
             <div class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700"><p class="text-xs text-zinc-500">Catatan SKU/SKK</p><p class="mt-1 text-2xl font-bold">{{ $competencies->count() }}</p></div>
             <div class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700"><p class="text-xs text-zinc-500">Prestasi & tanda kecakapan</p><p class="mt-1 text-2xl font-bold">{{ $achievements->count() }}</p></div>
         </div>
+        {{-- Legacy GudepWorkProgram data and routes are retained for compatibility.
+             Planning now happens exclusively in GudepProgramPlanner. --}}
         <section class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
-            <h2 class="text-lg font-semibold">1. Program Kerja Pembinaan</h2>
-            <p class="text-sm text-zinc-500">Tautkan program ke agenda yang sudah dibuat jika tersedia. Perubahan status tidak mengubah data kegiatan aslinya.</p>
-            @if (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.development.manage'))
-                <form wire:submit="saveProgram" class="mt-4 grid gap-3 md:grid-cols-3">
-                    <label class="text-sm">Nama Program<input wire:model="programTitle" maxlength="200" class="mt-1 w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800" required>@error('programTitle')<span class="text-red-600">{{ $message }}</span>@enderror</label>
-                    <label class="text-sm">Tanggal rencana<input type="date" wire:model="programDate" class="mt-1 w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800"></label>
-                    <label class="text-sm">Status
-                        <select wire:model="programStatus" class="mt-1 w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
-                            <option value="planned">Direncanakan</option><option value="ongoing">Berjalan</option><option value="completed">Selesai</option><option value="cancelled">Dibatalkan</option>
-                        </select>
-                    </label>
-                    <label class="text-sm">Satuan golongan
-                        <select wire:model="programFormationId" class="mt-1 w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
-                            <option value="">Seluruh Gudep</option>
-                            @foreach ($formations as $formation)<option value="{{ $formation->id }}">{{ $formation->name }}</option>@endforeach
-                        </select>
-                    </label>
-                    <label class="text-sm">Kaitkan Agenda SIMPRAM
-                        <select wire:model="programActivityId" class="mt-1 w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800">
-                            <option value="">Belum ditautkan</option>
-                            @foreach ($activities as $activity)<option value="{{ $activity->id }}">{{ $activity->title }}</option>@endforeach
-                        </select>
-                    </label>
-                    <label class="text-sm">Tujuan<input wire:model="programObjective" maxlength="4000" class="mt-1 w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800"></label>
-                    <label class="text-sm md:col-span-3">Catatan<input wire:model="programNotes" maxlength="4000" class="mt-1 w-full rounded-lg border border-zinc-300 p-2 dark:bg-zinc-800"></label>
-                    <div class="md:col-span-3">@error('programActivityId')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
-                        <button class="rounded-lg bg-emerald-700 px-4 py-2 text-sm text-white">Simpan Program Kerja</button>
-                    </div>
-                </form>
-            @endif
-            <div class="mt-4 overflow-x-auto"><table class="min-w-full text-left text-sm">
-                <thead><tr class="border-b"><th class="p-2">Program</th><th class="p-2">Rencana</th><th class="p-2">Agenda terkait</th><th class="p-2">Status</th></tr></thead>
-                <tbody>
-                @forelse ($programs as $program)
-                    <tr class="border-b border-zinc-100 dark:border-zinc-800">
-                        <td class="p-2"><strong>{{ $program->title }}</strong><p class="text-xs text-zinc-500">{{ $program->objective }}</p></td>
-                        <td class="p-2">{{ $program->planned_for?->format('d/m/Y') ?? '-' }}</td>
-                        <td class="p-2">{{ $program->activity?->title ?? '-' }}</td>
-                        <td class="p-2">
-                            @if (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.development.manage'))
-                                <select aria-label="Status program" wire:change="setProgramStatus({{ $program->id }}, $event.target.value)" class="rounded-lg border border-zinc-300 p-1.5 text-sm dark:bg-zinc-800">
-                                    @foreach (['planned' => 'Direncanakan', 'ongoing' => 'Berjalan', 'completed' => 'Selesai', 'cancelled' => 'Dibatalkan'] as $value => $label)
-                                        <option value="{{ $value }}" @selected($program->status === $value)>{{ $label }}</option>
-                                    @endforeach
-                                </select>
-                            @else
-                                {{ $program->status }}
-                            @endif
-                        </td>
-                    </tr>
-                @empty
-                    <tr><td colspan="4" class="p-4 text-center text-zinc-500">Belum ada program kerja.</td></tr>
-                @endforelse
-                </tbody>
-            </table></div>
-        </section>
-
-        <section class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
-            <h2 class="text-lg font-semibold">2. Progres SKU dan SKK</h2>
+            <h2 class="text-lg font-semibold">1. Progres SKU dan SKK</h2>
             <p class="text-sm text-zinc-500">Masukkan butir berdasarkan buku SKU/SKK resmi yang berlaku. Sistem tidak membuat daftar persyaratan secara otomatis. TKK dicatat sebagai penganugerahan pada bagian Prestasi.</p>
             @if (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.development.manage'))
                 <form wire:submit="saveCompetency" class="mt-4 grid gap-3 md:grid-cols-3">
@@ -139,7 +83,7 @@
         </section>
 
         <section class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
-            <h2 class="text-lg font-semibold">3. Prestasi, Penganugerahan TKK & Pengembangan</h2>
+            <h2 class="text-lg font-semibold">2. Prestasi, Penganugerahan TKK & Pengembangan</h2>
             @if (auth()->user()?->can('gudep.manage') || auth()->user()?->can('gudep.development.manage'))
                 <form wire:submit="saveAchievement" class="mt-4 grid gap-3 md:grid-cols-3">
                     <label class="text-sm">Jenis
@@ -212,7 +156,7 @@
         </section>
 
         <section class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-800 dark:bg-emerald-950">
-            <h2 class="text-lg font-semibold">4. Jurnal Pembinaan & Portofolio Resmi</h2>
+            <h2 class="text-lg font-semibold">3. Jurnal Pembinaan & Portofolio Resmi</h2>
             <p class="mt-1 text-sm">Jurnal latihan tidak digandakan. Tautkan agenda pada Program Kerja, lalu isi jurnal di modul Kegiatan. Portofolio PDF mencantumkan jurnal dari agenda yang ditautkan.</p>
             <div class="mt-4 flex flex-wrap gap-3">
                 @can('journals.view')<a wire:navigate href="{{ route('journals.index') }}" class="rounded-lg border border-emerald-700 px-4 py-2 text-sm">Buka Jurnal Kegiatan</a>@endcan

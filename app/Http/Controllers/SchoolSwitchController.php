@@ -49,6 +49,10 @@ class SchoolSwitchController extends Controller
                 'active_school_id'
             );
 
+            // Explicit Global mode must not silently restore the previous school.
+            $user->last_active_school_id = null;
+            $user->save();
+
             app(
                 SchoolContext::class
             )->clear();
@@ -145,6 +149,10 @@ class SchoolSwitchController extends Controller
         session([
             'active_school_id' => $school->id,
         ]);
+
+        // Keep a per-account preference beyond the session lifetime.
+        $user->last_active_school_id = $school->id;
+        $user->save();
 
         app(
             SchoolContext::class

@@ -35,7 +35,12 @@ test('admin creates a principal who activates and logs in with school scoped app
     expect($user->fresh()->is_active)->toBeTrue();
     $this->post(route('login'), ['email' => $user->email, 'password' => 'principal-password-123'])->assertSessionHasNoErrors();
     $this->assertAuthenticatedAs($user);
-    $this->get(route('dashboard'))->assertSee('Dokumen Terbit');
+    $this->get(route('dashboard'))->assertOk()->assertSee(route('modules.show', 'laporan'), false);
+    $this->get(route('modules.show', 'laporan'))
+        ->assertOk()
+        ->assertSee('Dokumen Terbit & Verifikasi')
+        ->assertSee(route('reports.published-documents.index'), false);
+    $this->get(route('reports.published-documents.index'))->assertOk();
     expect(auth()->user()->can('documents.approve'))->toBeTrue();
     expect(auth()->user()->can('user_approvals.manage'))->toBeFalse();
 });

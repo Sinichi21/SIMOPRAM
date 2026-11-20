@@ -10,6 +10,7 @@ use App\Http\Controllers\ComplaintController;
 use App\Http\Controllers\GudepAchievementEvidenceController;
 use App\Http\Controllers\GudepCashEvidenceController;
 use App\Http\Controllers\GudepOfficerDocumentController;
+use App\Http\Controllers\GudepProgramSheetPrintController;
 use App\Http\Controllers\InventoryAssetBatchLabelController;
 use App\Http\Controllers\InventoryAssetLabelController;
 use App\Http\Controllers\InventoryAssetVerificationController;
@@ -34,6 +35,7 @@ use App\Livewire\Administration\GudepDevelopment;
 use App\Livewire\Administration\GudepFinance;
 use App\Livewire\Administration\GudepOperations;
 use App\Livewire\Administration\GudepOrganization;
+use App\Livewire\Administration\GudepProgramPlanner;
 use App\Livewire\Auth\Register;
 use App\Livewire\Inventory\Index;
 use App\Livewire\Inventory\Loans;
@@ -42,6 +44,7 @@ use App\Livewire\RoleManagement\Index as RoleManagementIndex;
 use App\Livewire\Settings\LandingContent;
 use App\Livewire\SystemRoleManagement\Index as SystemRoleManagementIndex;
 use App\Support\ModuleWorkspace;
+use App\Support\SchoolContext;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -177,16 +180,20 @@ Route::middleware([
             'dashboard'
         );
 
-    // Phase 0: modular workspaces; existing module routes remain unchanged.
     Route::view('/modul', 'modules.portal')->name('modules.portal');
 
     Route::get('/modul/{module}', function (string $module) {
         $workspace = ModuleWorkspace::find($module);
         abort_unless($workspace, 404);
-        abort_unless(ModuleWorkspace::permitted(auth()->user(), $workspace), 403);
+        if (ModuleWorkspace::requiresSchool($workspace)) {
+            abort_unless(app(SchoolContext::class)->hasSchool(), 409, 'Pilih sekolah aktif terlebih dahulu.');
+        }
+
+        $workspace['links'] = ModuleWorkspace::accessibleLinks(auth()->user(), $workspace);
+        abort_if($workspace['links'] === [], 403);
 
         return view('modules.workspace', compact('workspace'));
-    })->middleware('school.required')->name('modules.show');
+    })->name('modules.show');
 
     /*
     |--------------------------------------------------------------------------
@@ -260,6 +267,11 @@ Route::middleware([
             ->middleware('can:gudep.view')
             ->name('administration.accreditation');
 
+        // v2: standalone finance workspace, preserving the legacy URL for old links.
+        Route::get('/keuangan', GudepFinance::class)
+            ->middleware('can:gudep.finance.view')
+            ->name('finance.index');
+
         Route::get('/administrasi/keuangan-sarana', GudepFinance::class)
             ->middleware('can:gudep.finance.view')
             ->name('administration.finance');
@@ -271,6 +283,15 @@ Route::middleware([
         Route::get('/administrasi/pembinaan', GudepDevelopment::class)
             ->middleware('can:gudep.view')
             ->name('administration.development');
+
+        Route::get('/administrasi/program-kerja', GudepProgramPlanner::class)
+            ->middleware('can:gudep.view')
+            ->name('administration.programs');
+
+        Route::get('/administrasi/program-kerja/{sheet}/cetak', GudepProgramSheetPrintController::class)
+            ->whereNumber('sheet')
+            ->middleware(['can:gudep.view', 'throttle:30,1'])
+            ->name('administration.programs.print');
 
         Route::get('/administrasi/organisasi', GudepOrganization::class)
             ->middleware('can:gudep.view')
