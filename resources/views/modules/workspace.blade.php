@@ -10,12 +10,11 @@
             <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{{ $workspace['description'] }}</p>
         </div>
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            @foreach (\App\Support\ModuleWorkspace::accessibleLinks(auth()->user(), $workspace) as $link)
-                <a href="{{ route($link['route']) }}" wire:navigate class="rounded-xl border border-zinc-200 bg-white p-5 font-medium transition hover:border-emerald-500 hover:text-emerald-700 dark:border-zinc-700 dark:bg-zinc-900">
+            @foreach ($workspace['links'] as $link)
+                <a href="{{ route($link['route'], $link['parameters']) }}" wire:navigate class="rounded-xl border border-zinc-200 bg-white p-5 font-medium transition hover:border-emerald-500 hover:text-emerald-700 dark:border-zinc-700 dark:bg-zinc-900">
                     {{ $link['label'] }} <span aria-hidden="true">→</span>
                 </a>
             @endforeach
         </div>
-        <p class="text-sm text-zinc-500">Fitur yang sudah ada tetap tersedia melalui menu di atas. Form dan laporan administrasi baru akan hadir pada fase berikutnya.</p>
     </div>
 </x-layouts::app>

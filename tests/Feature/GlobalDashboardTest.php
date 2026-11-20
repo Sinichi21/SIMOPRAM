@@ -68,17 +68,8 @@ class GlobalDashboardTest extends TestCase
             ->assertSee(
                 'Semua Sekolah'
             )
-            ->assertSee(
-                'data-school-menu',
-                false
-            )
-            ->assertSee(
-                'Pilih sekolah aktif terlebih dahulu.'
-            )
-            ->assertSee(
-                'ui-disclosure',
-                false
-            );
+            ->assertSee(route('modules.show', 'sistem'), false)
+            ->assertDontSee(route('modules.show', 'inventaris'), false);
 
         $this->assertNull(
             session(
