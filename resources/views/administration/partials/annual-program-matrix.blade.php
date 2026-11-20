@@ -220,7 +220,7 @@
                 $fundraisingDetails = array_values(array_unique($fundraisingDetails));
             @endphp
             <tr style="page-break-inside:avoid;background:#ececec;font-weight:bold;">
-                <td style="border-top:0;border-bottom:0;background:#fff;"></td>
+                    <td style="border-top:0;border-bottom:0;background:#fff;"></td>
                 <td colspan="15">3. Usaha Dana</td>
             </tr>
             <tr style="page-break-inside:avoid;">
